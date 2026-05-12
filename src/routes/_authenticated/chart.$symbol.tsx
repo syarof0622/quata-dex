@@ -1031,13 +1031,26 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualit
         Notional ≈ <span className="font-mono">{fmt(price * qty)}</span>
       </div>
       <div className="mt-3 flex gap-2">
-        <Button disabled={busy || isHold || blocked}
-          onClick={() => onTrade(primarySide)}
+        <Button disabled={busy || isHold}
+          onClick={() => {
+            if (!setupActive) {
+              toast.message("Alert saved", { description: "We'll notify you when a valid trigger appears." });
+            } else {
+              onTrade(primarySide);
+            }
+          }}
           className={`flex-1 ${primaryClass}`}>
           {primaryLabel}
         </Button>
-        <Button disabled={busy} onClick={() => onTrade(isShort ? "buy" : "sell")} variant="outline" className="flex-1">
-          {isShort ? "Cover / Buy" : "Close / Sell"}
+        <Button disabled={busy} variant="outline" className="flex-1"
+          onClick={() => {
+            if (!setupActive && !isHold) {
+              toast.success("Setup saved to journal");
+            } else {
+              onTrade(isShort ? "buy" : "sell");
+            }
+          }}>
+          {isHold ? "Close / Sell" : !setupActive ? "Save Setup" : isShort ? "Cover / Buy" : "Close / Sell"}
         </Button>
       </div>
       <div className="mt-3 text-[11px] text-muted-foreground">
