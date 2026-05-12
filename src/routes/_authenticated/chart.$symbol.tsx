@@ -895,12 +895,14 @@ function SentimentPanel({ symbol }: { symbol: string }) {
   );
 }
 
-function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualityGrade }: {
+function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualityGrade, executionStatus, executionReason }: {
   symbol: string; price: number; fmt: (n: any) => string;
   bias?: "long" | "short" | "neutral";
   signalLabel?: string;
   conditional?: boolean;
   qualityGrade?: "Excellent" | "Good" | "Fair" | "Poor";
+  executionStatus?: "Ready to Trade" | "Wait for Pullback" | "Wait for Breakout" | "Wait for Confirmation" | "No Trade";
+  executionReason?: string;
 }) {
   const [qty, setQty] = useState(10);
   const [busy, setBusy] = useState(false);
@@ -913,16 +915,29 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualit
 
   const isHold = bias === "neutral" || signalLabel === "HOLD";
   const isShort = bias === "short";
-  const blocked = (isShort && conditional) || qualityGrade === "Poor";
+  const setupActive = executionStatus === "Ready to Trade" && !conditional && qualityGrade !== "Poor";
+  const blocked = !isHold && !setupActive;
+
+  // Badge per spec
+  const badge = isHold
+    ? { text: "NO TRADE", cls: "bg-accent/40 text-muted-foreground" }
+    : !setupActive
+      ? { text: "WAIT", cls: "bg-yellow-500/20 text-yellow-500" }
+      : isShort
+        ? { text: "SHORT READY", cls: "bg-bear-soft text-bear" }
+        : { text: "LONG READY", cls: "bg-bull-soft text-bull" };
+
   const primarySide: "buy" | "sell" = isShort ? "sell" : "buy";
   const primaryLabel = isHold
     ? "No Trade"
-    : blocked
-      ? (isShort && conditional ? "Conditional · SHORT disabled" : "Setup too weak")
+    : !setupActive
+      ? "Set Alert"
       : isShort ? "Execute SHORT" : "Execute LONG";
-  const primaryClass = isShort
-    ? "bg-bear text-primary-foreground hover:opacity-90"
-    : "bg-bull text-primary-foreground hover:opacity-90";
+  const primaryClass = !setupActive
+    ? "bg-accent/40 text-foreground hover:bg-accent/60 border border-border"
+    : isShort
+      ? "bg-bear text-primary-foreground hover:opacity-90"
+      : "bg-bull text-primary-foreground hover:opacity-90";
 
   const onTrade = async (side: "buy" | "sell") => {
     setBusy(true);
@@ -956,25 +971,14 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualit
     <div className="panel p-4">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold">Paper Trade</h3>
-        {bias && (
-          <span className={`text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded ${
-            isShort ? "bg-bear-soft text-bear" :
-            isHold ? "bg-accent/40 text-muted-foreground" :
-            "bg-bull-soft text-bull"
-          }`}>{isHold ? "HOLD" : isShort ? "SHORT setup" : "LONG setup"}</span>
-        )}
+        <span className={`text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded ${badge.cls}`}>{badge.text}</span>
       </div>
 
-      {isHold && (
-        <div className="mt-2 text-xs text-muted-foreground">
-          No valid trade setup. Wait for trigger confirmation.
-        </div>
-      )}
-      {!isHold && blocked && (
-        <div className="mt-2 text-xs text-yellow-500">
-          {isShort && conditional
-            ? "Conditional SHORT — price is rebounding. Wait for trend confirmation before executing."
-            : "Setup quality is Poor. Avoid executing until conditions improve."}
+      {(isHold || blocked) && (
+        <div className={`mt-2 text-xs ${blocked && !isHold ? "text-yellow-500" : "text-muted-foreground"}`}>
+          {isHold
+            ? "No valid trade setup. Wait for trigger confirmation."
+            : `${signalLabel?.includes("BUY") ? "Bullish" : "Bearish"} bias detected, but no valid entry trigger yet.${executionReason ? ` ${executionReason}` : ""}`}
         </div>
       )}
 
