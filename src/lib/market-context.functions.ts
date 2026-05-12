@@ -233,7 +233,7 @@ export const getMarketContext = createServerFn({ method: "POST" })
       symbol: sym,
       market,
       benchmark: { symbol: benchSym, name: benchName, trend: benchTrend, change20d: bench20 != null ? +bench20.toFixed(2) : null },
-      sector: { name: sector, proxy: sectorProxy, trend: sectorTrend, change20d: sector20 != null ? +sector20.toFixed(2) : null },
+      sector: { name: sector, proxy: sectorProxy ?? (usePeerBasket ? `Peer basket (${peers.length})` : null), trend: sectorTrend, change20d: sector20 != null ? +sector20.toFixed(2) : null },
       relativeStrength: { vsBenchmark: rsVsBench, vsSector: rsVsSector },
       beta,
       correlation: corr,
