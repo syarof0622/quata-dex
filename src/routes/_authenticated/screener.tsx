@@ -120,7 +120,9 @@ function Screener() {
         <NumPair label="Score" min={f.minScore} max={f.maxScore} setMin={v => setF({ ...f, minScore: v })} setMax={v => setF({ ...f, maxScore: v })} />
         <NumPair label="RSI" min={f.minRsi} max={f.maxRsi} setMin={v => setF({ ...f, minRsi: v })} setMax={v => setF({ ...f, maxRsi: v })} />
         <div>
-          <label className="text-xs text-muted-foreground">Min Vol×</label>
+          <label className="text-xs text-muted-foreground" title="Relative Volume = volume hari ini ÷ rata-rata 20 hari. >1.5× menandakan partisipasi di atas normal.">
+            Min Relative Volume <span className="opacity-60">(RVOL)</span>
+          </label>
           <Input type="number" step="0.1" value={f.minVolRel} onChange={e => setF({ ...f, minVolRel: parseFloat(e.target.value || "0") })} />
         </div>
         <div>
