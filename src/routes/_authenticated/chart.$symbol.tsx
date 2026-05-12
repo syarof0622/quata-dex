@@ -176,9 +176,25 @@ function ChartPage() {
         <div className="text-[11px] text-muted-foreground mt-0.5">
           Signal is calculated based on the selected timeframe.
         </div>
-        <div className={`mt-3 inline-flex px-3 py-1.5 rounded-md font-semibold text-sm ${sigColor}`}>
-          {labelDisplay}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Market Bias</span>
+          <span className={`inline-flex px-2.5 py-1 rounded-md font-semibold text-sm ${sigColor}`}>
+            {labelDisplay}
+          </span>
         </div>
+        {sig?.executionStatus && (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Execution</span>
+            <span className={`inline-flex px-2 py-0.5 rounded text-[11px] font-medium ${
+              sig.executionStatus === "Ready to Trade" ? "bg-bull-soft text-bull" :
+              sig.executionStatus === "No Trade" ? "bg-accent/40 text-muted-foreground" :
+              "bg-yellow-500/20 text-yellow-500"
+            }`}>{sig.executionStatus}</span>
+            {sig.executionReason && (
+              <span className="text-[11px] text-muted-foreground basis-full">{sig.executionReason}</span>
+            )}
+          </div>
+        )}
         <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
           <Stat label="Confidence" value={sig?.confidence ?? legacy.data?.confidence} suffix="%"
             hint={sig?.confidenceLabel} tip="How much the model trusts this signal: blends factor agreement, signal magnitude, volatility and data quality." />
@@ -190,8 +206,8 @@ function ChartPage() {
         {sig && (
           <>
             <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-              <Stat label="Trend Strength" value={sig.trendStrength} hint={sig.trendStrengthLabel}
-                tip="ADX-based: 0–20 Weak · 21–40 Developing · 41–70 Strong · 71–100 Very Strong." />
+              <Stat label="Trend Strength" value={sig.trendStrength ?? "N/A"} hint={sig.trendStrengthLabel}
+                tip="ADX (0–100): <20 Weak · 20–30 Developing · 30–50 Strong · 50–70 Very Strong · >70 Extreme. N/A if data insufficient." />
               <Stat label="Volatility" value={sig.volatilityLevel} tip="ATR% bucket — low / medium / high." />
               <Stat label="Continuation Probability" value={sig.probContinuation} suffix="%"
                 tip="Heuristic chance the current move continues over the next bars." />
@@ -241,6 +257,8 @@ function ChartPage() {
         signalLabel={sig?.label}
         conditional={!!setup.data?.setup?.conditional}
         qualityGrade={setup.data?.setup?.quality?.grade}
+        executionStatus={sig?.executionStatus}
+        executionReason={sig?.executionReason}
       />
     </div>
   );
@@ -551,13 +569,15 @@ function ReasoningPanel({ signal, regime, mctx, setup, symbol, fmt }: {
   const short = signal.label === "SELL" || signal.label === "STRONG_SELL";
   const hold = !long && !short;
 
-  // ---- WHY ----
-  const whyParts: string[] = [];
-  if (signal.bullishFactors?.length) whyParts.push(`${signal.bullishFactors.length} faktor bullish`);
-  if (signal.bearishFactors?.length) whyParts.push(`${signal.bearishFactors.length} faktor bearish`);
-  whyParts.push(`confidence ${signal.confidence ?? 0}/100`);
-  if (signal.trendStrength != null) whyParts.push(`ADX ${Math.round(signal.trendStrength)}`);
-  const why = `${symbol} → ${label}: ${whyParts.join(" · ")}. ${signal.dataQuality !== "high" ? `Data ${signal.dataQuality} — perlakukan dengan hati-hati. ` : ""}${mctx?.summary ?? ""}`;
+  // ---- WHY (professional microcopy) ----
+  const biasWord = long ? "bullish" : short ? "bearish" : "neutral";
+  const execStatus = signal.executionStatus ?? (hold ? "No Trade" : "Wait for Confirmation");
+  const execReady = execStatus === "Ready to Trade";
+  const headline = hold
+    ? `${symbol} shows no clear directional bias — wait for setup.`
+    : execReady
+      ? `${symbol} shows ${biasWord} market bias with a valid execution trigger.`
+      : `${symbol} shows ${biasWord} market bias, but execution remains conditional.`;
 
   // ---- BEST ACTION ----
   const q = setup?.quality;
@@ -570,6 +590,9 @@ function ReasoningPanel({ signal, regime, mctx, setup, symbol, fmt }: {
   } else if (!setup || setup.bias === "neutral") {
     action = "Tidak ada setup tervalidasi";
     actionDetail = "Sinyal arah ada, tetapi level entry/stop belum jelas.";
+  } else if (!execReady) {
+    action = `${execStatus}`;
+    actionDetail = signal.executionReason || "Tunggu konfirmasi sebelum entry agresif.";
   } else if (grade === "Poor") {
     action = "SKIP atau paper-trade saja";
     actionDetail = `Setup ${grade} (${q.score}/100). Edge terlalu lemah; tunggu konfirmasi.`;
@@ -584,12 +607,42 @@ function ReasoningPanel({ signal, regime, mctx, setup, symbol, fmt }: {
     actionDetail += " Konteks market melawan — kurangi size atau tunggu perbaikan trend benchmark.";
   }
 
+  // ---- Decision Summary ----
+  const trigger = signal.extendedRally
+    ? "Breakout with volume or pullback to EMA20/EMA50"
+    : signal.regime?.phase === "ranging" ? "Breakout from range with volume"
+    : long ? "Pullback to support / EMA20" : short ? "Bounce to resistance / EMA20" : "Wait for clearer signal";
+  const decision = {
+    bias: hold ? "Neutral" : long ? "Bullish" : "Bearish",
+    execution: execStatus,
+    strategy: signal.extendedRally ? "Buy on pullback (avoid chasing)" : execReady ? (long ? "Long with confirmation" : "Short with confirmation") : "Wait & set alert",
+    risk: signal.riskLabel,
+    avoid: signal.extendedRally ? "Chasing after sharp rally" : signal.rebound?.active ? "Trading against the counter-move" : "Oversizing in low-conviction setup",
+    trigger,
+  };
+
   return (
     <div className="space-y-4 text-sm">
       {/* WHY */}
-      <div className="rounded border border-border bg-card/40 p-3">
-        <div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Why this signal</div>
-        <div className="text-foreground">{why}</div>
+      <div className="rounded border border-border bg-card/40 p-3 space-y-2">
+        <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Why this signal</div>
+        <div className="text-foreground font-medium">{headline}</div>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1 text-xs">
+          <div><span className="text-muted-foreground">Market Bias:</span> <span className="font-medium">{label}</span></div>
+          <div><span className="text-muted-foreground">Execution:</span> <span className="font-medium">{execStatus}</span></div>
+          <div><span className="text-muted-foreground">Confidence:</span> <span className="font-medium">{signal.confidence ?? 0}/100</span></div>
+          {signal.trendStrength != null
+            ? <div><span className="text-muted-foreground">ADX:</span> <span className="font-medium">{Math.round(signal.trendStrength)}</span></div>
+            : <div><span className="text-muted-foreground">ADX:</span> <span className="font-medium">N/A</span></div>}
+          {typeof signal.dailyChangePct === "number" && (
+            <div><span className="text-muted-foreground">Today:</span> <span className={`font-medium ${signal.dailyChangePct > 0 ? "text-bull" : signal.dailyChangePct < 0 ? "text-bear" : ""}`}>{signal.dailyChangePct > 0 ? "+" : ""}{signal.dailyChangePct}%</span></div>
+          )}
+          {signal.dataQuality && <div><span className="text-muted-foreground">Data:</span> <span className="font-medium capitalize">{signal.dataQuality}</span></div>}
+        </div>
+        {signal.executionReason && (
+          <div className="text-[11px] text-muted-foreground border-t border-border pt-2">{signal.executionReason}</div>
+        )}
+        {mctx?.summary && <div className="text-[11px] text-muted-foreground">{mctx.summary}</div>}
       </div>
 
       {/* MARKET CONTEXT */}
@@ -670,6 +723,19 @@ function ReasoningPanel({ signal, regime, mctx, setup, symbol, fmt }: {
         <div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Best action sekarang</div>
         <div className="font-semibold">{action}</div>
         <div className="text-xs text-muted-foreground mt-1">{actionDetail}</div>
+      </div>
+
+      {/* DECISION SUMMARY */}
+      <div className="rounded border border-primary/30 bg-primary/5 p-3">
+        <div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">Decision Summary</div>
+        <ul className="text-xs grid md:grid-cols-2 gap-x-4 gap-y-1">
+          <li><span className="text-muted-foreground">Bias:</span> <span className="font-medium">{decision.bias}</span></li>
+          <li><span className="text-muted-foreground">Execution:</span> <span className="font-medium">{decision.execution}</span></li>
+          <li><span className="text-muted-foreground">Best Strategy:</span> <span className="font-medium">{decision.strategy}</span></li>
+          <li><span className="text-muted-foreground">Risk:</span> <span className="font-medium">{decision.risk}</span></li>
+          <li className="md:col-span-2"><span className="text-muted-foreground">Avoid:</span> <span className="font-medium">{decision.avoid}</span></li>
+          <li className="md:col-span-2"><span className="text-muted-foreground">Trigger:</span> <span className="font-medium">{decision.trigger}</span></li>
+        </ul>
       </div>
     </div>
   );
@@ -877,12 +943,14 @@ function SentimentPanel({ symbol }: { symbol: string }) {
   );
 }
 
-function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualityGrade }: {
+function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualityGrade, executionStatus, executionReason }: {
   symbol: string; price: number; fmt: (n: any) => string;
   bias?: "long" | "short" | "neutral";
   signalLabel?: string;
   conditional?: boolean;
   qualityGrade?: "Excellent" | "Good" | "Fair" | "Poor";
+  executionStatus?: "Ready to Trade" | "Wait for Pullback" | "Wait for Breakout" | "Wait for Confirmation" | "No Trade";
+  executionReason?: string;
 }) {
   const [qty, setQty] = useState(10);
   const [busy, setBusy] = useState(false);
@@ -895,16 +963,29 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualit
 
   const isHold = bias === "neutral" || signalLabel === "HOLD";
   const isShort = bias === "short";
-  const blocked = (isShort && conditional) || qualityGrade === "Poor";
+  const setupActive = executionStatus === "Ready to Trade" && !conditional && qualityGrade !== "Poor";
+  const blocked = !isHold && !setupActive;
+
+  // Badge per spec
+  const badge = isHold
+    ? { text: "NO TRADE", cls: "bg-accent/40 text-muted-foreground" }
+    : !setupActive
+      ? { text: "WAIT", cls: "bg-yellow-500/20 text-yellow-500" }
+      : isShort
+        ? { text: "SHORT READY", cls: "bg-bear-soft text-bear" }
+        : { text: "LONG READY", cls: "bg-bull-soft text-bull" };
+
   const primarySide: "buy" | "sell" = isShort ? "sell" : "buy";
   const primaryLabel = isHold
     ? "No Trade"
-    : blocked
-      ? (isShort && conditional ? "Conditional · SHORT disabled" : "Setup too weak")
+    : !setupActive
+      ? "Set Alert"
       : isShort ? "Execute SHORT" : "Execute LONG";
-  const primaryClass = isShort
-    ? "bg-bear text-primary-foreground hover:opacity-90"
-    : "bg-bull text-primary-foreground hover:opacity-90";
+  const primaryClass = !setupActive
+    ? "bg-accent/40 text-foreground hover:bg-accent/60 border border-border"
+    : isShort
+      ? "bg-bear text-primary-foreground hover:opacity-90"
+      : "bg-bull text-primary-foreground hover:opacity-90";
 
   const onTrade = async (side: "buy" | "sell") => {
     setBusy(true);
@@ -938,25 +1019,14 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualit
     <div className="panel p-4">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold">Paper Trade</h3>
-        {bias && (
-          <span className={`text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded ${
-            isShort ? "bg-bear-soft text-bear" :
-            isHold ? "bg-accent/40 text-muted-foreground" :
-            "bg-bull-soft text-bull"
-          }`}>{isHold ? "HOLD" : isShort ? "SHORT setup" : "LONG setup"}</span>
-        )}
+        <span className={`text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded ${badge.cls}`}>{badge.text}</span>
       </div>
 
-      {isHold && (
-        <div className="mt-2 text-xs text-muted-foreground">
-          No valid trade setup. Wait for trigger confirmation.
-        </div>
-      )}
-      {!isHold && blocked && (
-        <div className="mt-2 text-xs text-yellow-500">
-          {isShort && conditional
-            ? "Conditional SHORT — price is rebounding. Wait for trend confirmation before executing."
-            : "Setup quality is Poor. Avoid executing until conditions improve."}
+      {(isHold || blocked) && (
+        <div className={`mt-2 text-xs ${blocked && !isHold ? "text-yellow-500" : "text-muted-foreground"}`}>
+          {isHold
+            ? "No valid trade setup. Wait for trigger confirmation."
+            : `${signalLabel?.includes("BUY") ? "Bullish" : "Bearish"} bias detected, but no valid entry trigger yet.${executionReason ? ` ${executionReason}` : ""}`}
         </div>
       )}
 
@@ -1009,13 +1079,26 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualit
         Notional ≈ <span className="font-mono">{fmt(price * qty)}</span>
       </div>
       <div className="mt-3 flex gap-2">
-        <Button disabled={busy || isHold || blocked}
-          onClick={() => onTrade(primarySide)}
+        <Button disabled={busy || isHold}
+          onClick={() => {
+            if (!setupActive) {
+              toast.message("Alert saved", { description: "We'll notify you when a valid trigger appears." });
+            } else {
+              onTrade(primarySide);
+            }
+          }}
           className={`flex-1 ${primaryClass}`}>
           {primaryLabel}
         </Button>
-        <Button disabled={busy} onClick={() => onTrade(isShort ? "buy" : "sell")} variant="outline" className="flex-1">
-          {isShort ? "Cover / Buy" : "Close / Sell"}
+        <Button disabled={busy} variant="outline" className="flex-1"
+          onClick={() => {
+            if (!setupActive && !isHold) {
+              toast.success("Setup saved to journal");
+            } else {
+              onTrade(isShort ? "buy" : "sell");
+            }
+          }}>
+          {isHold ? "Close / Sell" : !setupActive ? "Save Setup" : isShort ? "Cover / Buy" : "Close / Sell"}
         </Button>
       </div>
       <div className="mt-3 text-[11px] text-muted-foreground">

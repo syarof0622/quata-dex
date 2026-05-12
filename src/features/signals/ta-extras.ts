@@ -50,8 +50,28 @@ export function adx(c: Candle[], period = 14): { adx: number[]; plusDI: number[]
     const sum = p + m;
     dx.push(sum ? (Math.abs(p - m) / sum) * 100 : NaN);
   }
-  // ADX = wilder smoothed DX
-  const adxArr = wilder(dx.slice(1).map(v => isNaN(v) ? 0 : v), period);
+  // ADX = Wilder-smoothed *average* of DX (must stay in 0..100)
+  // The `wilder` helper above returns smoothed *sums*, which is fine for TR/+DM/-DM
+  // because they later cancel in a ratio. DX is already a 0..100 percentage and must
+  // be averaged, not summed — otherwise ADX explodes (e.g. 372, 700+).
+  const dxClean = dx.slice(1).map(v => (isNaN(v) || !isFinite(v) ? 0 : Math.max(0, Math.min(100, v))));
+  const adxArr: number[] = [];
+  let prev: number | null = null;
+  for (let i = 0; i < dxClean.length; i++) {
+    if (i < period - 1) { adxArr.push(NaN); continue; }
+    if (prev == null) {
+      // seed: simple average of first `period` DX values
+      let s = 0;
+      for (let j = i - period + 1; j <= i; j++) s += dxClean[j];
+      prev = s / period;
+    } else {
+      // Wilder average: ((prev * (period-1)) + current) / period
+      prev = (prev * (period - 1) + dxClean[i]) / period;
+    }
+    // Hard clamp — ADX is mathematically 0..100
+    const clamped = Math.max(0, Math.min(100, prev));
+    adxArr.push(clamped);
+  }
   const adxOut = [NaN, ...adxArr];
   return { adx: adxOut, plusDI, minusDI };
 }

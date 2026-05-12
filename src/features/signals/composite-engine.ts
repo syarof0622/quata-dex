@@ -48,6 +48,10 @@ export type CompositeSignal = {
   dataNotes: string[];
   riskDrivers: string[];
   rebound: { active: boolean; reason: string | null };
+  dailyChangePct: number;
+  extendedRally: boolean;
+  executionStatus: "Ready to Trade" | "Wait for Pullback" | "Wait for Breakout" | "Wait for Confirmation" | "No Trade";
+  executionReason: string;
   computedAt: string;
 };
 
@@ -84,13 +88,16 @@ function computeFactors(c: Candle[]) {
   if (struct === "uptrend") { trend += 20; bullish.push("Higher highs & higher lows"); }
   else if (struct === "downtrend") { trend -= 20; bearish.push("Lower highs & lower lows"); }
   else neutral.push("No clear swing structure");
-  const adxNow = a.adx[a.adx.length - 1];
+  const adxRaw = a.adx[a.adx.length - 1];
+  const adxNow = (typeof adxRaw === "number" && isFinite(adxRaw) && adxRaw >= 0 && adxRaw <= 100) ? adxRaw : NaN;
   if (!isNaN(adxNow)) {
     if (adxNow > 25) {
       const dir = a.plusDI[a.plusDI.length - 1] > a.minusDI[a.minusDI.length - 1] ? 1 : -1;
       trend += dir * 15;
       (dir > 0 ? bullish : bearish).push(`ADX ${adxNow.toFixed(0)} (${dir > 0 ? "+DI" : "-DI"} dominant)`);
     } else neutral.push(`ADX ${adxNow.toFixed(0)} (weak trend)`);
+  } else {
+    neutral.push("ADX unavailable");
   }
   trend = clampScore(trend);
 
@@ -302,6 +309,39 @@ export function compositeSignal(
   const confidenceLabel: CompositeSignal["confidenceLabel"] =
     confidence <= 40 ? "Low" : confidence <= 65 ? "Moderate" : confidence <= 80 ? "High" : "Very High";
 
+  // ---- Daily change & extended-rally / extended-decline detection ----
+  const dailyChangePct = c2 ? +(((c1.close - c2.close) / c2.close) * 100).toFixed(2) : 0;
+  const extendedRally =
+    (label === "BUY" || label === "STRONG_BUY") && dailyChangePct > 5;
+  const extendedDecline =
+    (label === "SELL" || label === "STRONG_SELL") && dailyChangePct < -5;
+
+  // ---- Execution status (separate from market bias) ----
+  let executionStatus: CompositeSignal["executionStatus"];
+  let executionReason = "";
+  if (label === "HOLD") {
+    executionStatus = "No Trade";
+    executionReason = "Sinyal arah tidak cukup kuat. Pantau breakout / breakdown.";
+  } else if (extendedRally) {
+    executionStatus = "Wait for Pullback";
+    executionReason = `Harga sudah naik +${dailyChangePct.toFixed(1)}% hari ini — hindari chasing.`;
+  } else if (extendedDecline) {
+    executionStatus = "Wait for Pullback";
+    executionReason = `Harga sudah turun ${dailyChangePct.toFixed(1)}% hari ini — hindari short late.`;
+  } else if (reboundActive) {
+    executionStatus = "Wait for Confirmation";
+    executionReason = reboundReason || "Counter-move sedang berlangsung.";
+  } else if (regime.phase === "ranging" || regime.phase === "accumulation" || regime.phase === "distribution") {
+    executionStatus = "Wait for Breakout";
+    executionReason = `Regime ${regime.phase} — tunggu breakout dengan volume.`;
+  } else if (confidence < 60 || (trendStrength != null && trendStrength < 20)) {
+    executionStatus = "Wait for Confirmation";
+    executionReason = "Confidence/trend belum cukup kuat untuk entry agresif.";
+  } else {
+    executionStatus = "Ready to Trade";
+    executionReason = "Bias dan trigger selaras — eksekusi per plan.";
+  }
+
   return {
     symbol,
     timeframe,
@@ -330,6 +370,10 @@ export function compositeSignal(
     dataNotes,
     riskDrivers,
     rebound: { active: reboundActive, reason: reboundReason },
+    dailyChangePct,
+    extendedRally: extendedRally || extendedDecline,
+    executionStatus,
+    executionReason,
     computedAt: new Date().toISOString(),
   };
 }
@@ -552,12 +596,19 @@ export function buildTradeSetup(c: Candle[], signal: CompositeSignal): TradeSetu
   // ---- Conditional setup detection ----
   const conditional =
     signal.rebound?.active === true ||
+    signal.extendedRally === true ||
     quality.grade === "Fair" ||
     quality.grade === "Poor" ||
     riskPct > 10;
   let conditionalReason: string | null = null;
   let microcopy: string | null = null;
-  if (signal.rebound?.active && (signal.label === "SELL" || signal.label === "STRONG_SELL")) {
+  if (signal.extendedRally && (signal.label === "BUY" || signal.label === "STRONG_BUY")) {
+    conditionalReason = `Harga sudah naik +${signal.dailyChangePct.toFixed(1)}% hari ini`;
+    microcopy = "Price already extended today. Avoid chasing. Wait for pullback to EMA20/EMA50 or breakout confirmation with volume.";
+  } else if (signal.extendedRally && (signal.label === "SELL" || signal.label === "STRONG_SELL")) {
+    conditionalReason = `Harga sudah turun ${signal.dailyChangePct.toFixed(1)}% hari ini`;
+    microcopy = "Price already broken down today. Avoid late short. Wait for pullback to resistance or rejection candle.";
+  } else if (signal.rebound?.active && (signal.label === "SELL" || signal.label === "STRONG_SELL")) {
     conditionalReason = signal.rebound.reason;
     microcopy = "Daily trend remains bearish, but price is currently rebounding. Avoid aggressive short entry. Wait for rejection near resistance or breakdown below support.";
   } else if (signal.rebound?.active && (signal.label === "BUY" || signal.label === "STRONG_BUY")) {
@@ -579,6 +630,12 @@ export function buildTradeSetup(c: Candle[], signal: CompositeSignal): TradeSetu
   if ((rrTp1 ?? 0) < 1.5) riskDrivers.push(`R:R lemah (${(rrTp1 ?? 0).toFixed(2)})`);
   if (signal.confidence < 60) riskDrivers.push(`Confidence rendah (${signal.confidence})`);
   if (signal.rebound?.active) riskDrivers.push(`Counter-move aktif: ${signal.rebound.reason ?? "rebound"}`);
+  if (signal.extendedRally) riskDrivers.push(`Extended ${signal.dailyChangePct > 0 ? "rally" : "decline"} ${signal.dailyChangePct.toFixed(1)}% hari ini — risiko chase`);
+
+  // Reduce allocation more aggressively when |dailyChangePct| > 10
+  const extreme = Math.abs(signal.dailyChangePct ?? 0) > 10;
+  const allocCap = extreme ? 1.5 : conditional ? 3 : 25;
+  const riskCap = extreme ? 0.25 : conditional ? 0.5 : riskPerTradePct;
 
   return {
     bias,
@@ -592,8 +649,8 @@ export function buildTradeSetup(c: Candle[], signal: CompositeSignal): TradeSetu
     tp2: +tp2.toFixed(2),
     tp3: +tp3.toFixed(2),
     rrTp1, rrTp2, rrTp3,
-    riskPerTradePct: conditional ? Math.min(riskPerTradePct, 0.5) : riskPerTradePct,
-    suggestedAllocationPct: Math.max(1, conditional ? Math.min(suggestedAllocationPct, 3) : suggestedAllocationPct),
+    riskPerTradePct: Math.min(riskPerTradePct, riskCap),
+    suggestedAllocationPct: Math.max(1, Math.min(suggestedAllocationPct, allocCap)),
     notes,
     quality,
     stopDistancePct: +riskPct.toFixed(2),

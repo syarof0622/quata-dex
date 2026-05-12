@@ -221,12 +221,18 @@ export const newsSentiment = createServerFn({ method: "POST" })
 
     const sampleConf = Math.min(60, eligible.length * 12);
     const polarityConf = Math.min(40, (pos + neg) * 8);
-    const confidence = eligible.length === 0
+    let confidence = eligible.length === 0
       ? Math.min(10, scored.length)
       : Math.min(95, Math.max(15, Math.round(sampleConf + polarityConf)));
+    // Limited-sample cap: 1 relevant news → max 20% confidence
+    if (eligible.length === 1) confidence = Math.min(confidence, 20);
+    else if (eligible.length === 2) confidence = Math.min(confidence, 35);
 
     const label =
       eligible.length === 0 ? "No Signal" :
+      eligible.length === 1 && score !== null && score > 25 ? "Mild Bullish" :
+      eligible.length === 1 && score !== null && score < -25 ? "Mild Bearish" :
+      eligible.length === 1 ? "Neutral / Mixed" :
       score !== null && score >= 60 ? "Strong Bullish" :
       score !== null && score >= 25 ? "Bullish" :
       score !== null && score <= -60 ? "Strong Bearish" :
