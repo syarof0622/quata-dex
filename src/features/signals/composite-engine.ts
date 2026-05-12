@@ -328,6 +328,8 @@ export function compositeSignal(
     patterns: f.patterns.map(p => ({ name: p.name, bias: p.bias, strength: p.strength })),
     dataQuality: dq,
     dataNotes,
+    riskDrivers,
+    rebound: { active: reboundActive, reason: reboundReason },
     computedAt: new Date().toISOString(),
   };
 }
