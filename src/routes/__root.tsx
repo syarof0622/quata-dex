@@ -93,6 +93,17 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  React.useEffect(() => {
+    try {
+      const raw = localStorage.getItem("quanta:prefs");
+      const p = raw ? JSON.parse(raw) : {};
+      const theme = p.theme ?? "dark";
+      const sysDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const useDark = theme === "dark" || (theme === "system" && sysDark);
+      document.documentElement.classList.toggle("dark", useDark);
+      if (p.uiLang) document.documentElement.lang = p.uiLang;
+    } catch {/* */}
+  }, []);
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
