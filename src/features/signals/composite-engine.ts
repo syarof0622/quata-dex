@@ -549,6 +549,37 @@ export function buildTradeSetup(c: Candle[], signal: CompositeSignal): TradeSetu
     hasSupport: !!support, hasResistance: !!resistance,
   });
 
+  // ---- Conditional setup detection ----
+  const conditional =
+    signal.rebound?.active === true ||
+    quality.grade === "Fair" ||
+    quality.grade === "Poor" ||
+    riskPct > 10;
+  let conditionalReason: string | null = null;
+  let microcopy: string | null = null;
+  if (signal.rebound?.active && (signal.label === "SELL" || signal.label === "STRONG_SELL")) {
+    conditionalReason = signal.rebound.reason;
+    microcopy = "Daily trend remains bearish, but price is currently rebounding. Avoid aggressive short entry. Wait for rejection near resistance or breakdown below support.";
+  } else if (signal.rebound?.active && (signal.label === "BUY" || signal.label === "STRONG_BUY")) {
+    conditionalReason = signal.rebound.reason;
+    microcopy = "Daily trend bullish, but price sedang turun. Hindari long agresif. Tunggu reclaim support atau bullish reversal candle.";
+  } else if (riskPct > 20) {
+    microcopy = `Stop distance ${riskPct.toFixed(1)}% terlalu lebar — execute hanya dengan size sangat kecil atau tunggu setup yang lebih ketat.`;
+  } else if (quality.grade === "Poor") {
+    microcopy = "Setup quality Poor — disarankan No Trade.";
+  } else if (quality.grade === "Fair") {
+    microcopy = "Setup quality Fair — pertimbangkan watch trigger / set alert dulu.";
+  }
+
+  // Risk drivers from signal + setup-specific
+  const riskDrivers = [...(signal.riskDrivers ?? [])];
+  if (riskPct > 30) riskDrivers.unshift(`Stop distance sangat lebar (${riskPct.toFixed(1)}%) — risk meningkat`);
+  else if (riskPct > 20) riskDrivers.unshift(`Stop distance lebar (${riskPct.toFixed(1)}%)`);
+  else if (riskPct > 10) riskDrivers.unshift(`Stop distance di atas normal (${riskPct.toFixed(1)}%)`);
+  if ((rrTp1 ?? 0) < 1.5) riskDrivers.push(`R:R lemah (${(rrTp1 ?? 0).toFixed(2)})`);
+  if (signal.confidence < 60) riskDrivers.push(`Confidence rendah (${signal.confidence})`);
+  if (signal.rebound?.active) riskDrivers.push(`Counter-move aktif: ${signal.rebound.reason ?? "rebound"}`);
+
   return {
     bias,
     entryAggressive: +entryAggressive.toFixed(2),
@@ -561,9 +592,14 @@ export function buildTradeSetup(c: Candle[], signal: CompositeSignal): TradeSetu
     tp2: +tp2.toFixed(2),
     tp3: +tp3.toFixed(2),
     rrTp1, rrTp2, rrTp3,
-    riskPerTradePct,
-    suggestedAllocationPct: Math.max(1, suggestedAllocationPct),
+    riskPerTradePct: conditional ? Math.min(riskPerTradePct, 0.5) : riskPerTradePct,
+    suggestedAllocationPct: Math.max(1, conditional ? Math.min(suggestedAllocationPct, 3) : suggestedAllocationPct),
     notes,
     quality,
+    stopDistancePct: +riskPct.toFixed(2),
+    conditional,
+    conditionalReason,
+    microcopy,
+    riskDrivers,
   };
 }
