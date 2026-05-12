@@ -596,12 +596,19 @@ export function buildTradeSetup(c: Candle[], signal: CompositeSignal): TradeSetu
   // ---- Conditional setup detection ----
   const conditional =
     signal.rebound?.active === true ||
+    signal.extendedRally === true ||
     quality.grade === "Fair" ||
     quality.grade === "Poor" ||
     riskPct > 10;
   let conditionalReason: string | null = null;
   let microcopy: string | null = null;
-  if (signal.rebound?.active && (signal.label === "SELL" || signal.label === "STRONG_SELL")) {
+  if (signal.extendedRally && (signal.label === "BUY" || signal.label === "STRONG_BUY")) {
+    conditionalReason = `Harga sudah naik +${signal.dailyChangePct.toFixed(1)}% hari ini`;
+    microcopy = "Price already extended today. Avoid chasing. Wait for pullback to EMA20/EMA50 or breakout confirmation with volume.";
+  } else if (signal.extendedRally && (signal.label === "SELL" || signal.label === "STRONG_SELL")) {
+    conditionalReason = `Harga sudah turun ${signal.dailyChangePct.toFixed(1)}% hari ini`;
+    microcopy = "Price already broken down today. Avoid late short. Wait for pullback to resistance or rejection candle.";
+  } else if (signal.rebound?.active && (signal.label === "SELL" || signal.label === "STRONG_SELL")) {
     conditionalReason = signal.rebound.reason;
     microcopy = "Daily trend remains bearish, but price is currently rebounding. Avoid aggressive short entry. Wait for rejection near resistance or breakdown below support.";
   } else if (signal.rebound?.active && (signal.label === "BUY" || signal.label === "STRONG_BUY")) {
