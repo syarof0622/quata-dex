@@ -495,6 +495,8 @@ export function buildTradeSetup(c: Candle[], signal: CompositeSignal): TradeSetu
       riskPerTradePct: 0, suggestedAllocationPct: 0,
       notes: ["No actionable setup — wait for clearer signal"],
       quality: holdQuality,
+      stopDistancePct: 0, conditional: false, conditionalReason: null,
+      microcopy: null, riskDrivers: signal.riskDrivers ?? [],
     };
   }
 
