@@ -155,7 +155,7 @@ export const newsSentiment = createServerFn({ method: "POST" })
     const news = (await getNews({ data: { symbol: data.symbol } })) as
       { title: string; link: string; publisher?: string; publishedAt?: string | null; thumbnail?: string | null }[];
 
-    let terms: { strong: string[]; weak: string[] } = { strong: [], weak: [] };
+    let terms: { strong: string[]; weak: string[]; isIDX: boolean } = { strong: [], weak: [], isIDX: false };
     if (data.symbol) {
       const q = await getQuote({ data: { symbol: data.symbol } }).catch(() => null);
       terms = buildRelevanceTerms(data.symbol, q?.shortName ?? null);

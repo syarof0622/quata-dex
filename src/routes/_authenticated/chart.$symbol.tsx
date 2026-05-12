@@ -239,6 +239,8 @@ function ChartPage() {
         fmt={fmt}
         bias={setup.data?.setup?.bias as ("long" | "short" | "neutral" | undefined)}
         signalLabel={sig?.label}
+        conditional={!!setup.data?.setup?.conditional}
+        qualityGrade={setup.data?.setup?.quality?.grade}
       />
     </div>
   );
@@ -443,11 +445,27 @@ function TradeSetupPanel({
             Setup quality: {q.grade} · {q.score}/100
           </span>
         )}
+        {setup.conditional && (
+          <span className="px-2 py-1 rounded text-xs font-semibold border bg-yellow-500/10 text-yellow-500 border-yellow-500/30">
+            Conditional {long ? "Long" : "Short"} — wait for confirmation
+          </span>
+        )}
         <span className="text-xs text-muted-foreground">
           Risk per trade: <span className="text-foreground">{setup.riskPerTradePct}%</span> · Suggested allocation:{" "}
           <span className="text-foreground">{setup.suggestedAllocationPct}%</span>
         </span>
       </div>
+
+      {Array.isArray((setup as any).riskDrivers) && (setup as any).riskDrivers.length > 0 && (
+        <div className="rounded border border-border bg-card/40 p-3">
+          <div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Risk drivers</div>
+          <ul className="text-xs space-y-0.5">
+            {(setup as any).riskDrivers.map((d: string, i: number) => (
+              <li key={i} className="text-muted-foreground">• {d}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {q && (
         <div className="rounded border border-border bg-card/40 p-3 space-y-2">
@@ -794,10 +812,12 @@ function SentimentPanel({ symbol }: { symbol: string }) {
   );
 }
 
-function PaperTrade({ symbol, price, fmt, bias, signalLabel }: {
+function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualityGrade }: {
   symbol: string; price: number; fmt: (n: any) => string;
   bias?: "long" | "short" | "neutral";
   signalLabel?: string;
+  conditional?: boolean;
+  qualityGrade?: "Excellent" | "Good" | "Fair" | "Poor";
 }) {
   const [qty, setQty] = useState(10);
   const [busy, setBusy] = useState(false);
@@ -810,10 +830,13 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel }: {
 
   const isHold = bias === "neutral" || signalLabel === "HOLD";
   const isShort = bias === "short";
+  const blocked = (isShort && conditional) || qualityGrade === "Poor";
   const primarySide: "buy" | "sell" = isShort ? "sell" : "buy";
   const primaryLabel = isHold
     ? "No Trade"
-    : isShort ? "Execute SHORT" : "Execute LONG";
+    : blocked
+      ? (isShort && conditional ? "Conditional · SHORT disabled" : "Setup too weak")
+      : isShort ? "Execute SHORT" : "Execute LONG";
   const primaryClass = isShort
     ? "bg-bear text-primary-foreground hover:opacity-90"
     : "bg-bull text-primary-foreground hover:opacity-90";
@@ -862,6 +885,13 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel }: {
       {isHold && (
         <div className="mt-2 text-xs text-muted-foreground">
           No valid trade setup. Wait for trigger confirmation.
+        </div>
+      )}
+      {!isHold && blocked && (
+        <div className="mt-2 text-xs text-yellow-500">
+          {isShort && conditional
+            ? "Conditional SHORT — price is rebounding. Wait for trend confirmation before executing."
+            : "Setup quality is Poor. Avoid executing until conditions improve."}
         </div>
       )}
 
@@ -914,7 +944,7 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel }: {
         Notional ≈ <span className="font-mono">{fmt(price * qty)}</span>
       </div>
       <div className="mt-3 flex gap-2">
-        <Button disabled={busy || isHold}
+        <Button disabled={busy || isHold || blocked}
           onClick={() => onTrade(primarySide)}
           className={`flex-1 ${primaryClass}`}>
           {primaryLabel}
