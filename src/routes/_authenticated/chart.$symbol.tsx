@@ -796,10 +796,12 @@ function SentimentPanel({ symbol }: { symbol: string }) {
   );
 }
 
-function PaperTrade({ symbol, price, fmt, bias, signalLabel }: {
+function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualityGrade }: {
   symbol: string; price: number; fmt: (n: any) => string;
   bias?: "long" | "short" | "neutral";
   signalLabel?: string;
+  conditional?: boolean;
+  qualityGrade?: "Excellent" | "Good" | "Fair" | "Poor";
 }) {
   const [qty, setQty] = useState(10);
   const [busy, setBusy] = useState(false);
@@ -812,10 +814,13 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel }: {
 
   const isHold = bias === "neutral" || signalLabel === "HOLD";
   const isShort = bias === "short";
+  const blocked = (isShort && conditional) || qualityGrade === "Poor";
   const primarySide: "buy" | "sell" = isShort ? "sell" : "buy";
   const primaryLabel = isHold
     ? "No Trade"
-    : isShort ? "Execute SHORT" : "Execute LONG";
+    : blocked
+      ? (isShort && conditional ? "Conditional · SHORT disabled" : "Setup too weak")
+      : isShort ? "Execute SHORT" : "Execute LONG";
   const primaryClass = isShort
     ? "bg-bear text-primary-foreground hover:opacity-90"
     : "bg-bull text-primary-foreground hover:opacity-90";
