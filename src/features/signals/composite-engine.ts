@@ -568,14 +568,25 @@ export function buildTradeSetup(c: Candle[], signal: CompositeSignal): TradeSetu
     notes.push("Cannot derive stop — risk = 0");
   }
 
-  // Take profits via R-multiples + S/R clamping
-  const tp1 = long ? entryAggressive + risk * 1.5 : entryAggressive - risk * 1.5;
-  let tp2 = long ? entryAggressive + risk * 2.5 : entryAggressive - risk * 2.5;
-  let tp3 = long ? entryAggressive + risk * 4 : entryAggressive - risk * 4;
-  if (long && resistance && resistance.price < tp2) { tp2 = resistance.price; notes.push("TP2 clamped to nearest resistance"); }
-  if (!long && support && support.price > tp2) { tp2 = support.price; notes.push("TP2 clamped to nearest support"); }
+  // Take profits via R-multiples + S/R clamping. Validate > 0 (esp. for SHORT extensions).
+  const rawTp1 = long ? entryAggressive + risk * 1.5 : entryAggressive - risk * 1.5;
+  let rawTp2 = long ? entryAggressive + risk * 2.5 : entryAggressive - risk * 2.5;
+  let rawTp3 = long ? entryAggressive + risk * 4 : entryAggressive - risk * 4;
+  if (long && resistance && resistance.price < rawTp2) { rawTp2 = resistance.price; notes.push("TP2 clamped to nearest resistance"); }
+  if (!long && support && support.price > rawTp2) { rawTp2 = support.price; notes.push("TP2 clamped to nearest support"); }
 
-  const rr = (target: number) => risk > 0 ? +(Math.abs(target - entryAggressive) / risk).toFixed(2) : null;
+  // Reject any non-positive target (invalid extension for SHORT past zero)
+  const validTp = (n: number, dir: "long" | "short") =>
+    isFinite(n) && n > 0 && (dir === "long" ? n > entryAggressive : n < entryAggressive) ? +n.toFixed(2) : null;
+  const tp1 = validTp(rawTp1, bias);
+  const tp2 = validTp(rawTp2, bias);
+  const tp3 = validTp(rawTp3, bias);
+  if (tp3 == null) notes.push("TP3 N/A — invalid target extension");
+  if (tp2 == null) notes.push("TP2 N/A — invalid target extension");
+  if (tp1 == null) notes.push("TP1 N/A — invalid target extension");
+
+  const rr = (target: number | null) =>
+    target != null && risk > 0 ? +(Math.abs(target - entryAggressive) / risk).toFixed(2) : null;
 
   // Position sizing
   // Default 1% account risk; scale with confidence
