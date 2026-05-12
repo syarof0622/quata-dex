@@ -28,8 +28,9 @@ export type CompositeSignal = {
   score: number;            // -100..100
   confidence: number;       // 0..100
   risk: number;             // 0..100
-  trendStrength: number | null;    // 0..100 (ADX-based) or null when insufficient data
-  trendStrengthLabel: "Weak" | "Developing" | "Strong" | "Very Strong" | "N/A";
+  trendStrength: number | null;    // 0..100 (raw ADX) or null when insufficient data
+  trendStrengthLabel: "Weak" | "Developing" | "Strong" | "Very Strong" | "Extreme" | "N/A";
+  trendStrengthWarning?: string;
   riskLabel: "Low" | "Medium" | "High" | "Extreme";
   confidenceLabel: "Low" | "Moderate" | "High" | "Very High";
   volatilityLevel: "low" | "medium" | "high";
@@ -45,6 +46,8 @@ export type CompositeSignal = {
   patterns: { name: string; bias: string; strength: string }[];
   dataQuality: DataQuality;
   dataNotes: string[];
+  riskDrivers: string[];
+  rebound: { active: boolean; reason: string | null };
   computedAt: string;
 };
 
@@ -140,10 +143,13 @@ function computeFactors(c: Candle[]) {
   else if (atrPct < 0.8) { volat -= 5; neutral.push(`Compressed volatility ATR% ${atrPct.toFixed(1)}`); }
   if (sq.squeezing) { volat += 10; neutral.push("BB squeeze — breakout pending"); }
 
+  // ADX raw value (0..~60 typical, 100 theoretical max). Don't multiply.
+  const adxValue = isNaN(adxNow) ? null : Math.max(0, Math.min(100, adxNow));
+
   return {
     factors: { trend, momentum: mom, volume: vol, priceAction: pa, volatility: volat },
     bullish, bearish, neutral, invalid, patterns,
-    adxStrength: isNaN(adxNow) ? 0 : Math.min(100, adxNow * 2),
+    adxValue,
     atrPct,
     relVol,
   };
@@ -218,17 +224,64 @@ export function compositeSignal(
   const rawConf = 35 + Math.abs(score) * 0.4 + agreement * 0.3 - volPenalty - dqPenalty;
   const confidence = Math.max(15, Math.min(95, rawConf));
 
-  // Risk score: capped sensibly; only Extreme (>80) when truly volatile + chop
-  const baseRisk =
-    Math.min(45, f.atrPct * 8) +
-    (regime.volatility === "high" ? 18 : regime.volatility === "medium" ? 8 : 0) +
-    (Math.abs(score) < 25 ? 10 : 0) +
-    (f.relVol > 3 ? 10 : 0) +
-    (dq === "low" ? 12 : dq === "medium" ? 5 : 0);
+  // ---- Risk score: components-based, with explicit drivers ----
+  const riskDrivers: string[] = [];
+  let baseRisk = 0;
+  // ATR / volatility component
+  const atrComponent = Math.min(35, f.atrPct * 6);
+  baseRisk += atrComponent;
+  if (f.atrPct > 4) riskDrivers.push(`Volatility tinggi (ATR ${f.atrPct.toFixed(1)}%)`);
+  else if (f.atrPct > 2.5) riskDrivers.push(`Volatility menengah (ATR ${f.atrPct.toFixed(1)}%)`);
+  // Regime
+  if (regime.volatility === "high") { baseRisk += 18; riskDrivers.push("Regime volatil"); }
+  else if (regime.volatility === "medium") { baseRisk += 8; }
+  // Choppy / weak conviction
+  if (Math.abs(score) < 25) { baseRisk += 8; riskDrivers.push("Sinyal lemah / mixed"); }
+  // Volume spike
+  if (f.relVol > 3) { baseRisk += 10; riskDrivers.push(`Volume spike ${f.relVol.toFixed(1)}× rata-rata`); }
+  // Data quality
+  if (dq === "low") { baseRisk += 18; riskDrivers.push("Data quality rendah"); }
+  else if (dq === "medium") { baseRisk += 6; riskDrivers.push("Data quality menengah"); }
+  // Trend confusion (signal vs trend factor)
+  if (f.factors.trend !== 0 && Math.sign(f.factors.trend) !== Math.sign(score)) {
+    baseRisk += 6;
+    riskDrivers.push("Trend struktur tidak align dengan sinyal");
+  }
+  // Bear regime + long signal or vice-versa flagged later via setup
   const risk = Math.min(95, Math.max(5, Math.round(baseRisk)));
 
-  // Trend strength: only meaningful when ADX present and data sufficient
-  const trendStrength = (dq === "low" || f.adxStrength <= 0) ? null : Math.min(100, Math.round(f.adxStrength));
+  // ---- Trend strength: raw ADX value, null when missing or low data ----
+  const trendStrength: number | null =
+    (dq === "low" || f.adxValue == null) ? null : Math.round(f.adxValue);
+
+  let trendStrengthLabel: CompositeSignal["trendStrengthLabel"];
+  let trendStrengthWarning: string | undefined;
+  if (trendStrength == null) trendStrengthLabel = "N/A";
+  else if (trendStrength <= 20) trendStrengthLabel = "Weak";
+  else if (trendStrength <= 40) trendStrengthLabel = "Developing";
+  else if (trendStrength <= 60) trendStrengthLabel = "Strong";
+  else if (trendStrength <= 80) trendStrengthLabel = "Very Strong";
+  else { trendStrengthLabel = "Extreme"; trendStrengthWarning = "Extreme trend reading — verify data quality."; }
+
+  // ---- Rebound detection: SELL signal but price is rebounding intraday/last bars ----
+  const c2 = c[c.length - 2];
+  const c1 = c[c.length - 1];
+  const todayPct = c2 ? ((c1.close - c2.close) / c2.close) * 100 : 0;
+  const intradayPct = ((c1.close - c1.open) / c1.open) * 100;
+  const last3Bull = c.slice(-3).every(x => x.close >= x.open);
+  let reboundActive = false;
+  let reboundReason: string | null = null;
+  if (label === "SELL" || label === "STRONG_SELL") {
+    if (todayPct > 1.5) { reboundActive = true; reboundReason = `Harga rebound +${todayPct.toFixed(1)}% hari ini`; }
+    else if (intradayPct > 1.2 && c1.close > c1.open) { reboundActive = true; reboundReason = `Candle hari ini bullish (+${intradayPct.toFixed(1)}% intraday)`; }
+    else if (last3Bull && todayPct > 0.5) { reboundActive = true; reboundReason = "3 candle terakhir bullish"; }
+  }
+  if (label === "BUY" || label === "STRONG_BUY") {
+    const last3Bear = c.slice(-3).every(x => x.close <= x.open);
+    if (todayPct < -1.5) { reboundActive = true; reboundReason = `Harga turun ${todayPct.toFixed(1)}% hari ini`; }
+    else if (intradayPct < -1.2 && c1.close < c1.open) { reboundActive = true; reboundReason = `Candle hari ini bearish (${intradayPct.toFixed(1)}% intraday)`; }
+    else if (last3Bear && todayPct < -0.5) { reboundActive = true; reboundReason = "3 candle terakhir bearish"; }
+  }
 
   // Continuation vs reversal probabilities — N/A on HOLD or low-quality
   let probContinuation: number | null;
@@ -237,15 +290,11 @@ export function compositeSignal(
     probContinuation = null;
     probReversal = null;
   } else {
-    probContinuation = Math.min(85, Math.round(35 + Math.abs(score) * 0.4 + (regime.phase === "trending" ? 15 : 0)));
+    let pc = 35 + Math.abs(score) * 0.4 + (regime.phase === "trending" ? 15 : 0);
+    if (reboundActive) pc -= 15; // rebound lowers continuation
+    probContinuation = Math.min(85, Math.max(15, Math.round(pc)));
     probReversal = Math.max(5, 100 - probContinuation - 5);
   }
-
-  const trendStrengthLabel: CompositeSignal["trendStrengthLabel"] =
-    trendStrength == null ? "N/A" :
-    trendStrength <= 20 ? "Weak" :
-    trendStrength <= 40 ? "Developing" :
-    trendStrength <= 70 ? "Strong" : "Very Strong";
 
   const riskLabel: CompositeSignal["riskLabel"] =
     risk <= 30 ? "Low" : risk <= 60 ? "Medium" : risk <= 80 ? "High" : "Extreme";
@@ -263,6 +312,7 @@ export function compositeSignal(
     risk,
     trendStrength,
     trendStrengthLabel,
+    trendStrengthWarning,
     riskLabel,
     confidenceLabel,
     volatilityLevel: regime.volatility,
@@ -278,6 +328,8 @@ export function compositeSignal(
     patterns: f.patterns.map(p => ({ name: p.name, bias: p.bias, strength: p.strength })),
     dataQuality: dq,
     dataNotes,
+    riskDrivers,
+    rebound: { active: reboundActive, reason: reboundReason },
     computedAt: new Date().toISOString(),
   };
 }
@@ -301,6 +353,11 @@ export type TradeSetup = {
   suggestedAllocationPct: number;
   notes: string[];
   quality: TradeSetupQuality;
+  stopDistancePct: number;
+  conditional: boolean;
+  conditionalReason: string | null;
+  microcopy: string | null;
+  riskDrivers: string[];
 };
 
 export type TradeSetupGrade = "Poor" | "Fair" | "Good" | "Excellent";
@@ -379,18 +436,40 @@ function gradeTradeSetup(args: {
     score -= 5;
     reasons.push({ label: "Reversal risk", ok: false, detail: `Reversal probability ${signal.probReversal}% — late in move` });
   }
+  if (signal.rebound?.active) {
+    score -= 8;
+    reasons.push({ label: "Counter-move", ok: false, detail: signal.rebound.reason || "Price moving against signal direction" });
+  }
+  if (signal.trendStrength == null) {
+    score -= 5;
+    reasons.push({ label: "Trend strength", ok: false, detail: "ADX tidak tersedia — trend invalid" });
+  }
 
   score = Math.max(0, Math.min(100, Math.round(score)));
+
+  // ---- HARD CAPS ----
+  // Stop distance > 10% → max Fair (cap 59); > 20% → max Poor (cap 39)
+  if (riskPct > 20) score = Math.min(score, 39);
+  else if (riskPct > 10) score = Math.min(score, 59);
+  // R:R < 1.5 → max Fair
+  if (rr1 < 1.5) score = Math.min(score, 59);
+  // Confidence < 60 → cannot be Excellent (cap 79)
+  if (signal.confidence < 60) score = Math.min(score, 79);
+  // Rebound active → cannot be Good/Excellent
+  if (signal.rebound?.active) score = Math.min(score, 49);
+  // Low data quality → cap Fair
+  if (signal.dataQuality === "low") score = Math.min(score, 49);
+
   let grade: TradeSetupGrade;
   if (score >= 80) grade = "Excellent";
-  else if (score >= 65) grade = "Good";
-  else if (score >= 45) grade = "Fair";
+  else if (score >= 60) grade = "Good";
+  else if (score >= 40) grade = "Fair";
   else grade = "Poor";
 
   const summary = grade === "Excellent" ? "High-conviction setup — execute per plan."
     : grade === "Good" ? "Tradeable setup — respect stop & sizing."
-    : grade === "Fair" ? "Marginal setup — consider waiting or reducing size."
-    : "Low-quality setup — skip or paper-trade only.";
+    : grade === "Fair" ? "Marginal setup — wait for confirmation or reduce size significantly."
+    : "Low-quality setup — skip or watch only, do not execute.";
 
   return { grade, score, reasons, summary };
 }
@@ -416,6 +495,8 @@ export function buildTradeSetup(c: Candle[], signal: CompositeSignal): TradeSetu
       riskPerTradePct: 0, suggestedAllocationPct: 0,
       notes: ["No actionable setup — wait for clearer signal"],
       quality: holdQuality,
+      stopDistancePct: 0, conditional: false, conditionalReason: null,
+      microcopy: null, riskDrivers: signal.riskDrivers ?? [],
     };
   }
 
@@ -468,6 +549,37 @@ export function buildTradeSetup(c: Candle[], signal: CompositeSignal): TradeSetu
     hasSupport: !!support, hasResistance: !!resistance,
   });
 
+  // ---- Conditional setup detection ----
+  const conditional =
+    signal.rebound?.active === true ||
+    quality.grade === "Fair" ||
+    quality.grade === "Poor" ||
+    riskPct > 10;
+  let conditionalReason: string | null = null;
+  let microcopy: string | null = null;
+  if (signal.rebound?.active && (signal.label === "SELL" || signal.label === "STRONG_SELL")) {
+    conditionalReason = signal.rebound.reason;
+    microcopy = "Daily trend remains bearish, but price is currently rebounding. Avoid aggressive short entry. Wait for rejection near resistance or breakdown below support.";
+  } else if (signal.rebound?.active && (signal.label === "BUY" || signal.label === "STRONG_BUY")) {
+    conditionalReason = signal.rebound.reason;
+    microcopy = "Daily trend bullish, but price sedang turun. Hindari long agresif. Tunggu reclaim support atau bullish reversal candle.";
+  } else if (riskPct > 20) {
+    microcopy = `Stop distance ${riskPct.toFixed(1)}% terlalu lebar — execute hanya dengan size sangat kecil atau tunggu setup yang lebih ketat.`;
+  } else if (quality.grade === "Poor") {
+    microcopy = "Setup quality Poor — disarankan No Trade.";
+  } else if (quality.grade === "Fair") {
+    microcopy = "Setup quality Fair — pertimbangkan watch trigger / set alert dulu.";
+  }
+
+  // Risk drivers from signal + setup-specific
+  const riskDrivers = [...(signal.riskDrivers ?? [])];
+  if (riskPct > 30) riskDrivers.unshift(`Stop distance sangat lebar (${riskPct.toFixed(1)}%) — risk meningkat`);
+  else if (riskPct > 20) riskDrivers.unshift(`Stop distance lebar (${riskPct.toFixed(1)}%)`);
+  else if (riskPct > 10) riskDrivers.unshift(`Stop distance di atas normal (${riskPct.toFixed(1)}%)`);
+  if ((rrTp1 ?? 0) < 1.5) riskDrivers.push(`R:R lemah (${(rrTp1 ?? 0).toFixed(2)})`);
+  if (signal.confidence < 60) riskDrivers.push(`Confidence rendah (${signal.confidence})`);
+  if (signal.rebound?.active) riskDrivers.push(`Counter-move aktif: ${signal.rebound.reason ?? "rebound"}`);
+
   return {
     bias,
     entryAggressive: +entryAggressive.toFixed(2),
@@ -480,9 +592,14 @@ export function buildTradeSetup(c: Candle[], signal: CompositeSignal): TradeSetu
     tp2: +tp2.toFixed(2),
     tp3: +tp3.toFixed(2),
     rrTp1, rrTp2, rrTp3,
-    riskPerTradePct,
-    suggestedAllocationPct: Math.max(1, suggestedAllocationPct),
+    riskPerTradePct: conditional ? Math.min(riskPerTradePct, 0.5) : riskPerTradePct,
+    suggestedAllocationPct: Math.max(1, conditional ? Math.min(suggestedAllocationPct, 3) : suggestedAllocationPct),
     notes,
     quality,
+    stopDistancePct: +riskPct.toFixed(2),
+    conditional,
+    conditionalReason,
+    microcopy,
+    riskDrivers,
   };
 }
