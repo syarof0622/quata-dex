@@ -186,7 +186,7 @@ function Screener() {
                 <td className="p-2 text-right font-mono">{q.confidence}</td>
                 <td className={`p-2 text-right font-mono ${q.rsi > 70 ? "text-bear" : q.rsi < 30 ? "text-bull" : ""}`}>{q.rsi}</td>
                 <td className="p-2 text-right font-mono">{q.trendStrength}</td>
-                <td className={`p-2 text-right font-mono ${q.volRel > 1.5 ? "text-bull" : ""}`}>{q.volRel.toFixed(1)}×</td>
+                <td className={`p-2 text-right font-mono ${q.volRel > 1.5 ? "text-bull" : ""}`} title={`Relative Volume: ${q.volRel.toFixed(2)}× rata-rata 20D`}>{q.volRel.toFixed(2)}×</td>
                 <td className="p-2"><Sparkline values={q.sparkline} bull={q.score > 0} /></td>
               </tr>
             ))}
