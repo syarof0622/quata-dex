@@ -151,15 +151,6 @@ async function evaluateRule(symbol: string, rule: AlertRule) {
       reason: hit ? `Price within ${tol}% of 20d support ${support.toFixed(2)} with BUY bias` : null,
     };
   }
-    if (support == null) return { hit: false, current: last, target: null, unit: "price" as const, reason: null };
-    const distPct = ((last - support) / support) * 100;
-    // Hit when close is within tolerance band above support and bias is BUY.
-    const hit = sig.label === "BUY" && distPct >= 0 && distPct <= tol;
-    return {
-      hit, current: +last.toFixed(2), target: +support.toFixed(2), unit: "price" as const,
-      reason: hit ? `Price pulled back within ${tol}% of support ${support.toFixed(2)} with BUY bias` : null,
-    };
-  }
   if (rule.kind === "breakout_confirmed") {
     const sig = compositeSignal(candles, symbol, "1d");
     const last = candles[candles.length - 1];
