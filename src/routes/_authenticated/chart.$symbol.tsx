@@ -713,6 +713,18 @@ function ReasoningPanel({ signal, regime, mctx, setup, symbol, fmt }: {
         )}
       </div>
 
+      {/* DECISION SUMMARY */}
+      <div className="rounded border border-border bg-card/40 p-3">
+        <div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">Decision Summary</div>
+        <ul className="text-xs grid md:grid-cols-2 gap-x-4 gap-y-1">
+          <li><span className="text-muted-foreground">Bias:</span> <span className="font-medium">{decision.bias}</span></li>
+          <li><span className="text-muted-foreground">Execution:</span> <span className="font-medium">{decision.execution}</span></li>
+          <li><span className="text-muted-foreground">Best Strategy:</span> <span className="font-medium">{decision.strategy}</span></li>
+          <li><span className="text-muted-foreground">Risk:</span> <span className="font-medium">{decision.risk}</span></li>
+          <li className="md:col-span-2"><span className="text-muted-foreground">Avoid:</span> <span className="font-medium">{decision.avoid}</span></li>
+          <li className="md:col-span-2"><span className="text-muted-foreground">Trigger:</span> <span className="font-medium">{decision.trigger}</span></li>
+        </ul>
+      </div>
       {/* BEST ACTION */}
       <div className={`rounded border p-3 ${
         action.startsWith("LONG") ? "border-bull/40 bg-bull-soft/20" :
