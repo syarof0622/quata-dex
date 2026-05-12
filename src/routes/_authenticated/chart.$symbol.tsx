@@ -176,9 +176,25 @@ function ChartPage() {
         <div className="text-[11px] text-muted-foreground mt-0.5">
           Signal is calculated based on the selected timeframe.
         </div>
-        <div className={`mt-3 inline-flex px-3 py-1.5 rounded-md font-semibold text-sm ${sigColor}`}>
-          {labelDisplay}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Market Bias</span>
+          <span className={`inline-flex px-2.5 py-1 rounded-md font-semibold text-sm ${sigColor}`}>
+            {labelDisplay}
+          </span>
         </div>
+        {sig?.executionStatus && (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Execution</span>
+            <span className={`inline-flex px-2 py-0.5 rounded text-[11px] font-medium ${
+              sig.executionStatus === "Ready to Trade" ? "bg-bull-soft text-bull" :
+              sig.executionStatus === "No Trade" ? "bg-accent/40 text-muted-foreground" :
+              "bg-yellow-500/20 text-yellow-500"
+            }`}>{sig.executionStatus}</span>
+            {sig.executionReason && (
+              <span className="text-[11px] text-muted-foreground basis-full">{sig.executionReason}</span>
+            )}
+          </div>
+        )}
         <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
           <Stat label="Confidence" value={sig?.confidence ?? legacy.data?.confidence} suffix="%"
             hint={sig?.confidenceLabel} tip="How much the model trusts this signal: blends factor agreement, signal magnitude, volatility and data quality." />
@@ -190,8 +206,8 @@ function ChartPage() {
         {sig && (
           <>
             <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-              <Stat label="Trend Strength" value={sig.trendStrength} hint={sig.trendStrengthLabel}
-                tip="ADX-based: 0–20 Weak · 21–40 Developing · 41–70 Strong · 71–100 Very Strong." />
+              <Stat label="Trend Strength" value={sig.trendStrength ?? "N/A"} hint={sig.trendStrengthLabel}
+                tip="ADX (0–100): <20 Weak · 20–30 Developing · 30–50 Strong · 50–70 Very Strong · >70 Extreme. N/A if data insufficient." />
               <Stat label="Volatility" value={sig.volatilityLevel} tip="ATR% bucket — low / medium / high." />
               <Stat label="Continuation Probability" value={sig.probContinuation} suffix="%"
                 tip="Heuristic chance the current move continues over the next bars." />
