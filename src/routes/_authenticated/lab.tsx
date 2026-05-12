@@ -33,12 +33,12 @@ function Lab() {
   });
   return (
     <div className="p-4 md:p-6 space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Simulation Lab</h1>
           <p className="text-sm text-muted-foreground">Paper trading · advanced orders · journal · backtest · AI coach</p>
         </div>
-        <Button variant="outline" onClick={async () => { await resetPaperAccount(); toast.success("Account reset to $100k"); acct.refetch(); }}>Reset account</Button>
+        <ResetAccountControl onDone={() => acct.refetch()} currentCash={Number(acct.data?.account?.cash ?? 100000)} />
       </div>
 
       <div className="grid md:grid-cols-4 gap-3">
