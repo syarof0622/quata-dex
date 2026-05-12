@@ -49,20 +49,30 @@ function MTF() {
       </div>
       {q.data && (
         <div className="panel p-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <span className={`text-xl font-semibold ${q.data.composite >= 25 ? "text-bull" : q.data.composite <= -25 ? "text-bear" : "text-muted-foreground"}`}>{q.data.label}</span>
             <span className="text-xs text-muted-foreground">composite {q.data.composite}</span>
-            {q.data.aligned && <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-primary/15 text-primary">All aligned</span>}
+            {q.data.alignmentLabel && (
+              <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded ${
+                q.data.alignmentTone === "bull" ? "bg-bull-soft text-bull" :
+                q.data.alignmentTone === "bear" ? "bg-bear-soft text-bear" :
+                q.data.alignmentTone === "warn" ? "bg-yellow-500/20 text-yellow-500" :
+                "bg-accent/40 text-muted-foreground"
+              }`}>{q.data.alignmentLabel}</span>
+            )}
           </div>
+          {q.data.recommendation && (
+            <p className="mt-2 text-xs text-muted-foreground">{q.data.recommendation}</p>
+          )}
           <table className="w-full text-sm mt-3">
             <thead className="text-xs text-muted-foreground"><tr><th className="text-left p-2">Timeframe</th><th className="text-left p-2">Label</th><th className="text-right p-2">Score</th><th className="text-right p-2">Confidence</th></tr></thead>
             <tbody>
               {q.data.byTimeframe.map((r: any) => (
                 <tr key={r.tf} className="border-t border-border">
                   <td className="p-2 font-mono">{r.tf}</td>
-                  <td className={`p-2 font-semibold ${r.score >= 25 ? "text-bull" : r.score <= -25 ? "text-bear" : ""}`}>{r.label}</td>
-                  <td className="p-2 text-right font-mono">{r.score}</td>
-                  <td className="p-2 text-right font-mono">{r.confidence?.toFixed(0)}%</td>
+                  <td className={`p-2 font-semibold ${r.score >= 25 ? "text-bull" : r.score <= -25 ? "text-bear" : ""}`}>{r.valid === false ? "—" : r.label}</td>
+                  <td className="p-2 text-right font-mono">{r.valid === false ? "—" : r.score}</td>
+                  <td className="p-2 text-right font-mono">{r.valid === false ? "—" : r.confidence?.toFixed(0) + "%"}</td>
                 </tr>
               ))}
             </tbody>
