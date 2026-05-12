@@ -272,6 +272,31 @@ function ChartPage() {
             >
               <Star className="size-4" />
             </Button>
+            {isMobile ? (
+              <Sheet open={mobilePanelOpen} onOpenChange={setMobilePanelOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="sm" title="Open AI panel">
+                    <PanelRightOpen className="size-4" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+                  <SheetHeader>
+                    <SheetTitle>AI Signal & Trading Tools</SheetTitle>
+                  </SheetHeader>
+                  <div className="mt-3">{rightPanelContent}</div>
+                </SheetContent>
+              </Sheet>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPanelOpen(o => !o)}
+                title={panelOpen ? "Collapse panel" : "Expand panel"}
+                className="hidden xl:inline-flex"
+              >
+                {panelOpen ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />}
+              </Button>
+            )}
           </div>
         </div>
 
