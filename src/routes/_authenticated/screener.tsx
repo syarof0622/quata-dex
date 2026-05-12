@@ -153,14 +153,17 @@ function Screener() {
 
       {/* Results */}
       <div className="panel p-2 overflow-x-auto">
-        <table className="w-full text-sm min-w-[900px]">
+        <table className="w-full text-sm min-w-[1100px]">
           <thead className="text-xs text-muted-foreground">
             <tr>
               <th className="text-left p-2">Symbol</th>
               <th className="text-left p-2">Sector</th>
               <th className="text-right p-2">Price</th>
               <th className="text-right p-2">Chg%</th>
-              <th className="text-center p-2">Signal</th>
+              <th className="text-center p-2" title="Market direction bias — bukan instruksi entry langsung">Bias</th>
+              <th className="text-center p-2" title="Apakah setup sudah valid untuk eksekusi">Action</th>
+              <th className="text-center p-2" title="Trade setup quality grade">Setup</th>
+              <th className="text-center p-2">Risk</th>
               <th className="text-right p-2">Score</th>
               <th className="text-right p-2">Conf</th>
               <th className="text-right p-2">RSI</th>
@@ -180,7 +183,35 @@ function Screener() {
                 <td className="p-2 text-right font-mono">{formatLocalPrice(q.symbol, q.price)}</td>
                 <td className={`p-2 text-right font-mono ${colorForChange(q.changePct)}`}>{formatPct(q.changePct)}</td>
                 <td className="p-2 text-center">
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${labelColor(q.label)}`}>{q.label.replace("_", " ")}</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
+                    (q as any).bias === "BUY" ? "bg-bull-soft text-bull" :
+                    (q as any).bias === "SELL" ? "bg-bear-soft text-bear" :
+                    "bg-accent/40 text-muted-foreground"
+                  }`}>{(q as any).bias ?? "—"}</span>
+                </td>
+                <td className="p-2 text-center">
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                    (q as any).action === "READY" ? "bg-bull text-primary-foreground" :
+                    (q as any).action === "NO TRADE" ? "bg-accent/40 text-muted-foreground" :
+                    "bg-yellow-500/20 text-yellow-500"
+                  }`}>{(q as any).action ?? "—"}</span>
+                </td>
+                <td className="p-2 text-center">
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                    (q as any).setupGrade === "Excellent" ? "bg-bull text-primary-foreground" :
+                    (q as any).setupGrade === "Good" ? "bg-bull-soft text-bull" :
+                    (q as any).setupGrade === "Fair" ? "bg-yellow-500/20 text-yellow-500" :
+                    (q as any).setupGrade === "Poor" ? "bg-bear-soft text-bear" :
+                    "bg-accent/40 text-muted-foreground"
+                  }`}>{(q as any).setupGrade ?? "—"}</span>
+                </td>
+                <td className="p-2 text-center">
+                  <span className={`text-[10px] ${
+                    (q as any).riskLabel === "Low" ? "text-bull" :
+                    (q as any).riskLabel === "Extreme" ? "text-bear" :
+                    (q as any).riskLabel === "High" ? "text-yellow-500" :
+                    "text-muted-foreground"
+                  }`}>{(q as any).riskLabel ?? "—"}</span>
                 </td>
                 <td className={`p-2 text-right font-mono ${q.score > 0 ? "text-bull" : q.score < 0 ? "text-bear" : ""}`}>{q.score}</td>
                 <td className="p-2 text-right font-mono">{q.confidence}</td>
@@ -191,7 +222,7 @@ function Screener() {
               </tr>
             ))}
             {rows.length === 0 && !data.isFetching && (
-              <tr><td colSpan={11} className="p-8 text-center text-muted-foreground">Tidak ada saham yang cocok dengan filter.</td></tr>
+              <tr><td colSpan={14} className="p-8 text-center text-muted-foreground">Tidak ada saham yang cocok dengan filter.</td></tr>
             )}
           </tbody>
         </table>
