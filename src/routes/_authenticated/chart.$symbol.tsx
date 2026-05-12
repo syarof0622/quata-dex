@@ -871,6 +871,13 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualit
           No valid trade setup. Wait for trigger confirmation.
         </div>
       )}
+      {!isHold && blocked && (
+        <div className="mt-2 text-xs text-yellow-500">
+          {isShort && conditional
+            ? "Conditional SHORT — price is rebounding. Wait for trend confirmation before executing."
+            : "Setup quality is Poor. Avoid executing until conditions improve."}
+        </div>
+      )}
 
       <div className="mt-3 grid grid-cols-4 gap-1 text-xs">
         {(["market", "limit", "stop", "trailing_stop"] as const).map(t => (
