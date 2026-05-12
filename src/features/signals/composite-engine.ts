@@ -48,6 +48,10 @@ export type CompositeSignal = {
   dataNotes: string[];
   riskDrivers: string[];
   rebound: { active: boolean; reason: string | null };
+  dailyChangePct: number;
+  extendedRally: boolean;
+  executionStatus: "Ready to Trade" | "Wait for Pullback" | "Wait for Breakout" | "Wait for Confirmation" | "No Trade";
+  executionReason: string;
   computedAt: string;
 };
 
