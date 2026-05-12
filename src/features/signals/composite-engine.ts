@@ -84,13 +84,16 @@ function computeFactors(c: Candle[]) {
   if (struct === "uptrend") { trend += 20; bullish.push("Higher highs & higher lows"); }
   else if (struct === "downtrend") { trend -= 20; bearish.push("Lower highs & lower lows"); }
   else neutral.push("No clear swing structure");
-  const adxNow = a.adx[a.adx.length - 1];
+  const adxRaw = a.adx[a.adx.length - 1];
+  const adxNow = (typeof adxRaw === "number" && isFinite(adxRaw) && adxRaw >= 0 && adxRaw <= 100) ? adxRaw : NaN;
   if (!isNaN(adxNow)) {
     if (adxNow > 25) {
       const dir = a.plusDI[a.plusDI.length - 1] > a.minusDI[a.minusDI.length - 1] ? 1 : -1;
       trend += dir * 15;
       (dir > 0 ? bullish : bearish).push(`ADX ${adxNow.toFixed(0)} (${dir > 0 ? "+DI" : "-DI"} dominant)`);
     } else neutral.push(`ADX ${adxNow.toFixed(0)} (weak trend)`);
+  } else {
+    neutral.push("ADX unavailable");
   }
   trend = clampScore(trend);
 
