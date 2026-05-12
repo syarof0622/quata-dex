@@ -224,17 +224,64 @@ export function compositeSignal(
   const rawConf = 35 + Math.abs(score) * 0.4 + agreement * 0.3 - volPenalty - dqPenalty;
   const confidence = Math.max(15, Math.min(95, rawConf));
 
-  // Risk score: capped sensibly; only Extreme (>80) when truly volatile + chop
-  const baseRisk =
-    Math.min(45, f.atrPct * 8) +
-    (regime.volatility === "high" ? 18 : regime.volatility === "medium" ? 8 : 0) +
-    (Math.abs(score) < 25 ? 10 : 0) +
-    (f.relVol > 3 ? 10 : 0) +
-    (dq === "low" ? 12 : dq === "medium" ? 5 : 0);
+  // ---- Risk score: components-based, with explicit drivers ----
+  const riskDrivers: string[] = [];
+  let baseRisk = 0;
+  // ATR / volatility component
+  const atrComponent = Math.min(35, f.atrPct * 6);
+  baseRisk += atrComponent;
+  if (f.atrPct > 4) riskDrivers.push(`Volatility tinggi (ATR ${f.atrPct.toFixed(1)}%)`);
+  else if (f.atrPct > 2.5) riskDrivers.push(`Volatility menengah (ATR ${f.atrPct.toFixed(1)}%)`);
+  // Regime
+  if (regime.volatility === "high") { baseRisk += 18; riskDrivers.push("Regime volatil"); }
+  else if (regime.volatility === "medium") { baseRisk += 8; }
+  // Choppy / weak conviction
+  if (Math.abs(score) < 25) { baseRisk += 8; riskDrivers.push("Sinyal lemah / mixed"); }
+  // Volume spike
+  if (f.relVol > 3) { baseRisk += 10; riskDrivers.push(`Volume spike ${f.relVol.toFixed(1)}× rata-rata`); }
+  // Data quality
+  if (dq === "low") { baseRisk += 18; riskDrivers.push("Data quality rendah"); }
+  else if (dq === "medium") { baseRisk += 6; riskDrivers.push("Data quality menengah"); }
+  // Trend confusion
+  if (trend !== 0 && Math.sign(trend) !== Math.sign(score)) {
+    baseRisk += 6;
+    riskDrivers.push("Trend struktur tidak align dengan sinyal");
+  }
+  // Bear regime + long signal or vice-versa flagged later via setup
   const risk = Math.min(95, Math.max(5, Math.round(baseRisk)));
 
-  // Trend strength: only meaningful when ADX present and data sufficient
-  const trendStrength = (dq === "low" || f.adxStrength <= 0) ? null : Math.min(100, Math.round(f.adxStrength));
+  // ---- Trend strength: raw ADX value, null when missing or low data ----
+  const trendStrength: number | null =
+    (dq === "low" || f.adxValue == null) ? null : Math.round(f.adxValue);
+
+  let trendStrengthLabel: CompositeSignal["trendStrengthLabel"];
+  let trendStrengthWarning: string | undefined;
+  if (trendStrength == null) trendStrengthLabel = "N/A";
+  else if (trendStrength <= 20) trendStrengthLabel = "Weak";
+  else if (trendStrength <= 40) trendStrengthLabel = "Developing";
+  else if (trendStrength <= 60) trendStrengthLabel = "Strong";
+  else if (trendStrength <= 80) trendStrengthLabel = "Very Strong";
+  else { trendStrengthLabel = "Extreme"; trendStrengthWarning = "Extreme trend reading — verify data quality."; }
+
+  // ---- Rebound detection: SELL signal but price is rebounding intraday/last bars ----
+  const c2 = c[c.length - 2];
+  const c1 = c[c.length - 1];
+  const todayPct = c2 ? ((c1.close - c2.close) / c2.close) * 100 : 0;
+  const intradayPct = ((c1.close - c1.open) / c1.open) * 100;
+  const last3Bull = c.slice(-3).every(x => x.close >= x.open);
+  let reboundActive = false;
+  let reboundReason: string | null = null;
+  if (label === "SELL" || label === "STRONG_SELL") {
+    if (todayPct > 1.5) { reboundActive = true; reboundReason = `Harga rebound +${todayPct.toFixed(1)}% hari ini`; }
+    else if (intradayPct > 1.2 && c1.close > c1.open) { reboundActive = true; reboundReason = `Candle hari ini bullish (+${intradayPct.toFixed(1)}% intraday)`; }
+    else if (last3Bull && todayPct > 0.5) { reboundActive = true; reboundReason = "3 candle terakhir bullish"; }
+  }
+  if (label === "BUY" || label === "STRONG_BUY") {
+    const last3Bear = c.slice(-3).every(x => x.close <= x.open);
+    if (todayPct < -1.5) { reboundActive = true; reboundReason = `Harga turun ${todayPct.toFixed(1)}% hari ini`; }
+    else if (intradayPct < -1.2 && c1.close < c1.open) { reboundActive = true; reboundReason = `Candle hari ini bearish (${intradayPct.toFixed(1)}% intraday)`; }
+    else if (last3Bear && todayPct < -0.5) { reboundActive = true; reboundReason = "3 candle terakhir bearish"; }
+  }
 
   // Continuation vs reversal probabilities — N/A on HOLD or low-quality
   let probContinuation: number | null;
@@ -243,15 +290,11 @@ export function compositeSignal(
     probContinuation = null;
     probReversal = null;
   } else {
-    probContinuation = Math.min(85, Math.round(35 + Math.abs(score) * 0.4 + (regime.phase === "trending" ? 15 : 0)));
+    let pc = 35 + Math.abs(score) * 0.4 + (regime.phase === "trending" ? 15 : 0);
+    if (reboundActive) pc -= 15; // rebound lowers continuation
+    probContinuation = Math.min(85, Math.max(15, Math.round(pc)));
     probReversal = Math.max(5, 100 - probContinuation - 5);
   }
-
-  const trendStrengthLabel: CompositeSignal["trendStrengthLabel"] =
-    trendStrength == null ? "N/A" :
-    trendStrength <= 20 ? "Weak" :
-    trendStrength <= 40 ? "Developing" :
-    trendStrength <= 70 ? "Strong" : "Very Strong";
 
   const riskLabel: CompositeSignal["riskLabel"] =
     risk <= 30 ? "Low" : risk <= 60 ? "Medium" : risk <= 80 ? "High" : "Extreme";
@@ -269,6 +312,7 @@ export function compositeSignal(
     risk,
     trendStrength,
     trendStrengthLabel,
+    trendStrengthWarning,
     riskLabel,
     confidenceLabel,
     volatilityLevel: regime.volatility,
