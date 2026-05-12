@@ -239,6 +239,8 @@ function ChartPage() {
         fmt={fmt}
         bias={setup.data?.setup?.bias as ("long" | "short" | "neutral" | undefined)}
         signalLabel={sig?.label}
+        conditional={!!setup.data?.setup?.conditional}
+        qualityGrade={setup.data?.setup?.quality?.grade}
       />
     </div>
   );
