@@ -928,7 +928,7 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualit
         Notional ≈ <span className="font-mono">{fmt(price * qty)}</span>
       </div>
       <div className="mt-3 flex gap-2">
-        <Button disabled={busy || isHold}
+        <Button disabled={busy || isHold || blocked}
           onClick={() => onTrade(primarySide)}
           className={`flex-1 ${primaryClass}`}>
           {primaryLabel}
