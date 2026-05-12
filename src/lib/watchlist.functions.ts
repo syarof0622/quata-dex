@@ -1,32 +1,34 @@
-import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+// Local-only watchlist (no auth, no server). Persists in localStorage.
+const KEY = "quanta:watchlist";
 
-export const getWatchlist = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { supabase, userId } = context;
-    const { data } = await supabase.from("watchlist").select("*").eq("user_id", userId).order("added_at", { ascending: false });
-    return data ?? [];
-  });
+type Row = { symbol: string; added_at: string };
 
-export const addToWatchlist = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d: { symbol: string }) => z.object({ symbol: z.string().min(1).toUpperCase() }).parse(d))
-  .handler(async ({ context, data }) => {
-    const { supabase, userId } = context;
-    const { error } = await supabase
-      .from("watchlist")
-      .upsert({ user_id: userId, symbol: data.symbol }, { onConflict: "user_id,symbol" });
-    if (error) throw error;
-    return { ok: true };
-  });
+function read(): Row[] {
+  if (typeof window === "undefined") return [];
+  try { return JSON.parse(localStorage.getItem(KEY) || "[]"); } catch { return []; }
+}
+function write(rows: Row[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(KEY, JSON.stringify(rows));
+}
 
-export const removeFromWatchlist = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d: { symbol: string }) => z.object({ symbol: z.string().min(1).toUpperCase() }).parse(d))
-  .handler(async ({ context, data }) => {
-    const { supabase, userId } = context;
-    await supabase.from("watchlist").delete().eq("user_id", userId).eq("symbol", data.symbol);
-    return { ok: true };
-  });
+export async function getWatchlist() {
+  return read();
+}
+
+export async function addToWatchlist(args: { data: { symbol: string } }) {
+  const symbol = args.data.symbol.trim().toUpperCase();
+  if (!symbol) return { ok: false };
+  const rows = read();
+  if (!rows.some(r => r.symbol === symbol)) {
+    rows.unshift({ symbol, added_at: new Date().toISOString() });
+    write(rows);
+  }
+  return { ok: true };
+}
+
+export async function removeFromWatchlist(args: { data: { symbol: string } }) {
+  const symbol = args.data.symbol.trim().toUpperCase();
+  write(read().filter(r => r.symbol !== symbol));
+  return { ok: true };
+}
