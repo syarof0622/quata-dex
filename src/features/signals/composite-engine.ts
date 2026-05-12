@@ -242,8 +242,8 @@ export function compositeSignal(
   // Data quality
   if (dq === "low") { baseRisk += 18; riskDrivers.push("Data quality rendah"); }
   else if (dq === "medium") { baseRisk += 6; riskDrivers.push("Data quality menengah"); }
-  // Trend confusion
-  if (trend !== 0 && Math.sign(trend) !== Math.sign(score)) {
+  // Trend confusion (signal vs trend factor)
+  if (f.factors.trend !== 0 && Math.sign(f.factors.trend) !== Math.sign(score)) {
     baseRisk += 6;
     riskDrivers.push("Trend struktur tidak align dengan sinyal");
   }
