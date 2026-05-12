@@ -124,16 +124,41 @@ export const getMarketContext = createServerFn({ method: "POST" })
     const benchName = market === "idx" ? "IHSG (Jakarta Composite)" : "S&P 500";
     const sector = sectorOf(sym);
     const sectorProxy = market === "us" ? SECTOR_ETF[sector] ?? null : null;
+    // For IDX, no liquid sector ETF exists — synthesize a peer basket of up to 5 same-sector LQ80 names.
+    const peers = market === "idx" ? peerBasket(sym, 5) : [];
+    const usePeerBasket = market === "idx" && peers.length >= 2;
 
-    const [stockBars, benchBars, sectorBars] = await Promise.all([
+    const [stockBars, benchBars, sectorBars, peerBars] = await Promise.all([
       fetchDaily(sym),
       fetchDaily(benchSym),
       sectorProxy ? fetchDaily(sectorProxy) : Promise.resolve([] as Bar[]),
+      usePeerBasket ? Promise.all(peers.map((p) => fetchDaily(p))) : Promise.resolve([] as Bar[][]),
     ]);
+
+    // Build synthetic IDX peer-basket bars: equal-weight average of normalized closes.
+    let basketBars: Bar[] = sectorBars;
+    if (usePeerBasket) {
+      const valid = (peerBars as Bar[][]).filter((arr) => arr.length >= 30);
+      if (valid.length >= 2) {
+        // Normalize each series to its first close, then average.
+        const minLen = Math.min(...valid.map((a) => a.length));
+        const normed = valid.map((arr) => {
+          const start = arr[arr.length - minLen];
+          const base = start?.c || 1;
+          return arr.slice(-minLen).map((b) => ({ t: b.t, c: b.c / base }));
+        });
+        basketBars = [];
+        for (let i = 0; i < minLen; i++) {
+          let sum = 0;
+          for (const arr of normed) sum += arr[i].c;
+          basketBars.push({ t: normed[0][i].t, c: sum / normed.length });
+        }
+      }
+    }
 
     const stock20 = pctChange(stockBars, 20);
     const bench20 = pctChange(benchBars, 20);
-    const sector20 = pctChange(sectorBars, 20);
+    const sector20 = pctChange(basketBars, 20);
 
     // Beta vs benchmark
     let beta: number | null = null, corr: number | null = null;
