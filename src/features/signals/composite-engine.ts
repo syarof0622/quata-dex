@@ -309,6 +309,39 @@ export function compositeSignal(
   const confidenceLabel: CompositeSignal["confidenceLabel"] =
     confidence <= 40 ? "Low" : confidence <= 65 ? "Moderate" : confidence <= 80 ? "High" : "Very High";
 
+  // ---- Daily change & extended-rally / extended-decline detection ----
+  const dailyChangePct = c2 ? +(((c1.close - c2.close) / c2.close) * 100).toFixed(2) : 0;
+  const extendedRally =
+    (label === "BUY" || label === "STRONG_BUY") && dailyChangePct > 5;
+  const extendedDecline =
+    (label === "SELL" || label === "STRONG_SELL") && dailyChangePct < -5;
+
+  // ---- Execution status (separate from market bias) ----
+  let executionStatus: CompositeSignal["executionStatus"];
+  let executionReason = "";
+  if (label === "HOLD") {
+    executionStatus = "No Trade";
+    executionReason = "Sinyal arah tidak cukup kuat. Pantau breakout / breakdown.";
+  } else if (extendedRally) {
+    executionStatus = "Wait for Pullback";
+    executionReason = `Harga sudah naik +${dailyChangePct.toFixed(1)}% hari ini — hindari chasing.`;
+  } else if (extendedDecline) {
+    executionStatus = "Wait for Pullback";
+    executionReason = `Harga sudah turun ${dailyChangePct.toFixed(1)}% hari ini — hindari short late.`;
+  } else if (reboundActive) {
+    executionStatus = "Wait for Confirmation";
+    executionReason = reboundReason || "Counter-move sedang berlangsung.";
+  } else if (regime.phase === "ranging" || regime.phase === "accumulation" || regime.phase === "distribution") {
+    executionStatus = "Wait for Breakout";
+    executionReason = `Regime ${regime.phase} — tunggu breakout dengan volume.`;
+  } else if (confidence < 60 || (trendStrength != null && trendStrength < 20)) {
+    executionStatus = "Wait for Confirmation";
+    executionReason = "Confidence/trend belum cukup kuat untuk entry agresif.";
+  } else {
+    executionStatus = "Ready to Trade";
+    executionReason = "Bias dan trigger selaras — eksekusi per plan.";
+  }
+
   return {
     symbol,
     timeframe,
@@ -337,6 +370,10 @@ export function compositeSignal(
     dataNotes,
     riskDrivers,
     rebound: { active: reboundActive, reason: reboundReason },
+    dailyChangePct,
+    extendedRally: extendedRally || extendedDecline,
+    executionStatus,
+    executionReason,
     computedAt: new Date().toISOString(),
   };
 }
