@@ -19,8 +19,11 @@ import { Input } from "@/components/ui/input";
 import { formatPct, formatPrice, colorForChange } from "@/lib/format";
 import { formatLocalPrice, symbolMarket, priceCurrency } from "@/lib/symbols";
 import { motion } from "framer-motion";
-import { Star, TrendingUp, Target, ShieldAlert, Zap } from "lucide-react";
+import { Star, TrendingUp, Target, ShieldAlert, Zap, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { toast } from "sonner";
+import { FundamentalPanel } from "@/components/FundamentalPanel";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export const Route = createFileRoute("/_authenticated/chart/$symbol")({
   head: ({ params }) => ({ meta: [{ title: `${params.symbol} — Chart · Quanta Terminal` }] }),
