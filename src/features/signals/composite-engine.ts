@@ -143,10 +143,13 @@ function computeFactors(c: Candle[]) {
   else if (atrPct < 0.8) { volat -= 5; neutral.push(`Compressed volatility ATR% ${atrPct.toFixed(1)}`); }
   if (sq.squeezing) { volat += 10; neutral.push("BB squeeze — breakout pending"); }
 
+  // ADX raw value (0..~60 typical, 100 theoretical max). Don't multiply.
+  const adxValue = isNaN(adxNow) ? null : Math.max(0, Math.min(100, adxNow));
+
   return {
     factors: { trend, momentum: mom, volume: vol, priceAction: pa, volatility: volat },
     bullish, bearish, neutral, invalid, patterns,
-    adxStrength: isNaN(adxNow) ? 0 : Math.min(100, adxNow * 2),
+    adxValue,
     atrPct,
     relVol,
   };
