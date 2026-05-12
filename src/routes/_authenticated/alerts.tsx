@@ -30,6 +30,10 @@ const KIND_LABEL: Record<RuleKind, string> = {
   breakdown: "Breakdown (N-day low)",
   score_above: "AI Signal score above",
   score_below: "AI Signal score below",
+  setup_long_ready: "Setup: LONG ready to trade",
+  setup_short_ready: "Setup: SHORT ready to trade",
+  pullback_to_support: "Setup: pullback to 20d support (BUY bias)",
+  breakout_confirmed: "Setup: confirmed breakout (BUY + volume)",
 };
 
 function AlertsPage() {
@@ -48,6 +52,8 @@ function AlertsPage() {
     if (kind === "ema_cross") return { kind, fast: Number(fast), slow: Number(slow) };
     if (kind === "volume_spike") return { kind, multiplier: Number(value) };
     if (kind === "breakout" || kind === "breakdown") return { kind, lookback: Number(lookback) };
+    if (kind === "setup_long_ready" || kind === "setup_short_ready" || kind === "breakout_confirmed") return { kind };
+    if (kind === "pullback_to_support") return { kind, tolerancePct: Number(value) || 1.5 };
     return { kind, value: Number(value) } as AlertRule;
   };
 
@@ -127,6 +133,15 @@ function AlertsPage() {
             <div className="col-span-2">
               <label className="text-xs text-muted-foreground">Lookback (days)</label>
               <Input value={lookback} onChange={e => setLookback(e.target.value)} />
+            </div>
+          ) : kind === "setup_long_ready" || kind === "setup_short_ready" || kind === "breakout_confirmed" ? (
+            <div className="col-span-2 text-xs text-muted-foreground self-end pb-2">
+              No threshold needed — fires when AI engine reports a Ready-to-Trade setup.
+            </div>
+          ) : kind === "pullback_to_support" ? (
+            <div className="col-span-2">
+              <label className="text-xs text-muted-foreground">Tolerance % above 20d support</label>
+              <Input value={value} onChange={e => setValue(e.target.value)} placeholder="1.5" />
             </div>
           ) : (
             <div className="col-span-2">
@@ -217,5 +232,9 @@ function describeRule(r: AlertRule | null | undefined): string {
     case "breakdown": return `close < ${r.lookback}d low`;
     case "score_above": return `AI score > ${r.value}`;
     case "score_below": return `AI score < ${r.value}`;
+    case "setup_long_ready": return `BUY setup → Ready to Trade`;
+    case "setup_short_ready": return `SELL setup → Ready to Trade`;
+    case "pullback_to_support": return `BUY pullback within ${r.tolerancePct ?? 1.5}% of 20d support`;
+    case "breakout_confirmed": return `Confirmed BUY breakout (20d high + ≥1.3× vol)`;
   }
 }

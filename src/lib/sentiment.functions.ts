@@ -10,7 +10,16 @@ export const smartMoney = createServerFn({ method: "POST" })
   .inputValidator((d: { symbol: string }) => z.object({ symbol: z.string().min(1).toUpperCase() }).parse(d))
   .handler(async ({ data }) => {
     const candles = (await getCandles({ data: { symbol: data.symbol, timeframe: "1d" } })) as Candle[];
-    if (candles.length < 30) return { score: 0, label: "Neutral", flow: "balanced", details: ["Not enough data"] };
+    if (candles.length < 30) {
+      return {
+        score: 0,
+        label: "Insufficient data",
+        flow: "balanced",
+        narrative: "Belum cukup history harian (≥30 bar) untuk menilai akumulasi vs distribusi secara meaningful.",
+        quality: "low" as const,
+        details: ["Need at least 30 daily bars to compute up/down volume, OBV slope, and large-bar bias."],
+      };
+    }
     const recent = candles.slice(-30);
     const upVol = recent.filter(c => c.close > c.open).reduce((a, c) => a + c.volume, 0);
     const dnVol = recent.filter(c => c.close < c.open).reduce((a, c) => a + c.volume, 0);
@@ -20,6 +29,7 @@ export const smartMoney = createServerFn({ method: "POST" })
     const recentObv = obvs.slice(-10).reduce((a, b) => a + b, 0) / 10;
     const priorObv = obvs.slice(-20, -10).reduce((a, b) => a + b, 0) / 10;
     const obvSlope = recentObv - priorObv;
+    const obvSlopeNorm = priorObv ? obvSlope / Math.abs(priorObv) : 0;
 
     const vols = recent.map(c => c.volume).sort((a, b) => a - b);
     const median = vols[Math.floor(vols.length / 2)];
@@ -32,15 +42,44 @@ export const smartMoney = createServerFn({ method: "POST" })
     score += (largeBuy - largeSell) * 8;
     score = Math.max(-100, Math.min(100, score));
 
-    const label = score > 40 ? "Strong Accumulation" : score > 15 ? "Accumulation" : score < -40 ? "Strong Distribution" : score < -15 ? "Distribution" : "Neutral";
+    const label =
+      score > 40 ? "Strong Accumulation"
+      : score > 15 ? "Accumulation"
+      : score < -40 ? "Strong Distribution"
+      : score < -15 ? "Distribution"
+      : "Neutral / Balanced";
     const flow = score > 15 ? "buying pressure" : score < -15 ? "selling pressure" : "balanced";
+
+    // Confidence proxy: more decisive when ratio + OBV + large-bars all agree.
+    const agreements =
+      (ratio > 1.3 ? 1 : ratio < 0.7 ? -1 : 0) +
+      (obvSlope > 0 ? 1 : -1) +
+      (largeBuy > largeSell ? 1 : largeBuy < largeSell ? -1 : 0);
+    const quality: "low" | "medium" | "high" =
+      Math.abs(agreements) === 3 ? "high" : Math.abs(agreements) === 2 ? "medium" : "low";
+
+    const ratioMicro = ratio > 1.3
+      ? `Up-day volume mendominasi (${ratio.toFixed(2)}× down-day) — bias akumulasi.`
+      : ratio < 0.7
+      ? `Down-day volume mendominasi (rasio ${ratio.toFixed(2)}) — bias distribusi.`
+      : `Up/down volume seimbang (rasio ${ratio.toFixed(2)}) — belum ada bias jelas.`;
+    const obvMicro = obvSlope > 0
+      ? `OBV slope positif (${(obvSlopeNorm * 100).toFixed(1)}% over 10 bars) — kumulatif net buying.`
+      : `OBV slope negatif (${(obvSlopeNorm * 100).toFixed(1)}% over 10 bars) — kumulatif net selling.`;
+    const largeMicro = largeBuy === 0 && largeSell === 0
+      ? `Tidak ada large-bar prints (>1.8× median volume) di window 30 bar.`
+      : `Large-bar prints: ${largeBuy} buy vs ${largeSell} sell — ${largeBuy > largeSell ? "block buying" : largeBuy < largeSell ? "block selling" : "balanced"}.`;
+
+    const narrative =
+      score > 40 ? `${label.toLowerCase()} kuat — semua tiga indikator (volume ratio, OBV, large bars) selaras menandakan smart-money buying.`
+      : score > 15 ? `Tanda akumulasi terdeteksi, tapi belum overwhelming — gunakan sebagai konfirmasi, bukan sinyal mandiri.`
+      : score < -40 ? `Distribusi kuat — institusi tampak mengurangi posisi. Hindari long agresif, tunggu volume reset.`
+      : score < -15 ? `Bias distribusi ringan — perhatikan apakah harga ditahan oleh penurunan volume di reli.`
+      : `Flow seimbang — tidak ada edge institusional jelas dari volume profile saat ini.`;
+
     return {
-      score, label, flow,
-      details: [
-        `Up/Down volume ratio: ${ratio.toFixed(2)}`,
-        `OBV slope: ${obvSlope > 0 ? "rising" : "falling"}`,
-        `Large bars: ${largeBuy} buy / ${largeSell} sell`,
-      ],
+      score, label, flow, narrative, quality,
+      details: [ratioMicro, obvMicro, largeMicro],
       stats: { upVol, dnVol, ratio, obvSlope, largeBuy, largeSell },
     };
   });

@@ -2,17 +2,28 @@
 
 export type MarketKey = "idx" | "us" | "global";
 
-// LQ45 + popular IDX names (Yahoo suffix .JK)
+// LQ45 + popular IDX names (Yahoo suffix .JK) — broadened toward IDX80.
 export const IDX_LQ45 = [
-  "BBCA.JK", "BBRI.JK", "BMRI.JK", "BBNI.JK", "BRIS.JK",
-  "TLKM.JK", "ASII.JK", "UNVR.JK", "ICBP.JK", "INDF.JK",
-  "GOTO.JK", "ARTO.JK", "BUKA.JK", "EMTK.JK", "MDKA.JK",
-  "ADRO.JK", "PTBA.JK", "ITMG.JK", "INCO.JK", "ANTM.JK",
-  "TINS.JK", "MEDC.JK", "PGAS.JK", "AKRA.JK", "UNTR.JK",
-  "SMGR.JK", "INTP.JK", "JPFA.JK", "CPIN.JK", "MAPI.JK",
-  "ACES.JK", "ERAA.JK", "MNCN.JK", "SCMA.JK", "TBIG.JK",
-  "TOWR.JK", "EXCL.JK", "ISAT.JK", "FREN.JK", "BSDE.JK",
-  "PWON.JK", "CTRA.JK", "SMRA.JK", "KLBF.JK", "KAEF.JK",
+  // Banks / financials
+  "BBCA.JK", "BBRI.JK", "BMRI.JK", "BBNI.JK", "BRIS.JK", "ARTO.JK", "BTPS.JK", "BNGA.JK",
+  // Telecom & towers
+  "TLKM.JK", "EXCL.JK", "ISAT.JK", "FREN.JK", "TBIG.JK", "TOWR.JK", "MTEL.JK",
+  // Consumer / retail / staples
+  "UNVR.JK", "ICBP.JK", "INDF.JK", "JPFA.JK", "CPIN.JK", "MAPI.JK", "MAPA.JK",
+  "ACES.JK", "ERAA.JK", "AMRT.JK", "MYOR.JK", "GGRM.JK", "HMSP.JK",
+  // Energy / coal / oil-gas
+  "ADRO.JK", "PTBA.JK", "ITMG.JK", "MEDC.JK", "PGAS.JK", "AKRA.JK", "HRUM.JK",
+  "INDY.JK", "ADMR.JK", "BUMI.JK",
+  // Mining / materials
+  "INCO.JK", "ANTM.JK", "TINS.JK", "MDKA.JK", "SMGR.JK", "INTP.JK", "NCKL.JK",
+  // Industrials
+  "ASII.JK", "UNTR.JK", "SMRA.JK",
+  // Tech / internet
+  "GOTO.JK", "BUKA.JK", "EMTK.JK", "MNCN.JK", "SCMA.JK", "BREN.JK",
+  // Healthcare
+  "KLBF.JK", "KAEF.JK", "MIKA.JK",
+  // Property / real estate
+  "BSDE.JK", "PWON.JK", "CTRA.JK",
 ];
 
 export const IDX_INDICES = [
@@ -26,8 +37,29 @@ export const GLOBAL_INDICES = [
 
 export const ALL_INDICES = [...IDX_INDICES, ...GLOBAL_INDICES, "^VIX"];
 
+// Broad US universe — S&P 100-style heavyweights across sectors.
 export const US_TOP = [
-  "AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA", "AMD", "NFLX", "AVGO",
+  // Mega-cap tech
+  "AAPL", "MSFT", "NVDA", "GOOGL", "GOOG", "AMZN", "META", "TSLA", "AVGO", "ORCL",
+  "AMD", "NFLX", "CRM", "ADBE", "INTC", "CSCO", "QCOM", "TXN", "IBM", "INTU",
+  // Financials
+  "JPM", "BAC", "WFC", "GS", "MS", "C", "AXP", "BLK", "SCHW", "USB", "BRK-B",
+  // Healthcare
+  "UNH", "JNJ", "LLY", "PFE", "MRK", "ABBV", "TMO", "ABT", "DHR", "BMY", "AMGN",
+  // Consumer
+  "WMT", "COST", "HD", "MCD", "NKE", "SBUX", "DIS", "TGT", "LOW", "BKNG",
+  "PG", "KO", "PEP", "PM", "MO", "MDLZ", "CL",
+  // Industrials & energy
+  "BA", "CAT", "GE", "HON", "UPS", "RTX", "LMT", "DE", "MMM",
+  "XOM", "CVX", "COP", "SLB", "OXY", "PSX",
+  // Communication / media
+  "T", "VZ", "TMUS", "CMCSA",
+  // Utilities & materials
+  "NEE", "DUK", "SO", "LIN", "FCX", "NUE",
+  // Real estate
+  "AMT", "PLD", "CCI",
+  // Payments / fintech
+  "V", "MA", "PYPL", "SQ",
 ];
 
 export function symbolMarket(sym: string): MarketKey {
