@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getCandles, getQuotes } from "./market.functions";
-import { compositeSignal } from "@/features/signals/composite-engine";
+import { compositeSignal, buildTradeSetup } from "@/features/signals/composite-engine";
 import { sectorOf, ALL_SECTORS, type Sector } from "./sectors";
 import { IDX_LQ45, US_TOP } from "./symbols";
 import type { Candle } from "./indicators";
@@ -13,11 +13,17 @@ type ScreenRow = {
   price: number;
   changePct: number | null;
   score: number;
-  label: string;
+  label: string;          // Market bias signal label
+  bias: "BUY" | "SELL" | "HOLD";
+  action: "READY" | "WAIT" | "NO TRADE";
+  executionStatus: string;
+  setupGrade: "Poor" | "Fair" | "Good" | "Excellent" | "—";
+  setupScore: number | null;
+  riskLabel: string;
   confidence: number;
   rsi: number;
   trendStrength: number;
-  volRel: number; // relative volume
+  volRel: number;
   factors: { trend: number; momentum: number; volume: number; priceAction: number; volatility: number };
   sparkline: number[];
 };
@@ -28,11 +34,33 @@ const UNIVERSES: Record<"idx" | "us" | "global", string[]> = {
   global: [...IDX_LQ45.slice(0, 25), ...US_TOP],
 };
 
+function deriveAction(execStatus: string): "READY" | "WAIT" | "NO TRADE" {
+  if (execStatus === "Ready to Trade") return "READY";
+  if (execStatus === "No Trade") return "NO TRADE";
+  return "WAIT";
+}
+
+function deriveBias(label: string): "BUY" | "SELL" | "HOLD" {
+  if (label === "BUY" || label === "STRONG_BUY") return "BUY";
+  if (label === "SELL" || label === "STRONG_SELL") return "SELL";
+  return "HOLD";
+}
+
 async function buildRow(symbol: string, quote: any): Promise<ScreenRow | null> {
   try {
     const c = (await getCandles({ data: { symbol, timeframe: "1d" } })) as Candle[];
     if (c.length < 60) return null;
     const sig = compositeSignal(c, symbol, "1d");
+    // Build setup so we can grade and gate executionStatus consistently with Stock Detail page
+    const setup = buildTradeSetup(c, sig);
+    const sd = setup.stopDistancePct;
+    const grade = setup.quality.grade;
+    let execStatus = sig.executionStatus;
+    if (sig.label !== "HOLD") {
+      if (grade === "Poor" || sd > 30) execStatus = "No Trade";
+      else if ((grade === "Fair" || setup.conditional) && execStatus === "Ready to Trade") execStatus = "Wait for Confirmation";
+    }
+
     const closes = c.slice(-30).map(x => x.close);
     const last = c.length - 1;
     const gains: number[] = [], losses: number[] = [];
@@ -54,6 +82,12 @@ async function buildRow(symbol: string, quote: any): Promise<ScreenRow | null> {
       changePct: quote?.changePercent ?? null,
       score: sig.score,
       label: sig.label,
+      bias: deriveBias(sig.label),
+      action: deriveAction(execStatus),
+      executionStatus: execStatus,
+      setupGrade: sig.label === "HOLD" ? "—" : grade,
+      setupScore: sig.label === "HOLD" ? null : setup.quality.score,
+      riskLabel: sig.riskLabel,
       confidence: sig.confidence,
       rsi: isFinite(rsi) ? Math.round(rsi) : 50,
       trendStrength: sig.trendStrength ?? 0,
