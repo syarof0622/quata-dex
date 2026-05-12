@@ -12,16 +12,59 @@ export const multiTimeframeSignal = createServerFn({ method: "POST" })
     const results = await Promise.all(tfs.map(async tf => {
       try {
         const candles = (await getCandles({ data: { symbol: data.symbol, timeframe: tf } })) as Candle[];
-        if (candles.length < 60) return { tf, score: 0, label: "HOLD", confidence: 0 };
+        if (candles.length < 60) return { tf, score: 0, label: "HOLD", confidence: 0, valid: false };
         const s = scoreSignal(candles);
-        return { tf, score: s.score, label: s.label, confidence: s.confidence };
-      } catch { return { tf, score: 0, label: "HOLD", confidence: 0 }; }
+        return { tf, score: s.score, label: s.label, confidence: s.confidence, valid: true };
+      } catch { return { tf, score: 0, label: "HOLD", confidence: 0, valid: false }; }
     }));
-    const totalW = results.reduce((a, r) => a + weights[r.tf], 0);
-    const composite = results.reduce((a, r) => a + r.score * weights[r.tf], 0) / totalW;
-    const aligned = results.every(r => Math.sign(r.score) === Math.sign(results[0].score) && r.score !== 0);
+    const validResults = results.filter(r => r.valid);
+    if (validResults.length === 0) {
+      return {
+        composite: 0, label: "NO DATA", aligned: false,
+        alignmentLabel: "No Data", alignmentTone: "neutral" as const,
+        recommendation: "Ticker not found or insufficient history. Verify symbol (e.g. AAPL, BBCA.JK).",
+        byTimeframe: results,
+      };
+    }
+    const totalW = validResults.reduce((a, r) => a + weights[r.tf], 0);
+    const composite = validResults.reduce((a, r) => a + r.score * weights[r.tf], 0) / totalW;
+    const bullCount = validResults.filter(r => r.score >= 25).length;
+    const bearCount = validResults.filter(r => r.score <= -25).length;
+    const holdCount = validResults.length - bullCount - bearCount;
+    const aligned = bullCount === validResults.length || bearCount === validResults.length;
+
+    let alignmentLabel: string;
+    let alignmentTone: "bull" | "bear" | "warn" | "neutral";
+    let recommendation: string;
+    if (aligned && bullCount > 0) {
+      alignmentLabel = "All Bullish Aligned"; alignmentTone = "bull";
+      recommendation = "Tren searah di semua timeframe. Cari pullback di lower TF untuk entry.";
+    } else if (aligned && bearCount > 0) {
+      alignmentLabel = "All Bearish Aligned"; alignmentTone = "bear";
+      recommendation = "Tren bearish searah. Cari rejection di lower TF untuk short.";
+    } else if (bullCount > 0 && bearCount > 0) {
+      alignmentLabel = "Conflicting"; alignmentTone = "warn";
+      recommendation = "Timeframe berlawanan arah — tunggu konfirmasi atau hindari trade.";
+    } else if (bullCount >= bearCount + 1 && bearCount === 0) {
+      alignmentLabel = "Bullish Leaning"; alignmentTone = "bull";
+      recommendation = `${bullCount} dari ${validResults.length} TF bullish, sisanya neutral. Bias bullish lemah.`;
+    } else if (bearCount >= bullCount + 1 && bullCount === 0) {
+      alignmentLabel = "Bearish Leaning"; alignmentTone = "bear";
+      recommendation = `${bearCount} dari ${validResults.length} TF bearish, sisanya neutral. Bias bearish lemah.`;
+    } else if (holdCount === validResults.length) {
+      alignmentLabel = "All Neutral"; alignmentTone = "neutral";
+      recommendation = "Semua timeframe HOLD — tidak ada bias jelas. Watch only.";
+    } else {
+      alignmentLabel = "Mixed"; alignmentTone = "warn";
+      recommendation = "Mixed signals — tidak ada arah dominan. Tunggu setup yang lebih jelas.";
+    }
+
     const label = composite >= 60 ? "STRONG BUY" : composite >= 25 ? "BUY" : composite <= -60 ? "STRONG SELL" : composite <= -25 ? "SELL" : "HOLD";
-    return { composite: Math.round(composite), label, aligned, byTimeframe: results };
+    return {
+      composite: Math.round(composite), label, aligned,
+      alignmentLabel, alignmentTone, recommendation,
+      byTimeframe: results,
+    };
   });
 
 // Position sizer: given account size, risk %, entry & stop -> recommended shares
