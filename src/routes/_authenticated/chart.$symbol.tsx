@@ -547,13 +547,17 @@ function Cell({ label, value, tone }: { label: string; value: string; tone?: "pr
 }
 
 function TPCell({ label, price, rr }: { label: string; price: string; rr: number | null }) {
+  const invalid = price === "—" || price === "N/A";
   return (
     <div className="panel-2 p-3">
       <div className="flex items-center justify-between text-[11px] text-muted-foreground">
         <span className="flex items-center gap-1"><Target className="size-3" /> {label}</span>
         <span>RR {rr ?? "—"}</span>
       </div>
-      <div className="font-mono text-base text-bull">{price}</div>
+      <div className={`font-mono text-base ${invalid ? "text-muted-foreground" : "text-bull"}`}>
+        {invalid ? "N/A" : price}
+      </div>
+      {invalid && <div className="text-[10px] text-muted-foreground">Invalid extension</div>}
     </div>
   );
 }

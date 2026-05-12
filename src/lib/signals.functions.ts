@@ -76,6 +76,20 @@ export const getTradeSetup = createServerFn({ method: "POST" })
       signal.risk = Math.min(95, minRisk);
       signal.riskLabel = signal.risk <= 30 ? "Low" : signal.risk <= 60 ? "Medium" : signal.risk <= 80 ? "High" : "Extreme";
     }
+    // Gate executionStatus on setup quality (Poor → No Trade, Fair/conditional → Wait)
+    const grade = setup.quality.grade;
+    if (signal.label !== "HOLD") {
+      if (grade === "Poor" || sd > 30) {
+        signal.executionStatus = "No Trade";
+        signal.executionReason = grade === "Poor"
+          ? `Setup quality Poor (${setup.quality.score}/100) — skip atau watch only.`
+          : `Stop distance ${sd.toFixed(1)}% terlalu lebar — no actionable setup.`;
+      } else if ((grade === "Fair" || setup.conditional) && signal.executionStatus === "Ready to Trade") {
+        signal.executionStatus = "Wait for Confirmation";
+        signal.executionReason = setup.conditionalReason
+          ?? `Setup quality ${grade} — tunggu konfirmasi trigger sebelum eksekusi.`;
+      }
+    }
     return { signal, setup };
   });
 
