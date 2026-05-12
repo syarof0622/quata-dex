@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Calculator, Layers, Network } from "lucide-react";
 import { formatPrice } from "@/lib/format";
+import { TickerSearch } from "@/components/TickerSearch";
 
 export const Route = createFileRoute("/_authenticated/expert")({
   head: () => ({ meta: [{ title: "Expert Tools — Quanta Terminal" }] }),
