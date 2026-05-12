@@ -84,7 +84,7 @@ function Sizer() {
   return (
     <div className="space-y-3">
       <div className="panel p-4 grid md:grid-cols-5 gap-2 items-end">
-        <div><label className="text-xs text-muted-foreground">Symbol</label><Input value={symbol} onChange={e => setSymbol(e.target.value)} /></div>
+        <div className="md:col-span-1"><label className="text-xs text-muted-foreground">Symbol — search</label><TickerSearch initialValue={symbol} placeholder="AAPL…" onPick={(sym) => setSymbol(sym)} /></div>
         <div><label className="text-xs text-muted-foreground">Account $</label><Input value={account} onChange={e => setAccount(e.target.value)} /></div>
         <div><label className="text-xs text-muted-foreground">Risk %</label><Input value={risk} onChange={e => setRisk(e.target.value)} /></div>
         <div><label className="text-xs text-muted-foreground">Entry (optional)</label><Input value={entry} onChange={e => setEntry(e.target.value)} placeholder="last close" /></div>
