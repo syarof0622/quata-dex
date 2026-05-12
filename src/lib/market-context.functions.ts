@@ -173,7 +173,7 @@ export const getMarketContext = createServerFn({ method: "POST" })
     }
 
     const benchTrend = trendOf(benchBars);
-    const sectorTrend = trendOf(sectorBars);
+    const sectorTrend = trendOf(basketBars);
 
     const rsVsBench = stock20 != null && bench20 != null ? +(stock20 - bench20).toFixed(2) : null;
     const rsVsSector = stock20 != null && sector20 != null ? +(stock20 - sector20).toFixed(2) : null;
