@@ -359,86 +359,8 @@ function ChartPage() {
         </div>
       </div>
 
-      {/* Right panel — AI Signal */}
-      <div className="space-y-3">
-        <motion.div
-          initial={{ opacity: 0, x: 12 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="panel p-4"
-        >
-          <div className="flex items-center gap-2">
-            <TrendingUp className="size-4 text-primary" />
-            <h3 className="font-semibold">AI Signal · {TF_FULL[tf]}</h3>
-            {sig?.dataQuality && <DataQualityBadge q={sig.dataQuality} notes={sig.dataNotes} />}
-          </div>
-          <div className="text-[11px] text-muted-foreground mt-0.5">
-            Signal is calculated based on the selected timeframe.
-          </div>
-          <div className={`mt-3 inline-flex px-3 py-1.5 rounded-md font-semibold text-sm ${sigColor}`}>
-            {labelDisplay}
-          </div>
-          <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
-            <Stat label="Confidence" value={sig?.confidence ?? legacy.data?.confidence} suffix="%"
-              hint={sig?.confidenceLabel} tip="How much the model trusts this signal: blends factor agreement, signal magnitude, volatility and data quality." />
-            <Stat label="AI Score" value={sig?.score ?? legacy.data?.score}
-              tip="Composite directional score from -100 (strong sell) to +100 (strong buy)." />
-            <Stat label="Risk" value={sig?.risk} hint={sig?.riskLabel}
-              tip="0–30 Low · 31–60 Medium · 61–80 High · 81–100 Extreme. Driven by ATR%, regime volatility, choppiness and data quality." />
-          </div>
-          {sig && (
-            <>
-              <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                <Stat label="Trend Strength" value={sig.trendStrength} hint={sig.trendStrengthLabel}
-                  tip="ADX-based: 0–20 Weak · 21–40 Developing · 41–70 Strong · 71–100 Very Strong." />
-                <Stat label="Volatility" value={sig.volatilityLevel} tip="ATR% bucket — low / medium / high." />
-                <Stat label="Continuation Probability" value={sig.probContinuation} suffix="%"
-                  tip="Heuristic chance the current move continues over the next bars." />
-                <Stat label="Reversal Probability" value={sig.probReversal} suffix="%"
-                  tip="Heuristic chance of a reversal — complement of continuation." />
-              </div>
-              <div className="mt-3 grid grid-cols-5 gap-1 text-[10px]">
-                {Object.entries(sig.factors).map(([k, v]) => (
-                  <FactorBar key={k} label={k} value={v as number} />
-                ))}
-              </div>
-              <div className="mt-3 text-xs text-muted-foreground">
-                Style: <span className="text-foreground capitalize">{sig.recommendedStyle}</span> · Regime:{" "}
-                <span className="text-foreground capitalize">{sig.regime.trend}/{sig.regime.phase}</span>
-              </div>
-              {sig.invalidations.length > 0 && (
-                <div className="mt-3 text-xs">
-                  <div className="flex items-center gap-1 text-bear mb-1"><ShieldAlert className="size-3" /> Invalidations</div>
-                  <ul className="space-y-1 text-muted-foreground">
-                    {sig.invalidations.map((r, i) => <li key={i}>• {r}</li>)}
-                  </ul>
-                </div>
-              )}
-              {sig.dataQuality !== "high" && (
-                <div className="mt-3 text-[11px] text-muted-foreground border-t border-border pt-2">
-                  Signal confidence reduced due to {sig.dataQuality === "low" ? "low" : "limited"}-quality data.
-                </div>
-              )}
-            </>
-          )}
-          {!sig && legacy.data?.reasons && (
-            <div className="mt-3">
-              <div className="text-xs text-muted-foreground mb-1">Reasoning</div>
-              <ul className="text-xs space-y-1">
-                {legacy.data.reasons.map((r: string, i: number) => <li key={i}>• {r}</li>)}
-              </ul>
-            </div>
-          )}
-        </motion.div>
-
-        <SentimentPanel symbol={symbol} />
-        <PaperTrade
-          symbol={symbol}
-          price={quote.data?.price ?? 0}
-          fmt={fmt}
-          bias={setup.data?.setup?.bias as ("long" | "short" | "neutral" | undefined)}
-          signalLabel={sig?.label}
-        />
-      </div>
+      {/* Right panel — AI Signal (desktop only when expanded) */}
+      {showDesktopPanel && rightPanelContent}
     </div>
   );
 }
