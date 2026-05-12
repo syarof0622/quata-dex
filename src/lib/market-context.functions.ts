@@ -201,7 +201,8 @@ export const getMarketContext = createServerFn({ method: "POST" })
     const notes: string[] = [];
     if (stockBars.length < 30) notes.push("Limited daily history for the stock");
     if (benchBars.length < 30) notes.push("Limited benchmark history");
-    if (!sectorProxy) notes.push("No sector proxy available — using benchmark only");
+    if (!sectorProxy && !usePeerBasket) notes.push("No sector proxy available — using benchmark only");
+    if (usePeerBasket) notes.push(`Sector proxy: IDX peer basket of ${peers.length} ${sector} names (${peers.join(", ")})`);
 
     // Alignment summary
     let supportiveCount = 0, headwindCount = 0;
