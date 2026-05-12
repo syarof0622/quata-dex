@@ -100,11 +100,26 @@ function WL() {
                 </div>
                 <Sparkline values={r.sparkline ?? []} bull={(r.score ?? 0) > 0} width={100} height={32} />
               </div>
-              <div className="mt-3 flex items-center justify-between gap-2">
-                <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${labelColor(r.label ?? "NEUTRAL")}`}>{(r.label ?? "NEUTRAL").replace("_", " ")}</span>
+              <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-1">
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
+                    r.bias === "BUY" ? "bg-bull-soft text-bull" :
+                    r.bias === "SELL" ? "bg-bear-soft text-bear" :
+                    "bg-accent/40 text-muted-foreground"
+                  }`}>{r.bias ?? "—"} BIAS</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                    r.action === "READY" ? "bg-bull text-primary-foreground" :
+                    r.action === "NO TRADE" ? "bg-accent/40 text-muted-foreground" :
+                    "bg-yellow-500/20 text-yellow-500"
+                  }`}>{r.action ?? "—"}</span>
+                </div>
                 <div className="text-[11px] text-muted-foreground">
-                  Score <span className={`font-mono ${(r.score ?? 0) > 0 ? "text-bull" : (r.score ?? 0) < 0 ? "text-bear" : ""}`}>{r.score ?? 0}</span>
-                  {" · "}Conf <span className="font-mono">{r.confidence ?? 0}</span>
+                  Setup <span className={`font-medium ${
+                    r.setupGrade === "Excellent" ? "text-bull" :
+                    r.setupGrade === "Good" ? "text-bull" :
+                    r.setupGrade === "Fair" ? "text-yellow-500" :
+                    r.setupGrade === "Poor" ? "text-bear" : ""
+                  }`}>{r.setupGrade ?? "—"}</span>
                 </div>
               </div>
               <div className="mt-2 grid grid-cols-3 gap-1 text-[10px] text-muted-foreground">
