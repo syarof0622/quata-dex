@@ -142,7 +142,7 @@ function Screener() {
             <option value="score">AI Score</option>
             <option value="changePct">% Change</option>
             <option value="rsi">RSI</option>
-            <option value="volRel">Vol×</option>
+            <option value="volRel">Relative Volume (RVOL)</option>
             <option value="trendStrength">Trend</option>
           </select>
         </div>
