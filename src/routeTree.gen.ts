@@ -9,38 +9,261 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as AuthenticatedWatchlistRouteImport } from './routes/_authenticated/watchlist'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedScreenerRouteImport } from './routes/_authenticated/screener'
+import { Route as AuthenticatedPortfolioRouteImport } from './routes/_authenticated/portfolio'
+import { Route as AuthenticatedNewsRouteImport } from './routes/_authenticated/news'
+import { Route as AuthenticatedMarketRouteImport } from './routes/_authenticated/market'
+import { Route as AuthenticatedLabRouteImport } from './routes/_authenticated/lab'
+import { Route as AuthenticatedExpertRouteImport } from './routes/_authenticated/expert'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedAlertsRouteImport } from './routes/_authenticated/alerts'
+import { Route as AuthenticatedAiRouteImport } from './routes/_authenticated/ai'
+import { Route as AuthenticatedChartSymbolRouteImport } from './routes/_authenticated/chart.$symbol'
+import { Route as ApiPublicCronOrdersRouteImport } from './routes/api/public/cron/orders'
+import { Route as ApiPublicCronAlertsRouteImport } from './routes/api/public/cron/alerts'
 
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRoute = AuthenticatedRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiChatRoute = ApiChatRouteImport.update({
+  id: '/api/chat',
+  path: '/api/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedWatchlistRoute = AuthenticatedWatchlistRouteImport.update({
+  id: '/watchlist',
+  path: '/watchlist',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedScreenerRoute = AuthenticatedScreenerRouteImport.update({
+  id: '/screener',
+  path: '/screener',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedPortfolioRoute = AuthenticatedPortfolioRouteImport.update({
+  id: '/portfolio',
+  path: '/portfolio',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedNewsRoute = AuthenticatedNewsRouteImport.update({
+  id: '/news',
+  path: '/news',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedMarketRoute = AuthenticatedMarketRouteImport.update({
+  id: '/market',
+  path: '/market',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedLabRoute = AuthenticatedLabRouteImport.update({
+  id: '/lab',
+  path: '/lab',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedExpertRoute = AuthenticatedExpertRouteImport.update({
+  id: '/expert',
+  path: '/expert',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedAlertsRoute = AuthenticatedAlertsRouteImport.update({
+  id: '/alerts',
+  path: '/alerts',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedAiRoute = AuthenticatedAiRouteImport.update({
+  id: '/ai',
+  path: '/ai',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedChartSymbolRoute =
+  AuthenticatedChartSymbolRouteImport.update({
+    id: '/chart/$symbol',
+    path: '/chart/$symbol',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const ApiPublicCronOrdersRoute = ApiPublicCronOrdersRouteImport.update({
+  id: '/api/public/cron/orders',
+  path: '/api/public/cron/orders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicCronAlertsRoute = ApiPublicCronAlertsRouteImport.update({
+  id: '/api/public/cron/alerts',
+  path: '/api/public/cron/alerts',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/ai': typeof AuthenticatedAiRoute
+  '/alerts': typeof AuthenticatedAlertsRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/expert': typeof AuthenticatedExpertRoute
+  '/lab': typeof AuthenticatedLabRoute
+  '/market': typeof AuthenticatedMarketRoute
+  '/news': typeof AuthenticatedNewsRoute
+  '/portfolio': typeof AuthenticatedPortfolioRoute
+  '/screener': typeof AuthenticatedScreenerRoute
+  '/settings': typeof AuthenticatedSettingsRoute
+  '/watchlist': typeof AuthenticatedWatchlistRoute
+  '/api/chat': typeof ApiChatRoute
+  '/chart/$symbol': typeof AuthenticatedChartSymbolRoute
+  '/api/public/cron/alerts': typeof ApiPublicCronAlertsRoute
+  '/api/public/cron/orders': typeof ApiPublicCronOrdersRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/ai': typeof AuthenticatedAiRoute
+  '/alerts': typeof AuthenticatedAlertsRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/expert': typeof AuthenticatedExpertRoute
+  '/lab': typeof AuthenticatedLabRoute
+  '/market': typeof AuthenticatedMarketRoute
+  '/news': typeof AuthenticatedNewsRoute
+  '/portfolio': typeof AuthenticatedPortfolioRoute
+  '/screener': typeof AuthenticatedScreenerRoute
+  '/settings': typeof AuthenticatedSettingsRoute
+  '/watchlist': typeof AuthenticatedWatchlistRoute
+  '/api/chat': typeof ApiChatRoute
+  '/chart/$symbol': typeof AuthenticatedChartSymbolRoute
+  '/api/public/cron/alerts': typeof ApiPublicCronAlertsRoute
+  '/api/public/cron/orders': typeof ApiPublicCronOrdersRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/_authenticated/ai': typeof AuthenticatedAiRoute
+  '/_authenticated/alerts': typeof AuthenticatedAlertsRoute
+  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/expert': typeof AuthenticatedExpertRoute
+  '/_authenticated/lab': typeof AuthenticatedLabRoute
+  '/_authenticated/market': typeof AuthenticatedMarketRoute
+  '/_authenticated/news': typeof AuthenticatedNewsRoute
+  '/_authenticated/portfolio': typeof AuthenticatedPortfolioRoute
+  '/_authenticated/screener': typeof AuthenticatedScreenerRoute
+  '/_authenticated/settings': typeof AuthenticatedSettingsRoute
+  '/_authenticated/watchlist': typeof AuthenticatedWatchlistRoute
+  '/api/chat': typeof ApiChatRoute
+  '/_authenticated/chart/$symbol': typeof AuthenticatedChartSymbolRoute
+  '/api/public/cron/alerts': typeof ApiPublicCronAlertsRoute
+  '/api/public/cron/orders': typeof ApiPublicCronOrdersRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/ai'
+    | '/alerts'
+    | '/dashboard'
+    | '/expert'
+    | '/lab'
+    | '/market'
+    | '/news'
+    | '/portfolio'
+    | '/screener'
+    | '/settings'
+    | '/watchlist'
+    | '/api/chat'
+    | '/chart/$symbol'
+    | '/api/public/cron/alerts'
+    | '/api/public/cron/orders'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/auth'
+    | '/ai'
+    | '/alerts'
+    | '/dashboard'
+    | '/expert'
+    | '/lab'
+    | '/market'
+    | '/news'
+    | '/portfolio'
+    | '/screener'
+    | '/settings'
+    | '/watchlist'
+    | '/api/chat'
+    | '/chart/$symbol'
+    | '/api/public/cron/alerts'
+    | '/api/public/cron/orders'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/_authenticated/ai'
+    | '/_authenticated/alerts'
+    | '/_authenticated/dashboard'
+    | '/_authenticated/expert'
+    | '/_authenticated/lab'
+    | '/_authenticated/market'
+    | '/_authenticated/news'
+    | '/_authenticated/portfolio'
+    | '/_authenticated/screener'
+    | '/_authenticated/settings'
+    | '/_authenticated/watchlist'
+    | '/api/chat'
+    | '/_authenticated/chart/$symbol'
+    | '/api/public/cron/alerts'
+    | '/api/public/cron/orders'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  AuthRoute: typeof AuthRoute
+  ApiChatRoute: typeof ApiChatRoute
+  ApiPublicCronAlertsRoute: typeof ApiPublicCronAlertsRoute
+  ApiPublicCronOrdersRoute: typeof ApiPublicCronOrdersRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,22 +271,156 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/chat': {
+      id: '/api/chat'
+      path: '/api/chat'
+      fullPath: '/api/chat'
+      preLoaderRoute: typeof ApiChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/watchlist': {
+      id: '/_authenticated/watchlist'
+      path: '/watchlist'
+      fullPath: '/watchlist'
+      preLoaderRoute: typeof AuthenticatedWatchlistRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/screener': {
+      id: '/_authenticated/screener'
+      path: '/screener'
+      fullPath: '/screener'
+      preLoaderRoute: typeof AuthenticatedScreenerRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/portfolio': {
+      id: '/_authenticated/portfolio'
+      path: '/portfolio'
+      fullPath: '/portfolio'
+      preLoaderRoute: typeof AuthenticatedPortfolioRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/news': {
+      id: '/_authenticated/news'
+      path: '/news'
+      fullPath: '/news'
+      preLoaderRoute: typeof AuthenticatedNewsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/market': {
+      id: '/_authenticated/market'
+      path: '/market'
+      fullPath: '/market'
+      preLoaderRoute: typeof AuthenticatedMarketRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/lab': {
+      id: '/_authenticated/lab'
+      path: '/lab'
+      fullPath: '/lab'
+      preLoaderRoute: typeof AuthenticatedLabRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/expert': {
+      id: '/_authenticated/expert'
+      path: '/expert'
+      fullPath: '/expert'
+      preLoaderRoute: typeof AuthenticatedExpertRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/alerts': {
+      id: '/_authenticated/alerts'
+      path: '/alerts'
+      fullPath: '/alerts'
+      preLoaderRoute: typeof AuthenticatedAlertsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/ai': {
+      id: '/_authenticated/ai'
+      path: '/ai'
+      fullPath: '/ai'
+      preLoaderRoute: typeof AuthenticatedAiRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/chart/$symbol': {
+      id: '/_authenticated/chart/$symbol'
+      path: '/chart/$symbol'
+      fullPath: '/chart/$symbol'
+      preLoaderRoute: typeof AuthenticatedChartSymbolRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/api/public/cron/orders': {
+      id: '/api/public/cron/orders'
+      path: '/api/public/cron/orders'
+      fullPath: '/api/public/cron/orders'
+      preLoaderRoute: typeof ApiPublicCronOrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/cron/alerts': {
+      id: '/api/public/cron/alerts'
+      path: '/api/public/cron/alerts'
+      fullPath: '/api/public/cron/alerts'
+      preLoaderRoute: typeof ApiPublicCronAlertsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
+interface AuthenticatedRouteChildren {
+  AuthenticatedAiRoute: typeof AuthenticatedAiRoute
+  AuthenticatedAlertsRoute: typeof AuthenticatedAlertsRoute
+  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedExpertRoute: typeof AuthenticatedExpertRoute
+  AuthenticatedLabRoute: typeof AuthenticatedLabRoute
+  AuthenticatedMarketRoute: typeof AuthenticatedMarketRoute
+  AuthenticatedNewsRoute: typeof AuthenticatedNewsRoute
+  AuthenticatedPortfolioRoute: typeof AuthenticatedPortfolioRoute
+  AuthenticatedScreenerRoute: typeof AuthenticatedScreenerRoute
+  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
+  AuthenticatedWatchlistRoute: typeof AuthenticatedWatchlistRoute
+  AuthenticatedChartSymbolRoute: typeof AuthenticatedChartSymbolRoute
+}
+
+const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedAiRoute: AuthenticatedAiRoute,
+  AuthenticatedAlertsRoute: AuthenticatedAlertsRoute,
+  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedExpertRoute: AuthenticatedExpertRoute,
+  AuthenticatedLabRoute: AuthenticatedLabRoute,
+  AuthenticatedMarketRoute: AuthenticatedMarketRoute,
+  AuthenticatedNewsRoute: AuthenticatedNewsRoute,
+  AuthenticatedPortfolioRoute: AuthenticatedPortfolioRoute,
+  AuthenticatedScreenerRoute: AuthenticatedScreenerRoute,
+  AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
+  AuthenticatedWatchlistRoute: AuthenticatedWatchlistRoute,
+  AuthenticatedChartSymbolRoute: AuthenticatedChartSymbolRoute,
+}
+
+const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
+  AuthenticatedRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  AuthRoute: AuthRoute,
+  ApiChatRoute: ApiChatRoute,
+  ApiPublicCronAlertsRoute: ApiPublicCronAlertsRoute,
+  ApiPublicCronOrdersRoute: ApiPublicCronOrdersRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

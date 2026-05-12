@@ -1,0 +1,153 @@
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { getQuote, getCandles } from "./market.functions";
+import { rsi, ema, type Candle } from "./indicators";
+import { compositeSignal } from "@/features/signals/composite-engine";
+
+const RuleSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("price_above"), value: z.number() }),
+  z.object({ kind: z.literal("price_below"), value: z.number() }),
+  z.object({ kind: z.literal("rsi_above"), value: z.number().min(0).max(100) }),
+  z.object({ kind: z.literal("rsi_below"), value: z.number().min(0).max(100) }),
+  z.object({ kind: z.literal("ema_cross"), fast: z.number().int().positive(), slow: z.number().int().positive() }),
+  z.object({ kind: z.literal("volume_spike"), multiplier: z.number().positive() }),
+  z.object({ kind: z.literal("breakout"), lookback: z.number().int().min(5).max(252) }),
+  z.object({ kind: z.literal("breakdown"), lookback: z.number().int().min(5).max(252) }),
+  z.object({ kind: z.literal("score_above"), value: z.number().min(-100).max(100) }),
+  z.object({ kind: z.literal("score_below"), value: z.number().min(-100).max(100) }),
+]);
+export type AlertRule = z.infer<typeof RuleSchema>;
+
+export const listAlerts = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data } = await context.supabase
+      .from("alerts").select("*")
+      .eq("user_id", context.userId)
+      .order("created_at", { ascending: false });
+    return data ?? [];
+  });
+
+export const createAlert = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { symbol: string; rule: AlertRule }) =>
+    z.object({ symbol: z.string().min(1).toUpperCase(), rule: RuleSchema }).parse(d))
+  .handler(async ({ context, data }) => {
+    const { data: row, error } = await context.supabase.from("alerts").insert({
+      user_id: context.userId, symbol: data.symbol, rule_json: data.rule, active: true,
+    }).select().single();
+    if (error) throw error;
+    return row;
+  });
+
+export const deleteAlert = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ context, data }) => {
+    await context.supabase.from("alerts").delete().eq("id", data.id).eq("user_id", context.userId);
+    return { ok: true };
+  });
+
+export const toggleAlert = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string; active: boolean }) =>
+    z.object({ id: z.string().uuid(), active: z.boolean() }).parse(d))
+  .handler(async ({ context, data }) => {
+    const update = data.active
+      ? { active: true, triggered_at: null as string | null }
+      : { active: false };
+    await context.supabase.from("alerts").update(update)
+      .eq("id", data.id).eq("user_id", context.userId);
+    return { ok: true };
+  });
+
+// Evaluate a rule against fresh market data; return { hit, current, target, reason }
+async function evaluateRule(symbol: string, rule: AlertRule) {
+  if (rule.kind === "price_above" || rule.kind === "price_below") {
+    const q = await getQuote({ data: { symbol } });
+    if (!q?.price) return null;
+    const hit = rule.kind === "price_above" ? q.price > rule.value : q.price < rule.value;
+    return { hit, current: q.price, target: rule.value, unit: "price" as const,
+      reason: hit ? `Price ${q.price.toFixed(2)} ${rule.kind === "price_above" ? ">" : "<"} ${rule.value}` : null };
+  }
+  const candles = (await getCandles({ data: { symbol, timeframe: "1d" } })) as Candle[];
+  if (candles.length < 30) return null;
+  const closes = candles.map(c => c.close);
+  const last = candles.length - 1;
+
+  if (rule.kind === "rsi_above" || rule.kind === "rsi_below") {
+    const r = rsi(closes, 14);
+    const cur = r[r.length - 1];
+    const hit = rule.kind === "rsi_above" ? cur > rule.value : cur < rule.value;
+    return { hit, current: +cur.toFixed(1), target: rule.value, unit: "rsi" as const,
+      reason: hit ? `RSI ${cur.toFixed(1)} ${rule.kind === "rsi_above" ? ">" : "<"} ${rule.value}` : null };
+  }
+  if (rule.kind === "ema_cross") {
+    const f = ema(closes, rule.fast), s = ema(closes, rule.slow);
+    const i = closes.length - 1;
+    const up = f[i] > s[i] && f[i - 1] <= s[i - 1];
+    const dn = f[i] < s[i] && f[i - 1] >= s[i - 1];
+    const hit = up || dn;
+    return { hit, current: +(f[i] - s[i]).toFixed(2), target: 0, unit: "ema-spread" as const,
+      reason: up ? `EMA${rule.fast} crossed above EMA${rule.slow}` : dn ? `EMA${rule.fast} crossed below EMA${rule.slow}` : null };
+  }
+  if (rule.kind === "volume_spike") {
+    const vols = candles.slice(-21, -1).map(c => c.volume);
+    const avg = vols.reduce((a, b) => a + b, 0) / vols.length;
+    const cur = candles[last].volume;
+    const ratio = cur / Math.max(1, avg);
+    const hit = ratio > rule.multiplier;
+    return { hit, current: +ratio.toFixed(2), target: rule.multiplier, unit: "vol-mult" as const,
+      reason: hit ? `Volume ${ratio.toFixed(2)}× avg` : null };
+  }
+  if (rule.kind === "breakout" || rule.kind === "breakdown") {
+    const window = candles.slice(-(rule.lookback + 1), -1); // exclude current bar
+    const high = Math.max(...window.map(c => c.high));
+    const low = Math.min(...window.map(c => c.low));
+    const cur = candles[last].close;
+    const hit = rule.kind === "breakout" ? cur > high : cur < low;
+    return {
+      hit,
+      current: +cur.toFixed(2),
+      target: +(rule.kind === "breakout" ? high : low).toFixed(2),
+      unit: "price" as const,
+      reason: hit ? `${rule.kind === "breakout" ? "Breakout above" : "Breakdown below"} ${rule.lookback}-day ${rule.kind === "breakout" ? "high" : "low"} (${(rule.kind === "breakout" ? high : low).toFixed(2)})` : null,
+    };
+  }
+  if (rule.kind === "score_above" || rule.kind === "score_below") {
+    const sig = compositeSignal(candles, symbol, "1d");
+    const hit = rule.kind === "score_above" ? sig.score > rule.value : sig.score < rule.value;
+    return { hit, current: sig.score, target: rule.value, unit: "score" as const,
+      reason: hit ? `AI Signal score ${sig.score} ${rule.kind === "score_above" ? ">" : "<"} ${rule.value} (${sig.label})` : null };
+  }
+  return null;
+}
+
+export const evaluateAlert = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { symbol: string; rule: AlertRule }) =>
+    z.object({ symbol: z.string().min(1).toUpperCase(), rule: RuleSchema }).parse(d))
+  .handler(async ({ data }) => {
+    return (await evaluateRule(data.symbol, data.rule)) ?? { hit: false, current: null, target: null, unit: null, reason: null };
+  });
+
+export const checkAlerts = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: alerts } = await context.supabase.from("alerts")
+      .select("*").eq("user_id", context.userId).eq("active", true).is("triggered_at", null);
+    if (!alerts?.length) return { triggered: [] };
+    const triggered: { id: string; symbol: string; reason: string }[] = [];
+    for (const a of alerts) {
+      try {
+        const result = await evaluateRule(a.symbol, a.rule_json as AlertRule);
+        if (result?.hit && result.reason) triggered.push({ id: a.id, symbol: a.symbol, reason: result.reason });
+      } catch (e) { console.error("alert check err", a.id, e); }
+    }
+    if (triggered.length) {
+      await context.supabase.from("alerts").update({ triggered_at: new Date().toISOString() })
+        .in("id", triggered.map(t => t.id));
+    }
+    return { triggered };
+  });
