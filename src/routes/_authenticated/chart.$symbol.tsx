@@ -826,17 +826,25 @@ function SmartMoneyPanel({ symbol }: { symbol: string }) {
     refetchInterval: 60_000,
   });
   if (!q.data) return <div className="text-sm text-muted-foreground">Analyzing institutional flow…</div>;
-  const tone = q.data.score > 15 ? "text-bull" : q.data.score < -15 ? "text-bear" : "text-muted-foreground";
+  const d: any = q.data;
+  const tone = d.score > 15 ? "text-bull" : d.score < -15 ? "text-bear" : "text-muted-foreground";
+  const qualityBadge = d.quality === "high" ? "bg-bull-soft text-bull" : d.quality === "medium" ? "bg-accent/40" : "bg-muted/40 text-muted-foreground";
   return (
     <div className="text-sm space-y-2">
-      <div className="flex items-center gap-3">
-        <div className={`text-base font-semibold ${tone}`}>{q.data.label}</div>
-        <div className="text-xs text-muted-foreground">flow: {q.data.flow} · score {q.data.score}</div>
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className={`text-base font-semibold ${tone}`}>{d.label}</div>
+        <div className="text-xs text-muted-foreground">flow: {d.flow} · score {d.score}</div>
+        {d.quality && (
+          <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase ${qualityBadge}`}>
+            confidence: {d.quality}
+          </span>
+        )}
       </div>
+      {d.narrative && <p className="text-xs">{d.narrative}</p>}
       <ul className="text-xs text-muted-foreground space-y-1">
-        {q.data.details.map((d: string, i: number) => <li key={i}>• {d}</li>)}
+        {d.details.map((s: string, i: number) => <li key={i}>• {s}</li>)}
       </ul>
-      <p className="text-[11px] text-muted-foreground">Heuristik dari price-volume, bukan order flow nyata.</p>
+      <p className="text-[11px] text-muted-foreground">Heuristik dari price-volume profile (volume ratio, OBV slope, large-bar prints) — bukan order flow nyata atau insider data.</p>
     </div>
   );
 }
