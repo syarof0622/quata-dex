@@ -163,9 +163,25 @@ function scoreRelevance(title: string, terms: { strong: string[]; weak: string[]
   return { score, band };
 }
 
+// Simple in-memory cache (server runtime). 20-minute TTL per symbol.
+type CacheEntry = { at: number; payload: any };
+const SENT_CACHE = new Map<string, CacheEntry>();
+const SENT_TTL_MS = 20 * 60_000;
+
 export const newsSentiment = createServerFn({ method: "POST" })
-  .inputValidator((d: { symbol?: string }) => z.object({ symbol: z.string().optional() }).parse(d ?? {}))
+  .inputValidator((d: { symbol?: string; refresh?: boolean }) =>
+    z.object({ symbol: z.string().optional(), refresh: z.boolean().optional() }).parse(d ?? {}),
+  )
   .handler(async ({ data }) => {
+    const key = (data.symbol ?? "__market__").toUpperCase();
+    const now = Date.now();
+    if (!data.refresh) {
+      const hit = SENT_CACHE.get(key);
+      if (hit && now - hit.at < SENT_TTL_MS) {
+        return { ...hit.payload, cached: true, lastUpdated: hit.at };
+      }
+    }
+
     const news = (await getNews({ data: { symbol: data.symbol } })) as
       { title: string; link: string; publisher?: string; publishedAt?: string | null; thumbnail?: string | null }[];
 
@@ -185,59 +201,89 @@ export const newsSentiment = createServerFn({ method: "POST" })
       return { ...n, sentiment, polarity, relevance: rel.score, relevanceBand: rel.band };
     });
 
-    // Only Medium/High relevance contribute to scoring (when filtering by symbol)
     const eligible = data.symbol
       ? scored.filter(s => s.relevanceBand === "High" || s.relevanceBand === "Medium")
       : scored;
+    const general = data.symbol
+      ? scored.filter(s => s.relevanceBand === "Low" || s.relevanceBand === "Unrelated")
+      : [];
 
-    let pos = 0, neg = 0, totalW = 0;
+    let pos = 0, neg = 0;
     for (const s of eligible) {
-      const w = s.relevance / 50; // 0.5..2
-      totalW += w;
+      const w = s.relevance / 50;
       if (s.sentiment === "positive") pos += w * Math.max(1, Math.abs(s.polarity));
       else if (s.sentiment === "negative") neg += w * Math.max(1, Math.abs(s.polarity));
     }
 
-    let score = 0;
-    if (eligible.length > 0 && (pos + neg) > 0) {
-      score = Math.round(((pos - neg) / Math.max(pos + neg, 1)) * 100);
-    }
+    const hasSignal = eligible.length > 0 && (pos + neg) > 0;
+    const rawScore = hasSignal ? Math.round(((pos - neg) / Math.max(pos + neg, 1)) * 100) : 0;
+    const score: number | null = eligible.length === 0 ? null : rawScore;
 
-    // Confidence is driven by how many relevant headlines and how strong the polarity
-    const sampleConf = Math.min(60, eligible.length * 12);     // up to 60 points for ≥5 items
+    const sampleConf = Math.min(60, eligible.length * 12);
     const polarityConf = Math.min(40, (pos + neg) * 8);
-    const confidence = Math.min(95, Math.max(10, Math.round(sampleConf + polarityConf)));
+    const confidence = eligible.length === 0
+      ? Math.min(10, scored.length)
+      : Math.min(95, Math.max(15, Math.round(sampleConf + polarityConf)));
 
     const label =
-      score >= 60 ? "Strong Bullish" :
-      score >= 25 ? "Bullish" :
-      score <= -60 ? "Strong Bearish" :
-      score <= -25 ? "Bearish" :
-      eligible.length === 0 ? "No Signal" : "Neutral / Mixed";
+      eligible.length === 0 ? "No Signal" :
+      score !== null && score >= 60 ? "Strong Bullish" :
+      score !== null && score >= 25 ? "Bullish" :
+      score !== null && score <= -60 ? "Strong Bearish" :
+      score !== null && score <= -25 ? "Bearish" :
+      "Neutral / Mixed";
 
     const relevanceQuality =
       scored.length === 0 ? "None" :
       eligible.length / scored.length >= 0.5 ? "High" :
       eligible.length / scored.length >= 0.2 ? "Medium" : "Low";
 
-    return {
+    // Source breakdown by publisher (eligible only)
+    const sourceMap = new Map<string, { count: number; pos: number; neg: number; neu: number }>();
+    for (const s of eligible) {
+      const pub = (s.publisher ?? "Unknown").trim() || "Unknown";
+      const e = sourceMap.get(pub) ?? { count: 0, pos: 0, neg: 0, neu: 0 };
+      e.count += 1;
+      if (s.sentiment === "positive") e.pos += 1;
+      else if (s.sentiment === "negative") e.neg += 1;
+      else e.neu += 1;
+      sourceMap.set(pub, e);
+    }
+    const sourceBreakdown = [...sourceMap.entries()]
+      .map(([publisher, v]) => ({ publisher, ...v }))
+      .sort((a, b) => b.count - a.count);
+
+    const notes: string[] = [];
+    if (eligible.length === 0) notes.push("No highly relevant news found for this symbol.");
+    else if (eligible.length === 1) notes.push("Limited news sample — confidence kept low.");
+
+    const sortedItems = scored
+      .slice()
+      .sort((a, b) =>
+        (b.relevance - a.relevance) ||
+        ((b.publishedAt ? +new Date(b.publishedAt) : 0) - (a.publishedAt ? +new Date(a.publishedAt) : 0)),
+      );
+
+    const payload = {
       score,
       label,
       confidence,
       newsCount: scored.length,
       relevantCount: eligible.length,
+      generalCount: general.length,
       relevanceQuality,
       counts: {
         positive: eligible.filter(s => s.sentiment === "positive").length,
         negative: eligible.filter(s => s.sentiment === "negative").length,
         neutral: eligible.filter(s => s.sentiment === "neutral").length,
       },
-      // Sort by relevance then recency
-      items: scored
-        .slice()
-        .sort((a, b) =>
-          (b.relevance - a.relevance) ||
-          ((b.publishedAt ? +new Date(b.publishedAt) : 0) - (a.publishedAt ? +new Date(a.publishedAt) : 0)),
-        ),
+      sourceBreakdown,
+      notes,
+      items: sortedItems,
+      relevant: sortedItems.filter(s => s.relevanceBand === "High" || s.relevanceBand === "Medium"),
+      general: sortedItems.filter(s => s.relevanceBand === "Low" || s.relevanceBand === "Unrelated"),
     };
+
+    SENT_CACHE.set(key, { at: now, payload });
+    return { ...payload, cached: false, lastUpdated: now };
   });
