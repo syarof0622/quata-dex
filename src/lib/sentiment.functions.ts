@@ -230,6 +230,9 @@ export const newsSentiment = createServerFn({ method: "POST" })
 
     const label =
       eligible.length === 0 ? "No Signal" :
+      eligible.length === 1 && score !== null && score > 25 ? "Mild Bullish" :
+      eligible.length === 1 && score !== null && score < -25 ? "Mild Bearish" :
+      eligible.length === 1 ? "Neutral / Mixed" :
       score !== null && score >= 60 ? "Strong Bullish" :
       score !== null && score >= 25 ? "Bullish" :
       score !== null && score <= -60 ? "Strong Bearish" :
