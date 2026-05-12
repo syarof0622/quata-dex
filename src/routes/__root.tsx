@@ -94,7 +94,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  React.useEffect(() => {
+  useEffect(() => {
     try {
       const raw = localStorage.getItem("quanta:prefs");
       const p = raw ? JSON.parse(raw) : {};
