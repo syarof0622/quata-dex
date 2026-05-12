@@ -52,6 +52,8 @@ function AlertsPage() {
     if (kind === "ema_cross") return { kind, fast: Number(fast), slow: Number(slow) };
     if (kind === "volume_spike") return { kind, multiplier: Number(value) };
     if (kind === "breakout" || kind === "breakdown") return { kind, lookback: Number(lookback) };
+    if (kind === "setup_long_ready" || kind === "setup_short_ready" || kind === "breakout_confirmed") return { kind };
+    if (kind === "pullback_to_support") return { kind, tolerancePct: Number(value) || 1.5 };
     return { kind, value: Number(value) } as AlertRule;
   };
 
