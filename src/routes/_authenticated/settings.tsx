@@ -77,10 +77,11 @@ function SettingsPage() {
     if (k === "theme") applyTheme(v as Prefs["theme"]);
   }
 
+  const [resetAmount, setResetAmount] = useState("100000");
   const reset = useMutation({
-    mutationFn: () => resetPaperAccount(),
-    onSuccess: () => {
-      toast.success("Paper account reset to $100,000");
+    mutationFn: (cash: number) => resetPaperAccount({ data: { cash } }),
+    onSuccess: (_r, cash) => {
+      toast.success(`Paper account reset to $${cash.toLocaleString()}`);
       qc.invalidateQueries();
     },
     onError: (e: Error) => toast.error(e?.message ?? "Reset failed"),
