@@ -353,6 +353,11 @@ export type TradeSetup = {
   suggestedAllocationPct: number;
   notes: string[];
   quality: TradeSetupQuality;
+  stopDistancePct: number;
+  conditional: boolean;
+  conditionalReason: string | null;
+  microcopy: string | null;
+  riskDrivers: string[];
 };
 
 export type TradeSetupGrade = "Poor" | "Fair" | "Good" | "Excellent";
