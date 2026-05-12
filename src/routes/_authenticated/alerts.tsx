@@ -134,6 +134,15 @@ function AlertsPage() {
               <label className="text-xs text-muted-foreground">Lookback (days)</label>
               <Input value={lookback} onChange={e => setLookback(e.target.value)} />
             </div>
+          ) : kind === "setup_long_ready" || kind === "setup_short_ready" || kind === "breakout_confirmed" ? (
+            <div className="col-span-2 text-xs text-muted-foreground self-end pb-2">
+              No threshold needed — fires when AI engine reports a Ready-to-Trade setup.
+            </div>
+          ) : kind === "pullback_to_support" ? (
+            <div className="col-span-2">
+              <label className="text-xs text-muted-foreground">Tolerance % above 20d support</label>
+              <Input value={value} onChange={e => setValue(e.target.value)} placeholder="1.5" />
+            </div>
           ) : (
             <div className="col-span-2">
               <label className="text-xs text-muted-foreground">
