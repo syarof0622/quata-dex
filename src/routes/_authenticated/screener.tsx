@@ -165,7 +165,7 @@ function Screener() {
               <th className="text-right p-2">Conf</th>
               <th className="text-right p-2">RSI</th>
               <th className="text-right p-2">ADX</th>
-              <th className="text-right p-2">Vol×</th>
+              <th className="text-right p-2" title="Relative Volume = volume hari ini ÷ rata-rata 20 hari">RVOL</th>
               <th className="text-left p-2">Trend</th>
             </tr>
           </thead>
