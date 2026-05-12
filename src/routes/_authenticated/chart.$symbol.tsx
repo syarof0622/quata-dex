@@ -62,6 +62,18 @@ function ChartPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const yfTf = tfToYf(tf);
   const isIDX = symbolMarket(symbol) === "idx";
+  const isMobile = useIsMobile();
+  const [panelOpen, setPanelOpen] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    const saved = window.localStorage.getItem("chart.panelOpen");
+    return saved == null ? true : saved === "1";
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("chart.panelOpen", panelOpen ? "1" : "0");
+    }
+  }, [panelOpen]);
+  const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
 
   const quote = useQuery({
     queryKey: ["quote", symbol],
