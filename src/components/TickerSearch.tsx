@@ -46,7 +46,9 @@ export function TickerSearch({ className, onPick, placeholder, initialValue }: {
   function go(symbol: string) {
     const sym = symbol.trim().toUpperCase();
     if (!sym) return;
-    setQ(""); setOpen(false);
+    setOpen(false);
+    if (onPick) { setQ(sym); onPick(sym); return; }
+    setQ("");
     nav({ to: "/chart/$symbol", params: { symbol: sym } });
   }
 
