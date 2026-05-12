@@ -1,5 +1,4 @@
 import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu,
@@ -29,12 +28,9 @@ const NAV = [
 ] as const;
 
 function AuthedLayout() {
-  const { user, loading, signOut } = useAuth();
+  const { signOut } = useAuth();
   const nav = useNavigate();
   const path = useRouterState({ select: s => s.location.pathname });
-  useEffect(() => { if (!loading && !user) nav({ to: "/auth" }); }, [user, loading, nav]);
-  if (loading) return <div className="min-h-screen grid place-items-center text-muted-foreground">Loading terminal…</div>;
-  if (!user) return null;
 
   return (
     <SidebarProvider>

@@ -29,8 +29,7 @@ function Landing() {
           <a href="#lab" className="hover:text-foreground">Simulation Lab</a>
         </nav>
         <div className="flex items-center gap-2">
-          <Link to="/auth"><Button variant="ghost" size="sm">Sign in</Button></Link>
-          <Link to="/auth"><Button size="sm">Open Terminal <ChevronRight className="size-4" /></Button></Link>
+          <Link to="/dashboard"><Button size="sm">Open Terminal <ChevronRight className="size-4" /></Button></Link>
         </div>
       </header>
 
@@ -60,7 +59,7 @@ function Landing() {
             initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4, duration: 0.5 }}
             className="mt-8 flex items-center justify-center gap-3"
           >
-            <Link to="/auth">
+            <Link to="/dashboard">
               <Button size="lg" className="neon-border">
                 Launch Terminal <ChevronRight className="size-4" />
               </Button>
