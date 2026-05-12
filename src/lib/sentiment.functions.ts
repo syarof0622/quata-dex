@@ -70,15 +70,28 @@ function tokenize(s: string): string[] {
 // IDX-specific aliases for strict matching
 const IDX_ALIASES: Record<string, string[]> = {
   "BBCA.JK": ["bbca", "bank central asia", "bca indonesia", "pt bank central asia"],
-  "BBRI.JK": ["bbri", "bank rakyat indonesia", "bri "],
+  "BBRI.JK": ["bbri", "bank rakyat indonesia", "bri syariah", "bri indonesia"],
   "BMRI.JK": ["bmri", "bank mandiri"],
-  "BBNI.JK": ["bbni", "bank negara indonesia", "bni "],
+  "BBNI.JK": ["bbni", "bank negara indonesia", "bni indonesia"],
   "TLKM.JK": ["tlkm", "telkom indonesia", "telekomunikasi indonesia"],
   "ASII.JK": ["asii", "astra international"],
   "UNVR.JK": ["unvr", "unilever indonesia"],
-  "GOTO.JK": ["goto", "gojek tokopedia"],
-  "ADRO.JK": ["adro", "adaro"],
+  "GOTO.JK": ["goto", "gojek tokopedia", "goto gojek"],
+  "ADRO.JK": ["adro", "adaro energy", "adaro indonesia"],
   "ANTM.JK": ["antm", "aneka tambang", "antam"],
+  "BUMI.JK": ["bumi resources", "pt bumi resources"],
+  "INDF.JK": ["indf", "indofood sukses"],
+  "ICBP.JK": ["icbp", "indofood cbp"],
+  "KLBF.JK": ["klbf", "kalbe farma"],
+  "PGAS.JK": ["pgas", "perusahaan gas negara"],
+  "PTBA.JK": ["ptba", "bukit asam"],
+  "MEDC.JK": ["medc", "medco energi"],
+  "INCO.JK": ["inco", "vale indonesia"],
+  "MDKA.JK": ["mdka", "merdeka copper"],
+  "SMGR.JK": ["smgr", "semen indonesia"],
+  "EXCL.JK": ["excl", "xl axiata"],
+  "ISAT.JK": ["isat", "indosat"],
+  "ARTO.JK": ["arto", "bank jago"],
 };
 
 // Foreign-context exclusions to avoid false matches like "Bank of Canada" → BBCA
@@ -86,6 +99,7 @@ const FOREIGN_EXCLUSIONS = [
   "bank of canada", "laurentian", "canadian bank", "u.s. bank", "us bank",
   "bank of america", "bank of england", "european central bank",
   "deutsche bank", "barclays", "hsbc", "jpmorgan", "goldman sachs",
+  "wells fargo", "citigroup", "morgan stanley", "credit suisse", "ubs ",
 ];
 
 function buildRelevanceTerms(symbol: string, name?: string | null): { strong: string[]; weak: string[]; isIDX: boolean } {
