@@ -436,18 +436,40 @@ function gradeTradeSetup(args: {
     score -= 5;
     reasons.push({ label: "Reversal risk", ok: false, detail: `Reversal probability ${signal.probReversal}% — late in move` });
   }
+  if (signal.rebound?.active) {
+    score -= 8;
+    reasons.push({ label: "Counter-move", ok: false, detail: signal.rebound.reason || "Price moving against signal direction" });
+  }
+  if (signal.trendStrength == null) {
+    score -= 5;
+    reasons.push({ label: "Trend strength", ok: false, detail: "ADX tidak tersedia — trend invalid" });
+  }
 
   score = Math.max(0, Math.min(100, Math.round(score)));
+
+  // ---- HARD CAPS ----
+  // Stop distance > 10% → max Fair (cap 59); > 20% → max Poor (cap 39)
+  if (riskPct > 20) score = Math.min(score, 39);
+  else if (riskPct > 10) score = Math.min(score, 59);
+  // R:R < 1.5 → max Fair
+  if (rr1 < 1.5) score = Math.min(score, 59);
+  // Confidence < 60 → cannot be Excellent (cap 79)
+  if (signal.confidence < 60) score = Math.min(score, 79);
+  // Rebound active → cannot be Good/Excellent
+  if (signal.rebound?.active) score = Math.min(score, 49);
+  // Low data quality → cap Fair
+  if (signal.dataQuality === "low") score = Math.min(score, 49);
+
   let grade: TradeSetupGrade;
   if (score >= 80) grade = "Excellent";
-  else if (score >= 65) grade = "Good";
-  else if (score >= 45) grade = "Fair";
+  else if (score >= 60) grade = "Good";
+  else if (score >= 40) grade = "Fair";
   else grade = "Poor";
 
   const summary = grade === "Excellent" ? "High-conviction setup — execute per plan."
     : grade === "Good" ? "Tradeable setup — respect stop & sizing."
-    : grade === "Fair" ? "Marginal setup — consider waiting or reducing size."
-    : "Low-quality setup — skip or paper-trade only.";
+    : grade === "Fair" ? "Marginal setup — wait for confirmation or reduce size significantly."
+    : "Low-quality setup — skip or watch only, do not execute.";
 
   return { grade, score, reasons, summary };
 }
