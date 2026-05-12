@@ -16,6 +16,11 @@ const RuleSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("breakdown"), lookback: z.number().int().min(5).max(252) }),
   z.object({ kind: z.literal("score_above"), value: z.number().min(-100).max(100) }),
   z.object({ kind: z.literal("score_below"), value: z.number().min(-100).max(100) }),
+  // Setup-based: fire when the AI engine considers a trade actionable.
+  z.object({ kind: z.literal("setup_long_ready") }),
+  z.object({ kind: z.literal("setup_short_ready") }),
+  z.object({ kind: z.literal("pullback_to_support"), tolerancePct: z.number().min(0.1).max(10).optional() }),
+  z.object({ kind: z.literal("breakout_confirmed") }),
 ]);
 export type AlertRule = z.infer<typeof RuleSchema>;
 
