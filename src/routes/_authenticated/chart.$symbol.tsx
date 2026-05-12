@@ -240,10 +240,8 @@ function ChartPage() {
             <TabsContent value="technical">
               <TVAnalysisWidget symbol={tvSymbol(symbol)} interval={tf} />
             </TabsContent>
-            <TabsContent value="fundamental" className="text-sm text-muted-foreground">
-              Market cap:{" "}
-              <span className="font-mono">{quote.data?.marketCap?.toLocaleString() ?? "—"}</span> ·
-              Currency: {quote.data?.currency ?? priceCurrency(symbol)}
+            <TabsContent value="fundamental">
+              <FundamentalPanel symbol={symbol} />
             </TabsContent>
             <TabsContent value="smart">
               <SmartMoneyPanel symbol={symbol} />
