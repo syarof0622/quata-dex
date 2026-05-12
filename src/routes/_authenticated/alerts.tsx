@@ -30,6 +30,10 @@ const KIND_LABEL: Record<RuleKind, string> = {
   breakdown: "Breakdown (N-day low)",
   score_above: "AI Signal score above",
   score_below: "AI Signal score below",
+  setup_long_ready: "Setup: LONG ready to trade",
+  setup_short_ready: "Setup: SHORT ready to trade",
+  pullback_to_support: "Setup: pullback to 20d support (BUY bias)",
+  breakout_confirmed: "Setup: confirmed breakout (BUY + volume)",
 };
 
 function AlertsPage() {
