@@ -772,42 +772,107 @@ function SmartMoneyPanel({ symbol }: { symbol: string }) {
 }
 
 function SentimentPanel({ symbol }: { symbol: string }) {
+  const [tab, setTab] = useState<"relevant" | "general" | "sources">("relevant");
   const q = useQuery({
     queryKey: ["sent", symbol],
     queryFn: () => newsSentiment({ data: { symbol } }),
     refetchInterval: 5 * 60_000,
   });
   if (!q.data) return null;
-  const d = q.data;
-  const tone = d.score > 25 ? "text-bull" : d.score < -25 ? "text-bear" : "text-muted-foreground";
-  const relevant = (d.items ?? []).filter((n: any) => n.relevanceBand === "High" || n.relevanceBand === "Medium");
-  const display = relevant.length ? relevant : (d.items ?? []);
+  const d: any = q.data;
+  const hasScore = typeof d.score === "number";
+  const tone = !hasScore ? "text-muted-foreground" : d.score > 25 ? "text-bull" : d.score < -25 ? "text-bear" : "text-muted-foreground";
+  const updated = d.lastUpdated ? new Date(d.lastUpdated) : null;
+  const updatedLabel = updated ? `${Math.max(0, Math.round((Date.now() - updated.getTime()) / 60000))}m ago` : "";
+
+  const renderItem = (n: any, i: number) => (
+    <li key={i} className="flex gap-2 items-start">
+      <span className={n.sentiment === "positive" ? "text-bull" : n.sentiment === "negative" ? "text-bear" : "text-muted-foreground"}>●</span>
+      <a href={n.link} target="_blank" rel="noreferrer" className="hover:text-foreground line-clamp-2 flex-1">{n.title}</a>
+      <span className="text-[9px] uppercase text-muted-foreground/70 shrink-0">{n.relevanceBand}</span>
+    </li>
+  );
+
   return (
     <div className="panel p-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <h3 className="font-semibold">News Sentiment</h3>
-        <span className={`text-sm font-semibold ${tone}`}>{d.label}{d.relevantCount > 0 && ` · ${d.score}`}</span>
+        <div className="flex items-center gap-2">
+          <span className={`text-sm font-semibold ${tone}`}>
+            {d.label}{hasScore && d.relevantCount > 0 ? ` · ${d.score}` : ""}
+          </span>
+          <button
+            onClick={() => q.refetch()}
+            disabled={q.isFetching}
+            className="text-[10px] px-2 py-0.5 rounded border border-border hover:bg-accent/40 disabled:opacity-50"
+            title="Refresh news"
+          >
+            {q.isFetching ? "…" : "Refresh"}
+          </button>
+        </div>
       </div>
       <div className="text-[11px] text-muted-foreground mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
         <span>Confidence: <span className="text-foreground">{d.confidence}%</span></span>
         <span>News: <span className="text-foreground">{d.newsCount}</span></span>
         <span>Relevant: <span className="text-foreground">{d.relevantCount}</span></span>
         <span>Quality: <span className="text-foreground">{d.relevanceQuality}</span></span>
+        {updated && <span>Updated: <span className="text-foreground">{updatedLabel}</span></span>}
       </div>
-      {d.relevantCount === 0 && (
-        <div className="mt-2 text-xs text-muted-foreground">
-          No highly relevant news found for this symbol.
+
+      {(d.notes ?? []).length > 0 && (
+        <div className="mt-2 text-xs text-yellow-500/90 space-y-0.5">
+          {d.notes.map((n: string, i: number) => <div key={i}>• {n}</div>)}
         </div>
       )}
-      <ul className="mt-2 text-xs space-y-1 max-h-48 overflow-auto">
-        {display.slice(0, 6).map((n: any, i: number) => (
-          <li key={i} className="flex gap-2 items-start">
-            <span className={n.sentiment === "positive" ? "text-bull" : n.sentiment === "negative" ? "text-bear" : "text-muted-foreground"}>●</span>
-            <a href={n.link} target="_blank" rel="noreferrer" className="hover:text-foreground line-clamp-2 flex-1">{n.title}</a>
-            <span className="text-[9px] uppercase text-muted-foreground/70 shrink-0">{n.relevanceBand}</span>
-          </li>
+
+      <div className="mt-3 flex gap-1 text-[11px]">
+        {([
+          ["relevant", `Relevant (${d.relevantCount ?? 0})`],
+          ["general", `General (${d.generalCount ?? 0})`],
+          ["sources", `Sources (${(d.sourceBreakdown ?? []).length})`],
+        ] as const).map(([k, label]) => (
+          <button key={k} onClick={() => setTab(k)}
+            className={`px-2 py-1 rounded ${tab === k ? "bg-primary text-primary-foreground" : "bg-accent/40 hover:bg-accent/60"}`}>
+            {label}
+          </button>
         ))}
-      </ul>
+      </div>
+
+      {tab === "relevant" && (
+        <ul className="mt-2 text-xs space-y-1 max-h-48 overflow-auto">
+          {(d.relevant ?? []).length === 0 ? (
+            <li className="text-muted-foreground">No highly relevant news found for {symbol}.</li>
+          ) : (
+            (d.relevant ?? []).slice(0, 8).map(renderItem)
+          )}
+        </ul>
+      )}
+      {tab === "general" && (
+        <ul className="mt-2 text-xs space-y-1 max-h-48 overflow-auto">
+          {(d.general ?? []).length === 0 ? (
+            <li className="text-muted-foreground">No general market news for context.</li>
+          ) : (
+            (d.general ?? []).slice(0, 8).map(renderItem)
+          )}
+          <li className="text-[10px] text-muted-foreground/70 pt-1">General/unrelated headlines do not affect the sentiment score.</li>
+        </ul>
+      )}
+      {tab === "sources" && (
+        <ul className="mt-2 text-xs space-y-1 max-h-48 overflow-auto">
+          {(d.sourceBreakdown ?? []).length === 0 ? (
+            <li className="text-muted-foreground">No source breakdown available.</li>
+          ) : (
+            (d.sourceBreakdown ?? []).map((s: any, i: number) => (
+              <li key={i} className="flex justify-between gap-2 border-b border-border/30 pb-1">
+                <span className="text-foreground truncate">{s.publisher}</span>
+                <span className="text-muted-foreground shrink-0">
+                  {s.count} · <span className="text-bull">{s.pos}+</span> <span className="text-bear">{s.neg}-</span> <span>{s.neu}=</span>
+                </span>
+              </li>
+            ))
+          )}
+        </ul>
+      )}
     </div>
   );
 }
