@@ -16,9 +16,9 @@ function useDebounced<T>(value: T, delay = 200) {
   return v;
 }
 
-export function TickerSearch({ className }: { className?: string }) {
+export function TickerSearch({ className, onPick, placeholder, initialValue }: { className?: string; onPick?: (symbol: string) => void; placeholder?: string; initialValue?: string }) {
   const nav = useNavigate();
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(initialValue ?? "");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const debounced = useDebounced(q.trim(), 180);
@@ -46,7 +46,9 @@ export function TickerSearch({ className }: { className?: string }) {
   function go(symbol: string) {
     const sym = symbol.trim().toUpperCase();
     if (!sym) return;
-    setQ(""); setOpen(false);
+    setOpen(false);
+    if (onPick) { setQ(sym); onPick(sym); return; }
+    setQ("");
     nav({ to: "/chart/$symbol", params: { symbol: sym } });
   }
 
@@ -72,7 +74,7 @@ export function TickerSearch({ className }: { className?: string }) {
         onChange={e => { setQ(e.target.value); setOpen(true); }}
         onFocus={() => q && setOpen(true)}
         onKeyDown={onKeyDown}
-        placeholder="Search ticker (AAPL, NVDA, BBCA.JK)…"
+        placeholder={placeholder ?? "Search ticker (AAPL, NVDA, BBCA.JK)…"}
         className="pl-9 pr-9"
         autoComplete="off"
         spellCheck={false}

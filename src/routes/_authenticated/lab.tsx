@@ -33,12 +33,12 @@ function Lab() {
   });
   return (
     <div className="p-4 md:p-6 space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Simulation Lab</h1>
           <p className="text-sm text-muted-foreground">Paper trading · advanced orders · journal · backtest · AI coach</p>
         </div>
-        <Button variant="outline" onClick={async () => { await resetPaperAccount(); toast.success("Account reset to $100k"); acct.refetch(); }}>Reset account</Button>
+        <ResetAccountControl onDone={() => acct.refetch()} currentCash={Number(acct.data?.account?.cash ?? 100000)} />
       </div>
 
       <div className="grid md:grid-cols-4 gap-3">
@@ -238,6 +238,34 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: "bu
     <div className="panel p-3">
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className={`font-mono text-lg ${tone === "bull" ? "text-bull" : tone === "bear" ? "text-bear" : ""}`}>{value}</div>
+    </div>
+  );
+}
+
+function ResetAccountControl({ onDone, currentCash }: { onDone: () => void; currentCash: number }) {
+  const [open, setOpen] = useState(false);
+  const [amount, setAmount] = useState(String(currentCash || 100000));
+  const reset = useMutation({
+    mutationFn: (cash: number) => resetPaperAccount({ data: { cash } }),
+    onSuccess: (_r, cash) => { toast.success(`Account reset to $${cash.toLocaleString()}`); setOpen(false); onDone(); },
+    onError: (e: any) => toast.error(e?.message ?? "Reset failed"),
+  });
+  if (!open) return <Button variant="outline" onClick={() => setOpen(true)}>Reset / Set capital</Button>;
+  return (
+    <div className="panel p-3 flex items-end gap-2">
+      <div>
+        <label className="text-[11px] text-muted-foreground block">Starting cash ($)</label>
+        <Input type="number" min="0" value={amount} onChange={e => setAmount(e.target.value)} className="w-40" />
+      </div>
+      <div className="flex gap-2">
+        {[10000, 50000, 100000, 500000, 1000000].map(v => (
+          <Button key={v} size="sm" variant="ghost" onClick={() => setAmount(String(v))}>${(v/1000)}k</Button>
+        ))}
+      </div>
+      <Button onClick={() => reset.mutate(Math.max(0, Number(amount) || 0))} disabled={reset.isPending}>
+        {reset.isPending ? "…" : "Apply"}
+      </Button>
+      <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
     </div>
   );
 }

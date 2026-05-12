@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Calculator, Layers, Network } from "lucide-react";
 import { formatPrice } from "@/lib/format";
+import { TickerSearch } from "@/components/TickerSearch";
 
 export const Route = createFileRoute("/_authenticated/expert")({
   head: () => ({ meta: [{ title: "Expert Tools — Quanta Terminal" }] }),
@@ -40,7 +41,10 @@ function MTF() {
   return (
     <div className="space-y-3">
       <div className="panel p-4 flex gap-2 items-end">
-        <div className="flex-1"><label className="text-xs text-muted-foreground">Symbol</label><Input value={s} onChange={e => setS(e.target.value)} /></div>
+        <div className="flex-1">
+          <label className="text-xs text-muted-foreground">Symbol — type to search</label>
+          <TickerSearch initialValue={s} placeholder="AAPL, NVDA, BBCA.JK…" onPick={(sym) => setS(sym)} />
+        </div>
         <Button onClick={() => q.refetch()} disabled={q.isFetching}>{q.isFetching ? "Computing…" : "Analyze"}</Button>
       </div>
       {q.data && (
@@ -80,7 +84,7 @@ function Sizer() {
   return (
     <div className="space-y-3">
       <div className="panel p-4 grid md:grid-cols-5 gap-2 items-end">
-        <div><label className="text-xs text-muted-foreground">Symbol</label><Input value={symbol} onChange={e => setSymbol(e.target.value)} /></div>
+        <div className="md:col-span-1"><label className="text-xs text-muted-foreground">Symbol — search</label><TickerSearch initialValue={symbol} placeholder="AAPL…" onPick={(sym) => setSymbol(sym)} /></div>
         <div><label className="text-xs text-muted-foreground">Account $</label><Input value={account} onChange={e => setAccount(e.target.value)} /></div>
         <div><label className="text-xs text-muted-foreground">Risk %</label><Input value={risk} onChange={e => setRisk(e.target.value)} /></div>
         <div><label className="text-xs text-muted-foreground">Entry (optional)</label><Input value={entry} onChange={e => setEntry(e.target.value)} placeholder="last close" /></div>

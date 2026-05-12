@@ -91,7 +91,46 @@
   --sidebar-ring: oklch(0.86 0.18 168 / 50%);
 }
 
-.dark { /* placeholder — site is dark by default */ }
+/* Light mode override (root html toggles .dark for dark mode). */
+html:not(.dark) {
+  --background: oklch(0.99 0.005 255);
+  --surface-1:  oklch(0.97 0.008 255);
+  --surface-2:  oklch(0.94 0.01 255);
+  --foreground: oklch(0.18 0.03 255);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.03 255);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.03 255);
+
+  --primary: oklch(0.55 0.16 168);
+  --primary-foreground: oklch(0.99 0.005 255);
+
+  --secondary: oklch(0.92 0.01 255);
+  --secondary-foreground: oklch(0.2 0.03 255);
+  --muted: oklch(0.93 0.01 255);
+  --muted-foreground: oklch(0.45 0.02 255);
+  --accent: oklch(0.9 0.02 255);
+  --accent-foreground: oklch(0.2 0.03 255);
+
+  --bull: oklch(0.55 0.18 150);
+  --bear: oklch(0.55 0.22 27);
+
+  --border: oklch(0.85 0.01 255 / 80%);
+  --input: oklch(0.88 0.01 255 / 90%);
+  --ring: oklch(0.55 0.16 168 / 50%);
+
+  --sidebar: oklch(0.97 0.008 255);
+  --sidebar-foreground: oklch(0.2 0.03 255);
+  --sidebar-accent: oklch(0.92 0.02 255);
+  --sidebar-accent-foreground: oklch(0.2 0.03 255);
+  --sidebar-border: oklch(0.85 0.01 255 / 80%);
+}
+html:not(.dark) body {
+  background-image:
+    radial-gradient(1200px 600px at 10% -10%, oklch(0.55 0.16 168 / 0.06), transparent 60%),
+    radial-gradient(1000px 500px at 100% 0%, oklch(0.55 0.2 280 / 0.04), transparent 60%);
+}
 
 @layer base {
   * { border-color: var(--color-border); }

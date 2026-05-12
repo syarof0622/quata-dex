@@ -77,10 +77,11 @@ function SettingsPage() {
     if (k === "theme") applyTheme(v as Prefs["theme"]);
   }
 
+  const [resetAmount, setResetAmount] = useState("100000");
   const reset = useMutation({
-    mutationFn: () => resetPaperAccount(),
-    onSuccess: () => {
-      toast.success("Paper account reset to $100,000");
+    mutationFn: (cash: number) => resetPaperAccount({ data: { cash } }),
+    onSuccess: (_r, cash) => {
+      toast.success(`Paper account reset to $${cash.toLocaleString()}`);
       qc.invalidateQueries();
     },
     onError: (e: Error) => toast.error(e?.message ?? "Reset failed"),
@@ -231,13 +232,25 @@ function SettingsPage() {
               <Mini label="Positions" value={String(account.data?.positions?.length ?? 0)} />
               <Mini label="Open orders" value={String(account.data?.pending?.length ?? 0)} />
             </div>
-            <div className="flex items-center justify-between pt-2">
-              <div className="text-xs text-muted-foreground">Wipes all positions, orders and journal entries; cash returns to $100,000.</div>
-              <Button variant="destructive" onClick={() => {
-                if (confirm("Reset paper account? This cannot be undone.")) reset.mutate();
-              }} disabled={reset.isPending}>
-                <Trash2 className="size-4 mr-1" /> Reset paper account
-              </Button>
+            <div className="border-t border-border pt-3 space-y-2">
+              <div className="text-xs text-muted-foreground">Set custom starting capital. Resets all positions, orders, and journal.</div>
+              <div className="flex items-end gap-2 flex-wrap">
+                <div>
+                  <Label className="text-[11px]">Starting cash ($)</Label>
+                  <Input type="number" min="0" className="w-44" value={resetAmount} onChange={e => setResetAmount(e.target.value)} />
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {[10000, 50000, 100000, 500000, 1000000].map(v => (
+                    <Button key={v} size="sm" variant="ghost" onClick={() => setResetAmount(String(v))}>${(v/1000)}k</Button>
+                  ))}
+                </div>
+                <Button variant="destructive" onClick={() => {
+                  const cash = Math.max(0, Number(resetAmount) || 0);
+                  if (confirm(`Reset paper account to $${cash.toLocaleString()}? This cannot be undone.`)) reset.mutate(cash);
+                }} disabled={reset.isPending}>
+                  <Trash2 className="size-4 mr-1" /> Reset & set capital
+                </Button>
+              </div>
             </div>
           </div>
         </TabsContent>

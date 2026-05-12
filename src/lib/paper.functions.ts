@@ -1,28 +1,87 @@
-import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+// Local-only paper trading account. No auth, no server. Persists in localStorage.
 import { getQuote } from "./market.functions";
 
-export const getPaperAccount = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { supabase, userId } = context;
-    let { data: account } = await supabase.from("paper_accounts").select("*").eq("user_id", userId).maybeSingle();
-    if (!account) {
-      const ins = await supabase.from("paper_accounts").insert({ user_id: userId, cash: 100000, equity: 100000 }).select().single();
-      account = ins.data!;
-    }
-    const [{ data: positions }, { data: orders }, { data: pending }] = await Promise.all([
-      supabase.from("paper_positions").select("*").eq("account_id", account.id),
-      supabase.from("paper_orders").select("*").eq("account_id", account.id).eq("status", "filled").order("filled_at", { ascending: false }).limit(50),
-      supabase.from("paper_orders").select("*").eq("account_id", account.id).eq("status", "pending").order("created_at", { ascending: false }),
-    ]);
-    return { account, positions: positions ?? [], orders: orders ?? [], pending: pending ?? [] };
-  });
+const KEY = "quanta:paper";
 
-async function executeFill(supabase: any, userId: string, account: any, params: {
-  symbol: string; side: "buy" | "sell"; qty: number; price: number; orderRow?: any;
+type Order = {
+  id: string;
+  account_id: string;
+  user_id: string;
+  symbol: string;
+  side: "buy" | "sell";
+  type: string;
+  qty: number;
+  price: number | null;
+  filled_price: number | null;
+  status: "filled" | "pending" | "cancelled" | "rejected";
+  filled_at: string | null;
+  created_at: string;
+  limit_price?: number | null;
+  stop_price?: number | null;
+  trailing_pct?: number | null;
+  trail_anchor?: number | null;
+  take_profit?: number | null;
+  stop_loss?: number | null;
+};
+type Position = {
+  id: string;
+  account_id: string;
+  user_id: string;
+  symbol: string;
+  qty: number;
+  avg_price: number;
+  opened_at: string;
+};
+type Account = { id: string; user_id: string; cash: number; equity: number };
+
+type Store = { account: Account; positions: Position[]; orders: Order[] };
+
+const USER_ID = "00000000-0000-0000-0000-000000000001";
+
+function defaultStore(cash = 100000): Store {
+  return {
+    account: { id: "local-1", user_id: USER_ID, cash, equity: cash },
+    positions: [],
+    orders: [],
+  };
+}
+
+function read(): Store {
+  if (typeof window === "undefined") return defaultStore();
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return defaultStore();
+    return JSON.parse(raw);
+  } catch {
+    return defaultStore();
+  }
+}
+function write(s: Store) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(KEY, JSON.stringify(s));
+}
+function uuid() {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+export async function getPaperAccount() {
+  const s = read();
+  const filled = s.orders.filter(o => o.status === "filled")
+    .sort((a, b) => (b.filled_at || "").localeCompare(a.filled_at || ""))
+    .slice(0, 50);
+  const pending = s.orders.filter(o => o.status === "pending")
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
+  return { account: s.account, positions: s.positions, orders: filled, pending };
+}
+
+function applyFill(s: Store, params: {
+  symbol: string; side: "buy" | "sell"; qty: number; price: number;
   type?: string; takeProfit?: number | null; stopLoss?: number | null;
+  pendingOrderId?: string;
 }) {
   const { symbol, side, qty, price } = params;
   const slip = 0.0005 * (side === "buy" ? 1 : -1);
@@ -30,136 +89,109 @@ async function executeFill(supabase: any, userId: string, account: any, params: 
   const notional = fillPrice * qty;
   const fee = notional * 0.001;
 
-  if (side === "buy" && Number(account.cash) < notional + fee) throw new Error("Insufficient cash");
-
-  const { data: existing } = await supabase.from("paper_positions").select("*")
-    .eq("account_id", account.id).eq("symbol", symbol).maybeSingle();
+  if (side === "buy" && s.account.cash < notional + fee) throw new Error("Insufficient cash");
+  const existing = s.positions.find(p => p.symbol === symbol);
 
   if (side === "buy") {
-    const newQty = Number(existing?.qty ?? 0) + qty;
-    const newAvg = existing
-      ? ((Number(existing.avg_price) * Number(existing.qty)) + (fillPrice * qty)) / newQty
-      : fillPrice;
     if (existing) {
-      await supabase.from("paper_positions").update({ qty: newQty, avg_price: newAvg }).eq("id", existing.id);
+      const newQty = existing.qty + qty;
+      existing.avg_price = (existing.avg_price * existing.qty + fillPrice * qty) / newQty;
+      existing.qty = newQty;
     } else {
-      await supabase.from("paper_positions").insert({
-        account_id: account.id, user_id: userId, symbol, qty, avg_price: fillPrice,
+      s.positions.push({
+        id: uuid(), account_id: s.account.id, user_id: USER_ID,
+        symbol, qty, avg_price: fillPrice, opened_at: new Date().toISOString(),
       });
     }
-    await supabase.from("paper_accounts").update({ cash: Number(account.cash) - notional - fee }).eq("id", account.id);
+    s.account.cash -= notional + fee;
   } else {
-    if (!existing || Number(existing.qty) < qty) throw new Error("Insufficient position to sell");
-    const newQty = Number(existing.qty) - qty;
-    if (newQty === 0) await supabase.from("paper_positions").delete().eq("id", existing.id);
-    else await supabase.from("paper_positions").update({ qty: newQty }).eq("id", existing.id);
-    await supabase.from("paper_accounts").update({ cash: Number(account.cash) + notional - fee }).eq("id", account.id);
+    if (!existing || existing.qty < qty) throw new Error("Insufficient position to sell");
+    existing.qty -= qty;
+    if (existing.qty === 0) s.positions = s.positions.filter(p => p.id !== existing.id);
+    s.account.cash += notional - fee;
   }
 
-  if (params.orderRow) {
-    await supabase.from("paper_orders").update({
-      status: "filled", filled_price: fillPrice, filled_at: new Date().toISOString(),
-    }).eq("id", params.orderRow.id);
+  if (params.pendingOrderId) {
+    const o = s.orders.find(o => o.id === params.pendingOrderId);
+    if (o) {
+      o.status = "filled";
+      o.filled_price = fillPrice;
+      o.filled_at = new Date().toISOString();
+    }
   } else {
-    await supabase.from("paper_orders").insert({
-      account_id: account.id, user_id: userId, symbol, side,
-      type: params.type ?? "market", qty, price, filled_price: fillPrice,
-      status: "filled", filled_at: new Date().toISOString(),
-      take_profit: params.takeProfit ?? null, stop_loss: params.stopLoss ?? null,
+    s.orders.push({
+      id: uuid(), account_id: s.account.id, user_id: USER_ID,
+      symbol, side, type: params.type ?? "market", qty, price,
+      filled_price: fillPrice, status: "filled",
+      filled_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      take_profit: params.takeProfit ?? null,
+      stop_loss: params.stopLoss ?? null,
     });
   }
-
   return { fillPrice, fee };
 }
 
-export const placeOrder = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d: { symbol: string; side: "buy" | "sell"; qty: number; takeProfit?: number; stopLoss?: number }) => z.object({
-    symbol: z.string().min(1).toUpperCase(),
-    side: z.enum(["buy", "sell"]),
-    qty: z.number().positive().max(1_000_000),
-    takeProfit: z.number().positive().optional(),
-    stopLoss: z.number().positive().optional(),
-  }).parse(d))
-  .handler(async ({ context, data }) => {
-    const { supabase, userId } = context;
-    const quote = await getQuote({ data: { symbol: data.symbol } });
-    if (!quote?.price) throw new Error("Could not get price for " + data.symbol);
-    const { data: account } = await supabase.from("paper_accounts").select("*").eq("user_id", userId).single();
-    if (!account) throw new Error("No paper account");
-    const r = await executeFill(supabase, userId, account, {
-      symbol: data.symbol, side: data.side, qty: data.qty, price: quote.price,
-      takeProfit: data.takeProfit, stopLoss: data.stopLoss,
-    });
-    return { ok: true, ...r };
+export async function placeOrder(args: { data: {
+  symbol: string; side: "buy" | "sell"; qty: number;
+  takeProfit?: number; stopLoss?: number;
+}}) {
+  const d = args.data;
+  const symbol = d.symbol.trim().toUpperCase();
+  const quote: any = await getQuote({ data: { symbol } });
+  if (!quote?.price) throw new Error("Could not get price for " + symbol);
+  const s = read();
+  const r = applyFill(s, {
+    symbol, side: d.side, qty: d.qty, price: quote.price,
+    takeProfit: d.takeProfit, stopLoss: d.stopLoss,
   });
+  write(s);
+  return { ok: true, ...r };
+}
 
-export const placeAdvancedOrder = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d: {
-    symbol: string; side: "buy" | "sell"; qty: number;
-    type: "limit" | "stop" | "stop_limit" | "trailing_stop";
-    limitPrice?: number; stopPrice?: number; trailingPct?: number;
-    takeProfit?: number; stopLoss?: number;
-  }) => z.object({
-    symbol: z.string().min(1).toUpperCase(),
-    side: z.enum(["buy", "sell"]),
-    qty: z.number().positive().max(1_000_000),
-    type: z.enum(["limit", "stop", "stop_limit", "trailing_stop"]),
-    limitPrice: z.number().positive().optional(),
-    stopPrice: z.number().positive().optional(),
-    trailingPct: z.number().positive().max(50).optional(),
-    takeProfit: z.number().positive().optional(),
-    stopLoss: z.number().positive().optional(),
-  }).parse(d))
-  .handler(async ({ context, data }) => {
-    const { supabase, userId } = context;
-    if (data.type === "limit" && !data.limitPrice) throw new Error("limit price required");
-    if ((data.type === "stop" || data.type === "stop_limit") && !data.stopPrice) throw new Error("stop price required");
-    if (data.type === "stop_limit" && !data.limitPrice) throw new Error("limit price required");
-    if (data.type === "trailing_stop" && !data.trailingPct) throw new Error("trailing % required");
-    const { data: account } = await supabase.from("paper_accounts").select("*").eq("user_id", userId).single();
-    if (!account) throw new Error("No paper account");
-    const quote = await getQuote({ data: { symbol: data.symbol } });
-    const trailAnchor = data.type === "trailing_stop" && quote?.price ? quote.price : null;
-    const { data: row, error } = await supabase.from("paper_orders").insert({
-      account_id: account.id, user_id: userId, symbol: data.symbol, side: data.side,
-      type: data.type, qty: data.qty,
-      price: quote?.price ?? null,
-      limit_price: data.limitPrice ?? null,
-      stop_price: data.stopPrice ?? null,
-      trailing_pct: data.trailingPct ?? null,
-      trail_anchor: trailAnchor,
-      take_profit: data.takeProfit ?? null,
-      stop_loss: data.stopLoss ?? null,
-      status: "pending",
-    }).select().single();
-    if (error) throw error;
-    return row;
-  });
+export async function placeAdvancedOrder(args: { data: {
+  symbol: string; side: "buy" | "sell"; qty: number;
+  type: "limit" | "stop" | "stop_limit" | "trailing_stop";
+  limitPrice?: number; stopPrice?: number; trailingPct?: number;
+  takeProfit?: number; stopLoss?: number;
+}}) {
+  const d = args.data;
+  const symbol = d.symbol.trim().toUpperCase();
+  if (d.type === "limit" && !d.limitPrice) throw new Error("limit price required");
+  if ((d.type === "stop" || d.type === "stop_limit") && !d.stopPrice) throw new Error("stop price required");
+  if (d.type === "stop_limit" && !d.limitPrice) throw new Error("limit price required");
+  if (d.type === "trailing_stop" && !d.trailingPct) throw new Error("trailing % required");
+  const quote: any = await getQuote({ data: { symbol } }).catch(() => null);
+  const s = read();
+  const order: Order = {
+    id: uuid(), account_id: s.account.id, user_id: USER_ID,
+    symbol, side: d.side, type: d.type, qty: d.qty,
+    price: quote?.price ?? null, filled_price: null,
+    limit_price: d.limitPrice ?? null,
+    stop_price: d.stopPrice ?? null,
+    trailing_pct: d.trailingPct ?? null,
+    trail_anchor: d.type === "trailing_stop" ? quote?.price ?? null : null,
+    take_profit: d.takeProfit ?? null,
+    stop_loss: d.stopLoss ?? null,
+    status: "pending",
+    filled_at: null,
+    created_at: new Date().toISOString(),
+  };
+  s.orders.push(order);
+  write(s);
+  return order;
+}
 
-export const cancelOrder = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
-  .handler(async ({ context, data }) => {
-    const { error } = await context.supabase.from("paper_orders")
-      .update({ status: "cancelled" }).eq("id", data.id).eq("user_id", context.userId).eq("status", "pending");
-    if (error) throw error;
-    return { ok: true };
-  });
+export async function cancelOrder(args: { data: { id: string } }) {
+  const s = read();
+  const o = s.orders.find(o => o.id === args.data.id);
+  if (o && o.status === "pending") o.status = "cancelled";
+  write(s);
+  return { ok: true };
+}
 
-export const resetPaperAccount = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { supabase, userId } = context;
-    const { data: account } = await supabase.from("paper_accounts").select("*").eq("user_id", userId).single();
-    if (!account) return { ok: false };
-    await supabase.from("paper_orders").delete().eq("account_id", account.id);
-    await supabase.from("paper_positions").delete().eq("account_id", account.id);
-    await supabase.from("trade_journal").delete().eq("user_id", userId);
-    await supabase.from("paper_accounts").update({ cash: 100000, equity: 100000 }).eq("id", account.id);
-    return { ok: true };
-  });
-
-// Internal: used by cron worker
-export { executeFill };
+export async function resetPaperAccount(args?: { data?: { cash?: number } }) {
+  const cash = Math.max(0, Number(args?.data?.cash ?? 100000)) || 100000;
+  write(defaultStore(cash));
+  return { ok: true, cash };
+}
