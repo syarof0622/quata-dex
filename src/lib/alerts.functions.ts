@@ -133,14 +133,24 @@ async function evaluateRule(symbol: string, rule: AlertRule) {
     const hit = sig.label === dir && sig.executionStatus === "Ready to Trade";
     return {
       hit, current: `${sig.label}/${sig.executionStatus}`, target: `${dir}/Ready`, unit: "setup" as const,
-      reason: hit ? `${dir} setup is Ready to Trade — score ${sig.score}, grade ${sig.setup?.grade ?? "-"}` : null,
+      reason: hit ? `${dir} setup is Ready to Trade — score ${sig.score}` : null,
     };
   }
   if (rule.kind === "pullback_to_support") {
     const sig = compositeSignal(candles, symbol, "1d");
     const tol = rule.tolerancePct ?? 1.5;
     const last = candles[candles.length - 1].close;
-    const support = sig.support ?? null;
+    // Use 20-day low as a robust support proxy (shared with breakout alert).
+    const window = candles.slice(-21, -1);
+    const support = window.length ? Math.min(...window.map((c) => c.low)) : null;
+    if (support == null) return { hit: false, current: last, target: null, unit: "price" as const, reason: null };
+    const distPct = ((last - support) / support) * 100;
+    const hit = sig.label === "BUY" && distPct >= 0 && distPct <= tol;
+    return {
+      hit, current: +last.toFixed(2), target: +support.toFixed(2), unit: "price" as const,
+      reason: hit ? `Price within ${tol}% of 20d support ${support.toFixed(2)} with BUY bias` : null,
+    };
+  }
     if (support == null) return { hit: false, current: last, target: null, unit: "price" as const, reason: null };
     const distPct = ((last - support) / support) * 100;
     // Hit when close is within tolerance band above support and bias is BUY.
