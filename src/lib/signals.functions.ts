@@ -66,6 +66,16 @@ export const getTradeSetup = createServerFn({ method: "POST" })
     if (candles.length < 60) return null;
     const signal = compositeSignal(candles, data.symbol, data.timeframe);
     const setup = buildTradeSetup(candles, signal);
+    // Override signal.risk to reflect stop distance — wide stops force minimum risk floors
+    const sd = setup.stopDistancePct;
+    let minRisk = 0;
+    if (sd > 30) minRisk = 80;
+    else if (sd > 20) minRisk = 65;
+    else if (sd > 10) minRisk = 45;
+    if (minRisk > 0 && signal.risk < minRisk) {
+      signal.risk = Math.min(95, minRisk);
+      signal.riskLabel = signal.risk <= 30 ? "Low" : signal.risk <= 60 ? "Medium" : signal.risk <= 80 ? "High" : "Extreme";
+    }
     return { signal, setup };
   });
 
