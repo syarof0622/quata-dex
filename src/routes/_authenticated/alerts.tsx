@@ -221,5 +221,9 @@ function describeRule(r: AlertRule | null | undefined): string {
     case "breakdown": return `close < ${r.lookback}d low`;
     case "score_above": return `AI score > ${r.value}`;
     case "score_below": return `AI score < ${r.value}`;
+    case "setup_long_ready": return `BUY setup → Ready to Trade`;
+    case "setup_short_ready": return `SELL setup → Ready to Trade`;
+    case "pullback_to_support": return `BUY pullback within ${r.tolerancePct ?? 1.5}% of 20d support`;
+    case "breakout_confirmed": return `Confirmed BUY breakout (20d high + ≥1.3× vol)`;
   }
 }
