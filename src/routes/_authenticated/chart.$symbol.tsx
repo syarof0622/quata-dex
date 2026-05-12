@@ -445,11 +445,27 @@ function TradeSetupPanel({
             Setup quality: {q.grade} · {q.score}/100
           </span>
         )}
+        {setup.conditional && (
+          <span className="px-2 py-1 rounded text-xs font-semibold border bg-yellow-500/10 text-yellow-500 border-yellow-500/30">
+            Conditional {long ? "Long" : "Short"} — wait for confirmation
+          </span>
+        )}
         <span className="text-xs text-muted-foreground">
           Risk per trade: <span className="text-foreground">{setup.riskPerTradePct}%</span> · Suggested allocation:{" "}
           <span className="text-foreground">{setup.suggestedAllocationPct}%</span>
         </span>
       </div>
+
+      {Array.isArray((setup as any).riskDrivers) && (setup as any).riskDrivers.length > 0 && (
+        <div className="rounded border border-border bg-card/40 p-3">
+          <div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Risk drivers</div>
+          <ul className="text-xs space-y-0.5">
+            {(setup as any).riskDrivers.map((d: string, i: number) => (
+              <li key={i} className="text-muted-foreground">• {d}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {q && (
         <div className="rounded border border-border bg-card/40 p-3 space-y-2">
