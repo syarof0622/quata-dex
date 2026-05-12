@@ -126,6 +126,47 @@ async function evaluateRule(symbol: string, rule: AlertRule) {
     return { hit, current: sig.score, target: rule.value, unit: "score" as const,
       reason: hit ? `AI Signal score ${sig.score} ${rule.kind === "score_above" ? ">" : "<"} ${rule.value} (${sig.label})` : null };
   }
+  if (rule.kind === "setup_long_ready" || rule.kind === "setup_short_ready") {
+    const sig = compositeSignal(candles, symbol, "1d");
+    const wantLong = rule.kind === "setup_long_ready";
+    const dir = wantLong ? "BUY" : "SELL";
+    const hit = sig.label === dir && sig.executionStatus === "Ready to Trade";
+    return {
+      hit, current: `${sig.label}/${sig.executionStatus}`, target: `${dir}/Ready`, unit: "setup" as const,
+      reason: hit ? `${dir} setup is Ready to Trade — score ${sig.score}, grade ${sig.setup?.grade ?? "-"}` : null,
+    };
+  }
+  if (rule.kind === "pullback_to_support") {
+    const sig = compositeSignal(candles, symbol, "1d");
+    const tol = rule.tolerancePct ?? 1.5;
+    const last = candles[candles.length - 1].close;
+    const support = sig.support ?? null;
+    if (support == null) return { hit: false, current: last, target: null, unit: "price" as const, reason: null };
+    const distPct = ((last - support) / support) * 100;
+    // Hit when close is within tolerance band above support and bias is BUY.
+    const hit = sig.label === "BUY" && distPct >= 0 && distPct <= tol;
+    return {
+      hit, current: +last.toFixed(2), target: +support.toFixed(2), unit: "price" as const,
+      reason: hit ? `Price pulled back within ${tol}% of support ${support.toFixed(2)} with BUY bias` : null,
+    };
+  }
+  if (rule.kind === "breakout_confirmed") {
+    const sig = compositeSignal(candles, symbol, "1d");
+    const last = candles[candles.length - 1];
+    const prev = candles.slice(-21, -1);
+    const high20 = Math.max(...prev.map((c) => c.high));
+    const avgVol = prev.reduce((a, c) => a + c.volume, 0) / Math.max(1, prev.length);
+    const volOk = last.volume > avgVol * 1.3;
+    const hit =
+      sig.label === "BUY" &&
+      sig.executionStatus !== "No Trade" &&
+      last.close > high20 &&
+      volOk;
+    return {
+      hit, current: +last.close.toFixed(2), target: +high20.toFixed(2), unit: "price" as const,
+      reason: hit ? `Breakout above 20d high ${high20.toFixed(2)} on ${(last.volume / avgVol).toFixed(2)}× avg volume + BUY bias` : null,
+    };
+  }
   return null;
 }
 
