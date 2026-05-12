@@ -74,7 +74,7 @@ export function TickerSearch({ className, onPick, placeholder, initialValue }: {
         onChange={e => { setQ(e.target.value); setOpen(true); }}
         onFocus={() => q && setOpen(true)}
         onKeyDown={onKeyDown}
-        placeholder="Search ticker (AAPL, NVDA, BBCA.JK)…"
+        placeholder={placeholder ?? "Search ticker (AAPL, NVDA, BBCA.JK)…"}
         className="pl-9 pr-9"
         autoComplete="off"
         spellCheck={false}
