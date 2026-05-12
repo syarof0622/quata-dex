@@ -1,38 +1,36 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import type { Session, User } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
+import { createContext, useContext, type ReactNode } from "react";
+
+const SUPER_ADMIN = {
+  id: "00000000-0000-0000-0000-000000000001",
+  email: "superadmin@quanta.local",
+  user_metadata: { display_name: "Super Admin" },
+  app_metadata: { role: "super_admin" },
+} as any;
 
 type AuthCtx = {
-  user: User | null;
-  session: Session | null;
+  user: typeof SUPER_ADMIN;
+  session: { user: typeof SUPER_ADMIN } | null;
   loading: boolean;
+  isSuperAdmin: boolean;
   signOut: () => Promise<void>;
 };
 
-const Ctx = createContext<AuthCtx>({ user: null, session: null, loading: true, signOut: async () => {} });
+const Ctx = createContext<AuthCtx>({
+  user: SUPER_ADMIN,
+  session: { user: SUPER_ADMIN },
+  loading: false,
+  isSuperAdmin: true,
+  signOut: async () => {},
+});
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
-      setSession(s);
-      setLoading(false);
-    });
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
-    });
-    return () => subscription.unsubscribe();
-  }, []);
-
   return (
     <Ctx.Provider value={{
-      user: session?.user ?? null,
-      session,
-      loading,
-      signOut: async () => { await supabase.auth.signOut(); },
+      user: SUPER_ADMIN,
+      session: { user: SUPER_ADMIN },
+      loading: false,
+      isSuperAdmin: true,
+      signOut: async () => {},
     }}>
       {children}
     </Ctx.Provider>
