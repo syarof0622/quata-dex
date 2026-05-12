@@ -67,31 +67,85 @@ function tokenize(s: string): string[] {
   return (s ?? "").toLowerCase().replace(/[^a-z0-9\s.\-]/g, " ").split(/\s+/).filter(Boolean);
 }
 
-function buildRelevanceTerms(symbol: string, name?: string | null): { strong: string[]; weak: string[] } {
+// IDX-specific aliases for strict matching
+const IDX_ALIASES: Record<string, string[]> = {
+  "BBCA.JK": ["bbca", "bank central asia", "bca indonesia", "pt bank central asia"],
+  "BBRI.JK": ["bbri", "bank rakyat indonesia", "bri "],
+  "BMRI.JK": ["bmri", "bank mandiri"],
+  "BBNI.JK": ["bbni", "bank negara indonesia", "bni "],
+  "TLKM.JK": ["tlkm", "telkom indonesia", "telekomunikasi indonesia"],
+  "ASII.JK": ["asii", "astra international"],
+  "UNVR.JK": ["unvr", "unilever indonesia"],
+  "GOTO.JK": ["goto", "gojek tokopedia"],
+  "ADRO.JK": ["adro", "adaro"],
+  "ANTM.JK": ["antm", "aneka tambang", "antam"],
+};
+
+// Foreign-context exclusions to avoid false matches like "Bank of Canada" → BBCA
+const FOREIGN_EXCLUSIONS = [
+  "bank of canada", "laurentian", "canadian bank", "u.s. bank", "us bank",
+  "bank of america", "bank of england", "european central bank",
+  "deutsche bank", "barclays", "hsbc", "jpmorgan", "goldman sachs",
+];
+
+function buildRelevanceTerms(symbol: string, name?: string | null): { strong: string[]; weak: string[]; isIDX: boolean } {
   const sym = symbol.toUpperCase();
-  const base = sym.replace(/\..+$/, ""); // BUMI from BUMI.JK
-  const strong = new Set<string>([sym.toLowerCase(), base.toLowerCase()]);
+  const base = sym.replace(/\..+$/, "");
+  const isIDX = sym.endsWith(".JK");
+  const strong = new Set<string>([sym.toLowerCase()]);
+  // For IDX, only use base ticker if it's a clear company alias context — rely on aliases instead
+  if (!isIDX) strong.add(base.toLowerCase());
+  // Add curated aliases (IDX-strict)
+  (IDX_ALIASES[sym] ?? []).forEach(a => strong.add(a));
   if (name) {
-    // First 1-2 meaningful words of company name (e.g. "Bumi Resources Tbk" → bumi, resources)
     const words = tokenize(name).filter(w => w.length > 2 && !/^(tbk|inc|ltd|plc|corp|company|the|and)$/.test(w));
-    words.slice(0, 3).forEach(w => strong.add(w));
+    // Use 2-word phrase for stricter match (e.g. "bank central")
+    if (words.length >= 2) strong.add(`${words[0]} ${words[1]}`);
+    if (!isIDX) words.slice(0, 3).forEach(w => strong.add(w));
   }
   const sector = sectorOf(sym);
   const weak = sector ? SECTOR_KEYWORDS[sector] ?? [] : [];
-  return { strong: [...strong], weak };
+  return { strong: [...strong], weak, isIDX };
 }
 
-function scoreRelevance(title: string, terms: { strong: string[]; weak: string[] }): {
-  score: number;            // 0..100
+function scoreRelevance(title: string, terms: { strong: string[]; weak: string[]; isIDX: boolean }): {
+  score: number;
   band: "High" | "Medium" | "Low" | "Unrelated";
 } {
   const t = (title ?? "").toLowerCase();
+  // Foreign exclusion check: if title clearly about a foreign bank/entity, hard-exclude for IDX
+  if (terms.isIDX) {
+    for (const ex of FOREIGN_EXCLUSIONS) {
+      if (t.includes(ex)) {
+        // Only allow if also has a strong IDX-specific term beyond ticker base alone
+        const hasStrongIdx = terms.strong.some(w => w.length > 4 && t.includes(w));
+        if (!hasStrongIdx) return { score: 0, band: "Unrelated" };
+      }
+    }
+  }
   let score = 0;
-  for (const w of terms.strong) if (w && t.includes(w)) score += 50;
-  for (const w of terms.weak) if (w && t.includes(w)) score += 15;
+  let strongHit = false;
+  for (const w of terms.strong) {
+    if (w && w.length >= 3 && t.includes(w)) { score += 50; strongHit = true; }
+  }
+  // For IDX, sector keywords alone never qualify as Relevant — they're context only
+  if (!terms.isIDX) {
+    for (const w of terms.weak) if (w && t.includes(w)) score += 15;
+  } else {
+    // Boost slightly if strong hit AND Indonesia/IDX context present
+    const idxContext = ["indonesia", "idx", "ihsg", "jakarta", "bi rate", "ojk", "rupiah"];
+    if (strongHit && idxContext.some(k => t.includes(k))) score += 20;
+  }
   score = Math.min(100, score);
-  const band: "High" | "Medium" | "Low" | "Unrelated" =
-    score >= 50 ? "High" : score >= 25 ? "Medium" : score > 0 ? "Low" : "Unrelated";
+  // For IDX, require strong hit to be Medium or higher
+  let band: "High" | "Medium" | "Low" | "Unrelated";
+  if (terms.isIDX) {
+    if (!strongHit) band = "Unrelated";
+    else if (score >= 65) band = "High";
+    else band = "Medium";
+  } else {
+    band = score >= 50 ? "High" : score >= 25 ? "Medium" : score > 0 ? "Low" : "Unrelated";
+  }
   return { score, band };
 }
 
