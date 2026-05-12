@@ -257,6 +257,8 @@ function ChartPage() {
         signalLabel={sig?.label}
         conditional={!!setup.data?.setup?.conditional}
         qualityGrade={setup.data?.setup?.quality?.grade}
+        executionStatus={sig?.executionStatus}
+        executionReason={sig?.executionReason}
       />
     </div>
   );
