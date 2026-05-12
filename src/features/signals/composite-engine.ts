@@ -28,8 +28,9 @@ export type CompositeSignal = {
   score: number;            // -100..100
   confidence: number;       // 0..100
   risk: number;             // 0..100
-  trendStrength: number | null;    // 0..100 (ADX-based) or null when insufficient data
-  trendStrengthLabel: "Weak" | "Developing" | "Strong" | "Very Strong" | "N/A";
+  trendStrength: number | null;    // 0..100 (raw ADX) or null when insufficient data
+  trendStrengthLabel: "Weak" | "Developing" | "Strong" | "Very Strong" | "Extreme" | "N/A";
+  trendStrengthWarning?: string;
   riskLabel: "Low" | "Medium" | "High" | "Extreme";
   confidenceLabel: "Low" | "Moderate" | "High" | "Very High";
   volatilityLevel: "low" | "medium" | "high";
@@ -45,6 +46,8 @@ export type CompositeSignal = {
   patterns: { name: string; bias: string; strength: string }[];
   dataQuality: DataQuality;
   dataNotes: string[];
+  riskDrivers: string[];
+  rebound: { active: boolean; reason: string | null };
   computedAt: string;
 };
 
