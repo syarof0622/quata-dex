@@ -630,6 +630,12 @@ export function buildTradeSetup(c: Candle[], signal: CompositeSignal): TradeSetu
   if ((rrTp1 ?? 0) < 1.5) riskDrivers.push(`R:R lemah (${(rrTp1 ?? 0).toFixed(2)})`);
   if (signal.confidence < 60) riskDrivers.push(`Confidence rendah (${signal.confidence})`);
   if (signal.rebound?.active) riskDrivers.push(`Counter-move aktif: ${signal.rebound.reason ?? "rebound"}`);
+  if (signal.extendedRally) riskDrivers.push(`Extended ${signal.dailyChangePct > 0 ? "rally" : "decline"} ${signal.dailyChangePct.toFixed(1)}% hari ini — risiko chase`);
+
+  // Reduce allocation more aggressively when |dailyChangePct| > 10
+  const extreme = Math.abs(signal.dailyChangePct ?? 0) > 10;
+  const allocCap = extreme ? 1.5 : conditional ? 3 : 25;
+  const riskCap = extreme ? 0.25 : conditional ? 0.5 : riskPerTradePct;
 
   return {
     bias,
