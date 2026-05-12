@@ -569,13 +569,15 @@ function ReasoningPanel({ signal, regime, mctx, setup, symbol, fmt }: {
   const short = signal.label === "SELL" || signal.label === "STRONG_SELL";
   const hold = !long && !short;
 
-  // ---- WHY ----
-  const whyParts: string[] = [];
-  if (signal.bullishFactors?.length) whyParts.push(`${signal.bullishFactors.length} faktor bullish`);
-  if (signal.bearishFactors?.length) whyParts.push(`${signal.bearishFactors.length} faktor bearish`);
-  whyParts.push(`confidence ${signal.confidence ?? 0}/100`);
-  if (signal.trendStrength != null) whyParts.push(`ADX ${Math.round(signal.trendStrength)}`);
-  const why = `${symbol} → ${label}: ${whyParts.join(" · ")}. ${signal.dataQuality !== "high" ? `Data ${signal.dataQuality} — perlakukan dengan hati-hati. ` : ""}${mctx?.summary ?? ""}`;
+  // ---- WHY (professional microcopy) ----
+  const biasWord = long ? "bullish" : short ? "bearish" : "neutral";
+  const execStatus = signal.executionStatus ?? (hold ? "No Trade" : "Wait for Confirmation");
+  const execReady = execStatus === "Ready to Trade";
+  const headline = hold
+    ? `${symbol} shows no clear directional bias — wait for setup.`
+    : execReady
+      ? `${symbol} shows ${biasWord} market bias with a valid execution trigger.`
+      : `${symbol} shows ${biasWord} market bias, but execution remains conditional.`;
 
   // ---- BEST ACTION ----
   const q = setup?.quality;
@@ -588,6 +590,9 @@ function ReasoningPanel({ signal, regime, mctx, setup, symbol, fmt }: {
   } else if (!setup || setup.bias === "neutral") {
     action = "Tidak ada setup tervalidasi";
     actionDetail = "Sinyal arah ada, tetapi level entry/stop belum jelas.";
+  } else if (!execReady) {
+    action = `${execStatus}`;
+    actionDetail = signal.executionReason || "Tunggu konfirmasi sebelum entry agresif.";
   } else if (grade === "Poor") {
     action = "SKIP atau paper-trade saja";
     actionDetail = `Setup ${grade} (${q.score}/100). Edge terlalu lemah; tunggu konfirmasi.`;
@@ -602,12 +607,42 @@ function ReasoningPanel({ signal, regime, mctx, setup, symbol, fmt }: {
     actionDetail += " Konteks market melawan — kurangi size atau tunggu perbaikan trend benchmark.";
   }
 
+  // ---- Decision Summary ----
+  const trigger = signal.extendedRally
+    ? "Breakout with volume or pullback to EMA20/EMA50"
+    : signal.regime?.phase === "ranging" ? "Breakout from range with volume"
+    : long ? "Pullback to support / EMA20" : short ? "Bounce to resistance / EMA20" : "Wait for clearer signal";
+  const decision = {
+    bias: hold ? "Neutral" : long ? "Bullish" : "Bearish",
+    execution: execStatus,
+    strategy: signal.extendedRally ? "Buy on pullback (avoid chasing)" : execReady ? (long ? "Long with confirmation" : "Short with confirmation") : "Wait & set alert",
+    risk: signal.riskLabel,
+    avoid: signal.extendedRally ? "Chasing after sharp rally" : signal.rebound?.active ? "Trading against the counter-move" : "Oversizing in low-conviction setup",
+    trigger,
+  };
+
   return (
     <div className="space-y-4 text-sm">
       {/* WHY */}
-      <div className="rounded border border-border bg-card/40 p-3">
-        <div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Why this signal</div>
-        <div className="text-foreground">{why}</div>
+      <div className="rounded border border-border bg-card/40 p-3 space-y-2">
+        <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Why this signal</div>
+        <div className="text-foreground font-medium">{headline}</div>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1 text-xs">
+          <div><span className="text-muted-foreground">Market Bias:</span> <span className="font-medium">{label}</span></div>
+          <div><span className="text-muted-foreground">Execution:</span> <span className="font-medium">{execStatus}</span></div>
+          <div><span className="text-muted-foreground">Confidence:</span> <span className="font-medium">{signal.confidence ?? 0}/100</span></div>
+          {signal.trendStrength != null
+            ? <div><span className="text-muted-foreground">ADX:</span> <span className="font-medium">{Math.round(signal.trendStrength)}</span></div>
+            : <div><span className="text-muted-foreground">ADX:</span> <span className="font-medium">N/A</span></div>}
+          {typeof signal.dailyChangePct === "number" && (
+            <div><span className="text-muted-foreground">Today:</span> <span className={`font-medium ${signal.dailyChangePct > 0 ? "text-bull" : signal.dailyChangePct < 0 ? "text-bear" : ""}`}>{signal.dailyChangePct > 0 ? "+" : ""}{signal.dailyChangePct}%</span></div>
+          )}
+          {signal.dataQuality && <div><span className="text-muted-foreground">Data:</span> <span className="font-medium capitalize">{signal.dataQuality}</span></div>}
+        </div>
+        {signal.executionReason && (
+          <div className="text-[11px] text-muted-foreground border-t border-border pt-2">{signal.executionReason}</div>
+        )}
+        {mctx?.summary && <div className="text-[11px] text-muted-foreground">{mctx.summary}</div>}
       </div>
 
       {/* MARKET CONTEXT */}
