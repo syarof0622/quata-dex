@@ -39,6 +39,9 @@ function Portfolio() {
   const sectorBreakdown = Array.isArray(d.sectorBreakdown) ? d.sectorBreakdown : [];
   const curve = Array.isArray(d.curve) ? d.curve : [];
 
+  const hasPositions = positions.length > 0;
+  const hasActivity = hasPositions || totalTrades > 0;
+
   return (
     <div className="p-4 md:p-6 space-y-4">
       <div>
@@ -46,30 +49,44 @@ function Portfolio() {
         <p className="text-sm text-muted-foreground">Real-time exposure, P&L breakdown & risk metrics</p>
       </div>
 
+      {!hasActivity && (
+        <div className="panel p-8 text-center space-y-3">
+          <div className="text-lg font-semibold">No holdings yet</div>
+          <p className="text-sm text-muted-foreground max-w-md mx-auto">
+            Mulai dengan membuat paper trade dari halaman chart, atau gunakan screener untuk mencari kandidat saham.
+          </p>
+          <div className="flex justify-center gap-2 flex-wrap">
+            <Link to="/screener" className="text-xs px-3 py-1.5 rounded bg-primary text-primary-foreground hover:opacity-90">Open Screener</Link>
+            <Link to="/lab" className="text-xs px-3 py-1.5 rounded bg-accent/40 hover:bg-accent/60">Simulation Lab</Link>
+            <Link to="/watchlist" className="text-xs px-3 py-1.5 rounded bg-accent/40 hover:bg-accent/60">Add Watchlist</Link>
+          </div>
+        </div>
+      )}
+
       {/* Top stats */}
       <div className="grid md:grid-cols-6 gap-3">
         <Stat label="Equity" value={"$" + formatPrice(equity)} />
         <Stat label="Cash" value={"$" + formatPrice(num(d.cash))} />
-        <Stat label="Holdings value" value={"$" + formatPrice(num(d.totalValue))} />
-        <Stat label="Unrealized P/L" value={"$" + formatPrice(num(d.unrealized))} tone={num(d.unrealized) >= 0 ? "bull" : "bear"} />
-        <Stat label="Realized P/L" value={"$" + formatPrice(num(d.realized))} tone={num(d.realized) >= 0 ? "bull" : "bear"} />
-        <Stat label="Total return" value={formatPct(pnlPct)} tone={pnlPct >= 0 ? "bull" : "bear"} />
+        <Stat label="Holdings value" value={hasPositions ? "$" + formatPrice(num(d.totalValue)) : "—"} />
+        <Stat label="Unrealized P/L" value={hasPositions ? "$" + formatPrice(num(d.unrealized)) : "—"} tone={hasPositions ? (num(d.unrealized) >= 0 ? "bull" : "bear") : undefined} />
+        <Stat label="Realized P/L" value={hasActivity ? "$" + formatPrice(num(d.realized)) : "—"} tone={hasActivity ? (num(d.realized) >= 0 ? "bull" : "bear") : undefined} />
+        <Stat label="Total return" value={hasActivity ? formatPct(pnlPct) : "—"} tone={hasActivity ? (pnlPct >= 0 ? "bull" : "bear") : undefined} />
       </div>
 
-      {/* Risk metrics */}
+      {/* Risk metrics — only meaningful when there are positions */}
       <div className="grid md:grid-cols-4 gap-3">
-        <RiskCard icon={<Layers className="size-4" />} label="Exposure" value={exposure.toFixed(1) + "%"}
-          tone={exposure > 90 ? "bear" : exposure > 60 ? "warn" : "bull"}
-          hint={exposure > 90 ? "Heavily invested — low cash buffer" : exposure > 60 ? "Healthy mix" : "Conservative"} />
-        <RiskCard icon={<Target className="size-4" />} label="Top concentration" value={concentration.toFixed(1) + "%"}
-          tone={concentration > 35 ? "bear" : concentration > 20 ? "warn" : "bull"}
-          hint={concentration > 35 ? "Single position dominates equity" : "Diversified"} />
-        <RiskCard icon={<Activity className="size-4" />} label="Beta vs JKSE" value={beta.toFixed(2)}
-          tone={Math.abs(beta - 1) < 0.3 ? "warn" : beta > 1.3 ? "bear" : "bull"}
-          hint={beta > 1.3 ? "Aggressive — moves more than market" : beta < 0.7 ? "Defensive" : "Tracks market"} />
-        <RiskCard icon={<TrendingUp className="size-4" />} label="Win rate" value={winRate.toFixed(0) + "%"}
-          tone={winRate >= 55 ? "bull" : winRate >= 45 ? "warn" : "bear"}
-          hint={`${totalTrades} closed trades`} />
+        <RiskCard icon={<Layers className="size-4" />} label="Exposure" value={hasPositions ? exposure.toFixed(1) + "%" : "N/A"}
+          tone={!hasPositions ? "warn" : exposure > 90 ? "bear" : exposure > 60 ? "warn" : "bull"}
+          hint={!hasPositions ? "No positions to measure" : exposure > 90 ? "Heavily invested — low cash buffer" : exposure > 60 ? "Healthy mix" : "Conservative"} />
+        <RiskCard icon={<Target className="size-4" />} label="Top concentration" value={hasPositions ? concentration.toFixed(1) + "%" : "N/A"}
+          tone={!hasPositions ? "warn" : concentration > 35 ? "bear" : concentration > 20 ? "warn" : "bull"}
+          hint={!hasPositions ? "Add a position to see concentration" : concentration > 35 ? "Single position dominates equity" : "Diversified"} />
+        <RiskCard icon={<Activity className="size-4" />} label="Beta vs JKSE" value={hasPositions ? beta.toFixed(2) : "N/A"}
+          tone={!hasPositions ? "warn" : Math.abs(beta - 1) < 0.3 ? "warn" : beta > 1.3 ? "bear" : "bull"}
+          hint={!hasPositions ? "Beta requires holdings" : beta > 1.3 ? "Aggressive — moves more than market" : beta < 0.7 ? "Defensive" : "Tracks market"} />
+        <RiskCard icon={<TrendingUp className="size-4" />} label="Win rate" value={totalTrades > 0 ? winRate.toFixed(0) + "%" : "N/A"}
+          tone={totalTrades === 0 ? "warn" : winRate >= 55 ? "bull" : winRate >= 45 ? "warn" : "bear"}
+          hint={totalTrades > 0 ? `${totalTrades} closed trades` : "No closed trades yet"} />
       </div>
 
       <div className="grid md:grid-cols-3 gap-3">
