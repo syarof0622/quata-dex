@@ -134,7 +134,13 @@ export const getCandles = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const tf = TFMap[data.timeframe] ?? TFMap["1d"];
     const key = `c:${data.symbol}:${data.timeframe}`;
-    return cached<CandleDTO[]>(key, 30_000, async () => {
+    // Intraday TFs cache briefly so panels stay near-realtime; daily/weekly cache longer.
+    const ttl = ["1m", "5m", "15m"].includes(data.timeframe)
+      ? 5_000
+      : ["1h", "4h"].includes(data.timeframe)
+      ? 15_000
+      : 60_000;
+    return cached<CandleDTO[]>(key, ttl, async () => {
       try {
         const r = await yfFetch(
           `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
