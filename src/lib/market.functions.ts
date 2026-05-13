@@ -93,7 +93,7 @@ export const getQuotes = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const key = `q:${data.symbols.slice().sort().join(",")}`;
-    return cached<Quote[]>(key, 8_000, async () => {
+    return cached<Quote[]>(key, 3_000, async () => {
       const results = await Promise.all(data.symbols.map((s) => fetchQuoteOne(s)));
       return results.filter((q): q is Quote => !!q);
     });
@@ -103,7 +103,7 @@ export const getQuote = createServerFn({ method: "POST" })
   .inputValidator((d: { symbol: string }) => z.object({ symbol: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
     const key = `q1:${data.symbol}`;
-    return cached<Quote | null>(key, 8_000, () => fetchQuoteOne(data.symbol));
+    return cached<Quote | null>(key, 2_000, () => fetchQuoteOne(data.symbol));
   });
 
 const TFMap: Record<string, { interval: string; range: string }> = {
