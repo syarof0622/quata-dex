@@ -271,7 +271,7 @@ const MOVER_UNIVERSE: Record<"idx" | "us" | "global", string[]> = {
 };
 
 async function buildMovers(symbols: string[]) {
-  const arr = (await Promise.all(symbols.map((s) => fetchQuoteOne(s)))).filter(
+  const arr = (await fetchInChunks(symbols, 20, fetchQuoteOne)).filter(
     (q): q is Quote => !!q,
   );
   const sorted = [...arr].sort((a, b) => (b.changePercent ?? 0) - (a.changePercent ?? 0));
