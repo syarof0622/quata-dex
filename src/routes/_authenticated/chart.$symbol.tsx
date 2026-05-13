@@ -58,7 +58,7 @@ function tvSymbol(sym: string): string {
 
 function ChartPage() {
   const { symbol } = useParams({ from: "/_authenticated/chart/$symbol" });
-  const [tf, setTf] = useState<(typeof TFS)[number]>("D");
+  const [tf, setTf] = useState<(typeof TFS)[number]>("15");
   const containerRef = useRef<HTMLDivElement>(null);
   const yfTf = tfToYf(tf);
   const isIDX = symbolMarket(symbol) === "idx";
@@ -75,30 +75,38 @@ function ChartPage() {
   }, [panelOpen]);
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
 
+  // Refresh cadence scales with selected timeframe so all panels stay synced
+  // with the latest tick. Intraday → fast polling, daily/weekly → slower.
+  const isIntraday = ["5", "15", "60", "240"].includes(tf);
+  const quoteInterval = isIntraday ? 3_000 : 10_000;
+  const signalInterval = isIntraday ? 15_000 : 60_000;
+  const srInterval = isIntraday ? 60_000 : 5 * 60_000;
+
   const quote = useQuery({
     queryKey: ["quote", symbol],
     queryFn: () => getQuote({ data: { symbol } }),
-    refetchInterval: 10000,
+    refetchInterval: quoteInterval,
+    refetchIntervalInBackground: false,
   });
   const advSignal = useQuery({
     queryKey: ["advsignal", symbol, yfTf],
     queryFn: () => getAdvancedSignal({ data: { symbol, timeframe: yfTf, mtf: true } }),
-    refetchInterval: 60000,
+    refetchInterval: signalInterval,
   });
   const setup = useQuery({
     queryKey: ["setup", symbol, yfTf],
     queryFn: () => getTradeSetup({ data: { symbol, timeframe: yfTf } }),
-    refetchInterval: 60000,
+    refetchInterval: signalInterval,
   });
   const sr = useQuery({
     queryKey: ["sr", symbol, yfTf],
     queryFn: () => getSupportResistance({ data: { symbol, timeframe: yfTf } }),
-    refetchInterval: 5 * 60_000,
+    refetchInterval: srInterval,
   });
   const regime = useQuery({
     queryKey: ["regime", symbol, yfTf],
     queryFn: () => getMarketRegime({ data: { symbol, timeframe: yfTf } }),
-    refetchInterval: 5 * 60_000,
+    refetchInterval: srInterval,
   });
   const mctx = useQuery({
     queryKey: ["mctx", symbol],
