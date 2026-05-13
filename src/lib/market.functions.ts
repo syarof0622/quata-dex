@@ -72,12 +72,15 @@ function quoteFromChartMeta(meta: any): Quote {
 
 async function fetchQuoteOne(symbol: string): Promise<Quote | null> {
   try {
+    // Use 1m interval to get the freshest regularMarketPrice tick available from Yahoo.
     const r = await yfFetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=5d`,
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1m&range=1d&includePrePost=true`,
     );
     const meta = r?.chart?.result?.[0]?.meta;
     if (!meta) return null;
-    return quoteFromChartMeta(meta);
+    const q = quoteFromChartMeta(meta);
+    q.marketState = meta?.marketState ?? null;
+    return q;
   } catch (e) {
     console.error("fetchQuoteOne", symbol, e);
     return null;
