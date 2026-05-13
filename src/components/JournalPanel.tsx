@@ -24,11 +24,11 @@ export function JournalPanel() {
     <div className="space-y-3">
       {s && (
         <div className="grid md:grid-cols-5 gap-2">
-          <Stat label="Trades" value={s.total} />
-          <Stat label="Closed" value={s.closed} />
-          <Stat label="Win rate" value={s.winRate.toFixed(1) + "%"} tone={s.winRate >= 50 ? "bull" : "bear"} />
-          <Stat label="Total P/L" value={"$" + formatPrice(s.totalPnl)} tone={s.totalPnl >= 0 ? "bull" : "bear"} />
-          <Stat label="Expectancy" value={"$" + formatPrice(s.expectancy)} tone={s.expectancy >= 0 ? "bull" : "bear"} />
+          <Stat label="Trades" value={s.total ?? 0} />
+          <Stat label="Closed" value={s.closed ?? 0} />
+          <Stat label="Win rate" value={(Number(s.winRate) || 0).toFixed(1) + "%"} tone={(s.winRate ?? 0) >= 50 ? "bull" : "bear"} />
+          <Stat label="Total P/L" value={"$" + formatPrice(s.totalPnl ?? 0)} tone={(s.totalPnl ?? 0) >= 0 ? "bull" : "bear"} />
+          <Stat label="Expectancy" value={"$" + formatPrice(s.expectancy ?? 0)} tone={(s.expectancy ?? 0) >= 0 ? "bull" : "bear"} />
         </div>
       )}
 

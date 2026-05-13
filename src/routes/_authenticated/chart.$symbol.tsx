@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { getQuote } from "@/lib/market.functions";
+import { getQuote, getQuoteRealtime } from "@/lib/market.functions";
 import {
   getSignal,
   getAdvancedSignal,
@@ -75,16 +75,29 @@ function ChartPage() {
   }, [panelOpen]);
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
 
+  // Realtime data provider toggle (Twelve Data) — persisted per browser.
+  const [realtime, setRealtime] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("chart.realtime") === "1";
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("chart.realtime", realtime ? "1" : "0");
+    }
+  }, [realtime]);
+
   // Refresh cadence scales with selected timeframe so all panels stay synced
   // with the latest tick. Intraday → fast polling, daily/weekly → slower.
   const isIntraday = ["5", "15", "60", "240"].includes(tf);
-  const quoteInterval = isIntraday ? 3_000 : 10_000;
+  const quoteInterval = realtime ? 2_000 : isIntraday ? 3_000 : 10_000;
   const signalInterval = isIntraday ? 15_000 : 60_000;
   const srInterval = isIntraday ? 60_000 : 5 * 60_000;
 
   const quote = useQuery({
-    queryKey: ["quote", symbol],
-    queryFn: () => getQuote({ data: { symbol } }),
+    queryKey: ["quote", symbol, realtime ? "td" : "yf"],
+    queryFn: () => realtime
+      ? getQuoteRealtime({ data: { symbol, provider: "twelvedata" } })
+      : getQuote({ data: { symbol } }),
     refetchInterval: quoteInterval,
     refetchIntervalInBackground: false,
   });
@@ -279,6 +292,19 @@ function ChartPage() {
         {/* Header */}
         <div className="panel p-4 flex flex-wrap items-center gap-4">
           <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Button
+                size="sm"
+                variant={realtime ? "default" : "outline"}
+                className="h-6 text-[10px] px-2"
+                onClick={() => setRealtime(r => !r)}
+                title="Gunakan data realtime via Twelve Data"
+              >
+                <Zap className="size-3 mr-1" />
+                {realtime ? "Realtime: ON" : "Realtime: OFF"}
+              </Button>
+              {realtime && <span className="text-[10px] text-bull">Twelve Data</span>}
+            </div>
             <div className="text-xs text-muted-foreground flex items-center gap-2">
               {quote.data?.exchange ?? (isIDX ? "IDX" : "—")}
               {quote.data?.marketState && (
@@ -288,7 +314,8 @@ function ChartPage() {
                   "bg-accent/40 text-foreground"
                 }`}>{quote.data.marketState === "REGULAR" ? "LIVE" : quote.data.marketState}</span>
               )}
-              {isIDX && <span className="text-[10px] text-amber-400">~15m delay</span>}
+              {isIDX && !realtime && <span className="text-[10px] text-amber-400">~15m delay</span>}
+              {isIDX && realtime && <span className="text-[10px] text-bull">~realtime</span>}
             </div>
             <div className="text-2xl font-semibold">{symbol}</div>
             <div className="text-xs text-muted-foreground">{quote.data?.shortName ?? ""}</div>
