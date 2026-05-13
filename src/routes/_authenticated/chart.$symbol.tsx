@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { getQuote } from "@/lib/market.functions";
+import { getQuote, getQuoteRealtime } from "@/lib/market.functions";
 import {
   getSignal,
   getAdvancedSignal,
