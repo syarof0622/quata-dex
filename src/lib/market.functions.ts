@@ -87,16 +87,80 @@ async function fetchQuoteOne(symbol: string): Promise<Quote | null> {
   }
 }
 
+async function fetchInChunks<T>(items: string[], chunk: number, fn: (s: string) => Promise<T>): Promise<T[]> {
+  const out: T[] = [];
+  for (let i = 0; i < items.length; i += chunk) {
+    const slice = items.slice(i, i + chunk);
+    const r = await Promise.all(slice.map(fn));
+    out.push(...r);
+  }
+  return out;
+}
+
 export const getQuotes = createServerFn({ method: "POST" })
   .inputValidator((d: { symbols: string[] }) =>
-    z.object({ symbols: z.array(z.string()).min(1).max(50) }).parse(d),
+    z.object({ symbols: z.array(z.string()).min(1).max(200) }).parse(d),
   )
   .handler(async ({ data }) => {
     const key = `q:${data.symbols.slice().sort().join(",")}`;
     return cached<Quote[]>(key, 3_000, async () => {
-      const results = await Promise.all(data.symbols.map((s) => fetchQuoteOne(s)));
+      const results = await fetchInChunks(data.symbols, 20, fetchQuoteOne);
       return results.filter((q): q is Quote => !!q);
     });
+  });
+
+// ===== Twelve Data realtime provider (optional opt-in) =====
+function tdSymbol(symbol: string): { symbol: string; exchange?: string } {
+  if (symbol.endsWith(".JK")) return { symbol: symbol.replace(/\.JK$/, ""), exchange: "IDX" };
+  return { symbol };
+}
+
+async function fetchQuoteTwelveData(symbol: string): Promise<Quote | null> {
+  const apiKey = process.env.TWELVE_DATA_API_KEY;
+  if (!apiKey) throw new Error("TWELVE_DATA_API_KEY not configured");
+  const { symbol: s, exchange } = tdSymbol(symbol);
+  const params = new URLSearchParams({ symbol: s, apikey: apiKey });
+  if (exchange) params.set("exchange", exchange);
+  try {
+    const r = await fetch(`https://api.twelvedata.com/quote?${params.toString()}`);
+    if (!r.ok) return null;
+    const j: any = await r.json();
+    if (!j || j.status === "error" || !j.close) return null;
+    const price = Number(j.close);
+    const prev = Number(j.previous_close);
+    const change = isFinite(price - prev) ? price - prev : null;
+    const pct = prev ? (change! / prev) * 100 : null;
+    return {
+      symbol,
+      shortName: j.name ?? symbol,
+      price: isFinite(price) ? price : null,
+      change,
+      changePercent: pct,
+      open: Number(j.open) || null,
+      high: Number(j.high) || null,
+      low: Number(j.low) || null,
+      prevClose: isFinite(prev) ? prev : null,
+      volume: Number(j.volume) || null,
+      marketCap: null,
+      currency: j.currency ?? null,
+      exchange: j.exchange ?? exchange ?? null,
+      marketState: j.is_market_open ? "REGULAR" : "CLOSED",
+    };
+  } catch (e) {
+    console.error("twelvedata quote error", symbol, e);
+    return null;
+  }
+}
+
+export const getQuoteRealtime = createServerFn({ method: "POST" })
+  .inputValidator((d: { symbol: string; provider?: "twelvedata" | "yahoo" }) =>
+    z.object({ symbol: z.string().min(1), provider: z.enum(["twelvedata", "yahoo"]).optional().default("twelvedata") }).parse(d))
+  .handler(async ({ data }) => {
+    if (data.provider === "twelvedata") {
+      const key = `td:${data.symbol}`;
+      return cached<Quote | null>(key, 2_000, () => fetchQuoteTwelveData(data.symbol));
+    }
+    return cached<Quote | null>(`q1:${data.symbol}`, 2_000, () => fetchQuoteOne(data.symbol));
   });
 
 export const getQuote = createServerFn({ method: "POST" })
