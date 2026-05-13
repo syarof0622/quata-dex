@@ -75,16 +75,29 @@ function ChartPage() {
   }, [panelOpen]);
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
 
+  // Realtime data provider toggle (Twelve Data) — persisted per browser.
+  const [realtime, setRealtime] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("chart.realtime") === "1";
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("chart.realtime", realtime ? "1" : "0");
+    }
+  }, [realtime]);
+
   // Refresh cadence scales with selected timeframe so all panels stay synced
   // with the latest tick. Intraday → fast polling, daily/weekly → slower.
   const isIntraday = ["5", "15", "60", "240"].includes(tf);
-  const quoteInterval = isIntraday ? 3_000 : 10_000;
+  const quoteInterval = realtime ? 2_000 : isIntraday ? 3_000 : 10_000;
   const signalInterval = isIntraday ? 15_000 : 60_000;
   const srInterval = isIntraday ? 60_000 : 5 * 60_000;
 
   const quote = useQuery({
-    queryKey: ["quote", symbol],
-    queryFn: () => getQuote({ data: { symbol } }),
+    queryKey: ["quote", symbol, realtime ? "td" : "yf"],
+    queryFn: () => realtime
+      ? getQuoteRealtime({ data: { symbol, provider: "twelvedata" } })
+      : getQuote({ data: { symbol } }),
     refetchInterval: quoteInterval,
     refetchIntervalInBackground: false,
   });
