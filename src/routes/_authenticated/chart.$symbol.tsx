@@ -292,6 +292,19 @@ function ChartPage() {
         {/* Header */}
         <div className="panel p-4 flex flex-wrap items-center gap-4">
           <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Button
+                size="sm"
+                variant={realtime ? "default" : "outline"}
+                className="h-6 text-[10px] px-2"
+                onClick={() => setRealtime(r => !r)}
+                title="Gunakan data realtime via Twelve Data"
+              >
+                <Zap className="size-3 mr-1" />
+                {realtime ? "Realtime: ON" : "Realtime: OFF"}
+              </Button>
+              {realtime && <span className="text-[10px] text-bull">Twelve Data</span>}
+            </div>
             <div className="text-xs text-muted-foreground flex items-center gap-2">
               {quote.data?.exchange ?? (isIDX ? "IDX" : "—")}
               {quote.data?.marketState && (
@@ -301,7 +314,8 @@ function ChartPage() {
                   "bg-accent/40 text-foreground"
                 }`}>{quote.data.marketState === "REGULAR" ? "LIVE" : quote.data.marketState}</span>
               )}
-              {isIDX && <span className="text-[10px] text-amber-400">~15m delay</span>}
+              {isIDX && !realtime && <span className="text-[10px] text-amber-400">~15m delay</span>}
+              {isIDX && realtime && <span className="text-[10px] text-bull">~realtime</span>}
             </div>
             <div className="text-2xl font-semibold">{symbol}</div>
             <div className="text-xs text-muted-foreground">{quote.data?.shortName ?? ""}</div>
