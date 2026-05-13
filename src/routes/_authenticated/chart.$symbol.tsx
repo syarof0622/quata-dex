@@ -58,7 +58,7 @@ function tvSymbol(sym: string): string {
 
 function ChartPage() {
   const { symbol } = useParams({ from: "/_authenticated/chart/$symbol" });
-  const [tf, setTf] = useState<(typeof TFS)[number]>("D");
+  const [tf, setTf] = useState<(typeof TFS)[number]>("15");
   const containerRef = useRef<HTMLDivElement>(null);
   const yfTf = tfToYf(tf);
   const isIDX = symbolMarket(symbol) === "idx";
@@ -75,30 +75,38 @@ function ChartPage() {
   }, [panelOpen]);
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
 
+  // Refresh cadence scales with selected timeframe so all panels stay synced
+  // with the latest tick. Intraday → fast polling, daily/weekly → slower.
+  const isIntraday = ["5", "15", "60", "240"].includes(tf);
+  const quoteInterval = isIntraday ? 3_000 : 10_000;
+  const signalInterval = isIntraday ? 15_000 : 60_000;
+  const srInterval = isIntraday ? 60_000 : 5 * 60_000;
+
   const quote = useQuery({
     queryKey: ["quote", symbol],
     queryFn: () => getQuote({ data: { symbol } }),
-    refetchInterval: 10000,
+    refetchInterval: quoteInterval,
+    refetchIntervalInBackground: false,
   });
   const advSignal = useQuery({
     queryKey: ["advsignal", symbol, yfTf],
     queryFn: () => getAdvancedSignal({ data: { symbol, timeframe: yfTf, mtf: true } }),
-    refetchInterval: 60000,
+    refetchInterval: signalInterval,
   });
   const setup = useQuery({
     queryKey: ["setup", symbol, yfTf],
     queryFn: () => getTradeSetup({ data: { symbol, timeframe: yfTf } }),
-    refetchInterval: 60000,
+    refetchInterval: signalInterval,
   });
   const sr = useQuery({
     queryKey: ["sr", symbol, yfTf],
     queryFn: () => getSupportResistance({ data: { symbol, timeframe: yfTf } }),
-    refetchInterval: 5 * 60_000,
+    refetchInterval: srInterval,
   });
   const regime = useQuery({
     queryKey: ["regime", symbol, yfTf],
     queryFn: () => getMarketRegime({ data: { symbol, timeframe: yfTf } }),
-    refetchInterval: 5 * 60_000,
+    refetchInterval: srInterval,
   });
   const mctx = useQuery({
     queryKey: ["mctx", symbol],
@@ -271,16 +279,34 @@ function ChartPage() {
         {/* Header */}
         <div className="panel p-4 flex flex-wrap items-center gap-4">
           <div>
-            <div className="text-xs text-muted-foreground">{quote.data?.exchange ?? (isIDX ? "IDX" : "—")}</div>
+            <div className="text-xs text-muted-foreground flex items-center gap-2">
+              {quote.data?.exchange ?? (isIDX ? "IDX" : "—")}
+              {quote.data?.marketState && (
+                <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase tracking-wide ${
+                  quote.data.marketState === "REGULAR" ? "bg-bull-soft text-bull" :
+                  quote.data.marketState === "CLOSED" ? "bg-muted text-muted-foreground" :
+                  "bg-accent/40 text-foreground"
+                }`}>{quote.data.marketState === "REGULAR" ? "LIVE" : quote.data.marketState}</span>
+              )}
+              {isIDX && <span className="text-[10px] text-amber-400">~15m delay</span>}
+            </div>
             <div className="text-2xl font-semibold">{symbol}</div>
             <div className="text-xs text-muted-foreground">{quote.data?.shortName ?? ""}</div>
           </div>
           <div className="ml-auto flex items-end gap-6">
             <div className="text-right">
-              <div className="font-mono text-3xl">{fmt(quote.data?.price)}</div>
+              <div className="font-mono text-3xl flex items-center justify-end gap-2">
+                {fmt(quote.data?.price)}
+                {quote.isFetching && <span className="size-1.5 rounded-full bg-bull animate-pulse" title="Updating…" />}
+              </div>
               <div className={`font-mono text-sm ${colorForChange(quote.data?.changePercent)}`}>
                 {fmt(quote.data?.change)} · {formatPct(quote.data?.changePercent)} <span className="text-muted-foreground">{priceCurrency(symbol)}</span>
               </div>
+              {quote.dataUpdatedAt > 0 && (
+                <div className="text-[10px] text-muted-foreground mt-0.5">
+                  Updated {new Date(quote.dataUpdatedAt).toLocaleTimeString()}
+                </div>
+              )}
             </div>
             <Button
               variant="outline"

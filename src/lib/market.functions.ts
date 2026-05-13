@@ -72,12 +72,15 @@ function quoteFromChartMeta(meta: any): Quote {
 
 async function fetchQuoteOne(symbol: string): Promise<Quote | null> {
   try {
+    // Use 1m interval to get the freshest regularMarketPrice tick available from Yahoo.
     const r = await yfFetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=5d`,
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1m&range=1d&includePrePost=true`,
     );
     const meta = r?.chart?.result?.[0]?.meta;
     if (!meta) return null;
-    return quoteFromChartMeta(meta);
+    const q = quoteFromChartMeta(meta);
+    q.marketState = meta?.marketState ?? null;
+    return q;
   } catch (e) {
     console.error("fetchQuoteOne", symbol, e);
     return null;
@@ -90,7 +93,7 @@ export const getQuotes = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const key = `q:${data.symbols.slice().sort().join(",")}`;
-    return cached<Quote[]>(key, 8_000, async () => {
+    return cached<Quote[]>(key, 3_000, async () => {
       const results = await Promise.all(data.symbols.map((s) => fetchQuoteOne(s)));
       return results.filter((q): q is Quote => !!q);
     });
@@ -100,7 +103,7 @@ export const getQuote = createServerFn({ method: "POST" })
   .inputValidator((d: { symbol: string }) => z.object({ symbol: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
     const key = `q1:${data.symbol}`;
-    return cached<Quote | null>(key, 8_000, () => fetchQuoteOne(data.symbol));
+    return cached<Quote | null>(key, 2_000, () => fetchQuoteOne(data.symbol));
   });
 
 const TFMap: Record<string, { interval: string; range: string }> = {
@@ -131,7 +134,13 @@ export const getCandles = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const tf = TFMap[data.timeframe] ?? TFMap["1d"];
     const key = `c:${data.symbol}:${data.timeframe}`;
-    return cached<CandleDTO[]>(key, 30_000, async () => {
+    // Intraday TFs cache briefly so panels stay near-realtime; daily/weekly cache longer.
+    const ttl = ["1m", "5m", "15m"].includes(data.timeframe)
+      ? 5_000
+      : ["1h", "4h"].includes(data.timeframe)
+      ? 15_000
+      : 60_000;
+    return cached<CandleDTO[]>(key, ttl, async () => {
       try {
         const r = await yfFetch(
           `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
