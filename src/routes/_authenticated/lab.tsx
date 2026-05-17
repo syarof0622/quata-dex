@@ -263,24 +263,31 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: "bu
   );
 }
 
-function ResetAccountControl({ onDone, currentCash }: { onDone: () => void; currentCash: number }) {
+function ResetAccountControl({ onDone, currentCash, currency }: { onDone: () => void; currentCash: number; currency: "IDR" | "USD" }) {
   const [open, setOpen] = useState(false);
-  const [amount, setAmount] = useState(String(currentCash || 100_000_000));
+  const defaultAmt = currency === "IDR" ? 100_000_000 : 100_000;
+  const [amount, setAmount] = useState(String(currentCash || defaultAmt));
+  useEffect(() => { setAmount(String(currentCash || defaultAmt)); }, [currentCash, defaultAmt]);
+  const sym = currency === "IDR" ? "Rp" : "$";
+  const fmtBtn = (v: number) => currency === "IDR" ? formatIDRCompact(v) : `$${v / 1000}k`;
   const reset = useMutation({
-    mutationFn: (cash: number) => resetPaperAccount({ data: { cash } }),
-    onSuccess: (_r, cash) => { toast.success(`Account reset to ${formatIDRCompact(cash)}`); setOpen(false); onDone(); },
+    mutationFn: (cash: number) => resetPaperAccount({ data: { cash, currency } }),
+    onSuccess: (_r, cash) => { toast.success(`Account reset to ${fmtBtn(cash)}`); setOpen(false); onDone(); },
     onError: (e: any) => toast.error(e?.message ?? "Reset failed"),
   });
-  if (!open) return <Button variant="outline" onClick={() => setOpen(true)}>Reset / Set Saldo (IDR)</Button>;
+  if (!open) return <Button variant="outline" onClick={() => setOpen(true)}>Reset / Set Saldo ({currency})</Button>;
+  const presets = currency === "IDR"
+    ? [10_000_000, 50_000_000, 100_000_000, 500_000_000, 1_000_000_000]
+    : [10_000, 50_000, 100_000, 500_000, 1_000_000];
   return (
     <div className="panel p-3 flex flex-wrap items-end gap-2">
       <div>
-        <label className="text-[11px] text-muted-foreground block">Saldo awal (Rp)</label>
+        <label className="text-[11px] text-muted-foreground block">Saldo awal ({sym})</label>
         <Input type="number" min="0" value={amount} onChange={e => setAmount(e.target.value)} className="w-44" />
       </div>
       <div className="flex flex-wrap gap-1">
-        {[10_000_000, 50_000_000, 100_000_000, 500_000_000, 1_000_000_000].map(v => (
-          <Button key={v} size="sm" variant="ghost" onClick={() => setAmount(String(v))}>{formatIDRCompact(v)}</Button>
+        {presets.map(v => (
+          <Button key={v} size="sm" variant="ghost" onClick={() => setAmount(String(v))}>{fmtBtn(v)}</Button>
         ))}
       </div>
       <Button onClick={() => reset.mutate(Math.max(0, Number(amount) || 0))} disabled={reset.isPending}>
