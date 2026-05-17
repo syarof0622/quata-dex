@@ -78,14 +78,28 @@ function SettingsPage() {
     if (k === "theme") applyTheme(v as Prefs["theme"]);
   }
 
-  const [resetAmount, setResetAmount] = useState("100000");
+  const accountCurrency: "IDR" | "USD" = (account.data?.account?.currency ?? "IDR") as "IDR" | "USD";
+  const [currency, setCurrency] = useState<"IDR" | "USD">(accountCurrency);
+  useEffect(() => { setCurrency(accountCurrency); }, [accountCurrency]);
+
+  const defaultAmt = accountCurrency === "IDR" ? "100000000" : "100000";
+  const [resetAmount, setResetAmount] = useState(defaultAmt);
+  useEffect(() => { setResetAmount(accountCurrency === "IDR" ? "100000000" : "100000"); }, [accountCurrency]);
+
   const reset = useMutation({
-    mutationFn: (cash: number) => resetPaperAccount({ data: { cash } }),
+    mutationFn: (cash: number) => resetPaperAccount({ data: { cash, currency } }),
     onSuccess: (_r, cash) => {
-      toast.success(`Paper account reset to $${cash.toLocaleString()}`);
+      const sym = currency === "IDR" ? "Rp " : "$";
+      toast.success(`Paper account reset to ${sym}${cash.toLocaleString()}`);
       qc.invalidateQueries();
     },
     onError: (e: Error) => toast.error(e?.message ?? "Reset failed"),
+  });
+
+  const curMut = useMutation({
+    mutationFn: (c: "IDR" | "USD") => updatePaperCurrency({ data: { currency: c } }),
+    onSuccess: (_r, c) => { toast.success(`Mata uang: ${c}`); qc.invalidateQueries(); },
+    onError: (e: Error) => toast.error(e?.message ?? "Failed"),
   });
 
   const scan = useMutation({
