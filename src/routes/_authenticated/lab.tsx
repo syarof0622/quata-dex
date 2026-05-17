@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, formatIDR, formatIDRCompact, formatPct, colorForChange } from "@/lib/format";
 import { resetPaperAccount } from "@/lib/paper.functions";
 import { toast } from "sonner";
 
@@ -23,9 +23,12 @@ export const Route = createFileRoute("/_authenticated/lab")({
 
 function Lab() {
   const acct = useQuery({ queryKey: ["paper"], queryFn: () => getPaperAccount(), refetchInterval: 8000 });
-  const positions = acct.data?.positions ?? [];
+  const positions = (acct.data?.positions ?? []) as any[];
   const orders = acct.data?.orders ?? [];
   const pending = acct.data?.pending ?? [];
+  const pnl = acct.data?.pnl ?? { unrealized: 0, realized: 0, total: 0, positionsValue: 0 };
+  const cash = Number(acct.data?.account?.cash ?? 0);
+  const equity = Number(acct.data?.account?.equity ?? cash);
   const cancel = useMutation({
     mutationFn: (id: string) => cancelOrder({ data: { id } }),
     onSuccess: () => { toast.success("Order cancelled"); acct.refetch(); },
@@ -36,20 +39,22 @@ function Lab() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Simulation Lab</h1>
-          <p className="text-sm text-muted-foreground">Paper trading · advanced orders · journal · backtest · AI coach</p>
+          <p className="text-sm text-muted-foreground">Paper trading IDR · live P/L · advanced orders · journal · backtest · AI coach</p>
         </div>
-        <ResetAccountControl onDone={() => acct.refetch()} currentCash={Number(acct.data?.account?.cash ?? 100000)} />
+        <ResetAccountControl onDone={() => acct.refetch()} currentCash={cash || 100_000_000} />
       </div>
 
-      <div className="grid md:grid-cols-4 gap-3">
-        <div className="panel p-4"><div className="text-xs text-muted-foreground">Cash</div><div className="font-mono text-2xl">${formatPrice(acct.data?.account?.cash)}</div></div>
-        <div className="panel p-4"><div className="text-xs text-muted-foreground">Positions</div><div className="font-mono text-2xl">{positions.length}</div></div>
-        <div className="panel p-4"><div className="text-xs text-muted-foreground">Filled orders</div><div className="font-mono text-2xl">{orders.length}</div></div>
-        <div className="panel p-4"><div className="text-xs text-muted-foreground">Pending</div><div className="font-mono text-2xl">{pending.length}</div></div>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="panel p-4"><div className="text-xs text-muted-foreground">Saldo Tersedia</div><div className="font-mono text-xl md:text-2xl">{formatIDRCompact(cash)}</div></div>
+        <div className="panel p-4"><div className="text-xs text-muted-foreground">Equity Total</div><div className="font-mono text-xl md:text-2xl">{formatIDRCompact(equity)}</div></div>
+        <div className="panel p-4"><div className="text-xs text-muted-foreground">Unrealized P/L</div><div className={`font-mono text-xl md:text-2xl ${colorForChange(pnl.unrealized)}`}>{formatIDRCompact(pnl.unrealized)}</div></div>
+        <div className="panel p-4"><div className="text-xs text-muted-foreground">Positions</div><div className="font-mono text-xl md:text-2xl">{positions.length}</div></div>
+        <div className="panel p-4"><div className="text-xs text-muted-foreground">Filled orders</div><div className="font-mono text-xl md:text-2xl">{orders.length}</div></div>
+        <div className="panel p-4"><div className="text-xs text-muted-foreground">Pending</div><div className="font-mono text-xl md:text-2xl">{pending.length}</div></div>
       </div>
 
       <Tabs defaultValue="positions">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="positions">Positions</TabsTrigger>
           <TabsTrigger value="pending">Pending Orders</TabsTrigger>
           <TabsTrigger value="orders">Order History</TabsTrigger>
@@ -58,10 +63,18 @@ function Lab() {
           <TabsTrigger value="coach">AI Coach</TabsTrigger>
         </TabsList>
         <TabsContent value="positions">
-          <div className="panel p-2">
-            <table className="w-full text-sm">
+          <div className="panel p-2 overflow-x-auto">
+            <table className="w-full text-sm min-w-[640px]">
               <thead className="text-xs text-muted-foreground">
-                <tr><th className="text-left p-2">Symbol</th><th className="text-right p-2">Qty</th><th className="text-right p-2">Avg Price</th><th className="text-right p-2">Opened</th></tr>
+                <tr>
+                  <th className="text-left p-2">Symbol</th>
+                  <th className="text-right p-2">Qty</th>
+                  <th className="text-right p-2">Avg Price</th>
+                  <th className="text-right p-2">Mark</th>
+                  <th className="text-right p-2">P/L</th>
+                  <th className="text-right p-2">%</th>
+                  <th className="text-right p-2">Opened</th>
+                </tr>
               </thead>
               <tbody>
                 {positions.map((p: any) => (
@@ -69,10 +82,13 @@ function Lab() {
                     <td className="p-2 font-medium">{p.symbol}</td>
                     <td className="p-2 text-right font-mono">{p.qty}</td>
                     <td className="p-2 text-right font-mono">{formatPrice(p.avg_price)}</td>
-                    <td className="p-2 text-right text-xs text-muted-foreground">{new Date(p.opened_at).toLocaleString()}</td>
+                    <td className="p-2 text-right font-mono">{p.mark != null ? formatPrice(p.mark) : "—"}</td>
+                    <td className={`p-2 text-right font-mono ${colorForChange(p.pnl)}`}>{p.pnl != null ? formatIDRCompact(p.pnl) : "—"}</td>
+                    <td className={`p-2 text-right font-mono ${colorForChange(p.pnlPct)}`}>{p.pnlPct != null ? formatPct(p.pnlPct) : "—"}</td>
+                    <td className="p-2 text-right text-xs text-muted-foreground">{new Date(p.opened_at).toLocaleString("id-ID")}</td>
                   </tr>
                 ))}
-                {positions.length === 0 && <tr><td colSpan={4} className="p-6 text-center text-muted-foreground">No open positions. Place a paper trade from any chart.</td></tr>}
+                {positions.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">No open positions. Place a paper trade from any chart.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -244,22 +260,22 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: "bu
 
 function ResetAccountControl({ onDone, currentCash }: { onDone: () => void; currentCash: number }) {
   const [open, setOpen] = useState(false);
-  const [amount, setAmount] = useState(String(currentCash || 100000));
+  const [amount, setAmount] = useState(String(currentCash || 100_000_000));
   const reset = useMutation({
     mutationFn: (cash: number) => resetPaperAccount({ data: { cash } }),
-    onSuccess: (_r, cash) => { toast.success(`Account reset to $${cash.toLocaleString()}`); setOpen(false); onDone(); },
+    onSuccess: (_r, cash) => { toast.success(`Account reset to ${formatIDRCompact(cash)}`); setOpen(false); onDone(); },
     onError: (e: any) => toast.error(e?.message ?? "Reset failed"),
   });
-  if (!open) return <Button variant="outline" onClick={() => setOpen(true)}>Reset / Set capital</Button>;
+  if (!open) return <Button variant="outline" onClick={() => setOpen(true)}>Reset / Set Saldo (IDR)</Button>;
   return (
-    <div className="panel p-3 flex items-end gap-2">
+    <div className="panel p-3 flex flex-wrap items-end gap-2">
       <div>
-        <label className="text-[11px] text-muted-foreground block">Starting cash ($)</label>
-        <Input type="number" min="0" value={amount} onChange={e => setAmount(e.target.value)} className="w-40" />
+        <label className="text-[11px] text-muted-foreground block">Saldo awal (Rp)</label>
+        <Input type="number" min="0" value={amount} onChange={e => setAmount(e.target.value)} className="w-44" />
       </div>
-      <div className="flex gap-2">
-        {[10000, 50000, 100000, 500000, 1000000].map(v => (
-          <Button key={v} size="sm" variant="ghost" onClick={() => setAmount(String(v))}>${(v/1000)}k</Button>
+      <div className="flex flex-wrap gap-1">
+        {[10_000_000, 50_000_000, 100_000_000, 500_000_000, 1_000_000_000].map(v => (
+          <Button key={v} size="sm" variant="ghost" onClick={() => setAmount(String(v))}>{formatIDRCompact(v)}</Button>
         ))}
       </div>
       <Button onClick={() => reset.mutate(Math.max(0, Number(amount) || 0))} disabled={reset.isPending}>

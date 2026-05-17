@@ -1,5 +1,7 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getPaperAccount } from "@/lib/paper.functions";
+import { formatIDRCompact } from "@/lib/format";
 import { useEffect, useRef, useState } from "react";
 import { getQuote, getQuoteRealtime } from "@/lib/market.functions";
 import {
@@ -58,6 +60,8 @@ function tvSymbol(sym: string): string {
 
 function ChartPage() {
   const { symbol } = useParams({ from: "/_authenticated/chart/$symbol" });
+  const qc = useQueryClient();
+  const paper = useQuery({ queryKey: ["paper"], queryFn: () => getPaperAccount(), refetchInterval: 8000 });
   const [tf, setTf] = useState<(typeof TFS)[number]>("15");
   const containerRef = useRef<HTMLDivElement>(null);
   const yfTf = tfToYf(tf);
@@ -280,6 +284,9 @@ function ChartPage() {
         qualityGrade={setup.data?.setup?.quality?.grade}
         executionStatus={sig?.executionStatus}
         executionReason={sig?.executionReason}
+        cash={Number(paper.data?.account?.cash ?? 0)}
+        unrealizedPnl={Number((paper.data as any)?.pnl?.unrealized ?? 0)}
+        onTraded={() => { qc.invalidateQueries({ queryKey: ["paper"] }); }}
       />
     </div>
   );
@@ -340,6 +347,8 @@ function ChartPage() {
               size="sm"
               onClick={async () => {
                 await addToWatchlist({ data: { symbol } });
+                qc.invalidateQueries({ queryKey: ["watchlist"] });
+                qc.invalidateQueries({ queryKey: ["wl-rank"] });
                 toast.success(`Added ${symbol} to watchlist`);
               }}
             >
@@ -1008,7 +1017,7 @@ function SentimentPanel({ symbol }: { symbol: string }) {
   );
 }
 
-function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualityGrade, executionStatus, executionReason }: {
+function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualityGrade, executionStatus, executionReason, cash, unrealizedPnl, onTraded }: {
   symbol: string; price: number; fmt: (n: any) => string;
   bias?: "long" | "short" | "neutral";
   signalLabel?: string;
@@ -1016,6 +1025,9 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualit
   qualityGrade?: "Excellent" | "Good" | "Fair" | "Poor";
   executionStatus?: "Ready to Trade" | "Wait for Pullback" | "Wait for Breakout" | "Wait for Confirmation" | "No Trade";
   executionReason?: string;
+  cash?: number;
+  unrealizedPnl?: number;
+  onTraded?: () => void;
 }) {
   const [qty, setQty] = useState(10);
   const [busy, setBusy] = useState(false);
@@ -1073,6 +1085,7 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualit
         } });
         toast.success(`${type.toUpperCase()} ${side.toUpperCase()} ${qty} ${symbol} pending`);
       }
+      onTraded?.();
     } catch (e: any) {
       toast.error(e?.message ?? "Order failed");
     } finally {
@@ -1086,6 +1099,12 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualit
         <h3 className="font-semibold">Paper Trade</h3>
         <span className={`text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded ${badge.cls}`}>{badge.text}</span>
       </div>
+      {(cash != null || unrealizedPnl != null) && (
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] border-b border-border pb-2">
+          <span className="text-muted-foreground">Saldo: <span className="font-mono text-foreground">{formatIDRCompact(cash ?? 0)}</span></span>
+          <span className="text-muted-foreground">P/L: <span className={`font-mono ${(unrealizedPnl ?? 0) >= 0 ? "text-bull" : "text-bear"}`}>{formatIDRCompact(unrealizedPnl ?? 0)}</span></span>
+        </div>
+      )}
 
       {(isHold || blocked) && (
         <div className={`mt-2 text-xs ${blocked && !isHold ? "text-yellow-500" : "text-muted-foreground"}`}>
