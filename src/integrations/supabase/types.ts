@@ -205,6 +205,39 @@ export type Database = {
         }
         Relationships: []
       }
+      news_price_alignment: {
+        Row: {
+          alignment: string
+          computed_at: string
+          confidence: number
+          id: string
+          news_sentiment: string
+          price_direction: string
+          reasoning: string | null
+          symbol: string
+        }
+        Insert: {
+          alignment: string
+          computed_at?: string
+          confidence?: number
+          id?: string
+          news_sentiment: string
+          price_direction: string
+          reasoning?: string | null
+          symbol: string
+        }
+        Update: {
+          alignment?: string
+          computed_at?: string
+          confidence?: number
+          id?: string
+          news_sentiment?: string
+          price_direction?: string
+          reasoning?: string | null
+          symbol?: string
+        }
+        Relationships: []
+      }
       news_sources: {
         Row: {
           articles_today: number
@@ -458,6 +491,78 @@ export type Database = {
           searched_at?: string
           symbol?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      serpapi_usage_logs: {
+        Row: {
+          created_at: string
+          credits_used: number
+          engine: string
+          error_message: string | null
+          id: string
+          query: string | null
+          response_time_ms: number | null
+          status: string
+          symbol: string | null
+        }
+        Insert: {
+          created_at?: string
+          credits_used?: number
+          engine: string
+          error_message?: string | null
+          id?: string
+          query?: string | null
+          response_time_ms?: number | null
+          status: string
+          symbol?: string | null
+        }
+        Update: {
+          created_at?: string
+          credits_used?: number
+          engine?: string
+          error_message?: string | null
+          id?: string
+          query?: string | null
+          response_time_ms?: number | null
+          status?: string
+          symbol?: string | null
+        }
+        Relationships: []
+      }
+      serpapi_usage_summary: {
+        Row: {
+          created_at: string
+          date: string
+          engine: string
+          estimated_credits_used: number
+          failed_requests: number
+          id: string
+          success_requests: number
+          total_requests: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          engine: string
+          estimated_credits_used?: number
+          failed_requests?: number
+          id?: string
+          success_requests?: number
+          total_requests?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          engine?: string
+          estimated_credits_used?: number
+          failed_requests?: number
+          id?: string
+          success_requests?: number
+          total_requests?: number
+          updated_at?: string
         }
         Relationships: []
       }
