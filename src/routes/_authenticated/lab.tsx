@@ -240,7 +240,7 @@ function Backtester() {
                   <td className={`p-2 text-right font-mono ${t.pnlPct >= 0 ? "text-bull" : "text-bear"}`}>{t.pnlPct.toFixed(2)}%</td>
                 </tr>
               ))}
-              {!run.data.trades.length && <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">No trades produced.</td></tr>}
+              {!(run.data as any).trades.length && <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">No trades produced.</td></tr>}
             </tbody>
           </table>
         </div>
