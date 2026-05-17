@@ -52,19 +52,30 @@ export function ChatPanel({ system }: { system?: string }) {
   };
 
   return (
-    <div className="flex flex-col h-[480px]">
-      <div className="flex-1 overflow-auto space-y-3 pr-2">
-        {messages.length === 0 && <div className="text-sm text-muted-foreground text-center py-10">Start a conversation. Try: "Is NVDA overbought right now?"</div>}
+    <div className="flex flex-col h-[560px] panel-2 rounded-lg">
+      <div className="flex-1 overflow-auto space-y-4 p-4">
+        {messages.length === 0 && (
+          <div className="text-sm text-muted-foreground text-center py-16">
+            Mulai percakapan. Coba: <span className="text-foreground">"Apakah BBCA overbought sekarang?"</span>
+          </div>
+        )}
         {messages.map((m, i) => (
-          <div key={i} className={`p-3 rounded-md text-sm ${m.role === "user" ? "bg-accent/40 ml-12" : "panel-2 mr-12"}`}>
-            <div className="text-[10px] uppercase text-muted-foreground mb-1">{m.role}</div>
-            <div className="prose prose-sm prose-invert max-w-none"><ReactMarkdown>{m.content || "…"}</ReactMarkdown></div>
+          <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+            <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
+              m.role === "user"
+                ? "bg-primary text-primary-foreground rounded-br-sm"
+                : "bg-accent/40 border border-border rounded-bl-sm"
+            }`}>
+              <div className={`prose prose-sm max-w-none ${m.role === "user" ? "prose-invert" : "dark:prose-invert"} prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-headings:mt-2 prose-headings:mb-1 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:bg-background/40 prose-pre:bg-background/60 prose-pre:my-2`}>
+                <ReactMarkdown>{m.content || "…"}</ReactMarkdown>
+              </div>
+            </div>
           </div>
         ))}
         <div ref={endRef} />
       </div>
-      <div className="mt-3 flex gap-2">
-        <Input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} placeholder="Ask anything about the markets…" disabled={busy} />
+      <div className="border-t border-border p-3 flex gap-2">
+        <Input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} placeholder="Tanya apa saja tentang market…" disabled={busy} className="flex-1" />
         <Button onClick={send} disabled={busy}>{busy ? "Thinking…" : "Send"}</Button>
       </div>
     </div>
