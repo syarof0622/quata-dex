@@ -1,7 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getQuotes, getCandles } from "./market.functions";
 import { sectorOf } from "./sectors";
+
+const USER_ID = "00000000-0000-0000-0000-000000000001";
 
 // Compute realized PnL from a FIFO walk of paper_orders for a single symbol
 function realizedFromOrders(orders: any[]): { realized: number; trades: number; wins: number } {
