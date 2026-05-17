@@ -342,6 +342,8 @@ function ChartPage() {
               size="sm"
               onClick={async () => {
                 await addToWatchlist({ data: { symbol } });
+                qc.invalidateQueries({ queryKey: ["watchlist"] });
+                qc.invalidateQueries({ queryKey: ["wl-rank"] });
                 toast.success(`Added ${symbol} to watchlist`);
               }}
             >
