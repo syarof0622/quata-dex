@@ -85,6 +85,96 @@ export type Database = {
           },
         ]
       }
+      news_articles: {
+        Row: {
+          canonical_url: string | null
+          category: string | null
+          confidence: number
+          created_at: string
+          duplicate_of: string | null
+          duplicate_sources: string[]
+          fetched_at: string
+          id: string
+          image_url: string | null
+          impact_level: string
+          impact_score: number
+          is_duplicate: boolean
+          keywords: string[]
+          published_at: string
+          raw_payload: Json | null
+          related_symbols: string[]
+          sectors: string[]
+          sentiment: string
+          sentiment_score: number
+          source: string
+          source_id: string | null
+          summary: string | null
+          tickers: string[]
+          title: string
+          title_hash: string | null
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          canonical_url?: string | null
+          category?: string | null
+          confidence?: number
+          created_at?: string
+          duplicate_of?: string | null
+          duplicate_sources?: string[]
+          fetched_at?: string
+          id?: string
+          image_url?: string | null
+          impact_level?: string
+          impact_score?: number
+          is_duplicate?: boolean
+          keywords?: string[]
+          published_at?: string
+          raw_payload?: Json | null
+          related_symbols?: string[]
+          sectors?: string[]
+          sentiment?: string
+          sentiment_score?: number
+          source: string
+          source_id?: string | null
+          summary?: string | null
+          tickers?: string[]
+          title: string
+          title_hash?: string | null
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          canonical_url?: string | null
+          category?: string | null
+          confidence?: number
+          created_at?: string
+          duplicate_of?: string | null
+          duplicate_sources?: string[]
+          fetched_at?: string
+          id?: string
+          image_url?: string | null
+          impact_level?: string
+          impact_score?: number
+          is_duplicate?: boolean
+          keywords?: string[]
+          published_at?: string
+          raw_payload?: Json | null
+          related_symbols?: string[]
+          sectors?: string[]
+          sentiment?: string
+          sentiment_score?: number
+          source?: string
+          source_id?: string | null
+          summary?: string | null
+          tickers?: string[]
+          title?: string
+          title_hash?: string | null
+          updated_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
       news_cache: {
         Row: {
           headline: string
@@ -112,6 +202,60 @@ export type Database = {
           source?: string | null
           symbol?: string | null
           url?: string | null
+        }
+        Relationships: []
+      }
+      news_sources: {
+        Row: {
+          articles_today: number
+          category: string | null
+          enabled: boolean
+          fail_count: number
+          fallback_url: string | null
+          id: string
+          last_error: string | null
+          last_failed_at: string | null
+          last_success_at: string | null
+          name: string
+          priority: number
+          status: string
+          type: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          articles_today?: number
+          category?: string | null
+          enabled?: boolean
+          fail_count?: number
+          fallback_url?: string | null
+          id: string
+          last_error?: string | null
+          last_failed_at?: string | null
+          last_success_at?: string | null
+          name: string
+          priority?: number
+          status?: string
+          type: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          articles_today?: number
+          category?: string | null
+          enabled?: boolean
+          fail_count?: number
+          fallback_url?: string | null
+          id?: string
+          last_error?: string | null
+          last_failed_at?: string | null
+          last_success_at?: string | null
+          name?: string
+          priority?: number
+          status?: string
+          type?: string
+          updated_at?: string
+          url?: string
         }
         Relationships: []
       }
@@ -371,6 +515,42 @@ export type Database = {
           name?: string
           rules_json?: Json
           user_id?: string
+        }
+        Relationships: []
+      }
+      ticker_sentiment_summary: {
+        Row: {
+          average_sentiment_score: number
+          high_impact_news_count: number
+          latest_news_at: string | null
+          negative_count: number
+          neutral_count: number
+          positive_count: number
+          summary: string | null
+          symbol: string
+          updated_at: string
+        }
+        Insert: {
+          average_sentiment_score?: number
+          high_impact_news_count?: number
+          latest_news_at?: string | null
+          negative_count?: number
+          neutral_count?: number
+          positive_count?: number
+          summary?: string | null
+          symbol: string
+          updated_at?: string
+        }
+        Update: {
+          average_sentiment_score?: number
+          high_impact_news_count?: number
+          latest_news_at?: string | null
+          negative_count?: number
+          neutral_count?: number
+          positive_count?: number
+          summary?: string | null
+          symbol?: string
+          updated_at?: string
         }
         Relationships: []
       }

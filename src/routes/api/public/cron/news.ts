@@ -1,0 +1,118 @@
+// Public cron endpoint: refresh news from all enabled sources.
+// Called by pg_cron every 10 minutes.
+import { createFileRoute } from "@tanstack/react-router";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { NEWS_SOURCES } from "@/lib/news-sources";
+import { fetchRssWithFallback } from "@/lib/news-rss.server";
+import { normalize, dedupeBatch, type NormalizedArticle } from "@/lib/news-pipeline.server";
+
+async function refreshAll() {
+  const allNew: NormalizedArticle[] = [];
+  const sourceStatus: { id: string; ok: boolean; count: number; error?: string; used_url?: string }[] = [];
+
+  for (const src of NEWS_SOURCES.filter((s) => s.enabled)) {
+    try {
+      const { url, items } = await fetchRssWithFallback(src.url, src.fallbackUrls ?? []);
+      const normalized = items
+        .map((it) => normalize(it, { id: src.id, priority: src.priority, category: src.category }))
+        .filter((x): x is NormalizedArticle => x !== null);
+      allNew.push(...normalized);
+      sourceStatus.push({ id: src.id, ok: true, count: normalized.length, used_url: url });
+    } catch (e: any) {
+      sourceStatus.push({ id: src.id, ok: false, count: 0, error: String(e?.message ?? e) });
+    }
+  }
+
+  // Dedupe within batch
+  const deduped = dedupeBatch(allNew);
+
+  // Upsert into DB (unique on (source, source_id))
+  let inserted = 0;
+  for (const chunk of chunks(deduped, 100)) {
+    const { error } = await supabaseAdmin
+      .from("news_articles")
+      .upsert(chunk as any, { onConflict: "source,source_id", ignoreDuplicates: true });
+    if (!error) inserted += chunk.length;
+    else console.error("[news cron] upsert error:", error.message);
+  }
+
+  // Update source statuses
+  const now = new Date().toISOString();
+  for (const s of sourceStatus) {
+    const update: any = { updated_at: now };
+    if (s.ok) {
+      update.last_success_at = now;
+      update.status = "active";
+      update.fail_count = 0;
+      update.last_error = null;
+      update.articles_today = s.count;
+    } else {
+      update.last_failed_at = now;
+      update.status = "failed";
+      update.last_error = s.error ?? "unknown";
+    }
+    await supabaseAdmin.from("news_sources").update(update).eq("id", s.id);
+  }
+
+  // Refresh ticker_sentiment_summary (24h window)
+  await refreshTickerSummary();
+
+  return { sources: sourceStatus, total_normalized: allNew.length, deduped: deduped.length, inserted };
+}
+
+async function refreshTickerSummary() {
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await supabaseAdmin
+    .from("news_articles")
+    .select("tickers, sentiment, sentiment_score, impact_level, published_at")
+    .gte("published_at", since)
+    .eq("is_duplicate", false);
+  if (error || !data) return;
+
+  const agg = new Map<string, {
+    pos: number; neu: number; neg: number; sum: number; n: number;
+    high: number; latest: string;
+  }>();
+  for (const row of data as any[]) {
+    for (const t of (row.tickers ?? []) as string[]) {
+      const cur = agg.get(t) ?? { pos: 0, neu: 0, neg: 0, sum: 0, n: 0, high: 0, latest: row.published_at };
+      if (row.sentiment === "positive") cur.pos++;
+      else if (row.sentiment === "negative") cur.neg++;
+      else cur.neu++;
+      cur.sum += Number(row.sentiment_score ?? 0);
+      cur.n += 1;
+      if (row.impact_level === "high") cur.high++;
+      if (row.published_at > cur.latest) cur.latest = row.published_at;
+      agg.set(t, cur);
+    }
+  }
+
+  const rows = [...agg.entries()].map(([symbol, v]) => ({
+    symbol,
+    positive_count: v.pos,
+    neutral_count: v.neu,
+    negative_count: v.neg,
+    average_sentiment_score: v.n ? Math.round((v.sum / v.n) * 100) / 100 : 0,
+    high_impact_news_count: v.high,
+    latest_news_at: v.latest,
+    updated_at: new Date().toISOString(),
+  }));
+
+  if (rows.length === 0) return;
+  for (const chunk of chunks(rows, 100)) {
+    await supabaseAdmin.from("ticker_sentiment_summary").upsert(chunk, { onConflict: "symbol" });
+  }
+}
+
+function* chunks<T>(arr: T[], n: number): Generator<T[]> {
+  for (let i = 0; i < arr.length; i += n) yield arr.slice(i, i + n);
+}
+
+export const Route = createFileRoute("/api/public/cron/news")({
+  server: {
+    handlers: {
+      GET: async () => Response.json(await refreshAll()),
+      POST: async () => Response.json(await refreshAll()),
+    },
+  },
+});
