@@ -26,6 +26,7 @@ import { Route as AuthenticatedAlertsRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedAiRouteImport } from './routes/_authenticated/ai'
 import { Route as AuthenticatedChartSymbolRouteImport } from './routes/_authenticated/chart.$symbol'
 import { Route as ApiPublicCronOrdersRouteImport } from './routes/api/public/cron/orders'
+import { Route as ApiPublicCronNewsRouteImport } from './routes/api/public/cron/news'
 import { Route as ApiPublicCronAlertsRouteImport } from './routes/api/public/cron/alerts'
 
 const AuthRoute = AuthRouteImport.update({
@@ -113,6 +114,11 @@ const ApiPublicCronOrdersRoute = ApiPublicCronOrdersRouteImport.update({
   path: '/api/public/cron/orders',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCronNewsRoute = ApiPublicCronNewsRouteImport.update({
+  id: '/api/public/cron/news',
+  path: '/api/public/cron/news',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicCronAlertsRoute = ApiPublicCronAlertsRouteImport.update({
   id: '/api/public/cron/alerts',
   path: '/api/public/cron/alerts',
@@ -136,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/api/chat': typeof ApiChatRoute
   '/chart/$symbol': typeof AuthenticatedChartSymbolRoute
   '/api/public/cron/alerts': typeof ApiPublicCronAlertsRoute
+  '/api/public/cron/news': typeof ApiPublicCronNewsRoute
   '/api/public/cron/orders': typeof ApiPublicCronOrdersRoute
 }
 export interface FileRoutesByTo {
@@ -155,6 +162,7 @@ export interface FileRoutesByTo {
   '/api/chat': typeof ApiChatRoute
   '/chart/$symbol': typeof AuthenticatedChartSymbolRoute
   '/api/public/cron/alerts': typeof ApiPublicCronAlertsRoute
+  '/api/public/cron/news': typeof ApiPublicCronNewsRoute
   '/api/public/cron/orders': typeof ApiPublicCronOrdersRoute
 }
 export interface FileRoutesById {
@@ -176,6 +184,7 @@ export interface FileRoutesById {
   '/api/chat': typeof ApiChatRoute
   '/_authenticated/chart/$symbol': typeof AuthenticatedChartSymbolRoute
   '/api/public/cron/alerts': typeof ApiPublicCronAlertsRoute
+  '/api/public/cron/news': typeof ApiPublicCronNewsRoute
   '/api/public/cron/orders': typeof ApiPublicCronOrdersRoute
 }
 export interface FileRouteTypes {
@@ -197,6 +206,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/chart/$symbol'
     | '/api/public/cron/alerts'
+    | '/api/public/cron/news'
     | '/api/public/cron/orders'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -216,6 +226,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/chart/$symbol'
     | '/api/public/cron/alerts'
+    | '/api/public/cron/news'
     | '/api/public/cron/orders'
   id:
     | '__root__'
@@ -236,6 +247,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/_authenticated/chart/$symbol'
     | '/api/public/cron/alerts'
+    | '/api/public/cron/news'
     | '/api/public/cron/orders'
   fileRoutesById: FileRoutesById
 }
@@ -245,6 +257,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiPublicCronAlertsRoute: typeof ApiPublicCronAlertsRoute
+  ApiPublicCronNewsRoute: typeof ApiPublicCronNewsRoute
   ApiPublicCronOrdersRoute: typeof ApiPublicCronOrdersRoute
 }
 
@@ -369,6 +382,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronOrdersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/news': {
+      id: '/api/public/cron/news'
+      path: '/api/public/cron/news'
+      fullPath: '/api/public/cron/news'
+      preLoaderRoute: typeof ApiPublicCronNewsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cron/alerts': {
       id: '/api/public/cron/alerts'
       path: '/api/public/cron/alerts'
@@ -419,6 +439,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ApiChatRoute: ApiChatRoute,
   ApiPublicCronAlertsRoute: ApiPublicCronAlertsRoute,
+  ApiPublicCronNewsRoute: ApiPublicCronNewsRoute,
   ApiPublicCronOrdersRoute: ApiPublicCronOrdersRoute,
 }
 export const routeTree = rootRouteImport
