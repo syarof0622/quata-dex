@@ -231,7 +231,7 @@ function Backtester() {
           <table className="w-full text-xs">
             <thead className="text-muted-foreground"><tr><th className="text-left p-2">Entry</th><th className="text-left p-2">Exit</th><th className="text-right p-2">Entry $</th><th className="text-right p-2">Exit $</th><th className="text-right p-2">PnL %</th></tr></thead>
             <tbody>
-              {run.data.trades.map((t: any, i: number) => (
+              {(run.data as any).trades.map((t: any, i: number) => (
                 <tr key={i} className="border-t border-border">
                   <td className="p-2">{new Date(t.entryTime * 1000).toLocaleDateString()}</td>
                   <td className="p-2">{new Date(t.exitTime * 1000).toLocaleDateString()}</td>
