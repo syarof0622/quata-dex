@@ -1017,7 +1017,7 @@ function SentimentPanel({ symbol }: { symbol: string }) {
   );
 }
 
-function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualityGrade, executionStatus, executionReason }: {
+function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualityGrade, executionStatus, executionReason, cash, unrealizedPnl, onTraded }: {
   symbol: string; price: number; fmt: (n: any) => string;
   bias?: "long" | "short" | "neutral";
   signalLabel?: string;
@@ -1025,6 +1025,9 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualit
   qualityGrade?: "Excellent" | "Good" | "Fair" | "Poor";
   executionStatus?: "Ready to Trade" | "Wait for Pullback" | "Wait for Breakout" | "Wait for Confirmation" | "No Trade";
   executionReason?: string;
+  cash?: number;
+  unrealizedPnl?: number;
+  onTraded?: () => void;
 }) {
   const [qty, setQty] = useState(10);
   const [busy, setBusy] = useState(false);
