@@ -114,8 +114,8 @@ export const runBacktest = createServerFn({ method: "POST" })
     };
 
     if (data.persist) {
-      await supabase.from("backtests").insert({
-        user_id: userId, symbol: data.symbol, timeframe: data.timeframe,
+      await supabaseAdmin.from("backtests").insert({
+        user_id: USER_ID, symbol: data.symbol, timeframe: data.timeframe,
         strategy_id: (data.strategyId ?? null) as any,
         metrics_json: metrics, equity_curve_json: curve.slice(-500) as any,
       });
@@ -125,21 +125,19 @@ export const runBacktest = createServerFn({ method: "POST" })
   });
 
 export const listStrategies = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { data } = await context.supabase.from("strategies").select("*").eq("user_id", context.userId).order("created_at", { ascending: false });
+  .handler(async () => {
+    const { data } = await supabaseAdmin.from("strategies").select("*").eq("user_id", USER_ID).order("created_at", { ascending: false });
     return data ?? [];
   });
 
 export const saveStrategy = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((d: { name: string; description?: string; rule: Rule }) =>
     z.object({ name: z.string().min(1), description: z.string().optional(), rule: z.enum(["ema_cross", "rsi_reversal", "macd_cross"]) }).parse(d))
-  .handler(async ({ context, data }) => {
-    const { data: row, error } = await context.supabase.from("strategies").insert({
-      user_id: context.userId, name: data.name, description: data.description ?? null,
+  .handler(async ({ data }) => {
+    const { data: row, error } = await supabaseAdmin.from("strategies").insert({
+      user_id: USER_ID, name: data.name, description: data.description ?? null,
       rules_json: { rule: data.rule }, ai_generated: false,
     }).select().single();
-    if (error) throw error;
+    if (error) throw new Error(error.message);
     return row;
   });
