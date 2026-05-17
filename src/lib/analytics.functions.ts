@@ -63,7 +63,7 @@ export const getPortfolioAnalytics = createServerFn({ method: "GET" })
     }
 
     let totalValue = 0, totalCost = 0, unrealized = 0;
-    const enriched = (positions ?? []).map(p => {
+    const enriched = (positions ?? []).map((p: any) => {
       const last = priceBy[p.symbol] ?? Number(p.avg_price);
       const value = last * Number(p.qty);
       const cost = Number(p.avg_price) * Number(p.qty);
