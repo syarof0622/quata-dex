@@ -1099,6 +1099,12 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualit
         <h3 className="font-semibold">Paper Trade</h3>
         <span className={`text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded ${badge.cls}`}>{badge.text}</span>
       </div>
+      {(cash != null || unrealizedPnl != null) && (
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] border-b border-border pb-2">
+          <span className="text-muted-foreground">Saldo: <span className="font-mono text-foreground">{formatIDRCompact(cash ?? 0)}</span></span>
+          <span className="text-muted-foreground">P/L: <span className={`font-mono ${(unrealizedPnl ?? 0) >= 0 ? "text-bull" : "text-bear"}`}>{formatIDRCompact(unrealizedPnl ?? 0)}</span></span>
+        </div>
+      )}
 
       {(isHold || blocked) && (
         <div className={`mt-2 text-xs ${blocked && !isHold ? "text-yellow-500" : "text-muted-foreground"}`}>
