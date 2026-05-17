@@ -260,22 +260,22 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: "bu
 
 function ResetAccountControl({ onDone, currentCash }: { onDone: () => void; currentCash: number }) {
   const [open, setOpen] = useState(false);
-  const [amount, setAmount] = useState(String(currentCash || 100000));
+  const [amount, setAmount] = useState(String(currentCash || 100_000_000));
   const reset = useMutation({
     mutationFn: (cash: number) => resetPaperAccount({ data: { cash } }),
-    onSuccess: (_r, cash) => { toast.success(`Account reset to $${cash.toLocaleString()}`); setOpen(false); onDone(); },
+    onSuccess: (_r, cash) => { toast.success(`Account reset to ${formatIDRCompact(cash)}`); setOpen(false); onDone(); },
     onError: (e: any) => toast.error(e?.message ?? "Reset failed"),
   });
-  if (!open) return <Button variant="outline" onClick={() => setOpen(true)}>Reset / Set capital</Button>;
+  if (!open) return <Button variant="outline" onClick={() => setOpen(true)}>Reset / Set Saldo (IDR)</Button>;
   return (
-    <div className="panel p-3 flex items-end gap-2">
+    <div className="panel p-3 flex flex-wrap items-end gap-2">
       <div>
-        <label className="text-[11px] text-muted-foreground block">Starting cash ($)</label>
-        <Input type="number" min="0" value={amount} onChange={e => setAmount(e.target.value)} className="w-40" />
+        <label className="text-[11px] text-muted-foreground block">Saldo awal (Rp)</label>
+        <Input type="number" min="0" value={amount} onChange={e => setAmount(e.target.value)} className="w-44" />
       </div>
-      <div className="flex gap-2">
-        {[10000, 50000, 100000, 500000, 1000000].map(v => (
-          <Button key={v} size="sm" variant="ghost" onClick={() => setAmount(String(v))}>${(v/1000)}k</Button>
+      <div className="flex flex-wrap gap-1">
+        {[10_000_000, 50_000_000, 100_000_000, 500_000_000, 1_000_000_000].map(v => (
+          <Button key={v} size="sm" variant="ghost" onClick={() => setAmount(String(v))}>{formatIDRCompact(v)}</Button>
         ))}
       </div>
       <Button onClick={() => reset.mutate(Math.max(0, Number(amount) || 0))} disabled={reset.isPending}>
