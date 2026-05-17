@@ -1,8 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getCandles } from "./market.functions";
 import { ema, rsi, macd, type Candle } from "./indicators";
+
+const USER_ID = "00000000-0000-0000-0000-000000000001";
 
 export type BacktestResult = {
   metrics: {
