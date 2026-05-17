@@ -284,6 +284,9 @@ function ChartPage() {
         qualityGrade={setup.data?.setup?.quality?.grade}
         executionStatus={sig?.executionStatus}
         executionReason={sig?.executionReason}
+        cash={Number(paper.data?.account?.cash ?? 0)}
+        unrealizedPnl={Number((paper.data as any)?.pnl?.unrealized ?? 0)}
+        onTraded={() => { qc.invalidateQueries({ queryKey: ["paper"] }); }}
       />
     </div>
   );
