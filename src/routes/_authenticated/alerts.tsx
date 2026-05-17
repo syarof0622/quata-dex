@@ -84,9 +84,10 @@ function AlertsPage() {
   });
   const check = useMutation({
     mutationFn: () => checkAlerts(),
-    onSuccess: (r) => {
-      if (!r.triggered.length) toast.message("No alerts triggered.");
-      else r.triggered.forEach((t) => toast.success(`${t.symbol}: ${t.reason}`));
+    onSuccess: (r: any) => {
+      const list = Array.isArray(r?.triggered) ? r.triggered : [];
+      if (!list.length) toast.message("No alerts triggered.");
+      else list.forEach((t: any) => toast.success(`${t.symbol}: ${t.reason}`));
       qc.invalidateQueries({ queryKey: ["alerts"] });
     },
   });

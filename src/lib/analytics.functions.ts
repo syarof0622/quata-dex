@@ -1,7 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getQuotes, getCandles } from "./market.functions";
 import { sectorOf } from "./sectors";
+
+const USER_ID = "00000000-0000-0000-0000-000000000001";
 
 // Compute realized PnL from a FIFO walk of paper_orders for a single symbol
 function realizedFromOrders(orders: any[]): { realized: number; trades: number; wins: number } {
@@ -35,17 +37,15 @@ function realizedFromOrders(orders: any[]): { realized: number; trades: number; 
 }
 
 export const getPortfolioAnalytics = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { supabase, userId } = context;
-    const { data: account } = await supabase.from("paper_accounts").select("*").eq("user_id", userId).maybeSingle();
+  .handler(async () => {
+    const { data: account } = await supabaseAdmin.from("paper_accounts").select("*").eq("user_id", USER_ID).maybeSingle();
     if (!account) return null;
     const [{ data: positions }, { data: orders }] = await Promise.all([
-      supabase.from("paper_positions").select("*").eq("account_id", account.id),
-      supabase.from("paper_orders").select("*").eq("account_id", account.id).eq("status", "filled").order("filled_at"),
+      supabaseAdmin.from("paper_positions").select("*").eq("account_id", account.id),
+      supabaseAdmin.from("paper_orders").select("*").eq("account_id", account.id).eq("status", "filled").order("filled_at"),
     ]);
 
-    const symbols = (positions ?? []).map(p => p.symbol);
+    const symbols = (positions ?? []).map((p: any) => p.symbol);
     let quotes: any[] = [];
     if (symbols.length) {
       try { quotes = await getQuotes({ data: { symbols } }); } catch { quotes = []; }
@@ -63,7 +63,7 @@ export const getPortfolioAnalytics = createServerFn({ method: "GET" })
     }
 
     let totalValue = 0, totalCost = 0, unrealized = 0;
-    const enriched = (positions ?? []).map(p => {
+    const enriched = (positions ?? []).map((p: any) => {
       const last = priceBy[p.symbol] ?? Number(p.avg_price);
       const value = last * Number(p.qty);
       const cost = Number(p.avg_price) * Number(p.qty);

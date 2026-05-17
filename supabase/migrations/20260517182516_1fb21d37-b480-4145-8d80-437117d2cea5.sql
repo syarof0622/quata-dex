@@ -1,0 +1,1 @@
+ALTER TABLE public.paper_accounts ADD COLUMN IF NOT EXISTS currency TEXT NOT NULL DEFAULT 'IDR';

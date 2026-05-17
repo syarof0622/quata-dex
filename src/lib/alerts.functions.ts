@@ -1,9 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getQuote, getCandles } from "./market.functions";
 import { rsi, ema, type Candle } from "./indicators";
 import { compositeSignal } from "@/features/signals/composite-engine";
+
+const USER_ID = "00000000-0000-0000-0000-000000000001";
 
 const RuleSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("price_above"), value: z.number() }),
@@ -25,47 +27,44 @@ const RuleSchema = z.discriminatedUnion("kind", [
 export type AlertRule = z.infer<typeof RuleSchema>;
 
 export const listAlerts = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { data } = await context.supabase
+  .handler(async () => {
+    const { data } = await supabaseAdmin
       .from("alerts").select("*")
-      .eq("user_id", context.userId)
+      .eq("user_id", USER_ID)
       .order("created_at", { ascending: false });
     return data ?? [];
   });
 
 export const createAlert = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((d: { symbol: string; rule: AlertRule }) =>
     z.object({ symbol: z.string().min(1).toUpperCase(), rule: RuleSchema }).parse(d))
-  .handler(async ({ context, data }) => {
-    const { data: row, error } = await context.supabase.from("alerts").insert({
-      user_id: context.userId, symbol: data.symbol, rule_json: data.rule, active: true,
+  .handler(async ({ data }) => {
+    const { data: row, error } = await supabaseAdmin.from("alerts").insert({
+      user_id: USER_ID, symbol: data.symbol, rule_json: data.rule, active: true,
     }).select().single();
-    if (error) throw error;
+    if (error) throw new Error(error.message);
     return row;
   });
 
 export const deleteAlert = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
-  .handler(async ({ context, data }) => {
-    await context.supabase.from("alerts").delete().eq("id", data.id).eq("user_id", context.userId);
+  .handler(async ({ data }) => {
+    await supabaseAdmin.from("alerts").delete().eq("id", data.id).eq("user_id", USER_ID);
     return { ok: true };
   });
 
 export const toggleAlert = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((d: { id: string; active: boolean }) =>
     z.object({ id: z.string().uuid(), active: z.boolean() }).parse(d))
-  .handler(async ({ context, data }) => {
+  .handler(async ({ data }) => {
     const update = data.active
       ? { active: true, triggered_at: null as string | null }
       : { active: false };
-    await context.supabase.from("alerts").update(update)
-      .eq("id", data.id).eq("user_id", context.userId);
+    await supabaseAdmin.from("alerts").update(update)
+      .eq("id", data.id).eq("user_id", USER_ID);
     return { ok: true };
   });
+
 
 // Evaluate a rule against fresh market data; return { hit, current, target, reason }
 async function evaluateRule(symbol: string, rule: AlertRule) {
@@ -172,7 +171,6 @@ async function evaluateRule(symbol: string, rule: AlertRule) {
 }
 
 export const evaluateAlert = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((d: { symbol: string; rule: AlertRule }) =>
     z.object({ symbol: z.string().min(1).toUpperCase(), rule: RuleSchema }).parse(d))
   .handler(async ({ data }) => {
@@ -180,10 +178,9 @@ export const evaluateAlert = createServerFn({ method: "POST" })
   });
 
 export const checkAlerts = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { data: alerts } = await context.supabase.from("alerts")
-      .select("*").eq("user_id", context.userId).eq("active", true).is("triggered_at", null);
+  .handler(async () => {
+    const { data: alerts } = await supabaseAdmin.from("alerts")
+      .select("*").eq("user_id", USER_ID).eq("active", true).is("triggered_at", null);
     if (!alerts?.length) return { triggered: [] };
     const triggered: { id: string; symbol: string; reason: string }[] = [];
     for (const a of alerts) {
@@ -193,8 +190,9 @@ export const checkAlerts = createServerFn({ method: "POST" })
       } catch (e) { console.error("alert check err", a.id, e); }
     }
     if (triggered.length) {
-      await context.supabase.from("alerts").update({ triggered_at: new Date().toISOString() })
+      await supabaseAdmin.from("alerts").update({ triggered_at: new Date().toISOString() })
         .in("id", triggered.map(t => t.id));
     }
     return { triggered };
   });
+

@@ -172,7 +172,7 @@ function Backtester() {
     mutationFn: () => runBacktest({ data: { symbol: symbol.toUpperCase(), timeframe: tf, rule, persist: true } }),
     onError: (e: any) => toast.error(e?.message ?? "Backtest failed"),
   });
-  const m = run.data?.metrics;
+  const m = (run.data as any)?.metrics;
   const [aiPrompt, setAiPrompt] = useState("");
   const gen = useMutation({
     mutationFn: () => generateStrategy({ data: { prompt: aiPrompt, symbol: symbol.toUpperCase() } }),
@@ -231,7 +231,7 @@ function Backtester() {
           <table className="w-full text-xs">
             <thead className="text-muted-foreground"><tr><th className="text-left p-2">Entry</th><th className="text-left p-2">Exit</th><th className="text-right p-2">Entry $</th><th className="text-right p-2">Exit $</th><th className="text-right p-2">PnL %</th></tr></thead>
             <tbody>
-              {run.data.trades.map((t: any, i: number) => (
+              {(run.data as any).trades.map((t: any, i: number) => (
                 <tr key={i} className="border-t border-border">
                   <td className="p-2">{new Date(t.entryTime * 1000).toLocaleDateString()}</td>
                   <td className="p-2">{new Date(t.exitTime * 1000).toLocaleDateString()}</td>
@@ -240,7 +240,7 @@ function Backtester() {
                   <td className={`p-2 text-right font-mono ${t.pnlPct >= 0 ? "text-bull" : "text-bear"}`}>{t.pnlPct.toFixed(2)}%</td>
                 </tr>
               ))}
-              {!run.data.trades.length && <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">No trades produced.</td></tr>}
+              {!(run.data as any).trades.length && <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">No trades produced.</td></tr>}
             </tbody>
           </table>
         </div>

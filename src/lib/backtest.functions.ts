@@ -1,8 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getCandles } from "./market.functions";
 import { ema, rsi, macd, type Candle } from "./indicators";
+
+const USER_ID = "00000000-0000-0000-0000-000000000001";
 
 export type BacktestResult = {
   metrics: {
@@ -48,7 +50,6 @@ function signalsForRule(rule: Rule, candles: Candle[]): number[] {
 }
 
 export const runBacktest = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((d: { symbol: string; timeframe?: string; rule?: Rule; startEquity?: number; persist?: boolean; strategyId?: string }) =>
     z.object({
       symbol: z.string().min(1).toUpperCase(),
@@ -58,8 +59,7 @@ export const runBacktest = createServerFn({ method: "POST" })
       persist: z.boolean().optional().default(false),
       strategyId: z.string().uuid().optional(),
     }).parse(d))
-  .handler(async ({ context, data }) => {
-    const { supabase, userId } = context;
+  .handler(async ({ data }) => {
     const candles = (await getCandles({ data: { symbol: data.symbol, timeframe: data.timeframe } })) as Candle[];
     if (candles.length < 60) throw new Error("Not enough data to backtest");
     const sig = signalsForRule(data.rule, candles);
@@ -114,8 +114,8 @@ export const runBacktest = createServerFn({ method: "POST" })
     };
 
     if (data.persist) {
-      await supabase.from("backtests").insert({
-        user_id: userId, symbol: data.symbol, timeframe: data.timeframe,
+      await supabaseAdmin.from("backtests").insert({
+        user_id: USER_ID, symbol: data.symbol, timeframe: data.timeframe,
         strategy_id: (data.strategyId ?? null) as any,
         metrics_json: metrics, equity_curve_json: curve.slice(-500) as any,
       });
@@ -125,21 +125,19 @@ export const runBacktest = createServerFn({ method: "POST" })
   });
 
 export const listStrategies = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { data } = await context.supabase.from("strategies").select("*").eq("user_id", context.userId).order("created_at", { ascending: false });
+  .handler(async () => {
+    const { data } = await supabaseAdmin.from("strategies").select("*").eq("user_id", USER_ID).order("created_at", { ascending: false });
     return data ?? [];
   });
 
 export const saveStrategy = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((d: { name: string; description?: string; rule: Rule }) =>
     z.object({ name: z.string().min(1), description: z.string().optional(), rule: z.enum(["ema_cross", "rsi_reversal", "macd_cross"]) }).parse(d))
-  .handler(async ({ context, data }) => {
-    const { data: row, error } = await context.supabase.from("strategies").insert({
-      user_id: context.userId, name: data.name, description: data.description ?? null,
+  .handler(async ({ data }) => {
+    const { data: row, error } = await supabaseAdmin.from("strategies").insert({
+      user_id: USER_ID, name: data.name, description: data.description ?? null,
       rules_json: { rule: data.rule }, ai_generated: false,
     }).select().single();
-    if (error) throw error;
+    if (error) throw new Error(error.message);
     return row;
   });
