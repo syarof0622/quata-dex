@@ -9,6 +9,20 @@ export const Route = createFileRoute("/api/chat")({
             messages: { role: "user" | "assistant"; content: string }[];
             system?: string;
           };
+          if (!Array.isArray(messages) || messages.length === 0) {
+            return new Response(JSON.stringify({ error: "messages required" }), { status: 400 });
+          }
+          if (messages.length > 40) {
+            return new Response(JSON.stringify({ error: "Too many messages" }), { status: 400 });
+          }
+          for (const m of messages) {
+            if (!m || typeof m.content !== "string" || (m.role !== "user" && m.role !== "assistant")) {
+              return new Response(JSON.stringify({ error: "invalid message" }), { status: 400 });
+            }
+            if (m.content.length > 8000) {
+              return new Response(JSON.stringify({ error: "message too long" }), { status: 400 });
+            }
+          }
           const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
           if (!LOVABLE_API_KEY) {
             return new Response(JSON.stringify({ error: "AI gateway not configured" }), { status: 500 });
