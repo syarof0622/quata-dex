@@ -238,11 +238,11 @@ function Backtester() {
             <tbody>
               {(run.data as any).trades.map((t: any, i: number) => (
                 <tr key={i} className="border-t border-border">
-                  <td className="p-2">{new Date(t.entryTime * 1000).toLocaleDateString()}</td>
-                  <td className="p-2">{new Date(t.exitTime * 1000).toLocaleDateString()}</td>
-                  <td className="p-2 text-right font-mono">{t.entry.toFixed(2)}</td>
-                  <td className="p-2 text-right font-mono">{t.exit.toFixed(2)}</td>
-                  <td className={`p-2 text-right font-mono ${t.pnlPct >= 0 ? "text-bull" : "text-bear"}`}>{t.pnlPct.toFixed(2)}%</td>
+                  <td className="p-2">{t.entryTime ? new Date(t.entryTime * 1000).toLocaleDateString() : "—"}</td>
+                  <td className="p-2">{t.exitTime ? new Date(t.exitTime * 1000).toLocaleDateString() : "—"}</td>
+                  <td className="p-2 text-right font-mono">{Number(t.entry ?? 0).toFixed(2)}</td>
+                  <td className="p-2 text-right font-mono">{Number(t.exit ?? 0).toFixed(2)}</td>
+                  <td className={`p-2 text-right font-mono ${Number(t.pnlPct ?? 0) >= 0 ? "text-bull" : "text-bear"}`}>{Number(t.pnlPct ?? 0).toFixed(2)}%</td>
                 </tr>
               ))}
               {!(run.data as any).trades.length && <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">No trades produced.</td></tr>}
