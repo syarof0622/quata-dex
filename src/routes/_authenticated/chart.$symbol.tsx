@@ -1,5 +1,7 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getPaperAccount } from "@/lib/paper.functions";
+import { formatIDRCompact } from "@/lib/format";
 import { useEffect, useRef, useState } from "react";
 import { getQuote, getQuoteRealtime } from "@/lib/market.functions";
 import {
