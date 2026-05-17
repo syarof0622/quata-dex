@@ -8,7 +8,12 @@ import { getQuote } from "@/lib/market.functions";
 export const Route = createFileRoute("/api/public/cron/orders")({
   server: {
     handlers: {
-      GET: async () => {
+      GET: async ({ request }) => {
+        const cronSecret = process.env.CRON_SECRET;
+        if (cronSecret) {
+          const provided = request.headers.get("x-cron-secret") ?? new URL(request.url).searchParams.get("secret");
+          if (provided !== cronSecret) return new Response("Unauthorized", { status: 401 });
+        }
         const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
         const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
         if (!url || !key) return new Response(JSON.stringify({ error: "missing env" }), { status: 500 });
