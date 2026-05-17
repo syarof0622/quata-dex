@@ -9,12 +9,27 @@ export const Route = createFileRoute("/api/chat")({
             messages: { role: "user" | "assistant"; content: string }[];
             system?: string;
           };
+          if (!Array.isArray(messages) || messages.length === 0) {
+            return new Response(JSON.stringify({ error: "messages required" }), { status: 400 });
+          }
+          if (messages.length > 40) {
+            return new Response(JSON.stringify({ error: "Too many messages" }), { status: 400 });
+          }
+          for (const m of messages) {
+            if (!m || typeof m.content !== "string" || (m.role !== "user" && m.role !== "assistant")) {
+              return new Response(JSON.stringify({ error: "invalid message" }), { status: 400 });
+            }
+            if (m.content.length > 8000) {
+              return new Response(JSON.stringify({ error: "message too long" }), { status: 400 });
+            }
+          }
           const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
           if (!LOVABLE_API_KEY) {
             return new Response(JSON.stringify({ error: "AI gateway not configured" }), { status: 500 });
           }
 
-          const sys = system ?? `You are an institutional-grade trading analyst AI assistant inside a Bloomberg-style trading platform.
+          const safeSystem = typeof system === "string" && system.length > 0 && system.length <= 2000 ? system : undefined;
+          const sys = safeSystem ?? `You are an institutional-grade trading analyst AI assistant inside a Bloomberg-style trading platform.
 You explain market behavior with technical and fundamental reasoning, give risk-aware trade ideas, and never give financial advice.
 Use concise markdown with bullet points and short tables when helpful. Always include a "Risks" section.`;
 

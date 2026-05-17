@@ -10,7 +10,12 @@ import { rsi, ema, type Candle } from "@/lib/indicators";
 export const Route = createFileRoute("/api/public/cron/alerts")({
   server: {
     handlers: {
-      GET: async () => {
+      GET: async ({ request }) => {
+        const cronSecret = process.env.CRON_SECRET;
+        if (cronSecret) {
+          const provided = request.headers.get("x-cron-secret") ?? new URL(request.url).searchParams.get("secret");
+          if (provided !== cronSecret) return new Response("Unauthorized", { status: 401 });
+        }
         const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
         const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
         if (!url || !key) return new Response(JSON.stringify({ error: "missing env" }), { status: 500 });
@@ -55,7 +60,9 @@ export const Route = createFileRoute("/api/public/cron/alerts")({
           await admin.from("alerts").update({ triggered_at: new Date().toISOString() })
             .in("id", triggered.map(t => t.id));
         }
-        return Response.json({ scanned: alerts?.length ?? 0, triggered: triggered.length, items: triggered });
+        // Strip user_id from response to avoid leaking PII
+        const safeItems = triggered.map(({ user_id: _u, ...rest }) => rest);
+        return Response.json({ scanned: alerts?.length ?? 0, triggered: triggered.length, items: safeItems });
       },
     },
   },
