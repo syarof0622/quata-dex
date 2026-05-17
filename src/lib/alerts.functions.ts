@@ -1,9 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getQuote, getCandles } from "./market.functions";
 import { rsi, ema, type Candle } from "./indicators";
 import { compositeSignal } from "@/features/signals/composite-engine";
+
+const USER_ID = "00000000-0000-0000-0000-000000000001";
 
 const RuleSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("price_above"), value: z.number() }),
