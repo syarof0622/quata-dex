@@ -87,10 +87,25 @@ function NewsHub() {
             Berita saham IDX dari Kontan, CNBC, ANTARA, Investor.id, dan Google News — auto-deduplicate, sentiment &amp; impact scoring.
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => refresh.mutate()} disabled={refresh.isPending}>
-          {refresh.isPending ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
-          Refresh now
-        </Button>
+        <div className="flex items-center gap-2">
+          {serpStatus.data && (
+            <span className={`text-[10px] px-2 py-1 rounded font-medium border ${
+              !serpStatus.data.enabled ? "border-border text-muted-foreground" :
+              serpStatus.data.quotaBlocked ? "border-bear/40 bg-bear-soft text-bear" :
+              "border-primary/40 bg-primary/10 text-primary"
+            }`} title={serpStatus.data.enabled ? `SerpApi credits used ${serpStatus.data.used}/${serpStatus.data.limit}` : "SerpApi disabled"}>
+              {!serpStatus.data.enabled
+                ? "SerpApi: off"
+                : serpStatus.data.quotaBlocked
+                ? "SerpApi quota protection"
+                : `Enhanced by SerpApi · ${serpStatus.data.remaining} left`}
+            </span>
+          )}
+          <Button variant="outline" size="sm" onClick={() => refresh.mutate()} disabled={refresh.isPending}>
+            {refresh.isPending ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+            Refresh now
+          </Button>
+        </div>
       </div>
 
       {/* Sentiment overview */}
