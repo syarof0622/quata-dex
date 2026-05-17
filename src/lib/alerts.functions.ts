@@ -171,7 +171,6 @@ async function evaluateRule(symbol: string, rule: AlertRule) {
 }
 
 export const evaluateAlert = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((d: { symbol: string; rule: AlertRule }) =>
     z.object({ symbol: z.string().min(1).toUpperCase(), rule: RuleSchema }).parse(d))
   .handler(async ({ data }) => {
@@ -179,10 +178,9 @@ export const evaluateAlert = createServerFn({ method: "POST" })
   });
 
 export const checkAlerts = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { data: alerts } = await context.supabase.from("alerts")
-      .select("*").eq("user_id", context.userId).eq("active", true).is("triggered_at", null);
+  .handler(async () => {
+    const { data: alerts } = await supabaseAdmin.from("alerts")
+      .select("*").eq("user_id", USER_ID).eq("active", true).is("triggered_at", null);
     if (!alerts?.length) return { triggered: [] };
     const triggered: { id: string; symbol: string; reason: string }[] = [];
     for (const a of alerts) {
@@ -192,8 +190,9 @@ export const checkAlerts = createServerFn({ method: "POST" })
       } catch (e) { console.error("alert check err", a.id, e); }
     }
     if (triggered.length) {
-      await context.supabase.from("alerts").update({ triggered_at: new Date().toISOString() })
+      await supabaseAdmin.from("alerts").update({ triggered_at: new Date().toISOString() })
         .in("id", triggered.map(t => t.id));
     }
     return { triggered };
   });
+
