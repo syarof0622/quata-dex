@@ -119,6 +119,7 @@ export type Database = {
         Row: {
           cash: number
           created_at: string
+          currency: string
           equity: number
           id: string
           user_id: string
@@ -126,6 +127,7 @@ export type Database = {
         Insert: {
           cash?: number
           created_at?: string
+          currency?: string
           equity?: number
           id?: string
           user_id: string
@@ -133,6 +135,7 @@ export type Database = {
         Update: {
           cash?: number
           created_at?: string
+          currency?: string
           equity?: number
           id?: string
           user_id?: string
