@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
+
+const USER_ID = "00000000-0000-0000-0000-000000000001";
 
 const StrategyOutSchema = z.object({
   name: z.string(),
@@ -10,10 +12,9 @@ const StrategyOutSchema = z.object({
 });
 
 export const generateStrategy = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((d: { prompt: string; symbol?: string }) =>
     z.object({ prompt: z.string().min(3).max(500), symbol: z.string().optional() }).parse(d))
-  .handler(async ({ context, data }) => {
+  .handler(async ({ data }) => {
     const apiKey = process.env.LOVABLE_API_KEY;
     if (!apiKey) throw new Error("AI not configured");
 
@@ -23,7 +24,7 @@ export const generateStrategy = createServerFn({ method: "POST" })
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: sys },
           { role: "user", content: `Idea: ${data.prompt}${data.symbol ? `\nSymbol: ${data.symbol}` : ""}` },
@@ -36,10 +37,10 @@ export const generateStrategy = createServerFn({ method: "POST" })
             parameters: {
               type: "object",
               properties: {
-                name: { type: "string", description: "Short strategy name" },
-                description: { type: "string", description: "1-2 sentence summary" },
+                name: { type: "string" },
+                description: { type: "string" },
                 rule: { type: "string", enum: ["ema_cross", "rsi_reversal", "macd_cross"] },
-                rationale: { type: "string", description: "Why this fits the user's idea" },
+                rationale: { type: "string" },
               },
               required: ["name", "description", "rule", "rationale"],
               additionalProperties: false,
@@ -51,8 +52,6 @@ export const generateStrategy = createServerFn({ method: "POST" })
     });
 
     if (!resp.ok) {
-      const t = await resp.text();
-      console.error("AI gateway error", resp.status, t);
       throw new Error(resp.status === 402 ? "AI credits exhausted" : resp.status === 429 ? "Rate limit, try again" : "AI generation failed");
     }
     const j = await resp.json();
@@ -60,13 +59,13 @@ export const generateStrategy = createServerFn({ method: "POST" })
     if (!args) throw new Error("AI returned no strategy");
     const parsed = StrategyOutSchema.parse(typeof args === "string" ? JSON.parse(args) : args);
 
-    const { data: row, error } = await context.supabase.from("strategies").insert({
-      user_id: context.userId,
+    const { data: row, error } = await supabaseAdmin.from("strategies").insert({
+      user_id: USER_ID,
       name: parsed.name,
       description: parsed.description + "\n\nRationale: " + parsed.rationale,
       rules_json: { rule: parsed.rule } as any,
       ai_generated: true,
     }).select().single();
-    if (error) throw error;
+    if (error) throw new Error(error.message);
     return { strategy: row, ...parsed };
   });
