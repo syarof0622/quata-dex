@@ -60,6 +60,8 @@ function tvSymbol(sym: string): string {
 
 function ChartPage() {
   const { symbol } = useParams({ from: "/_authenticated/chart/$symbol" });
+  const qc = useQueryClient();
+  const paper = useQuery({ queryKey: ["paper"], queryFn: () => getPaperAccount(), refetchInterval: 8000 });
   const [tf, setTf] = useState<(typeof TFS)[number]>("15");
   const containerRef = useRef<HTMLDivElement>(null);
   const yfTf = tfToYf(tf);
