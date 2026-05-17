@@ -29,6 +29,11 @@ function Lab() {
   const pnl = acct.data?.pnl ?? { unrealized: 0, realized: 0, total: 0, positionsValue: 0 };
   const cash = Number(acct.data?.account?.cash ?? 0);
   const equity = Number(acct.data?.account?.equity ?? cash);
+  const currency: "IDR" | "USD" = (acct.data?.account?.currency ?? "IDR") as "IDR" | "USD";
+  const fmtMoney = (n: number) => currency === "IDR"
+    ? formatIDRCompact(n)
+    : (n >= 0 ? "$" : "-$") + Math.abs(n).toLocaleString(undefined, { maximumFractionDigits: 2 });
+
   const cancel = useMutation({
     mutationFn: (id: string) => cancelOrder({ data: { id } }),
     onSuccess: () => { toast.success("Order cancelled"); acct.refetch(); },
@@ -39,15 +44,15 @@ function Lab() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Simulation Lab</h1>
-          <p className="text-sm text-muted-foreground">Paper trading IDR · live P/L · advanced orders · journal · backtest · AI coach</p>
+          <p className="text-sm text-muted-foreground">Paper trading {currency} · live P/L · advanced orders · journal · backtest · AI coach</p>
         </div>
-        <ResetAccountControl onDone={() => acct.refetch()} currentCash={cash || 100_000_000} />
+        <ResetAccountControl onDone={() => acct.refetch()} currentCash={cash || (currency === "IDR" ? 100_000_000 : 100_000)} currency={currency} />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <div className="panel p-4"><div className="text-xs text-muted-foreground">Saldo Tersedia</div><div className="font-mono text-xl md:text-2xl">{formatIDRCompact(cash)}</div></div>
-        <div className="panel p-4"><div className="text-xs text-muted-foreground">Equity Total</div><div className="font-mono text-xl md:text-2xl">{formatIDRCompact(equity)}</div></div>
-        <div className="panel p-4"><div className="text-xs text-muted-foreground">Unrealized P/L</div><div className={`font-mono text-xl md:text-2xl ${colorForChange(pnl.unrealized)}`}>{formatIDRCompact(pnl.unrealized)}</div></div>
+        <div className="panel p-4"><div className="text-xs text-muted-foreground">Saldo Tersedia</div><div className="font-mono text-xl md:text-2xl">{fmtMoney(cash)}</div></div>
+        <div className="panel p-4"><div className="text-xs text-muted-foreground">Equity Total</div><div className="font-mono text-xl md:text-2xl">{fmtMoney(equity)}</div></div>
+        <div className="panel p-4"><div className="text-xs text-muted-foreground">Unrealized P/L</div><div className={`font-mono text-xl md:text-2xl ${colorForChange(pnl.unrealized)}`}>{fmtMoney(pnl.unrealized)}</div></div>
         <div className="panel p-4"><div className="text-xs text-muted-foreground">Positions</div><div className="font-mono text-xl md:text-2xl">{positions.length}</div></div>
         <div className="panel p-4"><div className="text-xs text-muted-foreground">Filled orders</div><div className="font-mono text-xl md:text-2xl">{orders.length}</div></div>
         <div className="panel p-4"><div className="text-xs text-muted-foreground">Pending</div><div className="font-mono text-xl md:text-2xl">{pending.length}</div></div>
@@ -83,7 +88,7 @@ function Lab() {
                     <td className="p-2 text-right font-mono">{p.qty}</td>
                     <td className="p-2 text-right font-mono">{formatPrice(p.avg_price)}</td>
                     <td className="p-2 text-right font-mono">{p.mark != null ? formatPrice(p.mark) : "—"}</td>
-                    <td className={`p-2 text-right font-mono ${colorForChange(p.pnl)}`}>{p.pnl != null ? formatIDRCompact(p.pnl) : "—"}</td>
+                    <td className={`p-2 text-right font-mono ${colorForChange(p.pnl)}`}>{p.pnl != null ? fmtMoney(p.pnl) : "—"}</td>
                     <td className={`p-2 text-right font-mono ${colorForChange(p.pnlPct)}`}>{p.pnlPct != null ? formatPct(p.pnlPct) : "—"}</td>
                     <td className="p-2 text-right text-xs text-muted-foreground">{new Date(p.opened_at).toLocaleString("id-ID")}</td>
                   </tr>
@@ -233,11 +238,11 @@ function Backtester() {
             <tbody>
               {(run.data as any).trades.map((t: any, i: number) => (
                 <tr key={i} className="border-t border-border">
-                  <td className="p-2">{new Date(t.entryTime * 1000).toLocaleDateString()}</td>
-                  <td className="p-2">{new Date(t.exitTime * 1000).toLocaleDateString()}</td>
-                  <td className="p-2 text-right font-mono">{t.entry.toFixed(2)}</td>
-                  <td className="p-2 text-right font-mono">{t.exit.toFixed(2)}</td>
-                  <td className={`p-2 text-right font-mono ${t.pnlPct >= 0 ? "text-bull" : "text-bear"}`}>{t.pnlPct.toFixed(2)}%</td>
+                  <td className="p-2">{t.entryTime ? new Date(t.entryTime * 1000).toLocaleDateString() : "—"}</td>
+                  <td className="p-2">{t.exitTime ? new Date(t.exitTime * 1000).toLocaleDateString() : "—"}</td>
+                  <td className="p-2 text-right font-mono">{Number(t.entry ?? 0).toFixed(2)}</td>
+                  <td className="p-2 text-right font-mono">{Number(t.exit ?? 0).toFixed(2)}</td>
+                  <td className={`p-2 text-right font-mono ${Number(t.pnlPct ?? 0) >= 0 ? "text-bull" : "text-bear"}`}>{Number(t.pnlPct ?? 0).toFixed(2)}%</td>
                 </tr>
               ))}
               {!(run.data as any).trades.length && <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">No trades produced.</td></tr>}
@@ -258,24 +263,31 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: "bu
   );
 }
 
-function ResetAccountControl({ onDone, currentCash }: { onDone: () => void; currentCash: number }) {
+function ResetAccountControl({ onDone, currentCash, currency }: { onDone: () => void; currentCash: number; currency: "IDR" | "USD" }) {
   const [open, setOpen] = useState(false);
-  const [amount, setAmount] = useState(String(currentCash || 100_000_000));
+  const defaultAmt = currency === "IDR" ? 100_000_000 : 100_000;
+  const [amount, setAmount] = useState(String(currentCash || defaultAmt));
+  useEffect(() => { setAmount(String(currentCash || defaultAmt)); }, [currentCash, defaultAmt]);
+  const sym = currency === "IDR" ? "Rp" : "$";
+  const fmtBtn = (v: number) => currency === "IDR" ? formatIDRCompact(v) : `$${v / 1000}k`;
   const reset = useMutation({
-    mutationFn: (cash: number) => resetPaperAccount({ data: { cash } }),
-    onSuccess: (_r, cash) => { toast.success(`Account reset to ${formatIDRCompact(cash)}`); setOpen(false); onDone(); },
+    mutationFn: (cash: number) => resetPaperAccount({ data: { cash, currency } }),
+    onSuccess: (_r, cash) => { toast.success(`Account reset to ${fmtBtn(cash)}`); setOpen(false); onDone(); },
     onError: (e: any) => toast.error(e?.message ?? "Reset failed"),
   });
-  if (!open) return <Button variant="outline" onClick={() => setOpen(true)}>Reset / Set Saldo (IDR)</Button>;
+  if (!open) return <Button variant="outline" onClick={() => setOpen(true)}>Reset / Set Saldo ({currency})</Button>;
+  const presets = currency === "IDR"
+    ? [10_000_000, 50_000_000, 100_000_000, 500_000_000, 1_000_000_000]
+    : [10_000, 50_000, 100_000, 500_000, 1_000_000];
   return (
     <div className="panel p-3 flex flex-wrap items-end gap-2">
       <div>
-        <label className="text-[11px] text-muted-foreground block">Saldo awal (Rp)</label>
+        <label className="text-[11px] text-muted-foreground block">Saldo awal ({sym})</label>
         <Input type="number" min="0" value={amount} onChange={e => setAmount(e.target.value)} className="w-44" />
       </div>
       <div className="flex flex-wrap gap-1">
-        {[10_000_000, 50_000_000, 100_000_000, 500_000_000, 1_000_000_000].map(v => (
-          <Button key={v} size="sm" variant="ghost" onClick={() => setAmount(String(v))}>{formatIDRCompact(v)}</Button>
+        {presets.map(v => (
+          <Button key={v} size="sm" variant="ghost" onClick={() => setAmount(String(v))}>{fmtBtn(v)}</Button>
         ))}
       </div>
       <Button onClick={() => reset.mutate(Math.max(0, Number(amount) || 0))} disabled={reset.isPending}>

@@ -193,18 +193,34 @@ export const cancelOrder = createServerFn({ method: "POST" })
   });
 
 export const resetPaperAccount = createServerFn({ method: "POST" })
-  .inputValidator((d: { cash?: number } | undefined) =>
-    z.object({ cash: z.number().nonnegative().max(1e12).optional() }).parse(d ?? {}),
+  .inputValidator((d: { cash?: number; currency?: "IDR" | "USD" } | undefined) =>
+    z.object({
+      cash: z.number().nonnegative().max(1e12).optional(),
+      currency: z.enum(["IDR", "USD"]).optional(),
+    }).parse(d ?? {}),
   )
   .handler(async ({ data }) => {
     const cash = Math.max(0, Number(data?.cash ?? DEFAULT_CASH)) || DEFAULT_CASH;
+    const currency = data?.currency ?? "IDR";
     const account = await ensureAccount();
     await Promise.all([
       supabaseAdmin.from("paper_positions").delete().eq("user_id", USER_ID),
       supabaseAdmin.from("paper_orders").delete().eq("user_id", USER_ID),
     ]);
     await supabaseAdmin.from("paper_accounts")
-      .update({ cash, equity: cash })
+      .update({ cash, equity: cash, currency })
       .eq("id", account.id);
-    return { ok: true, cash };
+    return { ok: true, cash, currency };
+  });
+
+// Update currency only without resetting balance/positions
+export const updatePaperCurrency = createServerFn({ method: "POST" })
+  .inputValidator((d: { currency: "IDR" | "USD" }) =>
+    z.object({ currency: z.enum(["IDR", "USD"]) }).parse(d))
+  .handler(async ({ data }) => {
+    const account = await ensureAccount();
+    const { error } = await supabaseAdmin.from("paper_accounts")
+      .update({ currency: data.currency }).eq("id", account.id);
+    if (error) throw new Error(error.message);
+    return { ok: true, currency: data.currency };
   });

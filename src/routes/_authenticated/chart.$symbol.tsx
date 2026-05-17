@@ -398,7 +398,7 @@ function ChartPage() {
         {/* Bottom tabs */}
         <div className="panel p-4">
           <Tabs defaultValue="setup">
-            <TabsList>
+            <TabsList className="flex-wrap h-auto gap-1">
               <TabsTrigger value="setup">Trade Setup</TabsTrigger>
               <TabsTrigger value="reasoning">AI Reasoning</TabsTrigger>
               <TabsTrigger value="sr">Support/Resistance</TabsTrigger>

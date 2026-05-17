@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { getPaperAccount, resetPaperAccount } from "@/lib/paper.functions";
+import { getPaperAccount, resetPaperAccount, updatePaperCurrency } from "@/lib/paper.functions";
+import { formatIDRCompact } from "@/lib/format";
 import { checkAlerts } from "@/lib/alerts.functions";
 import { toast } from "sonner";
 import { LogOut, RefreshCw, Bell, Palette, User, Database, Zap, Trash2, Mail } from "lucide-react";
@@ -77,14 +78,28 @@ function SettingsPage() {
     if (k === "theme") applyTheme(v as Prefs["theme"]);
   }
 
-  const [resetAmount, setResetAmount] = useState("100000");
+  const accountCurrency: "IDR" | "USD" = (account.data?.account?.currency ?? "IDR") as "IDR" | "USD";
+  const [currency, setCurrency] = useState<"IDR" | "USD">(accountCurrency);
+  useEffect(() => { setCurrency(accountCurrency); }, [accountCurrency]);
+
+  const defaultAmt = accountCurrency === "IDR" ? "100000000" : "100000";
+  const [resetAmount, setResetAmount] = useState(defaultAmt);
+  useEffect(() => { setResetAmount(accountCurrency === "IDR" ? "100000000" : "100000"); }, [accountCurrency]);
+
   const reset = useMutation({
-    mutationFn: (cash: number) => resetPaperAccount({ data: { cash } }),
+    mutationFn: (cash: number) => resetPaperAccount({ data: { cash, currency } }),
     onSuccess: (_r, cash) => {
-      toast.success(`Paper account reset to $${cash.toLocaleString()}`);
+      const sym = currency === "IDR" ? "Rp " : "$";
+      toast.success(`Paper account reset to ${sym}${cash.toLocaleString()}`);
       qc.invalidateQueries();
     },
     onError: (e: Error) => toast.error(e?.message ?? "Reset failed"),
+  });
+
+  const curMut = useMutation({
+    mutationFn: (c: "IDR" | "USD") => updatePaperCurrency({ data: { currency: c } }),
+    onSuccess: (_r, c) => { toast.success(`Mata uang: ${c}`); qc.invalidateQueries(); },
+    onError: (e: Error) => toast.error(e?.message ?? "Failed"),
   });
 
   const scan = useMutation({
@@ -225,30 +240,47 @@ function SettingsPage() {
             </Row>
           </div>
 
-          <div className="panel p-4 space-y-2">
+          <div className="panel p-4 space-y-3">
             <h3 className="font-semibold flex items-center gap-2"><RefreshCw className="size-4" /> Paper Trading Account</h3>
             <div className="grid grid-cols-3 gap-3 text-sm">
-              <Mini label="Cash" value={fmt(account.data?.account?.cash)} />
+              <Mini label={`Cash (${accountCurrency})`} value={accountCurrency === "IDR" ? formatIDRCompact(Number(account.data?.account?.cash ?? 0)) : fmt(account.data?.account?.cash)} />
               <Mini label="Positions" value={String(account.data?.positions?.length ?? 0)} />
               <Mini label="Open orders" value={String(account.data?.pending?.length ?? 0)} />
             </div>
+
+            <Row label="Mata Uang Akun" hint="Berlaku untuk paper trading. Mengubah currency tidak menghapus saldo.">
+              <Select value={currency} onValueChange={(v) => { const c = v as "IDR" | "USD"; setCurrency(c); curMut.mutate(c); }}>
+                <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="IDR">🇮🇩 IDR (Rp)</SelectItem>
+                  <SelectItem value="USD">🇺🇸 USD ($)</SelectItem>
+                </SelectContent>
+              </Select>
+            </Row>
+
             <div className="border-t border-border pt-3 space-y-2">
-              <div className="text-xs text-muted-foreground">Set custom starting capital. Resets all positions, orders, and journal.</div>
+              <div className="text-xs text-muted-foreground">Atur saldo awal untuk paper trading. Akan menghapus semua posisi & order.</div>
               <div className="flex items-end gap-2 flex-wrap">
                 <div>
-                  <Label className="text-[11px]">Starting cash ($)</Label>
-                  <Input type="number" min="0" className="w-44" value={resetAmount} onChange={e => setResetAmount(e.target.value)} />
+                  <Label className="text-[11px]">Saldo awal ({currency === "IDR" ? "Rp" : "$"})</Label>
+                  <Input type="number" min="0" className="w-48" value={resetAmount} onChange={e => setResetAmount(e.target.value)} />
                 </div>
                 <div className="flex flex-wrap gap-1">
-                  {[10000, 50000, 100000, 500000, 1000000].map(v => (
-                    <Button key={v} size="sm" variant="ghost" onClick={() => setResetAmount(String(v))}>${(v/1000)}k</Button>
+                  {(currency === "IDR"
+                    ? [10_000_000, 50_000_000, 100_000_000, 500_000_000, 1_000_000_000]
+                    : [10_000, 50_000, 100_000, 500_000, 1_000_000]
+                  ).map(v => (
+                    <Button key={v} size="sm" variant="ghost" onClick={() => setResetAmount(String(v))}>
+                      {currency === "IDR" ? formatIDRCompact(v) : `$${v / 1000}k`}
+                    </Button>
                   ))}
                 </div>
                 <Button variant="destructive" onClick={() => {
                   const cash = Math.max(0, Number(resetAmount) || 0);
-                  if (confirm(`Reset paper account to $${cash.toLocaleString()}? This cannot be undone.`)) reset.mutate(cash);
+                  const sym = currency === "IDR" ? "Rp " : "$";
+                  if (confirm(`Reset paper account to ${sym}${cash.toLocaleString()}? Ini tidak dapat dibatalkan.`)) reset.mutate(cash);
                 }} disabled={reset.isPending}>
-                  <Trash2 className="size-4 mr-1" /> Reset & set capital
+                  <Trash2 className="size-4 mr-1" /> {reset.isPending ? "Saving…" : "Reset & simpan saldo"}
                 </Button>
               </div>
             </div>
