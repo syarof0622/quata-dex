@@ -60,7 +60,9 @@ export const Route = createFileRoute("/api/public/cron/alerts")({
           await admin.from("alerts").update({ triggered_at: new Date().toISOString() })
             .in("id", triggered.map(t => t.id));
         }
-        return Response.json({ scanned: alerts?.length ?? 0, triggered: triggered.length, items: triggered });
+        // Strip user_id from response to avoid leaking PII
+        const safeItems = triggered.map(({ user_id: _u, ...rest }) => rest);
+        return Response.json({ scanned: alerts?.length ?? 0, triggered: triggered.length, items: safeItems });
       },
     },
   },
