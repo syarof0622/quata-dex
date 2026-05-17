@@ -1085,6 +1085,7 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualit
         } });
         toast.success(`${type.toUpperCase()} ${side.toUpperCase()} ${qty} ${symbol} pending`);
       }
+      onTraded?.();
     } catch (e: any) {
       toast.error(e?.message ?? "Order failed");
     } finally {
