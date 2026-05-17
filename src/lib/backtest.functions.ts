@@ -50,7 +50,6 @@ function signalsForRule(rule: Rule, candles: Candle[]): number[] {
 }
 
 export const runBacktest = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((d: { symbol: string; timeframe?: string; rule?: Rule; startEquity?: number; persist?: boolean; strategyId?: string }) =>
     z.object({
       symbol: z.string().min(1).toUpperCase(),
@@ -60,8 +59,7 @@ export const runBacktest = createServerFn({ method: "POST" })
       persist: z.boolean().optional().default(false),
       strategyId: z.string().uuid().optional(),
     }).parse(d))
-  .handler(async ({ context, data }) => {
-    const { supabase, userId } = context;
+  .handler(async ({ data }) => {
     const candles = (await getCandles({ data: { symbol: data.symbol, timeframe: data.timeframe } })) as Candle[];
     if (candles.length < 60) throw new Error("Not enough data to backtest");
     const sig = signalsForRule(data.rule, candles);
