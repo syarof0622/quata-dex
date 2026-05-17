@@ -172,7 +172,7 @@ function Backtester() {
     mutationFn: () => runBacktest({ data: { symbol: symbol.toUpperCase(), timeframe: tf, rule, persist: true } }),
     onError: (e: any) => toast.error(e?.message ?? "Backtest failed"),
   });
-  const m = run.data?.metrics;
+  const m = (run.data as any)?.metrics;
   const [aiPrompt, setAiPrompt] = useState("");
   const gen = useMutation({
     mutationFn: () => generateStrategy({ data: { prompt: aiPrompt, symbol: symbol.toUpperCase() } }),
