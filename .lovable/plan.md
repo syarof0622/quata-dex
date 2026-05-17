@@ -1,56 +1,65 @@
-## Rencana Lanjutan Quanta Terminal
+# News & Market Sentiment Aggregator
 
-### 1. Ingest project dari ZIP
+Membangun agregator berita & sentimen pasar saham Indonesia dari beberapa sumber RSS gratis (Kontan, CNBC, ANTARA, Investor.id, Google News) dengan fallback, normalisasi, dedup, sentiment & impact scoring, disimpan ke database, dan ditampilkan di dashboard.
 
-- Ekstrak seluruh isi `Watchlist_Fix_Connect_1.zip` ke project (overwrite template kosong saat ini): `src/`, `supabase/`, `package.json`, `vite.config.ts`, `tsconfig.json`, `components.json`, `wrangler.jsonc`, `.env`, dll.
-- Install dependency dari `package.json` upload (yahoo-finance2, lightweight-charts, framer-motion, recharts, react-markdown, vaul, embla, supabase-js, dsb).
-- `routeTree.gen.ts` akan diregenerasi otomatis oleh TanStack Vite plugin saat dev start.
+## 1. Database (migration)
 
-### 2. Koneksi database
+Tiga tabel baru di Supabase:
 
-- `.env` upload menunjuk ke Supabase eksternal Anda (`rrqzcgnxuyfmcnmwyajj.supabase.co`) — saya pertahankan apa adanya, **tidak** mengaktifkan Lovable Cloud baru (akan membuat project Supabase berbeda dan memutus data Anda).
-- Verifikasi `client.ts` / `client.server.ts` membaca env yang benar; pastikan migration di `supabase/migrations/` sudah ter-apply di project Anda (asumsi sudah, karena project sebelumnya dipakai). Jika ada server function 401/relasi hilang akan saya laporkan.
+- **news_articles** — `id, source, source_id, title, summary, url, canonical_url, image_url, published_at, fetched_at, category, tickers text[], sectors text[], keywords text[], sentiment, sentiment_score, confidence, impact_level, impact_score, related_symbols text[], is_duplicate bool, duplicate_of uuid, duplicate_sources text[], raw_payload jsonb`. Indexes: `(published_at desc)`, GIN on `tickers`, unique on `(source, source_id)`.
+- **news_sources** — `id, name, type, url, fallback_url, priority, category, enabled, last_success_at, last_failed_at, last_error, status, fail_count`.
+- **ticker_sentiment_summary** — `symbol pk, positive_count, neutral_count, negative_count, average_sentiment_score, high_impact_news_count, latest_news_at, summary, updated_at`.
 
-### 3. Seed super admin `dududu@dududu.com / dududu`
+RLS: read public untuk authenticated; write hanya via service role (cron/server). Seed `news_sources` dengan 5 sumber sesuai brief.
 
-Untuk membuat user di Supabase eksternal saya butuh **SERVICE_ROLE_KEY** project tersebut (tidak ada di `.env` yang Anda upload, hanya anon/publishable key). Dua opsi — saya akan minta konfirmasi sebelum lanjut:
+## 2. Server (TanStack server functions + routes)
 
-- **(A)** Anda menambahkan secret `SUPABASE_SERVICE_ROLE_KEY` lewat tool secret → saya jalankan script seed (admin createUser + insert role `super_admin` di tabel `user_roles`, atau buat tabelnya dulu jika belum ada).
-- **(B)** Anda buat manual via Supabase dashboard (Auth → Add user) lalu saya tinggal pastikan role tabel terisi.
-- Jika belum ada tabel `user_roles` + enum `app_role`, saya buat migration baru sesuai pola RLS aman (security-definer `has_role`).
+**File baru** di `src/lib/`:
 
-### 4. Fitur lanjutan
+- `news-sources.ts` — definisi `NEWS_SOURCES` (Kontan, CNBC market+fallback, ANTARA, Investor.id w/ feed probing, Google News). Konstanta keywords saham, ticker IDX, sektor mapping.
+- `news-rss.server.ts` — RSS/Atom parser ringan pakai `fast-xml-parser` (sudah lightweight, Worker-safe). Fetch dengan timeout 10s, retry 2x, AbortController.
+- `news-pipeline.server.ts` — normalize → filter keyword → extract ticker (regex BBCA|BBRI|… + `.JK`) → sentiment rule-based (lexicon ID positif/negatif) + optional Lovable AI untuk batch ringkas → impact scoring → dedup by normalized title similarity (Jaro-Winkler ringan) + canonical URL.
+- `news.functions.ts` — server fns: `listNews(filter)`, `getNewsForTicker(symbol)`, `getTickerSentiment(symbol)`, `getMarketSentiment()`, `getSourcesStatus()`.
 
-**a. Fundamental tab lengkap (`/chart/$symbol`)**
+**Cron route** `src/routes/api/public/cron/news.ts` — POST: jalankan pipeline untuk semua source enabled, tulis ke DB pakai `supabaseAdmin`, update `news_sources` status, refresh `ticker_sentiment_summary`. Dijadwalkan pg_cron tiap 10 menit.
 
-- Tambah tab "Fundamental" lengkap di samping Chart/Signals/News yang sudah ada. Server function `getFundamentals` baru pakai `yahoo-finance2` modules: `summaryDetail`, `defaultKeyStatistics`, `financialData`, `assetProfile`, `incomeStatementHistory`, `balanceSheetHistory`, `cashflowStatementHistory`, `earnings`.
-- Section UI: Company Profile, Valuation (PE/PB/PS/EV-EBITDA), Profitability (ROE/ROA/Margins), Growth (Revenue/EPS YoY), Financial Health (Debt/Equity, Current Ratio), Dividends, Earnings calendar, Income/Balance/Cashflow ringkas (3 tahun terakhir, table).
-- Loading skeleton + empty-state per section, format angka via `lib/format.ts`.
+**Public API** (opsional, tipis): `src/routes/api/public/news.ts` GET dengan query params untuk eksternal. App sendiri pakai server fns.
 
-**b. Microcopy screener "Volx → Relative Volume"**
+Hapus dependensi frontend dari RSS langsung — semua via DB.
 
-- Di `/screener`: rename label kolom & filter "Volx" menjadi "Relative Volume" (tooltip: "Volume hari ini ÷ rata-rata 20 hari"). Sertakan singkatan "(RVOL)" agar trader tetap kenal.
-- Update header tabel, filter sidebar, dan teks bantuan terkait.
+## 3. Integrasi dengan halaman yang sudah ada
 
-**c. Responsive collapsible panel**
+- `src/lib/news-impact.functions.ts` — extend `newsImpact` agar membaca dari `news_articles` (filter by ticker) sebagai sumber utama, fallback ke Yahoo/Marketaux yang sudah ada.
+- `src/routes/_authenticated/news.tsx` — tetap pakai `newsImpact`, otomatis dapat data baru.
+- Chart page (`chart.$symbol.tsx`) — panel berita per-ticker tetap, sumber jadi DB.
 
-- Convert panel samping (watchlist/journal/chat sidebar) jadi `Collapsible` (shadcn) dengan tombol toggle dan default state berdasar breakpoint via `useIsMobile`.
-- Mobile (<md): default collapsed, buka sebagai `Sheet` (drawer kiri/kanan).
-- Desktop (≥md): default expanded, bisa di-collapse jadi rail tipis ikon-only (mirip `SidebarTrigger`). State disimpan di `localStorage`.
-- Konten utama otomatis melebar saat panel collapsed (grid responsive `grid-cols-[auto_1fr]`).
+## 4. UI baru — News Dashboard
 
-### 5. Verifikasi
+Halaman baru `src/routes/_authenticated/news-hub.tsx` (link di sidebar):
+- **Market Sentiment Overview** — gauge bullish/bearish, count positive/neutral/negative, top bullish & bearish tickers, high-impact today.
+- **AI Market Summary card** — panggil Lovable AI Gateway (`google/gemini-2.5-flash`) untuk ringkas 20 berita teratas → `{summary, marketBias, mainCatalysts}`. Cache 15 menit di DB.
+- **Market News Feed** — list dengan source badge, sentiment badge, impact badge, ticker chips, waktu, link.
+- **Source Health Monitor** — status tiap source dari `news_sources`.
+- **Filter bar** — source, ticker, sentiment, impact, date range, search.
 
-- Build harness jalan; fix TS/import errors.
-- Manual: login → buka `/chart/AAPL` cek tab Fundamental → buka `/screener` cek label RVOL → resize viewport cek collapsible panel mobile/desktop.
+Dark fintech style mengikuti `src/styles.css` tokens yang sudah ada.
 
-### Catatan teknis
+## 5. Catatan teknis
 
-- Worker runtime kompatibel dengan `yahoo-finance2` (fetch-based, no native deps).
-- `LOVABLE_API_KEY` untuk `api/chat.ts` akan saya cek; jika belum ada saya minta via add_secret.
-- Saya **tidak** menyentuh data existing di Supabase Anda; hanya menambah tabel `user_roles` (jika belum ada) dan satu user baru.
+- RSS fetch khusus server (Worker runtime). Untuk Investor.id, coba 3 kandidat feed berurutan; jika semua 404, lewati (tanpa scraping HTML agresif).
+- Sentiment: rule-based dulu (lexicon ID di file `news-pipeline.server.ts`); jika `LOVABLE_API_KEY` ada dan berita high-impact tanpa skor jelas, panggil AI untuk klasifikasi (batch 10 judul / call).
+- Dedup: simpan `normalized_title_hash` (lowercase + strip punctuation + drop stopwords); cek similarity dengan kandidat 24 jam terakhir.
+- Cache & rate limit: cron 10 menit jadi single source of truth. Tidak ada fetch RSS dari client.
+- Tidak ambil full article, hanya title/summary/link/thumbnail/published.
 
-### Pertanyaan sebelum eksekusi
+## 6. Urutan eksekusi
 
-1. Untuk seed super admin: pilih (A) saya minta `SUPABASE_SERVICE_ROLE_KEY` via secret, atau (B) Anda buat user manual di dashboard?
-2. Konfirmasi tetap pakai Supabase eksternal `rrqzcgnxuyfmcnmwyajj` (bukan Lovable Cloud baru)?
+1. Migration (3 tabel + RLS + seed news_sources).
+2. Install `fast-xml-parser`.
+3. Tulis `news-sources.ts`, `news-rss.server.ts`, `news-pipeline.server.ts`, `news.functions.ts`.
+4. Tulis cron route + jadwalkan pg_cron.
+5. Update `news-impact.functions.ts` untuk pakai DB.
+6. Bangun `news-hub.tsx` + tambah link sidebar.
+7. Smoke test: panggil cron manual, cek DB terisi, buka halaman.
+
+Setelah plan disetujui saya jalankan migration dulu, lalu tulis kode.
