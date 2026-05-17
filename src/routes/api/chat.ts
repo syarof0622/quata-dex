@@ -28,7 +28,8 @@ export const Route = createFileRoute("/api/chat")({
             return new Response(JSON.stringify({ error: "AI gateway not configured" }), { status: 500 });
           }
 
-          const sys = system ?? `You are an institutional-grade trading analyst AI assistant inside a Bloomberg-style trading platform.
+          const safeSystem = typeof system === "string" && system.length > 0 && system.length <= 2000 ? system : undefined;
+          const sys = safeSystem ?? `You are an institutional-grade trading analyst AI assistant inside a Bloomberg-style trading platform.
 You explain market behavior with technical and fundamental reasoning, give risk-aware trade ideas, and never give financial advice.
 Use concise markdown with bullet points and short tables when helpful. Always include a "Risks" section.`;
 
