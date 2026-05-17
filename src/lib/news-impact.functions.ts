@@ -77,10 +77,16 @@ export const newsImpact = createServerFn({ method: "POST" })
     const scored = news.map(n => {
       const s = scoreHeadline(n.title);
       const reaction = pctReaction(candles, n.publishedAt);
+      // Prefer provider sentiment when present (-1..1 from Marketaux)
+      const provider = typeof (n as any).sentimentScore === "number" ? (n as any).sentimentScore : null;
+      const sentiment: Side =
+        provider !== null
+          ? provider > 0.05 ? "positive" : provider < -0.05 ? "negative" : "neutral"
+          : s.sentiment;
       return {
         ...n,
-        sentiment: s.sentiment,
-        sentimentScore: s.sentimentScore,
+        sentiment,
+        sentimentScore: provider !== null ? Math.round(provider * 100) / 100 : s.sentimentScore,
         impact: s.impact,
         tags: s.tags,
         priceReactionPct: reaction,
