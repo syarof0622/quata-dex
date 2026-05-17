@@ -300,29 +300,112 @@ export const getIndices = createServerFn({ method: "GET" }).handler(async () => 
   });
 });
 
+async function fetchMarketauxNews(symbol?: string): Promise<any[]> {
+  const token = process.env.MARKETAUX_API_TOKEN;
+  if (!token) return [];
+  const params = new URLSearchParams({
+    filter_entities: "true",
+    language: "en",
+    limit: "12",
+    api_token: token,
+  });
+  if (symbol) {
+    // Marketaux uses base symbols; strip .JK suffix for matching
+    const base = symbol.replace(/\.[A-Z]+$/, "");
+    params.set("symbols", `${symbol},${base}`);
+  } else {
+    params.set("countries", "id,us");
+  }
+  const res = await fetch(`https://api.marketaux.com/v1/news/all?${params.toString()}`);
+  if (!res.ok) throw new Error(`Marketaux ${res.status}`);
+  const j: any = await res.json();
+  return (j?.data ?? []).map((n: any) => {
+    const ents: any[] = Array.isArray(n.entities) ? n.entities : [];
+    const scores = ents.map(e => Number(e.sentiment_score)).filter(v => Number.isFinite(v));
+    const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
+    return {
+      title: n.title,
+      link: n.url,
+      publisher: n.source,
+      publishedAt: n.published_at ?? null,
+      thumbnail: n.image_url ?? null,
+      description: n.description ?? null,
+      sentimentScore: avg, // -1..1
+      entities: ents.map(e => ({ symbol: e.symbol, name: e.name, sentiment: Number(e.sentiment_score) || 0 })),
+      source: "marketaux" as const,
+    };
+  });
+}
+
+async function fetchYahooNews(symbol?: string): Promise<any[]> {
+  const r = await yfFetch(
+    `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(
+      symbol ?? "stock market",
+    )}&quotesCount=0&newsCount=12`,
+  );
+  return (r?.news ?? []).map((n: any) => ({
+    title: n.title,
+    link: n.link,
+    publisher: n.publisher,
+    publishedAt: n.providerPublishTime ? new Date(n.providerPublishTime * 1000).toISOString() : null,
+    thumbnail: n.thumbnail?.resolutions?.[0]?.url ?? null,
+    description: null,
+    sentimentScore: null,
+    entities: [],
+    source: "yahoo" as const,
+  }));
+}
+
 export const getNews = createServerFn({ method: "POST" })
   .inputValidator((d: { symbol?: string }) => z.object({ symbol: z.string().optional() }).parse(d))
   .handler(async ({ data }) => {
     const key = `n:${data.symbol ?? "_"}`;
     return cached(key, 60_000, async () => {
+      let items: any[] = [];
       try {
-        const r = await yfFetch(
-          `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(
-            data.symbol ?? "stock market",
-          )}&quotesCount=0&newsCount=12`,
-        );
-        return (r?.news ?? []).map((n: any) => ({
-          title: n.title,
-          link: n.link,
-          publisher: n.publisher,
-          publishedAt: n.providerPublishTime
-            ? new Date(n.providerPublishTime * 1000).toISOString()
-            : null,
-          thumbnail: n.thumbnail?.resolutions?.[0]?.url ?? null,
-        }));
+        items = await fetchMarketauxNews(data.symbol);
       } catch (e) {
-        console.error("getNews error", e);
-        return [];
+        console.error("marketaux news error", e);
+      }
+      if (items.length === 0) {
+        try {
+          items = await fetchYahooNews(data.symbol);
+        } catch (e) {
+          console.error("yahoo news error", e);
+        }
+      }
+      return items;
+    });
+  });
+
+export const getMarketauxSentiment = createServerFn({ method: "POST" })
+  .inputValidator((d: { symbol?: string; country?: string }) =>
+    z.object({ symbol: z.string().optional(), country: z.string().optional() }).parse(d ?? {}),
+  )
+  .handler(async ({ data }) => {
+    const token = process.env.MARKETAUX_API_TOKEN;
+    if (!token) return { available: false as const, data: [] };
+    const key = `mxs:${data.symbol ?? ""}:${data.country ?? "id"}`;
+    return cached(key, 120_000, async () => {
+      const params = new URLSearchParams({
+        group_by: data.symbol ? "symbol" : "country",
+        limit: "10",
+        api_token: token,
+      });
+      if (data.symbol) {
+        const base = data.symbol.replace(/\.[A-Z]+$/, "");
+        params.set("symbols", `${data.symbol},${base}`);
+      } else {
+        params.set("countries", data.country ?? "id,us");
+      }
+      try {
+        const res = await fetch(`https://api.marketaux.com/v1/entity/stats/aggregation?${params.toString()}`);
+        if (!res.ok) throw new Error(`Marketaux stats ${res.status}`);
+        const j: any = await res.json();
+        return { available: true as const, data: j?.data ?? [] };
+      } catch (e) {
+        console.error("marketaux sentiment error", e);
+        return { available: false as const, data: [] };
       }
     });
   });
