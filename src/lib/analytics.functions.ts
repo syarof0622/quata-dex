@@ -37,17 +37,15 @@ function realizedFromOrders(orders: any[]): { realized: number; trades: number; 
 }
 
 export const getPortfolioAnalytics = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { supabase, userId } = context;
-    const { data: account } = await supabase.from("paper_accounts").select("*").eq("user_id", userId).maybeSingle();
+  .handler(async () => {
+    const { data: account } = await supabaseAdmin.from("paper_accounts").select("*").eq("user_id", USER_ID).maybeSingle();
     if (!account) return null;
     const [{ data: positions }, { data: orders }] = await Promise.all([
-      supabase.from("paper_positions").select("*").eq("account_id", account.id),
-      supabase.from("paper_orders").select("*").eq("account_id", account.id).eq("status", "filled").order("filled_at"),
+      supabaseAdmin.from("paper_positions").select("*").eq("account_id", account.id),
+      supabaseAdmin.from("paper_orders").select("*").eq("account_id", account.id).eq("status", "filled").order("filled_at"),
     ]);
 
-    const symbols = (positions ?? []).map(p => p.symbol);
+    const symbols = (positions ?? []).map((p: any) => p.symbol);
     let quotes: any[] = [];
     if (symbols.length) {
       try { quotes = await getQuotes({ data: { symbols } }); } catch { quotes = []; }
