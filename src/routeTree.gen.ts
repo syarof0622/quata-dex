@@ -26,6 +26,7 @@ import { Route as AuthenticatedAlertsRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedAiRouteImport } from './routes/_authenticated/ai'
 import { Route as ApiSerpapiNewsRouteImport } from './routes/api/serpapi/news'
 import { Route as AuthenticatedChartSymbolRouteImport } from './routes/_authenticated/chart.$symbol'
+import { Route as ApiSerpapiMarketContextSymbolRouteImport } from './routes/api/serpapi/market-context.$symbol'
 import { Route as ApiSerpapiGoogleFinanceSymbolRouteImport } from './routes/api/serpapi/google-finance.$symbol'
 import { Route as ApiPublicCronOrdersRouteImport } from './routes/api/public/cron/orders'
 import { Route as ApiPublicCronNewsRouteImport } from './routes/api/public/cron/news'
@@ -116,6 +117,12 @@ const AuthenticatedChartSymbolRoute =
     path: '/chart/$symbol',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const ApiSerpapiMarketContextSymbolRoute =
+  ApiSerpapiMarketContextSymbolRouteImport.update({
+    id: '/api/serpapi/market-context/$symbol',
+    path: '/api/serpapi/market-context/$symbol',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiSerpapiGoogleFinanceSymbolRoute =
   ApiSerpapiGoogleFinanceSymbolRouteImport.update({
     id: '/api/serpapi/google-finance/$symbol',
@@ -159,6 +166,7 @@ export interface FileRoutesByFullPath {
   '/api/public/cron/news': typeof ApiPublicCronNewsRoute
   '/api/public/cron/orders': typeof ApiPublicCronOrdersRoute
   '/api/serpapi/google-finance/$symbol': typeof ApiSerpapiGoogleFinanceSymbolRoute
+  '/api/serpapi/market-context/$symbol': typeof ApiSerpapiMarketContextSymbolRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -181,6 +189,7 @@ export interface FileRoutesByTo {
   '/api/public/cron/news': typeof ApiPublicCronNewsRoute
   '/api/public/cron/orders': typeof ApiPublicCronOrdersRoute
   '/api/serpapi/google-finance/$symbol': typeof ApiSerpapiGoogleFinanceSymbolRoute
+  '/api/serpapi/market-context/$symbol': typeof ApiSerpapiMarketContextSymbolRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -205,6 +214,7 @@ export interface FileRoutesById {
   '/api/public/cron/news': typeof ApiPublicCronNewsRoute
   '/api/public/cron/orders': typeof ApiPublicCronOrdersRoute
   '/api/serpapi/google-finance/$symbol': typeof ApiSerpapiGoogleFinanceSymbolRoute
+  '/api/serpapi/market-context/$symbol': typeof ApiSerpapiMarketContextSymbolRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -229,6 +239,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/news'
     | '/api/public/cron/orders'
     | '/api/serpapi/google-finance/$symbol'
+    | '/api/serpapi/market-context/$symbol'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -251,6 +262,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/news'
     | '/api/public/cron/orders'
     | '/api/serpapi/google-finance/$symbol'
+    | '/api/serpapi/market-context/$symbol'
   id:
     | '__root__'
     | '/'
@@ -274,6 +286,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/news'
     | '/api/public/cron/orders'
     | '/api/serpapi/google-finance/$symbol'
+    | '/api/serpapi/market-context/$symbol'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -286,6 +299,7 @@ export interface RootRouteChildren {
   ApiPublicCronNewsRoute: typeof ApiPublicCronNewsRoute
   ApiPublicCronOrdersRoute: typeof ApiPublicCronOrdersRoute
   ApiSerpapiGoogleFinanceSymbolRoute: typeof ApiSerpapiGoogleFinanceSymbolRoute
+  ApiSerpapiMarketContextSymbolRoute: typeof ApiSerpapiMarketContextSymbolRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -409,6 +423,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedChartSymbolRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/api/serpapi/market-context/$symbol': {
+      id: '/api/serpapi/market-context/$symbol'
+      path: '/api/serpapi/market-context/$symbol'
+      fullPath: '/api/serpapi/market-context/$symbol'
+      preLoaderRoute: typeof ApiSerpapiMarketContextSymbolRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/serpapi/google-finance/$symbol': {
       id: '/api/serpapi/google-finance/$symbol'
       path: '/api/serpapi/google-finance/$symbol'
@@ -484,6 +505,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCronNewsRoute: ApiPublicCronNewsRoute,
   ApiPublicCronOrdersRoute: ApiPublicCronOrdersRoute,
   ApiSerpapiGoogleFinanceSymbolRoute: ApiSerpapiGoogleFinanceSymbolRoute,
+  ApiSerpapiMarketContextSymbolRoute: ApiSerpapiMarketContextSymbolRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
