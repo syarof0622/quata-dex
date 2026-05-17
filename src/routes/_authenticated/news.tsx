@@ -60,6 +60,12 @@ function NewsHub() {
     refetchInterval: 60_000,
   });
 
+  const serpStatus = useQuery({
+    queryKey: ["serpapi-status"],
+    queryFn: () => serpapiStatus({ data: undefined as any }),
+    refetchInterval: 120_000,
+  });
+
   const refreshFn = useServerFn(refreshNewsNow);
   const refresh = useMutation({
     mutationFn: () => refreshFn({ data: undefined as any }),
