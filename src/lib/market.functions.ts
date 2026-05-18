@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 // Worker-safe Yahoo Finance access via direct fetch (no CommonJS deps).
 // Uses the public chart + search endpoints that don't require a crumb.
@@ -300,7 +301,9 @@ export const getIndices = createServerFn({ method: "GET" }).handler(async () => 
   });
 });
 
-async function fetchMarketauxNews(symbol?: string): Promise<any[]> {
+type MarketScope = "idx" | "us" | "global";
+
+async function fetchMarketauxNews(symbol?: string, market: MarketScope = "global"): Promise<any[]> {
   const token = process.env.MARKETAUX_API_TOKEN;
   if (!token) return [];
   const params = new URLSearchParams({
@@ -314,7 +317,8 @@ async function fetchMarketauxNews(symbol?: string): Promise<any[]> {
     const base = symbol.replace(/\.[A-Z]+$/, "");
     params.set("symbols", `${symbol},${base}`);
   } else {
-    params.set("countries", "id,us");
+    const countries = market === "idx" ? "id" : market === "us" ? "us" : "id,us,gb,jp,cn,hk,sg";
+    params.set("countries", countries);
   }
   const res = await fetch(`https://api.marketaux.com/v1/news/all?${params.toString()}`);
   if (!res.ok) throw new Error(`Marketaux ${res.status}`);
@@ -337,11 +341,16 @@ async function fetchMarketauxNews(symbol?: string): Promise<any[]> {
   });
 }
 
-async function fetchYahooNews(symbol?: string): Promise<any[]> {
+async function fetchYahooNews(symbol?: string, market: MarketScope = "global"): Promise<any[]> {
+  const q = symbol
+    ? symbol
+    : market === "idx"
+      ? "IHSG OR indonesia stock market"
+      : market === "us"
+        ? "S&P 500 OR US stock market"
+        : "global stock market";
   const r = await yfFetch(
-    `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(
-      symbol ?? "stock market",
-    )}&quotesCount=0&newsCount=12`,
+    `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=0&newsCount=12`,
   );
   return (r?.news ?? []).map((n: any) => ({
     title: n.title,
@@ -356,25 +365,83 @@ async function fetchYahooNews(symbol?: string): Promise<any[]> {
   }));
 }
 
+// Pull stored Indonesia news + sentiment from news_articles table.
+async function fetchStoredIdxNews(limit = 15): Promise<any[]> {
+  try {
+    const { data } = await supabaseAdmin
+      .from("news_articles")
+      .select("title,url,source,published_at,image_url,summary,sentiment,sentiment_score,tickers")
+      .eq("is_duplicate", false)
+      .order("published_at", { ascending: false })
+      .limit(limit);
+    return (data ?? []).map((n: any) => ({
+      title: n.title,
+      link: n.url,
+      publisher: n.source,
+      publishedAt: n.published_at,
+      thumbnail: n.image_url ?? null,
+      description: n.summary ?? null,
+      sentimentScore: typeof n.sentiment_score === "number" ? n.sentiment_score : null,
+      sentiment: n.sentiment ?? null,
+      entities: (n.tickers ?? []).map((s: string) => ({ symbol: s, name: s, sentiment: 0 })),
+      source: "news_articles" as const,
+    }));
+  } catch (e) {
+    console.error("stored idx news error", e);
+    return [];
+  }
+}
+
+function dedupeByTitle(items: any[], cap = 12): any[] {
+  const seen = new Set<string>();
+  const out: any[] = [];
+  for (const it of items) {
+    const k = (it.title ?? "").toLowerCase().replace(/\s+/g, " ").trim().slice(0, 120);
+    if (!k || seen.has(k)) continue;
+    seen.add(k);
+    out.push(it);
+    if (out.length >= cap) break;
+  }
+  return out;
+}
+
 export const getNews = createServerFn({ method: "POST" })
-  .inputValidator((d: { symbol?: string }) => z.object({ symbol: z.string().optional() }).parse(d))
+  .inputValidator((d: { symbol?: string; market?: MarketScope }) =>
+    z.object({
+      symbol: z.string().optional(),
+      market: z.enum(["idx", "us", "global"]).optional(),
+    }).parse(d ?? {}),
+  )
   .handler(async ({ data }) => {
-    const key = `n:${data.symbol ?? "_"}`;
+    const market: MarketScope = data.market ?? "global";
+    const key = `n:${data.symbol ?? "_"}:${market}`;
     return cached(key, 60_000, async () => {
-      let items: any[] = [];
-      try {
-        items = await fetchMarketauxNews(data.symbol);
-      } catch (e) {
-        console.error("marketaux news error", e);
-      }
-      if (items.length === 0) {
-        try {
-          items = await fetchYahooNews(data.symbol);
-        } catch (e) {
-          console.error("yahoo news error", e);
+      // Symbol-specific fetch keeps original behaviour
+      if (data.symbol) {
+        let items: any[] = [];
+        try { items = await fetchMarketauxNews(data.symbol, market); } catch (e) { console.error("marketaux", e); }
+        if (items.length === 0) {
+          try { items = await fetchYahooNews(data.symbol, market); } catch (e) { console.error("yahoo", e); }
         }
+        return items;
       }
-      return items;
+
+      const stored = market === "us" ? [] : await fetchStoredIdxNews(market === "idx" ? 15 : 8);
+      let mx: any[] = [];
+      try { mx = await fetchMarketauxNews(undefined, market); } catch (e) { console.error("marketaux", e); }
+      let yh: any[] = [];
+      if (mx.length < 6 || market !== "idx") {
+        try { yh = await fetchYahooNews(undefined, market); } catch (e) { console.error("yahoo", e); }
+      }
+
+      const ordered =
+        market === "idx"
+          ? [...stored, ...mx, ...yh]
+          : market === "us"
+            ? [...mx, ...yh]
+            : [...stored.slice(0, 4), ...mx, ...yh]; // global mix
+
+      return dedupeByTitle(ordered, 12);
     });
   });
 
