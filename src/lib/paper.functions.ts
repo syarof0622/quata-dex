@@ -59,14 +59,7 @@ export const getPaperAccount = createServerFn({ method: "GET" }).handler(async (
   );
   const equity = cash + positionsValue;
 
-  // Realized P/L (sum of filled sells minus average cost approximation via orders ledger)
-  let realized = 0;
-  for (const o of orders) {
-    if (o.side === "sell" && o.filled_price) {
-      // Look for matching avg_price reference from prior buys is complex; use a simple estimate from price vs filled_price
-      // (Not perfect for partial fills, but good enough for the simulation lab summary.)
-    }
-  }
+  // (realized computed above from persisted paper_orders.realized_pnl)
 
   return {
     account: { ...account, cash, equity },
