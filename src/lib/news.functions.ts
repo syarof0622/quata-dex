@@ -200,8 +200,8 @@ export const refreshNewsNow = createServerFn({ method: "POST" })
     for (const s of statuses) {
       await supabaseAdmin.from("news_sources").update(
         s.ok
-          ? { last_success_at: now, status: "active", fail_count: 0, last_error: null, articles_today: s.count, updated_at: now }
-          : { last_failed_at: now, status: "failed", last_error: s.error, updated_at: now }
+          ? { last_success_at: now, status: s.status ?? "active", fail_count: 0, last_error: s.reason ?? null, articles_today: s.count, updated_at: now }
+          : { last_failed_at: now, status: s.status ?? "failed", last_error: s.reason ? `${s.reason} | ${s.error ?? ""}` : (s.error ?? "unknown"), updated_at: now }
       ).eq("id", s.id);
     }
     return { ok: upsertErrors.length === 0, total: all.length, deduped: deduped.length, statuses, upsertErrors };
