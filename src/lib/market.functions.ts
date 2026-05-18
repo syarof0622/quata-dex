@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 // Worker-safe Yahoo Finance access via direct fetch (no CommonJS deps).
 // Uses the public chart + search endpoints that don't require a crumb.
