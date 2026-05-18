@@ -1157,11 +1157,23 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualit
         </div>
       )}
 
-      {(isHold || blocked) && (
+      {hasPosition && (
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+          <span>Posisi: <span className="font-mono text-foreground">{Number(position?.qty ?? 0)} @ {formatIDRCompact(Number(position?.avg_price ?? 0))}</span></span>
+          <span>Unrealized: <span className={`font-mono ${positionPnl >= 0 ? "text-bull" : "text-bear"}`}>{formatIDRCompact(positionPnl)} ({Number(position?.pnlPct ?? 0).toFixed(2)}%)</span></span>
+        </div>
+      )}
+
+      {(isHold || blocked) && !hasPosition && (
         <div className={`mt-2 text-xs ${blocked && !isHold ? "text-yellow-500" : "text-muted-foreground"}`}>
           {isHold
             ? "No valid trade setup. Wait for trigger confirmation."
             : `${signalLabel?.includes("BUY") ? "Bullish" : "Bearish"} bias detected, but no valid entry trigger yet.${executionReason ? ` ${executionReason}` : ""}`}
+        </div>
+      )}
+      {hasPosition && (isHold || blocked) && (
+        <div className="mt-2 text-xs text-muted-foreground">
+          Posisi aktif sedang berjalan. Sinyal saat ini: {isHold ? "HOLD" : "Tunggu trigger baru"}. Kelola exit lewat TP/SL atau Close/Sell.
         </div>
       )}
 
