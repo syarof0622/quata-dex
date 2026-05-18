@@ -6,21 +6,37 @@ import { NEWS_SOURCES } from "@/lib/news-sources";
 import { fetchRssWithFallback } from "@/lib/news-rss.server";
 import { normalize, normalizeSerpApiItem, dedupeBatch, type NormalizedArticle } from "@/lib/news-pipeline.server";
 import { fetchSerpApiGoogleNews } from "@/lib/serpapi.server";
+import { fetchSpecialSource } from "@/lib/news-special-sources.server";
 
 async function refreshAll() {
   const allNew: NormalizedArticle[] = [];
-  const sourceStatus: { id: string; ok: boolean; count: number; error?: string; used_url?: string }[] = [];
+  const sourceStatus: { id: string; ok: boolean; count: number; error?: string; used_url?: string; mode?: string; status?: string; reason?: string }[] = [];
 
   for (const src of NEWS_SOURCES.filter((s) => s.enabled)) {
     try {
+      if (src.type === "special_source" && src.special) {
+        const res = await fetchSpecialSource(src);
+        allNew.push(...res.items);
+        sourceStatus.push({
+          id: src.id,
+          ok: res.items.length > 0,
+          count: res.items.length,
+          used_url: res.usedUrl,
+          mode: res.mode,
+          status: res.status,
+          reason: res.reason,
+          error: res.items.length === 0 ? (res.fallbackError ?? res.directError) : undefined,
+        });
+        continue;
+      }
       const { url, items } = await fetchRssWithFallback(src.url, src.fallbackUrls ?? []);
       const normalized = items
         .map((it) => normalize(it, { id: src.id, priority: src.priority, category: src.category }))
         .filter((x): x is NormalizedArticle => x !== null);
       allNew.push(...normalized);
-      sourceStatus.push({ id: src.id, ok: true, count: normalized.length, used_url: url });
+      sourceStatus.push({ id: src.id, ok: true, count: normalized.length, used_url: url, mode: "direct", status: "active" });
     } catch (e: any) {
-      sourceStatus.push({ id: src.id, ok: false, count: 0, error: String(e?.message ?? e) });
+      sourceStatus.push({ id: src.id, ok: false, count: 0, error: String(e?.message ?? e), status: "failed" });
     }
   }
 
@@ -67,14 +83,14 @@ async function refreshAll() {
     const update: any = { updated_at: now };
     if (s.ok) {
       update.last_success_at = now;
-      update.status = "active";
+      update.status = s.status ?? "active";
       update.fail_count = 0;
-      update.last_error = null;
+      update.last_error = s.reason ?? null;
       update.articles_today = s.count;
     } else {
       update.last_failed_at = now;
-      update.status = "failed";
-      update.last_error = s.error ?? "unknown";
+      update.status = s.status ?? "failed";
+      update.last_error = s.reason ? `${s.reason} | ${s.error ?? ""}` : (s.error ?? "unknown");
     }
     await supabaseAdmin.from("news_sources").update(update).eq("id", s.id);
   }
