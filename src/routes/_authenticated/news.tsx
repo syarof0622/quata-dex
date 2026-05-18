@@ -27,6 +27,17 @@ const SOURCES = [
   { id: "google_news", label: "Google News" },
 ];
 
+const PAGE_SIZE = 15;
+
+function useDebounced<T>(value: T, ms = 300): T {
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setV(value), ms);
+    return () => clearTimeout(t);
+  }, [value, ms]);
+  return v;
+}
+
 function NewsHub() {
   const qc = useQueryClient();
   const [source, setSource] = useState("");
@@ -34,14 +45,22 @@ function NewsHub() {
   const [impact, setImpact] = useState<"" | "low" | "medium" | "high">("");
   const [ticker, setTicker] = useState("");
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(0);
+
+  const dSearch = useDebounced(search.trim(), 350);
+  const dTicker = useDebounced(ticker.trim(), 350);
+
+  // Reset to first page when filters change
+  useEffect(() => { setPage(0); }, [source, sentiment, impact, dTicker, dSearch]);
 
   const filterArgs = {
-    limit: 60,
+    limit: PAGE_SIZE,
+    offset: page * PAGE_SIZE,
     source: source || undefined,
     sentiment: (sentiment || undefined) as any,
     impactLevel: (impact || undefined) as any,
-    ticker: ticker.trim() || undefined,
-    search: search.trim() || undefined,
+    ticker: dTicker || undefined,
+    search: dSearch || undefined,
   };
 
   const news = useQuery({
@@ -75,6 +94,10 @@ function NewsHub() {
       qc.invalidateQueries({ queryKey: ["news-sources-status"] });
     },
   });
+
+  const rows = news.data?.rows ?? [];
+  const total = Math.min(news.data?.total ?? 0, 50); // cap at 50 indexed
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <div className="p-4 md:p-6 space-y-4">
