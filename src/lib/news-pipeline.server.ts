@@ -7,7 +7,7 @@ import type { RawItem } from "./news-rss.server";
 
 export type NormalizedArticle = {
   source: string;
-  source_id: string | null;
+  source_id: string;
   title: string;
   summary: string | null;
   url: string;
@@ -147,7 +147,7 @@ export function normalize(item: RawItem, source: { id: string; priority: number;
 
   return {
     source: source.id,
-    source_id: item.guid ?? cu,
+    source_id: item.guid ?? cu ?? item.link,
     title,
     summary: (item.description ?? "").slice(0, 600) || null,
     url: item.link,

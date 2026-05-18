@@ -107,7 +107,7 @@ export type Database = {
           sentiment: string
           sentiment_score: number
           source: string
-          source_id: string | null
+          source_id: string
           summary: string | null
           tickers: string[]
           title: string
@@ -136,7 +136,7 @@ export type Database = {
           sentiment?: string
           sentiment_score?: number
           source: string
-          source_id?: string | null
+          source_id: string
           summary?: string | null
           tickers?: string[]
           title: string
@@ -165,7 +165,7 @@ export type Database = {
           sentiment?: string
           sentiment_score?: number
           source?: string
-          source_id?: string | null
+          source_id?: string
           summary?: string | null
           tickers?: string[]
           title?: string

@@ -3,7 +3,8 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const FilterSchema = z.object({
-  limit: z.number().int().min(1).max(100).default(40),
+  limit: z.number().int().min(1).max(100).default(15),
+  offset: z.number().int().min(0).max(1000).default(0),
   source: z.string().optional(),
   sentiment: z.enum(["positive", "neutral", "negative"]).optional(),
   ticker: z.string().optional(),
@@ -16,24 +17,32 @@ const FilterSchema = z.object({
 export const listNews = createServerFn({ method: "POST" })
   .inputValidator((d) => FilterSchema.parse(d ?? {}))
   .handler(async ({ data }) => {
+    const from = data.offset;
+    const to = data.offset + data.limit - 1;
     let q = supabaseAdmin
       .from("news_articles")
-      .select("id, source, title, summary, url, image_url, published_at, sentiment, sentiment_score, impact_level, impact_score, tickers, sectors")
+      .select(
+        "id, source, title, summary, url, image_url, published_at, sentiment, sentiment_score, impact_level, impact_score, tickers, sectors",
+        { count: "exact" },
+      )
       .eq("is_duplicate", false)
       .order("published_at", { ascending: false })
-      .limit(data.limit);
+      .range(from, to);
 
     if (data.source) q = q.eq("source", data.source);
     if (data.sentiment) q = q.eq("sentiment", data.sentiment);
     if (data.impactLevel) q = q.eq("impact_level", data.impactLevel);
     if (data.ticker) q = q.contains("tickers", [data.ticker.toUpperCase()]);
-    if (data.search) q = q.ilike("title", `%${data.search}%`);
+    if (data.search) {
+      const term = data.search.trim().replace(/[%_]/g, "\\$&");
+      q = q.or(`title.ilike.%${term}%,summary.ilike.%${term}%`);
+    }
     if (data.fromDate) q = q.gte("published_at", data.fromDate);
     if (data.toDate) q = q.lte("published_at", data.toDate);
 
-    const { data: rows, error } = await q;
+    const { data: rows, error, count } = await q;
     if (error) throw new Error(error.message);
-    return rows ?? [];
+    return { rows: rows ?? [], total: count ?? 0 };
   });
 
 export const getMarketSentiment = createServerFn({ method: "POST" })
@@ -161,9 +170,16 @@ export const refreshNewsNow = createServerFn({ method: "POST" })
 
     const deduped = dedupeBatch(all);
     const now = new Date().toISOString();
+    let upsertErrors: string[] = [];
     for (let i = 0; i < deduped.length; i += 100) {
       const chunk = deduped.slice(i, i + 100);
-      await supabaseAdmin.from("news_articles").upsert(chunk, { onConflict: "source,source_id", ignoreDuplicates: true });
+      const { error } = await supabaseAdmin
+        .from("news_articles")
+        .upsert(chunk as any, { onConflict: "source,source_id", ignoreDuplicates: true });
+      if (error) {
+        console.error("[news] upsert error:", error.message);
+        upsertErrors.push(error.message);
+      }
     }
     for (const s of statuses) {
       await supabaseAdmin.from("news_sources").update(
@@ -172,7 +188,7 @@ export const refreshNewsNow = createServerFn({ method: "POST" })
           : { last_failed_at: now, status: "failed", last_error: s.error, updated_at: now }
       ).eq("id", s.id);
     }
-    return { ok: true, total: all.length, deduped: deduped.length, statuses };
+    return { ok: upsertErrors.length === 0, total: all.length, deduped: deduped.length, statuses, upsertErrors };
   });
 
 // Per-ticker SerpApi enrichment: fetches Google News + Finance for one symbol,

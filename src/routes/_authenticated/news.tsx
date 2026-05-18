@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { listNews, getMarketSentiment, getSourcesStatus, refreshNewsNow } from "@/lib/news.functions";
 import { serpapiStatus } from "@/lib/serpapi.functions";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,17 @@ const SOURCES = [
   { id: "google_news", label: "Google News" },
 ];
 
+const PAGE_SIZE = 15;
+
+function useDebounced<T>(value: T, ms = 300): T {
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setV(value), ms);
+    return () => clearTimeout(t);
+  }, [value, ms]);
+  return v;
+}
+
 function NewsHub() {
   const qc = useQueryClient();
   const [source, setSource] = useState("");
@@ -34,14 +45,22 @@ function NewsHub() {
   const [impact, setImpact] = useState<"" | "low" | "medium" | "high">("");
   const [ticker, setTicker] = useState("");
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(0);
+
+  const dSearch = useDebounced(search.trim(), 350);
+  const dTicker = useDebounced(ticker.trim(), 350);
+
+  // Reset to first page when filters change
+  useEffect(() => { setPage(0); }, [source, sentiment, impact, dTicker, dSearch]);
 
   const filterArgs = {
-    limit: 60,
+    limit: PAGE_SIZE,
+    offset: page * PAGE_SIZE,
     source: source || undefined,
     sentiment: (sentiment || undefined) as any,
     impactLevel: (impact || undefined) as any,
-    ticker: ticker.trim() || undefined,
-    search: search.trim() || undefined,
+    ticker: dTicker || undefined,
+    search: dSearch || undefined,
   };
 
   const news = useQuery({
@@ -75,6 +94,10 @@ function NewsHub() {
       qc.invalidateQueries({ queryKey: ["news-sources-status"] });
     },
   });
+
+  const rows = news.data?.rows ?? [];
+  const total = Math.min(news.data?.total ?? 0, 50); // cap at 50 indexed
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <div className="p-4 md:p-6 space-y-4">
@@ -215,12 +238,14 @@ function NewsHub() {
         {news.isLoading && Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="panel p-4 animate-pulse h-28" />
         ))}
-        {!news.isLoading && (news.data ?? []).length === 0 && (
+        {!news.isLoading && rows.length === 0 && (
           <div className="panel p-8 text-center text-muted-foreground md:col-span-2">
-            Belum ada berita. Klik <span className="font-medium">Refresh now</span> untuk mengambil data dari sumber.
+            {dSearch || dTicker || source || sentiment || impact
+              ? "Tidak ada berita cocok dengan filter."
+              : (<>Belum ada berita. Klik <span className="font-medium">Refresh now</span> untuk mengambil data dari sumber.</>)}
           </div>
         )}
-        {(news.data ?? []).map((n: any) => (
+        {rows.map((n: any) => (
           <a key={n.id} href={n.url} target="_blank" rel="noopener noreferrer"
              className="panel p-4 hover:border-primary/40 transition-colors block">
             <div className="flex items-start justify-between gap-3">
@@ -257,6 +282,20 @@ function NewsHub() {
           </a>
         ))}
       </div>
+
+      {/* Pagination */}
+      {total > 0 && (
+        <div className="flex items-center justify-between text-xs text-muted-foreground pt-2">
+          <div>
+            Showing <span className="text-foreground font-mono">{page * PAGE_SIZE + 1}–{Math.min(total, (page + 1) * PAGE_SIZE)}</span> of <span className="text-foreground font-mono">{total}</span> indexed
+          </div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" disabled={page === 0} onClick={() => setPage(p => Math.max(0, p - 1))}>Prev</Button>
+            <span className="font-mono">{page + 1} / {totalPages}</span>
+            <Button size="sm" variant="outline" disabled={page + 1 >= totalPages} onClick={() => setPage(p => p + 1)}>Next</Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

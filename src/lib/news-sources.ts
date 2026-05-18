@@ -16,7 +16,9 @@ export const NEWS_SOURCES: NewsSourceCfg[] = [
     id: "kontan",
     name: "Kontan",
     type: "rss",
-    url: "https://www.kontan.co.id/feed",
+    // Kontan's native feed is CloudFront-blocked (403). Use Google News mirror.
+    url: "https://news.google.com/rss/search?q=site:kontan.co.id+(saham+OR+IHSG+OR+emiten)&hl=id&gl=ID&ceid=ID:id",
+    fallbackUrls: ["https://news.google.com/rss/search?q=site:kontan.co.id&hl=id&gl=ID&ceid=ID:id"],
     priority: 1,
     category: "stock_market",
     enabled: true,
@@ -44,9 +46,10 @@ export const NEWS_SOURCES: NewsSourceCfg[] = [
   {
     id: "investor_id",
     name: "Investor.id",
-    type: "rss_or_light_scrape",
-    url: "https://investor.id/rss",
-    fallbackUrls: ["https://investor.id/market/rss", "https://investor.id/feed"],
+    type: "rss",
+    // Investor.id RSS endpoints return 404/204 from edge. Use Google News mirror.
+    url: "https://news.google.com/rss/search?q=site:investor.id+(saham+OR+IHSG+OR+emiten)&hl=id&gl=ID&ceid=ID:id",
+    fallbackUrls: ["https://news.google.com/rss/search?q=site:investor.id&hl=id&gl=ID&ceid=ID:id"],
     priority: 4,
     category: "investment",
     enabled: true,
