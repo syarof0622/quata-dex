@@ -4,7 +4,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { NEWS_SOURCES } from "@/lib/news-sources";
 import { fetchRssWithFallback } from "@/lib/news-rss.server";
-import { normalize, dedupeBatch, type NormalizedArticle } from "@/lib/news-pipeline.server";
+import { normalize, normalizeSerpApiItem, dedupeBatch, type NormalizedArticle } from "@/lib/news-pipeline.server";
+import { fetchSerpApiGoogleNews } from "@/lib/serpapi.server";
 
 async function refreshAll() {
   const allNew: NormalizedArticle[] = [];
@@ -22,6 +23,30 @@ async function refreshAll() {
       sourceStatus.push({ id: src.id, ok: false, count: 0, error: String(e?.message ?? e) });
     }
   }
+
+  // ----- SerpApi enrichment (optional, key-gated, quota-protected) -----
+  if (process.env.SERPAPI_API_KEY) {
+    const SERP_QUERY = "IHSG OR saham OR emiten OR BEI";
+    const serpJobs: { id: string; priority: number; light: boolean }[] = [
+      { id: "serpapi_google_news", priority: 2, light: false },
+      { id: "serpapi_google_news_light", priority: 3, light: true },
+    ];
+    for (const job of serpJobs) {
+      try {
+        const items = await fetchSerpApiGoogleNews({ query: SERP_QUERY, light: job.light, limit: 20 });
+        const normalized = items
+          .map((it) => normalizeSerpApiItem(it, { id: job.id, priority: job.priority, category: "serpapi" }))
+          .filter((x): x is NormalizedArticle => x !== null);
+        allNew.push(...normalized);
+        sourceStatus.push({ id: job.id, ok: true, count: normalized.length });
+      } catch (e: any) {
+        sourceStatus.push({ id: job.id, ok: false, count: 0, error: String(e?.message ?? e) });
+      }
+    }
+    // Finance source is per-ticker only; mark idle/skipped each cron run
+    sourceStatus.push({ id: "serpapi_google_finance", ok: true, count: 0 });
+  }
+
 
   // Dedupe within batch
   const deduped = dedupeBatch(allNew);
