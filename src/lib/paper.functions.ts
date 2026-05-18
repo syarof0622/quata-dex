@@ -30,8 +30,10 @@ export const getPaperAccount = createServerFn({ method: "GET" }).handler(async (
       .order("created_at", { ascending: false }),
   ]);
   const positions = posRes.data ?? [];
-  const orders = filledRes.data ?? [];
+  const orders = (filledRes.data ?? []) as any[];
   const pending = pendingRes.data ?? [];
+  // Realized P/L is persisted on each filled SELL order.
+  const realized = orders.reduce((s, o: any) => s + Number(o.realized_pnl ?? 0), 0);
 
   // Live P/L via quotes
   const symbols = Array.from(new Set(positions.map((p: any) => p.symbol)));
