@@ -1061,7 +1061,7 @@ function SentimentPanel({ symbol }: { symbol: string }) {
   );
 }
 
-function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualityGrade, executionStatus, executionReason, cash, unrealizedPnl, position, onTraded }: {
+function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualityGrade, executionStatus, executionReason, cash, unrealizedPnl, realizedPnl, position, onTraded }: {
   symbol: string; price: number; fmt: (n: any) => string;
   bias?: "long" | "short" | "neutral";
   signalLabel?: string;
@@ -1071,6 +1071,7 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualit
   executionReason?: string;
   cash?: number;
   unrealizedPnl?: number;
+  realizedPnl?: number;
   position?: { qty?: number; avg_price?: number; pnl?: number; pnlPct?: number } | null;
   onTraded?: () => void;
 }) {
