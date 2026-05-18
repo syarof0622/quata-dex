@@ -199,11 +199,13 @@ export const getCandles = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const tf = TFMap[data.timeframe] ?? TFMap["1d"];
     const key = `c:${data.symbol}:${data.timeframe}`;
-    // Intraday TFs cache briefly so panels stay near-realtime; daily/weekly cache longer.
-    const ttl = ["1m", "5m", "15m"].includes(data.timeframe)
-      ? 5_000
+    // Intraday TFs cache very briefly so charts stay near-realtime (TradingView-like).
+    const ttl = ["1m", "5m"].includes(data.timeframe)
+      ? 1_500
+      : ["15m"].includes(data.timeframe)
+      ? 3_000
       : ["1h", "4h"].includes(data.timeframe)
-      ? 15_000
+      ? 10_000
       : 60_000;
     return cached<CandleDTO[]>(key, ttl, async () => {
       try {
@@ -292,7 +294,7 @@ export const getMovers = createServerFn({ method: "POST" })
   });
 
 export const getIndices = createServerFn({ method: "GET" }).handler(async () => {
-  return cached("indices:idx-first", 15_000, async () => {
+  return cached("indices:idx-first", 5_000, async () => {
     const symbols = [...IDX_INDICES, ...GLOBAL_INDICES, "^VIX"];
     const arr = (await Promise.all(symbols.map((s) => fetchQuoteOne(s)))).filter(
       (q): q is Quote => !!q,
