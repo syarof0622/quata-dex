@@ -1075,7 +1075,7 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualit
   position?: { qty?: number; avg_price?: number; pnl?: number; pnlPct?: number } | null;
   onTraded?: () => void;
 }) {
-  const [qty, setQty] = useState(10);
+  const [qty, setQty] = useState(symbol.endsWith(".JK") ? 100 : 10);
   const [busy, setBusy] = useState(false);
   const [type, setType] = useState<"market" | "limit" | "stop" | "trailing_stop">("market");
   const [limitPx, setLimitPx] = useState<string>("");
