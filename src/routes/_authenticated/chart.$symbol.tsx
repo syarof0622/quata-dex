@@ -1060,7 +1060,7 @@ function SentimentPanel({ symbol }: { symbol: string }) {
   );
 }
 
-function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualityGrade, executionStatus, executionReason, cash, unrealizedPnl, onTraded }: {
+function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualityGrade, executionStatus, executionReason, cash, unrealizedPnl, position, onTraded }: {
   symbol: string; price: number; fmt: (n: any) => string;
   bias?: "long" | "short" | "neutral";
   signalLabel?: string;
@@ -1070,6 +1070,7 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualit
   executionReason?: string;
   cash?: number;
   unrealizedPnl?: number;
+  position?: { qty?: number; avg_price?: number; pnl?: number; pnlPct?: number } | null;
   onTraded?: () => void;
 }) {
   const [qty, setQty] = useState(10);
@@ -1084,16 +1085,23 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualit
   const isHold = bias === "neutral" || signalLabel === "HOLD";
   const isShort = bias === "short";
   const setupActive = executionStatus === "Ready to Trade" && !conditional && qualityGrade !== "Poor";
+  const hasPosition = !!position && Number(position.qty ?? 0) > 0;
+  const positionPnl = Number(position?.pnl ?? 0);
   const blocked = !isHold && !setupActive;
 
-  // Badge per spec
-  const badge = isHold
-    ? { text: "NO TRADE", cls: "bg-accent/40 text-muted-foreground" }
-    : !setupActive
-      ? { text: "WAIT", cls: "bg-yellow-500/20 text-yellow-500" }
-      : isShort
-        ? { text: "SHORT READY", cls: "bg-bear-soft text-bear" }
-        : { text: "LONG READY", cls: "bg-bull-soft text-bull" };
+  // Badge — open position takes precedence over signal-driven NO TRADE
+  const badge = hasPosition
+    ? {
+        text: positionPnl >= 0 ? "POSITION • PROFIT" : "POSITION • LOSS",
+        cls: positionPnl >= 0 ? "bg-bull-soft text-bull" : "bg-bear-soft text-bear",
+      }
+    : isHold
+      ? { text: "NO TRADE", cls: "bg-accent/40 text-muted-foreground" }
+      : !setupActive
+        ? { text: "WAIT", cls: "bg-yellow-500/20 text-yellow-500" }
+        : isShort
+          ? { text: "SHORT READY", cls: "bg-bear-soft text-bear" }
+          : { text: "LONG READY", cls: "bg-bull-soft text-bull" };
 
   const primarySide: "buy" | "sell" = isShort ? "sell" : "buy";
   const primaryLabel = isHold
