@@ -15,7 +15,7 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 
 function Dashboard() {
   const [market, setMarket] = useState<"idx" | "us" | "global">("idx");
-  const indices = useQuery({ queryKey: ["indices"], queryFn: () => getIndices(), refetchInterval: 15000 });
+  const indices = useQuery({ queryKey: ["indices"], queryFn: () => getIndices(), refetchInterval: 5000, refetchIntervalInBackground: false });
   const movers = useQuery({
     queryKey: ["movers", market],
     queryFn: () => getMovers({ data: { market } }),
