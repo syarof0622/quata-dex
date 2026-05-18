@@ -238,12 +238,14 @@ function NewsHub() {
         {news.isLoading && Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="panel p-4 animate-pulse h-28" />
         ))}
-        {!news.isLoading && (news.data ?? []).length === 0 && (
+        {!news.isLoading && rows.length === 0 && (
           <div className="panel p-8 text-center text-muted-foreground md:col-span-2">
-            Belum ada berita. Klik <span className="font-medium">Refresh now</span> untuk mengambil data dari sumber.
+            {dSearch || dTicker || source || sentiment || impact
+              ? "Tidak ada berita cocok dengan filter."
+              : (<>Belum ada berita. Klik <span className="font-medium">Refresh now</span> untuk mengambil data dari sumber.</>)}
           </div>
         )}
-        {(news.data ?? []).map((n: any) => (
+        {rows.map((n: any) => (
           <a key={n.id} href={n.url} target="_blank" rel="noopener noreferrer"
              className="panel p-4 hover:border-primary/40 transition-colors block">
             <div className="flex items-start justify-between gap-3">
@@ -280,6 +282,20 @@ function NewsHub() {
           </a>
         ))}
       </div>
+
+      {/* Pagination */}
+      {total > 0 && (
+        <div className="flex items-center justify-between text-xs text-muted-foreground pt-2">
+          <div>
+            Showing <span className="text-foreground font-mono">{page * PAGE_SIZE + 1}–{Math.min(total, (page + 1) * PAGE_SIZE)}</span> of <span className="text-foreground font-mono">{total}</span> indexed
+          </div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" disabled={page === 0} onClick={() => setPage(p => Math.max(0, p - 1))}>Prev</Button>
+            <span className="font-mono">{page + 1} / {totalPages}</span>
+            <Button size="sm" variant="outline" disabled={page + 1 >= totalPages} onClick={() => setPage(p => p + 1)}>Next</Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
