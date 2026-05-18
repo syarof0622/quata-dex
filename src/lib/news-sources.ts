@@ -3,13 +3,27 @@
 export type NewsSourceCfg = {
   id: string;
   name: string;
-  type: "rss" | "rss_or_light_scrape";
+  type: "rss" | "rss_or_light_scrape" | "special_source";
   url: string;
   fallbackUrls?: string[];
   priority: number;
   category: string;
   enabled: boolean;
+  // Special handling (Kontan, Investor.id) — direct + Google News site-query fallback
+  special?: {
+    siteDomain: string; // e.g. "kontan.co.id"
+    directUrls: string[]; // RSS or public page candidates tried in order
+    fallbackQueries: string[]; // queries appended to "site:<siteDomain> "
+    fallbackPriority: number;
+  };
 };
+
+export const SPECIAL_HANDLING_SOURCES = ["kontan", "investor_id"] as const;
+
+export function buildGoogleNewsSiteFallbackUrl(site: string, query: string): string {
+  const finalQuery = `site:${site} ${query}`;
+  return `https://news.google.com/rss/search?q=${encodeURIComponent(finalQuery)}&hl=id&gl=ID&ceid=ID:id`;
+}
 
 export const NEWS_SOURCES: NewsSourceCfg[] = [
   {
