@@ -287,6 +287,7 @@ function ChartPage() {
         executionReason={sig?.executionReason}
         cash={Number(paper.data?.account?.cash ?? 0)}
         unrealizedPnl={Number((paper.data as any)?.pnl?.unrealized ?? 0)}
+        realizedPnl={Number((paper.data as any)?.pnl?.realized ?? 0)}
         position={(paper.data?.positions ?? []).find((p: any) => p.symbol === symbol) as any}
         onTraded={() => { qc.invalidateQueries({ queryKey: ["paper"] }); }}
       />
