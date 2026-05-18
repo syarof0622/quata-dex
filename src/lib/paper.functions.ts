@@ -30,8 +30,10 @@ export const getPaperAccount = createServerFn({ method: "GET" }).handler(async (
       .order("created_at", { ascending: false }),
   ]);
   const positions = posRes.data ?? [];
-  const orders = filledRes.data ?? [];
+  const orders = (filledRes.data ?? []) as any[];
   const pending = pendingRes.data ?? [];
+  // Realized P/L is persisted on each filled SELL order.
+  const realized = orders.reduce((s, o: any) => s + Number(o.realized_pnl ?? 0), 0);
 
   // Live P/L via quotes
   const symbols = Array.from(new Set(positions.map((p: any) => p.symbol)));
@@ -57,14 +59,7 @@ export const getPaperAccount = createServerFn({ method: "GET" }).handler(async (
   );
   const equity = cash + positionsValue;
 
-  // Realized P/L (sum of filled sells minus average cost approximation via orders ledger)
-  let realized = 0;
-  for (const o of orders) {
-    if (o.side === "sell" && o.filled_price) {
-      // Look for matching avg_price reference from prior buys is complex; use a simple estimate from price vs filled_price
-      // (Not perfect for partial fills, but good enough for the simulation lab summary.)
-    }
-  }
+  // (realized computed above from persisted paper_orders.realized_pnl)
 
   return {
     account: { ...account, cash, equity },
@@ -131,12 +126,17 @@ export const placeOrder = createServerFn({ method: "POST" })
         .eq("id", account.id);
     }
 
+    const realizedPnl = data.side === "sell" && existing
+      ? (fillPrice - Number(existing.avg_price)) * data.qty - fee
+      : 0;
+
     await supabaseAdmin.from("paper_orders").insert({
       account_id: account.id, user_id: USER_ID, symbol,
       side: data.side, type: "market", qty: data.qty,
       price: quote.price, filled_price: fillPrice,
       status: "filled", filled_at: new Date().toISOString(),
       take_profit: data.takeProfit ?? null, stop_loss: data.stopLoss ?? null,
+      realized_pnl: realizedPnl,
     });
 
     return { ok: true, fillPrice, fee };

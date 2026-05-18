@@ -287,6 +287,7 @@ function ChartPage() {
         executionReason={sig?.executionReason}
         cash={Number(paper.data?.account?.cash ?? 0)}
         unrealizedPnl={Number((paper.data as any)?.pnl?.unrealized ?? 0)}
+        realizedPnl={Number((paper.data as any)?.pnl?.realized ?? 0)}
         position={(paper.data?.positions ?? []).find((p: any) => p.symbol === symbol) as any}
         onTraded={() => { qc.invalidateQueries({ queryKey: ["paper"] }); }}
       />
@@ -1060,7 +1061,7 @@ function SentimentPanel({ symbol }: { symbol: string }) {
   );
 }
 
-function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualityGrade, executionStatus, executionReason, cash, unrealizedPnl, position, onTraded }: {
+function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualityGrade, executionStatus, executionReason, cash, unrealizedPnl, realizedPnl, position, onTraded }: {
   symbol: string; price: number; fmt: (n: any) => string;
   bias?: "long" | "short" | "neutral";
   signalLabel?: string;
@@ -1070,10 +1071,11 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualit
   executionReason?: string;
   cash?: number;
   unrealizedPnl?: number;
+  realizedPnl?: number;
   position?: { qty?: number; avg_price?: number; pnl?: number; pnlPct?: number } | null;
   onTraded?: () => void;
 }) {
-  const [qty, setQty] = useState(10);
+  const [qty, setQty] = useState(symbol.endsWith(".JK") ? 100 : 10);
   const [busy, setBusy] = useState(false);
   const [type, setType] = useState<"market" | "limit" | "stop" | "trailing_stop">("market");
   const [limitPx, setLimitPx] = useState<string>("");
@@ -1150,10 +1152,11 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualit
         <h3 className="font-semibold">Paper Trade</h3>
         <span className={`text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded ${badge.cls}`}>{badge.text}</span>
       </div>
-      {(cash != null || unrealizedPnl != null) && (
+      {(cash != null || unrealizedPnl != null || realizedPnl != null) && (
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] border-b border-border pb-2">
           <span className="text-muted-foreground">Saldo: <span className="font-mono text-foreground">{formatIDRCompact(cash ?? 0)}</span></span>
-          <span className="text-muted-foreground">P/L: <span className={`font-mono ${(unrealizedPnl ?? 0) >= 0 ? "text-bull" : "text-bear"}`}>{formatIDRCompact(unrealizedPnl ?? 0)}</span></span>
+          <span className="text-muted-foreground">Unrealized: <span className={`font-mono ${(unrealizedPnl ?? 0) >= 0 ? "text-bull" : "text-bear"}`}>{formatIDRCompact(unrealizedPnl ?? 0)}</span></span>
+          <span className="text-muted-foreground">Realized: <span className={`font-mono ${(realizedPnl ?? 0) >= 0 ? "text-bull" : "text-bear"}`}>{formatIDRCompact(realizedPnl ?? 0)}</span></span>
         </div>
       )}
 
@@ -1188,18 +1191,32 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualit
 
       <div className="mt-3 grid grid-cols-2 gap-2">
         <div>
-          <label className="text-[11px] text-muted-foreground">Qty</label>
-          <Input type="number" min={1} value={qty} onChange={(e) => setQty(Math.max(1, parseInt(e.target.value || "1")))} />
+          <label className="text-[11px] text-muted-foreground">
+            Qty (lembar saham){symbol.endsWith(".JK") ? ` · ${Math.max(1, Math.floor(qty / 100))} lot` : ""}
+          </label>
+          <Input
+            type="number"
+            min={1}
+            step={symbol.endsWith(".JK") ? 100 : 1}
+            value={qty}
+            onChange={(e) => {
+              const n = Math.max(1, parseInt(e.target.value || "1"));
+              setQty(symbol.endsWith(".JK") ? Math.max(100, Math.round(n / 100) * 100) : n);
+            }}
+          />
+          {symbol.endsWith(".JK") && (
+            <div className="text-[10px] text-muted-foreground mt-0.5">IDX = kelipatan 100 (1 lot = 100 lembar)</div>
+          )}
         </div>
         {type === "limit" && (
           <div>
-            <label className="text-[11px] text-muted-foreground">Limit price</label>
+            <label className="text-[11px] text-muted-foreground">Limit price (harga)</label>
             <Input type="number" step="any" value={limitPx} onChange={e => setLimitPx(e.target.value)} placeholder={String(price)} />
           </div>
         )}
         {type === "stop" && (
           <div>
-            <label className="text-[11px] text-muted-foreground">Stop price</label>
+            <label className="text-[11px] text-muted-foreground">Stop price (harga)</label>
             <Input type="number" step="any" value={stopPx} onChange={e => setStopPx(e.target.value)} placeholder={String(price)} />
           </div>
         )}
@@ -1213,12 +1230,12 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualit
 
       <div className="mt-2 grid grid-cols-2 gap-2">
         <div>
-          <label className="text-[11px] text-muted-foreground">Take profit (opt)</label>
-          <Input type="number" step="any" value={tp} onChange={e => setTp(e.target.value)} />
+          <label className="text-[11px] text-muted-foreground">Take profit (harga saham)</label>
+          <Input type="number" step="any" value={tp} onChange={e => setTp(e.target.value)} placeholder={price ? String(price) : "harga jual target"} />
         </div>
         <div>
-          <label className="text-[11px] text-muted-foreground">Stop loss (opt)</label>
-          <Input type="number" step="any" value={sl} onChange={e => setSl(e.target.value)} />
+          <label className="text-[11px] text-muted-foreground">Stop loss (harga saham)</label>
+          <Input type="number" step="any" value={sl} onChange={e => setSl(e.target.value)} placeholder={price ? String(price) : "harga stop"} />
         </div>
       </div>
 
