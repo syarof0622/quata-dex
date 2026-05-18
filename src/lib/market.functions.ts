@@ -428,20 +428,23 @@ export const getNews = createServerFn({ method: "POST" })
         return items;
       }
 
-      const stored = market === "us" ? [] : await fetchStoredIdxNews(market === "idx" ? 15 : 8);
+      // IDX: prioritize Indonesia-only sources (scraped DB + Marketaux country=id).
+      // Skip Yahoo since its keyword search returns noisy global headlines.
+      if (market === "idx") {
+        const stored = await fetchStoredIdxNews(20);
+        let mx: any[] = [];
+        try { mx = await fetchMarketauxNews(undefined, "idx"); } catch (e) { console.error("marketaux", e); }
+        return dedupeByTitle([...stored, ...mx], 15);
+      }
+
       let mx: any[] = [];
       try { mx = await fetchMarketauxNews(undefined, market); } catch (e) { console.error("marketaux", e); }
       let yh: any[] = [];
-      if (mx.length < 6 || market !== "idx") {
-        try { yh = await fetchYahooNews(undefined, market); } catch (e) { console.error("yahoo", e); }
-      }
+      try { yh = await fetchYahooNews(undefined, market); } catch (e) { console.error("yahoo", e); }
 
-      const ordered =
-        market === "idx"
-          ? [...stored, ...mx, ...yh]
-          : market === "us"
-            ? [...mx, ...yh]
-            : [...stored.slice(0, 4), ...mx, ...yh]; // global mix
+      const ordered = market === "us"
+        ? [...mx, ...yh]
+        : [...(await fetchStoredIdxNews(4)), ...mx, ...yh]; // global mix
 
       return dedupeByTitle(ordered, 12);
     });
