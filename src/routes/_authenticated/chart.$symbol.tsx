@@ -981,6 +981,26 @@ function SentimentPanel({ symbol }: { symbol: string }) {
         {updated && <span>Updated: <span className="text-foreground">{updatedLabel}</span></span>}
       </div>
 
+      {dbSent.data && (
+        <div className="mt-2 p-2 rounded bg-accent/20 border border-border/50 text-[11px] space-y-0.5">
+          <div className="flex items-center justify-between">
+            <span className="font-semibold text-foreground">24h aggregated (multi-source)</span>
+            <span className={
+              (dbSent.data as any).average_sentiment_score > 0.15 ? "text-bull" :
+              (dbSent.data as any).average_sentiment_score < -0.15 ? "text-bear" : "text-muted-foreground"
+            }>
+              avg {Number((dbSent.data as any).average_sentiment_score).toFixed(2)}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-muted-foreground">
+            <span className="text-bull">+{(dbSent.data as any).positive_count}</span>
+            <span>={(dbSent.data as any).neutral_count}</span>
+            <span className="text-bear">−{(dbSent.data as any).negative_count}</span>
+            <span>High-impact: <span className="text-foreground">{(dbSent.data as any).high_impact_news_count}</span></span>
+          </div>
+        </div>
+      )}
+
       {(d.notes ?? []).length > 0 && (
         <div className="mt-2 text-xs text-yellow-500/90 space-y-0.5">
           {d.notes.map((n: string, i: number) => <div key={i}>• {n}</div>)}
