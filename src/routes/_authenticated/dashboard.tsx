@@ -21,7 +21,7 @@ function Dashboard() {
     queryFn: () => getMovers({ data: { market } }),
     refetchInterval: 30000,
   });
-  const news = useQuery({ queryKey: ["news", "_"], queryFn: () => getNews({ data: {} }), refetchInterval: 60000 });
+  const news = useQuery({ queryKey: ["news", market], queryFn: () => getNews({ data: { market } }), refetchInterval: 60000 });
 
   return (
     <div className="p-4 md:p-6 space-y-6">
