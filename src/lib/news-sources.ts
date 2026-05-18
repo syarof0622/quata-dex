@@ -29,13 +29,25 @@ export const NEWS_SOURCES: NewsSourceCfg[] = [
   {
     id: "kontan",
     name: "Kontan",
-    type: "rss",
-    // Kontan's native feed is CloudFront-blocked (403). Use Google News mirror.
-    url: "https://news.google.com/rss/search?q=site:kontan.co.id+(saham+OR+IHSG+OR+emiten)&hl=id&gl=ID&ceid=ID:id",
-    fallbackUrls: ["https://news.google.com/rss/search?q=site:kontan.co.id&hl=id&gl=ID&ceid=ID:id"],
-    priority: 1,
+    type: "special_source",
+    // Direct RSS (often CloudFront-blocked). Special handler will fall back to Google News site queries.
+    url: "https://www.kontan.co.id/feed",
+    fallbackUrls: ["https://investasi.kontan.co.id/"],
+    priority: 3,
     category: "stock_market",
     enabled: true,
+    special: {
+      siteDomain: "kontan.co.id",
+      directUrls: ["https://www.kontan.co.id/feed", "https://investasi.kontan.co.id/"],
+      fallbackPriority: 2,
+      fallbackQueries: [
+        "saham", "IHSG", "emiten", "pasar modal", "dividen saham",
+        "rekomendasi saham", "IPO", "right issue", "buyback",
+        "laporan keuangan emiten",
+        "BBCA saham", "BBRI saham", "BMRI saham", "TLKM saham", "GOTO saham",
+        "ANTM saham", "MDKA saham", "ADRO saham", "BREN saham", "AMMN saham",
+      ],
+    },
   },
   {
     id: "cnbc_market",
@@ -60,13 +72,29 @@ export const NEWS_SOURCES: NewsSourceCfg[] = [
   {
     id: "investor_id",
     name: "Investor.id",
-    type: "rss",
-    // Investor.id RSS endpoints return 404/204 from edge. Use Google News mirror.
-    url: "https://news.google.com/rss/search?q=site:investor.id+(saham+OR+IHSG+OR+emiten)&hl=id&gl=ID&ceid=ID:id",
-    fallbackUrls: ["https://news.google.com/rss/search?q=site:investor.id&hl=id&gl=ID&ceid=ID:id"],
-    priority: 4,
+    type: "special_source",
+    url: "https://investor.id/market",
+    fallbackUrls: ["https://investor.id/rss", "https://investor.id/market/rss", "https://investor.id/feed"],
+    priority: 3,
     category: "investment",
     enabled: true,
+    special: {
+      siteDomain: "investor.id",
+      directUrls: [
+        "https://investor.id/rss",
+        "https://investor.id/market/rss",
+        "https://investor.id/feed",
+        "https://investor.id/market",
+      ],
+      fallbackPriority: 2,
+      fallbackQueries: [
+        "saham", "IHSG", "emiten", "pasar modal", "dividen saham",
+        "rekomendasi saham", "IPO", "right issue", "buyback",
+        "laporan keuangan emiten",
+        "BBCA saham", "BBRI saham", "BMRI saham", "TLKM saham", "GOTO saham",
+        "ANTM saham", "MDKA saham", "ADRO saham", "BREN saham", "AMMN saham",
+      ],
+    },
   },
   {
     id: "google_news",
