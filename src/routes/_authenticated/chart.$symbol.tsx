@@ -287,6 +287,7 @@ function ChartPage() {
         executionReason={sig?.executionReason}
         cash={Number(paper.data?.account?.cash ?? 0)}
         unrealizedPnl={Number((paper.data as any)?.pnl?.unrealized ?? 0)}
+        position={(paper.data?.positions ?? []).find((p: any) => p.symbol === symbol) as any}
         onTraded={() => { qc.invalidateQueries({ queryKey: ["paper"] }); }}
       />
     </div>
@@ -1059,7 +1060,7 @@ function SentimentPanel({ symbol }: { symbol: string }) {
   );
 }
 
-function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualityGrade, executionStatus, executionReason, cash, unrealizedPnl, onTraded }: {
+function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualityGrade, executionStatus, executionReason, cash, unrealizedPnl, position, onTraded }: {
   symbol: string; price: number; fmt: (n: any) => string;
   bias?: "long" | "short" | "neutral";
   signalLabel?: string;
@@ -1069,6 +1070,7 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualit
   executionReason?: string;
   cash?: number;
   unrealizedPnl?: number;
+  position?: { qty?: number; avg_price?: number; pnl?: number; pnlPct?: number } | null;
   onTraded?: () => void;
 }) {
   const [qty, setQty] = useState(10);
@@ -1083,16 +1085,23 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualit
   const isHold = bias === "neutral" || signalLabel === "HOLD";
   const isShort = bias === "short";
   const setupActive = executionStatus === "Ready to Trade" && !conditional && qualityGrade !== "Poor";
+  const hasPosition = !!position && Number(position.qty ?? 0) > 0;
+  const positionPnl = Number(position?.pnl ?? 0);
   const blocked = !isHold && !setupActive;
 
-  // Badge per spec
-  const badge = isHold
-    ? { text: "NO TRADE", cls: "bg-accent/40 text-muted-foreground" }
-    : !setupActive
-      ? { text: "WAIT", cls: "bg-yellow-500/20 text-yellow-500" }
-      : isShort
-        ? { text: "SHORT READY", cls: "bg-bear-soft text-bear" }
-        : { text: "LONG READY", cls: "bg-bull-soft text-bull" };
+  // Badge — open position takes precedence over signal-driven NO TRADE
+  const badge = hasPosition
+    ? {
+        text: positionPnl >= 0 ? "POSITION • PROFIT" : "POSITION • LOSS",
+        cls: positionPnl >= 0 ? "bg-bull-soft text-bull" : "bg-bear-soft text-bear",
+      }
+    : isHold
+      ? { text: "NO TRADE", cls: "bg-accent/40 text-muted-foreground" }
+      : !setupActive
+        ? { text: "WAIT", cls: "bg-yellow-500/20 text-yellow-500" }
+        : isShort
+          ? { text: "SHORT READY", cls: "bg-bear-soft text-bear" }
+          : { text: "LONG READY", cls: "bg-bull-soft text-bull" };
 
   const primarySide: "buy" | "sell" = isShort ? "sell" : "buy";
   const primaryLabel = isHold
@@ -1148,11 +1157,23 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualit
         </div>
       )}
 
-      {(isHold || blocked) && (
+      {hasPosition && (
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+          <span>Posisi: <span className="font-mono text-foreground">{Number(position?.qty ?? 0)} @ {formatIDRCompact(Number(position?.avg_price ?? 0))}</span></span>
+          <span>Unrealized: <span className={`font-mono ${positionPnl >= 0 ? "text-bull" : "text-bear"}`}>{formatIDRCompact(positionPnl)} ({Number(position?.pnlPct ?? 0).toFixed(2)}%)</span></span>
+        </div>
+      )}
+
+      {(isHold || blocked) && !hasPosition && (
         <div className={`mt-2 text-xs ${blocked && !isHold ? "text-yellow-500" : "text-muted-foreground"}`}>
           {isHold
             ? "No valid trade setup. Wait for trigger confirmation."
             : `${signalLabel?.includes("BUY") ? "Bullish" : "Bearish"} bias detected, but no valid entry trigger yet.${executionReason ? ` ${executionReason}` : ""}`}
+        </div>
+      )}
+      {hasPosition && (isHold || blocked) && (
+        <div className="mt-2 text-xs text-muted-foreground">
+          Posisi aktif sedang berjalan. Sinyal saat ini: {isHold ? "HOLD" : "Tunggu trigger baru"}. Kelola exit lewat TP/SL atau Close/Sell.
         </div>
       )}
 
