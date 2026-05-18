@@ -329,6 +329,7 @@ export type Database = {
           limit_price: number | null
           price: number | null
           qty: number
+          realized_pnl: number
           side: string
           status: string
           stop_loss: number | null
@@ -349,6 +350,7 @@ export type Database = {
           limit_price?: number | null
           price?: number | null
           qty: number
+          realized_pnl?: number
           side: string
           status?: string
           stop_loss?: number | null
@@ -369,6 +371,7 @@ export type Database = {
           limit_price?: number | null
           price?: number | null
           qty?: number
+          realized_pnl?: number
           side?: string
           status?: string
           stop_loss?: number | null
