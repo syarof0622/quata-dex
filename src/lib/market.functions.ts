@@ -294,7 +294,7 @@ export const getMovers = createServerFn({ method: "POST" })
   });
 
 export const getIndices = createServerFn({ method: "GET" }).handler(async () => {
-  return cached("indices:idx-first", 15_000, async () => {
+  return cached("indices:idx-first", 5_000, async () => {
     const symbols = [...IDX_INDICES, ...GLOBAL_INDICES, "^VIX"];
     const arr = (await Promise.all(symbols.map((s) => fetchQuoteOne(s)))).filter(
       (q): q is Quote => !!q,
