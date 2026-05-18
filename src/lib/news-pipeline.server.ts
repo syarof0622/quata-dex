@@ -169,6 +169,24 @@ export function normalize(item: RawItem, source: { id: string; priority: number;
   };
 }
 
+// Convert a SerpApi news item shape into a RawItem-compatible object, then normalize.
+export function normalizeSerpApiItem(
+  it: { title: string; url: string; summary?: string; publishedAt?: string; id?: string },
+  source: { id: string; priority: number; category: string | null },
+): NormalizedArticle | null {
+  return normalize(
+    {
+      title: it.title,
+      link: it.url,
+      description: it.summary ?? "",
+      pubDate: it.publishedAt,
+      image: null,
+      guid: it.id ?? it.url,
+    },
+    source,
+  );
+}
+
 export function dedupeBatch(items: NormalizedArticle[]): NormalizedArticle[] {
   const seenHash = new Map<string, NormalizedArticle>();
   const seenUrl = new Map<string, NormalizedArticle>();
