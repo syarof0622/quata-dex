@@ -418,14 +418,38 @@ export const getNews = createServerFn({ method: "POST" })
     const market: MarketScope = data.market ?? "global";
     const key = `n:${data.symbol ?? "_"}:${market}`;
     return cached(key, 60_000, async () => {
-      // Symbol-specific fetch keeps original behaviour
+      // Symbol-specific fetch: for IDX (.JK) tickers, merge stored DB news (tickers array)
+      // first so the per-emiten panel uses the same scraped corpus as News & Sentiment.
       if (data.symbol) {
-        let items: any[] = [];
-        try { items = await fetchMarketauxNews(data.symbol, market); } catch (e) { console.error("marketaux", e); }
-        if (items.length === 0) {
-          try { items = await fetchYahooNews(data.symbol, market); } catch (e) { console.error("yahoo", e); }
+        const sym = data.symbol.toUpperCase();
+        let stored: any[] = [];
+        if (sym.endsWith(".JK")) {
+          try {
+            const { data: rows } = await supabaseAdmin
+              .from("news_articles")
+              .select("title,url,source,published_at,image_url,summary,sentiment,sentiment_score,tickers")
+              .contains("tickers", [sym])
+              .eq("is_duplicate", false)
+              .order("published_at", { ascending: false })
+              .limit(15);
+            stored = (rows ?? []).map((n: any) => ({
+              title: n.title, link: n.url, publisher: n.source,
+              publishedAt: n.published_at, thumbnail: n.image_url ?? null,
+              description: n.summary ?? null,
+              sentimentScore: typeof n.sentiment_score === "number" ? n.sentiment_score : null,
+              sentiment: n.sentiment ?? null,
+              entities: (n.tickers ?? []).map((s: string) => ({ symbol: s, name: s, sentiment: 0 })),
+              source: "news_articles" as const,
+            }));
+          } catch (e) { console.error("stored ticker news", e); }
         }
-        return items;
+        let mx: any[] = [];
+        try { mx = await fetchMarketauxNews(sym, market); } catch (e) { console.error("marketaux", e); }
+        let yh: any[] = [];
+        if (stored.length + mx.length < 6) {
+          try { yh = await fetchYahooNews(sym, market); } catch (e) { console.error("yahoo", e); }
+        }
+        return dedupeByTitle([...stored, ...mx, ...yh], 20);
       }
 
       // IDX: prioritize Indonesia-only sources (scraped DB + Marketaux country=id).
