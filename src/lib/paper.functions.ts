@@ -126,12 +126,17 @@ export const placeOrder = createServerFn({ method: "POST" })
         .eq("id", account.id);
     }
 
+    const realizedPnl = data.side === "sell" && existing
+      ? (fillPrice - Number(existing.avg_price)) * data.qty - fee
+      : 0;
+
     await supabaseAdmin.from("paper_orders").insert({
       account_id: account.id, user_id: USER_ID, symbol,
       side: data.side, type: "market", qty: data.qty,
       price: quote.price, filled_price: fillPrice,
       status: "filled", filled_at: new Date().toISOString(),
       take_profit: data.takeProfit ?? null, stop_loss: data.stopLoss ?? null,
+      realized_pnl: realizedPnl,
     });
 
     return { ok: true, fillPrice, fee };
