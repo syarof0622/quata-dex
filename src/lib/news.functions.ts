@@ -134,17 +134,33 @@ export const refreshNewsNow = createServerFn({ method: "POST" })
     const { fetchRssWithFallback } = await import("@/lib/news-rss.server");
     const { normalize, normalizeSerpApiItem, dedupeBatch } = await import("@/lib/news-pipeline.server");
     const { fetchSerpApiGoogleNews } = await import("@/lib/serpapi.server");
+    const { fetchSpecialSource } = await import("@/lib/news-special-sources.server");
 
     const all: any[] = [];
     const statuses: any[] = [];
     for (const src of NEWS_SOURCES.filter((s) => s.enabled)) {
       try {
+        if (src.type === "special_source" && src.special) {
+          const res = await fetchSpecialSource(src);
+          all.push(...res.items);
+          statuses.push({
+            id: src.id,
+            ok: res.items.length > 0,
+            count: res.items.length,
+            used_url: res.usedUrl,
+            mode: res.mode,
+            status: res.status,
+            reason: res.reason,
+            error: res.items.length === 0 ? (res.fallbackError ?? res.directError) : undefined,
+          });
+          continue;
+        }
         const { url, items } = await fetchRssWithFallback(src.url, src.fallbackUrls ?? []);
         const normalized = items.map((it) => normalize(it, { id: src.id, priority: src.priority, category: src.category })).filter(Boolean) as any[];
         all.push(...normalized);
-        statuses.push({ id: src.id, ok: true, count: normalized.length, used_url: url });
+        statuses.push({ id: src.id, ok: true, count: normalized.length, used_url: url, mode: "direct", status: "active" });
       } catch (e: any) {
-        statuses.push({ id: src.id, ok: false, error: String(e?.message ?? e) });
+        statuses.push({ id: src.id, ok: false, error: String(e?.message ?? e), status: "failed" });
       }
     }
 
