@@ -14,6 +14,7 @@ import {
 import { getMarketContext } from "@/lib/market-context.functions";
 import { addToWatchlist } from "@/lib/watchlist.functions";
 import { smartMoney, newsSentiment } from "@/lib/sentiment.functions";
+import { ingestTickerSerpApi, getTickerSentiment } from "@/lib/news.functions";
 import { placeOrder, placeAdvancedOrder } from "@/lib/paper.functions";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -913,6 +914,27 @@ function SmartMoneyPanel({ symbol }: { symbol: string }) {
 
 function SentimentPanel({ symbol }: { symbol: string }) {
   const [tab, setTab] = useState<"relevant" | "general" | "sources">("relevant");
+  const isIDX = symbol.toUpperCase().endsWith(".JK");
+
+  // Trigger SerpApi enrichment for this ticker (cached 30m). Silent fail if no key/quota.
+  useQuery({
+    queryKey: ["serpapi-ingest", symbol],
+    queryFn: () => ingestTickerSerpApi({ data: { symbol } }),
+    enabled: isIDX,
+    staleTime: 30 * 60_000,
+    gcTime: 60 * 60_000,
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
+
+  // DB-backed ticker sentiment summary (24h aggregation across all sources incl SerpApi)
+  const dbSent = useQuery({
+    queryKey: ["ticker-sent-db", symbol],
+    queryFn: () => getTickerSentiment({ data: { symbol } }),
+    enabled: isIDX,
+    refetchInterval: 2 * 60_000,
+  });
+
   const q = useQuery({
     queryKey: ["sent", symbol],
     queryFn: () => newsSentiment({ data: { symbol } }),
