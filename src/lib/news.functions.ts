@@ -170,9 +170,16 @@ export const refreshNewsNow = createServerFn({ method: "POST" })
 
     const deduped = dedupeBatch(all);
     const now = new Date().toISOString();
+    let upsertErrors: string[] = [];
     for (let i = 0; i < deduped.length; i += 100) {
       const chunk = deduped.slice(i, i + 100);
-      await supabaseAdmin.from("news_articles").upsert(chunk, { onConflict: "source,source_id", ignoreDuplicates: true });
+      const { error } = await supabaseAdmin
+        .from("news_articles")
+        .upsert(chunk as any, { onConflict: "source,source_id", ignoreDuplicates: true });
+      if (error) {
+        console.error("[news] upsert error:", error.message);
+        upsertErrors.push(error.message);
+      }
     }
     for (const s of statuses) {
       await supabaseAdmin.from("news_sources").update(
@@ -181,7 +188,7 @@ export const refreshNewsNow = createServerFn({ method: "POST" })
           : { last_failed_at: now, status: "failed", last_error: s.error, updated_at: now }
       ).eq("id", s.id);
     }
-    return { ok: true, total: all.length, deduped: deduped.length, statuses };
+    return { ok: upsertErrors.length === 0, total: all.length, deduped: deduped.length, statuses, upsertErrors };
   });
 
 // Per-ticker SerpApi enrichment: fetches Google News + Finance for one symbol,
