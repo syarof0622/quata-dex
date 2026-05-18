@@ -79,6 +79,7 @@ export const Route = createFileRoute("/api/public/cron/orders")({
           }
           const { data: existing } = await admin.from("paper_positions").select("*")
             .eq("account_id", account.id).eq("symbol", o.symbol).maybeSingle();
+          let realizedPnl = 0;
           if (o.side === "buy") {
             const newQty = Number(existing?.qty ?? 0) + qty;
             const newAvg = existing
@@ -92,6 +93,7 @@ export const Route = createFileRoute("/api/public/cron/orders")({
               await admin.from("paper_orders").update({ status: "rejected" }).eq("id", o.id);
               continue;
             }
+            realizedPnl = (fillPrice - Number(existing.avg_price)) * qty - fee;
             const newQty = Number(existing.qty) - qty;
             if (newQty === 0) await admin.from("paper_positions").delete().eq("id", existing.id);
             else await admin.from("paper_positions").update({ qty: newQty }).eq("id", existing.id);
@@ -99,6 +101,7 @@ export const Route = createFileRoute("/api/public/cron/orders")({
           }
           await admin.from("paper_orders").update({
             status: "filled", filled_price: fillPrice, filled_at: new Date().toISOString(),
+            realized_pnl: realizedPnl,
           }).eq("id", o.id);
           filled++;
         }
