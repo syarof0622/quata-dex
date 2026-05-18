@@ -83,14 +83,14 @@ async function refreshAll() {
     const update: any = { updated_at: now };
     if (s.ok) {
       update.last_success_at = now;
-      update.status = "active";
+      update.status = s.status ?? "active";
       update.fail_count = 0;
-      update.last_error = null;
+      update.last_error = s.reason ?? null;
       update.articles_today = s.count;
     } else {
       update.last_failed_at = now;
-      update.status = "failed";
-      update.last_error = s.error ?? "unknown";
+      update.status = s.status ?? "failed";
+      update.last_error = s.reason ? `${s.reason} | ${s.error ?? ""}` : (s.error ?? "unknown");
     }
     await supabaseAdmin.from("news_sources").update(update).eq("id", s.id);
   }
