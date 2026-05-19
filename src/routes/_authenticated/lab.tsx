@@ -274,28 +274,28 @@ function AIAgentPanel() {
           tidak terhubung ke broker, dan tidak ada order ke sekuritas.
         </p>
 
-        {!isActive && (
-          <div className="grid md:grid-cols-4 gap-2">
-            <div className="md:col-span-2">
-              <label className="text-xs text-muted-foreground">Emiten (maks {MAX_AGENT_SYMBOLS})</label>
-              <TickerSearch
-                placeholder="Cari emiten (BBCA.JK, AAPL, …)"
-                onPick={(sym) => addSymbol(sym)}
-              />
-              <div className="flex flex-wrap gap-1 mt-2 min-h-6">
-                {symbols.length === 0 && <span className="text-xs text-muted-foreground">Belum ada emiten dipilih.</span>}
-                {symbols.map(s => (
-                  <span key={s} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-accent text-xs font-mono">
-                    {s}
-                    <button type="button" onClick={() => removeSymbol(s)} className="hover:text-destructive" aria-label={`Hapus ${s}`}>
-                      <X className="size-3" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-              <div className="text-[10px] text-muted-foreground mt-1">{symbols.length}/{MAX_AGENT_SYMBOLS} dipilih</div>
+        <div className="grid md:grid-cols-4 gap-2">
+          <div className="md:col-span-2">
+            <label className="text-xs text-muted-foreground">Emiten (maks {MAX_AGENT_SYMBOLS}) {isActive && <span className="text-[10px] text-primary">· perubahan langsung diterapkan ke agent</span>}</label>
+            <TickerSearch
+              placeholder="Cari emiten (BBCA.JK, AAPL, …)"
+              onPick={(sym) => addSymbol(sym)}
+            />
+            <div className="flex flex-wrap gap-1 mt-2 min-h-6">
+              {symbols.length === 0 && <span className="text-xs text-muted-foreground">Belum ada emiten dipilih.</span>}
+              {symbols.map(s => (
+                <span key={s} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-accent text-xs font-mono">
+                  {s}
+                  <button type="button" onClick={() => removeSymbol(s)} className="hover:text-destructive" aria-label={`Hapus ${s}`}>
+                    <X className="size-3" />
+                  </button>
+                </span>
+              ))}
             </div>
-            <div><label className="text-xs text-muted-foreground">Allocation / trade (IDR)</label><Input type="number" value={alloc} onChange={e => setAlloc(e.target.value)} /></div>
+            <div className="text-[10px] text-muted-foreground mt-1">{symbols.length}/{MAX_AGENT_SYMBOLS} dipilih</div>
+          </div>
+          {!isActive && <div><label className="text-xs text-muted-foreground">Allocation / trade (IDR)</label><Input type="number" value={alloc} onChange={e => setAlloc(e.target.value)} /></div>}
+          {!isActive && (
             <div>
               <label className="text-xs text-muted-foreground">Risk level</label>
               <Select value={risk} onValueChange={(v) => setRisk(v as any)}>
@@ -307,9 +307,9 @@ function AIAgentPanel() {
                 </SelectContent>
               </Select>
             </div>
-            <div><label className="text-xs text-muted-foreground">Min confidence (0–1)</label><Input value={conf} onChange={e => setConf(e.target.value)} /></div>
-          </div>
-        )}
+          )}
+          {!isActive && <div><label className="text-xs text-muted-foreground">Min confidence (0–1)</label><Input value={conf} onChange={e => setConf(e.target.value)} /></div>}
+        </div>
       </div>
 
       {performance && (
