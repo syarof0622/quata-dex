@@ -154,23 +154,46 @@ async function buildMarketContext(symbol: string) {
   }
 }
 
-/** Confidence calibration based on past training outcomes for this symbol. */
-async function calibrateConfidence(agentId: string, symbol: string, raw: number) {
-  const { data: past } = await supabaseAdmin
-    .from("ai_agent_training_events")
-    .select("was_correct")
-    .eq("agent_id", agentId).eq("symbol", symbol)
-    .not("was_correct", "is", null)
-    .order("created_at", { ascending: false }).limit(30);
-  const n = past?.length ?? 0;
-  if (n < 5) return { value: raw, reason: `Belum cukup riwayat (${n} sampel) — confidence apa adanya.` };
-  const wins = (past ?? []).filter(p => p.was_correct === true).length;
-  const winRate = wins / n;            // 0..1
-  // Multiplier 0.6..1.15 around 50% baseline.
-  const mult = 0.6 + winRate * 0.55;
+/** Confidence calibration: blend persistent per-ticker memory + recent training events. */
+async function calibrateConfidence(agentId: string, symbol: string, raw: number, strategy: string) {
+  // Persistent memory row (fast, single read; populated by runAgentOnce).
+  const { data: mem } = await supabaseAdmin
+    .from("ai_agent_trade_memory")
+    .select("recent_win_rate, sample_size, best_strategy, worst_strategy, recent_mistake")
+    .eq("agent_id", agentId).eq("symbol", symbol).maybeSingle();
+
+  // Fallback: scan recent training events when memory not yet populated.
+  let n = Number(mem?.sample_size ?? 0);
+  let winRate = Number(mem?.recent_win_rate ?? 0);
+  if (n < 5) {
+    const { data: past } = await supabaseAdmin
+      .from("ai_agent_training_events")
+      .select("was_correct")
+      .eq("agent_id", agentId).eq("symbol", symbol)
+      .not("was_correct", "is", null)
+      .order("created_at", { ascending: false }).limit(30);
+    n = past?.length ?? 0;
+    if (n >= 1) winRate = (past!.filter(p => p.was_correct === true).length) / n;
+  }
+
+  if (n < 5) {
+    return { value: raw, reason: `Belum cukup riwayat (${n} sampel) — confidence apa adanya.` };
+  }
+
+  // Base multiplier 0.6..1.15 around 50% baseline.
+  let mult = 0.6 + winRate * 0.55;
+  const notes: string[] = [`win-rate historis ${(winRate * 100).toFixed(0)}% (n=${n})`];
+
+  // Strategy memory bias.
+  if (mem?.best_strategy && mem.best_strategy === strategy) {
+    mult *= 1.07; notes.push(`strategi ${strategy} historis terbaik untuk ${symbol} (+7%)`);
+  } else if (mem?.worst_strategy && mem.worst_strategy === strategy) {
+    mult *= 0.9; notes.push(`strategi ${strategy} historis terburuk untuk ${symbol} (-10%)`);
+  }
+
   const calibrated = Math.max(0, Math.min(0.99, raw * mult));
-  const reason = `Win-rate historis ${(winRate * 100).toFixed(0)}% (${wins}/${n}) → confidence ${calibrated >= raw ? "dinaikkan" : "diturunkan"}.`;
-  return { value: calibrated, reason };
+  const dir = calibrated >= raw ? "dinaikkan" : "diturunkan";
+  return { value: calibrated, reason: `${notes.join("; ")} → confidence ${dir}.` };
 }
 
 export async function evaluateSymbol(
