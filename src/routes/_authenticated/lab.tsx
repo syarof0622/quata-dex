@@ -378,6 +378,78 @@ function AIAgentPanel() {
         </div>
       )}
 
+      {/* Trade Plan + No-Trade Reason cards (latest decision per emiten) */}
+      {decisions.length > 0 && (() => {
+        const latestPerSymbol = new Map<string, any>();
+        for (const d of decisions) {
+          if (!latestPerSymbol.has(d.symbol)) latestPerSymbol.set(d.symbol, d);
+        }
+        const cards = Array.from(latestPerSymbol.values());
+        return (
+          <div>
+            <div className="text-xs text-muted-foreground px-1 pb-2 flex items-center gap-2">
+              <span>Trade Plan terkini per emiten</span>
+              <span className="text-[10px] uppercase bg-primary/10 text-primary px-1.5 py-0.5 rounded">Pre-execution plan</span>
+            </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-2">
+              {cards.map((d: any) => {
+                const isBuy = d.action === "BUY";
+                const isExit = d.action === "EXIT" || d.action === "SELL";
+                const isHold = d.action === "HOLD";
+                const entry = d.entry_price ? Number(d.entry_price) : null;
+                const sl = d.stop_loss ? Number(d.stop_loss) : null;
+                const tp = d.take_profit ? Number(d.take_profit) : null;
+                const rr = d.risk_reward_ratio ? Number(d.risk_reward_ratio) : null;
+                const cal = Number(d.calibrated_confidence ?? d.confidence ?? 0);
+                const noTradeReason = isHold || d.decision_status === "rejected" || d.decision_status === "cooldown" || d.decision_status === "limit_reached"
+                  ? (d.decision_status === "cooldown" ? "Cooldown aktif — menunggu jeda antar aksi"
+                    : d.decision_status === "limit_reached" ? "Batas trade harian tercapai"
+                    : d.decision_status === "rejected" ? "Ditolak guard risiko / sesi pasar"
+                    : "Confidence / sinyal belum cukup untuk eksekusi")
+                  : null;
+                return (
+                  <div key={d.id} className={`panel p-3 space-y-2 border ${isBuy ? "border-bull/40" : isExit ? "border-bear/40" : "border-border"}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="font-mono font-semibold">{d.symbol}</div>
+                      <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${isBuy ? "bg-bull/15 text-bull" : isExit ? "bg-bear/15 text-bear" : "bg-muted text-muted-foreground"}`}>
+                        {d.action} · {(cal * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                    {!isHold && (
+                      <div className="grid grid-cols-3 gap-1 text-[11px]">
+                        <div><div className="text-muted-foreground">Entry</div><div className="font-mono">{entry ? formatPrice(entry) : "—"}</div></div>
+                        <div><div className="text-muted-foreground">SL</div><div className="font-mono text-bear">{sl ? formatPrice(sl) : "—"}</div></div>
+                        <div><div className="text-muted-foreground">TP</div><div className="font-mono text-bull">{tp ? formatPrice(tp) : "—"}</div></div>
+                        <div><div className="text-muted-foreground">Lot</div><div className="font-mono">{d.suggested_lot ?? "—"}</div></div>
+                        <div><div className="text-muted-foreground">RR</div><div className="font-mono">{rr ? rr.toFixed(2) : "—"}</div></div>
+                        <div><div className="text-muted-foreground">Strategy</div><div className="text-[10px]">{d.strategy ?? "—"}</div></div>
+                      </div>
+                    )}
+                    {noTradeReason && (
+                      <div className="text-[11px] bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2 py-1 rounded">
+                        <div className="font-semibold uppercase text-[9px] tracking-wide">No-Trade Reason</div>
+                        {noTradeReason}
+                      </div>
+                    )}
+                    {d.reasoning && (
+                      <div className="text-[11px] text-muted-foreground leading-relaxed line-clamp-3" title={d.reasoning}>
+                        {d.reasoning}
+                      </div>
+                    )}
+                    {d.calibration_reason && (
+                      <div className="text-[10px] italic opacity-80">↳ {d.calibration_reason}</div>
+                    )}
+                    <div className="text-[10px] text-muted-foreground flex items-center justify-between">
+                      <span>{d.data_source ?? "—"}{d.data_freshness_seconds != null ? ` · ${d.data_freshness_seconds}s` : ""}</span>
+                      <span>{new Date(d.created_at).toLocaleTimeString("id-ID")}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
 
       <div className="panel p-2 overflow-x-auto">
