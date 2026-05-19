@@ -174,14 +174,23 @@ function AIAgentPanel() {
   const risks = (status.data?.risks ?? []) as any[];
   const performance = status.data?.performance as any;
 
-  const [symbols, setSymbols] = useState("BBCA.JK, BBRI.JK");
+  const [symbols, setSymbols] = useState<string[]>(["BBCA.JK", "BBRI.JK", "TLKM.JK", "ASII.JK", "BMRI.JK"]);
   const [alloc, setAlloc] = useState("1000000");
   const [risk, setRisk] = useState<"conservative" | "balanced" | "aggressive">("balanced");
   const [conf, setConf] = useState("0.70");
 
+  function addSymbol(sym: string) {
+    const s = sym.trim().toUpperCase();
+    if (!s) return;
+    if (symbols.includes(s)) { toast.info(`${s} sudah ada di daftar`); return; }
+    if (symbols.length >= MAX_AGENT_SYMBOLS) { toast.error(`Maksimal ${MAX_AGENT_SYMBOLS} emiten`); return; }
+    setSymbols([...symbols, s]);
+  }
+  function removeSymbol(sym: string) { setSymbols(symbols.filter(s => s !== sym)); }
+
   const start = useMutation({
     mutationFn: () => startAgent({ data: {
-      selectedSymbols: symbols.split(",").map(s => s.trim()).filter(Boolean),
+      selectedSymbols: symbols.slice(0, MAX_AGENT_SYMBOLS),
       allocationAmount: Number(alloc) || 1_000_000,
       riskLevel: risk, minConfidenceToTrade: Number(conf) || 0.7,
       strategyMode: "hybrid", maxPositionPerSymbol: 0.25, maxDailyTrades: 5,
