@@ -16,6 +16,9 @@ import { Sparkles, X, Bot, Play, Pause, Square, AlertTriangle } from "lucide-rea
 import { JournalPanel } from "@/components/JournalPanel";
 import { ChatPanel } from "@/components/ChatPanel";
 import { startAgent, pauseAgent, stopAgent, emergencyStop, getAgentStatus, runAgentNow } from "@/lib/ai-trade-agent.functions";
+import { TickerSearch } from "@/components/TickerSearch";
+
+const MAX_AGENT_SYMBOLS = 5;
 
 export const Route = createFileRoute("/_authenticated/lab")({
   head: () => ({ meta: [{ title: "Simulation Lab — Quanta Terminal" }] }),
@@ -171,14 +174,23 @@ function AIAgentPanel() {
   const risks = (status.data?.risks ?? []) as any[];
   const performance = status.data?.performance as any;
 
-  const [symbols, setSymbols] = useState("BBCA.JK, BBRI.JK");
+  const [symbols, setSymbols] = useState<string[]>(["BBCA.JK", "BBRI.JK", "TLKM.JK", "ASII.JK", "BMRI.JK"]);
   const [alloc, setAlloc] = useState("1000000");
   const [risk, setRisk] = useState<"conservative" | "balanced" | "aggressive">("balanced");
   const [conf, setConf] = useState("0.70");
 
+  function addSymbol(sym: string) {
+    const s = sym.trim().toUpperCase();
+    if (!s) return;
+    if (symbols.includes(s)) { toast.info(`${s} sudah ada di daftar`); return; }
+    if (symbols.length >= MAX_AGENT_SYMBOLS) { toast.error(`Maksimal ${MAX_AGENT_SYMBOLS} emiten`); return; }
+    setSymbols([...symbols, s]);
+  }
+  function removeSymbol(sym: string) { setSymbols(symbols.filter(s => s !== sym)); }
+
   const start = useMutation({
     mutationFn: () => startAgent({ data: {
-      selectedSymbols: symbols.split(",").map(s => s.trim()).filter(Boolean),
+      selectedSymbols: symbols.slice(0, MAX_AGENT_SYMBOLS),
       allocationAmount: Number(alloc) || 1_000_000,
       riskLevel: risk, minConfidenceToTrade: Number(conf) || 0.7,
       strategyMode: "hybrid", maxPositionPerSymbol: 0.25, maxDailyTrades: 5,
@@ -245,7 +257,25 @@ function AIAgentPanel() {
 
         {!isActive && (
           <div className="grid md:grid-cols-4 gap-2">
-            <div className="md:col-span-2"><label className="text-xs text-muted-foreground">Symbols (comma-separated, .JK for IDX)</label><Input value={symbols} onChange={e => setSymbols(e.target.value)} /></div>
+            <div className="md:col-span-2">
+              <label className="text-xs text-muted-foreground">Emiten (maks {MAX_AGENT_SYMBOLS})</label>
+              <TickerSearch
+                placeholder="Cari emiten (BBCA.JK, AAPL, …)"
+                onPick={(sym) => addSymbol(sym)}
+              />
+              <div className="flex flex-wrap gap-1 mt-2 min-h-6">
+                {symbols.length === 0 && <span className="text-xs text-muted-foreground">Belum ada emiten dipilih.</span>}
+                {symbols.map(s => (
+                  <span key={s} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-accent text-xs font-mono">
+                    {s}
+                    <button type="button" onClick={() => removeSymbol(s)} className="hover:text-destructive" aria-label={`Hapus ${s}`}>
+                      <X className="size-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <div className="text-[10px] text-muted-foreground mt-1">{symbols.length}/{MAX_AGENT_SYMBOLS} dipilih</div>
+            </div>
             <div><label className="text-xs text-muted-foreground">Allocation / trade (IDR)</label><Input type="number" value={alloc} onChange={e => setAlloc(e.target.value)} /></div>
             <div>
               <label className="text-xs text-muted-foreground">Risk level</label>
