@@ -284,10 +284,17 @@ function AIAgentPanel() {
             <div className="flex flex-wrap gap-1 mt-2 min-h-6">
               {symbols.length === 0 && <span className="text-xs text-muted-foreground">Belum ada emiten dipilih.</span>}
               {symbols.map(s => (
-                <span key={s} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-accent text-xs font-mono">
+                <span key={s} className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded bg-accent text-xs font-mono">
                   {s}
-                  <button type="button" onClick={() => removeSymbol(s)} className="hover:text-destructive" aria-label={`Hapus ${s}`}>
-                    <X className="size-3" />
+                  <button
+                    type="button"
+                    onClick={() => removeSymbol(s)}
+                    className="inline-flex items-center gap-1 ml-1 px-1.5 py-0.5 rounded bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                    aria-label={`Hentikan AI Agent untuk ${s}`}
+                    title={isActive ? `Hentikan AI Agent untuk ${s}` : `Hapus ${s}`}
+                  >
+                    <Square className="size-2.5 fill-current" />
+                    <span className="text-[10px] font-sans font-medium">Stop</span>
                   </button>
                 </span>
               ))}
