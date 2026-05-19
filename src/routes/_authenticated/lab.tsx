@@ -174,6 +174,14 @@ function AIAgentPanel() {
   const risks = (status.data?.risks ?? []) as any[];
   const performance = status.data?.performance as any;
 
+  const memory = useQuery({
+    queryKey: ["ai-agent-memory", agent?.id],
+    queryFn: () => listTradeMemory({ data: { agentId: agent.id } }),
+    enabled: !!agent?.id,
+    refetchInterval: 15000,
+  });
+  const memoryRows = (memory.data ?? []) as any[];
+
   const [symbols, setSymbols] = useState<string[]>(["BBCA.JK", "BBRI.JK", "TLKM.JK", "ASII.JK", "BMRI.JK"]);
   const [alloc, setAlloc] = useState("1000000");
   const [risk, setRisk] = useState<"conservative" | "balanced" | "aggressive">("balanced");
