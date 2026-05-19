@@ -31,6 +31,7 @@ import { Route as ApiSerpapiGoogleFinanceSymbolRouteImport } from './routes/api/
 import { Route as ApiPublicCronOrdersRouteImport } from './routes/api/public/cron/orders'
 import { Route as ApiPublicCronNewsRouteImport } from './routes/api/public/cron/news'
 import { Route as ApiPublicCronAlertsRouteImport } from './routes/api/public/cron/alerts'
+import { Route as ApiPublicCronAiAgentRouteImport } from './routes/api/public/cron/ai-agent'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -144,6 +145,11 @@ const ApiPublicCronAlertsRoute = ApiPublicCronAlertsRouteImport.update({
   path: '/api/public/cron/alerts',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCronAiAgentRoute = ApiPublicCronAiAgentRouteImport.update({
+  id: '/api/public/cron/ai-agent',
+  path: '/api/public/cron/ai-agent',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -162,6 +168,7 @@ export interface FileRoutesByFullPath {
   '/api/chat': typeof ApiChatRoute
   '/chart/$symbol': typeof AuthenticatedChartSymbolRoute
   '/api/serpapi/news': typeof ApiSerpapiNewsRoute
+  '/api/public/cron/ai-agent': typeof ApiPublicCronAiAgentRoute
   '/api/public/cron/alerts': typeof ApiPublicCronAlertsRoute
   '/api/public/cron/news': typeof ApiPublicCronNewsRoute
   '/api/public/cron/orders': typeof ApiPublicCronOrdersRoute
@@ -185,6 +192,7 @@ export interface FileRoutesByTo {
   '/api/chat': typeof ApiChatRoute
   '/chart/$symbol': typeof AuthenticatedChartSymbolRoute
   '/api/serpapi/news': typeof ApiSerpapiNewsRoute
+  '/api/public/cron/ai-agent': typeof ApiPublicCronAiAgentRoute
   '/api/public/cron/alerts': typeof ApiPublicCronAlertsRoute
   '/api/public/cron/news': typeof ApiPublicCronNewsRoute
   '/api/public/cron/orders': typeof ApiPublicCronOrdersRoute
@@ -210,6 +218,7 @@ export interface FileRoutesById {
   '/api/chat': typeof ApiChatRoute
   '/_authenticated/chart/$symbol': typeof AuthenticatedChartSymbolRoute
   '/api/serpapi/news': typeof ApiSerpapiNewsRoute
+  '/api/public/cron/ai-agent': typeof ApiPublicCronAiAgentRoute
   '/api/public/cron/alerts': typeof ApiPublicCronAlertsRoute
   '/api/public/cron/news': typeof ApiPublicCronNewsRoute
   '/api/public/cron/orders': typeof ApiPublicCronOrdersRoute
@@ -235,6 +244,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/chart/$symbol'
     | '/api/serpapi/news'
+    | '/api/public/cron/ai-agent'
     | '/api/public/cron/alerts'
     | '/api/public/cron/news'
     | '/api/public/cron/orders'
@@ -258,6 +268,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/chart/$symbol'
     | '/api/serpapi/news'
+    | '/api/public/cron/ai-agent'
     | '/api/public/cron/alerts'
     | '/api/public/cron/news'
     | '/api/public/cron/orders'
@@ -282,6 +293,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/_authenticated/chart/$symbol'
     | '/api/serpapi/news'
+    | '/api/public/cron/ai-agent'
     | '/api/public/cron/alerts'
     | '/api/public/cron/news'
     | '/api/public/cron/orders'
@@ -295,6 +307,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiSerpapiNewsRoute: typeof ApiSerpapiNewsRoute
+  ApiPublicCronAiAgentRoute: typeof ApiPublicCronAiAgentRoute
   ApiPublicCronAlertsRoute: typeof ApiPublicCronAlertsRoute
   ApiPublicCronNewsRoute: typeof ApiPublicCronNewsRoute
   ApiPublicCronOrdersRoute: typeof ApiPublicCronOrdersRoute
@@ -458,6 +471,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronAlertsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/ai-agent': {
+      id: '/api/public/cron/ai-agent'
+      path: '/api/public/cron/ai-agent'
+      fullPath: '/api/public/cron/ai-agent'
+      preLoaderRoute: typeof ApiPublicCronAiAgentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -501,6 +521,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ApiChatRoute: ApiChatRoute,
   ApiSerpapiNewsRoute: ApiSerpapiNewsRoute,
+  ApiPublicCronAiAgentRoute: ApiPublicCronAiAgentRoute,
   ApiPublicCronAlertsRoute: ApiPublicCronAlertsRoute,
   ApiPublicCronNewsRoute: ApiPublicCronNewsRoute,
   ApiPublicCronOrdersRoute: ApiPublicCronOrdersRoute,
@@ -510,3 +531,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
