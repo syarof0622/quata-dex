@@ -149,22 +149,43 @@ async function recentCooldownActive(agentId: string, symbol: string, action: str
   return (count ?? 0) > 0;
 }
 
+// Realistic slippage by cap proxy (LQ45 list approximated by ticker prefix).
+const LARGE_CAP_IDX = new Set([
+  "BBCA", "BBRI", "BMRI", "BBNI", "TLKM", "ASII", "UNVR", "HMSP", "GGRM",
+  "ICBP", "INDF", "KLBF", "SMGR", "INTP", "PGAS", "ADRO", "PTBA", "ITMG",
+  "ANTM", "MEDC", "MDKA", "INKP", "TKIM", "GOTO", "ARTO", "BRIS", "BRPT",
+  "EMTK", "EXCL", "INCO", "PWON", "TPIA", "UNTR", "BUKA", "MAPA", "MAPI",
+]);
+
+function slippagePctFor(symbol: string): number {
+  const base = symbol.replace(/\.JK$/i, "").toUpperCase();
+  if (LARGE_CAP_IDX.has(base)) return 0.0008;   // ~0.08% large-cap
+  if (isIDXSymbol(symbol)) return 0.0025;       // mid/small IDX
+  return 0.0005;                                 // US/global large
+}
+const BUY_FEE_PCT  = 0.0015; // 0.15%
+const SELL_FEE_PCT = 0.0025; // 0.25%
+
 async function executePaperFill(opts: {
   agentId: string; paperAccountId: string; symbol: string; side: "buy" | "sell";
   shares: number; price: number; existing?: Position; reason: string;
+  decision?: AgentDecision; decisionId?: string | null;
 }) {
-  const { agentId, paperAccountId, symbol, side, shares, price, existing, reason } = opts;
-  const slip = 0.0005 * (side === "buy" ? 1 : -1);
-  const fillPrice = price * (1 + slip);
+  const { agentId, paperAccountId, symbol, side, shares, price, existing, reason, decision, decisionId } = opts;
+  const slipPct = slippagePctFor(symbol);
+  const fillPrice = +(price * (1 + slipPct * (side === "buy" ? 1 : -1))).toFixed(4);
   const notional = fillPrice * shares;
-  const fee = notional * 0.001;
+  const feePct = side === "buy" ? BUY_FEE_PCT : SELL_FEE_PCT;
+  const fee = +(notional * feePct).toFixed(2);
 
   const { data: account } = await supabaseAdmin.from("paper_accounts").select("*").eq("id", paperAccountId).single();
   if (!account) throw new Error("paper account missing");
+  const cashBefore = Number(account.cash);
 
   let realizedPnl = 0;
+  let cashAfter = cashBefore;
   if (side === "buy") {
-    if (Number(account.cash) < notional + fee) throw new Error("Insufficient cash");
+    if (cashBefore < notional + fee) throw new Error("Insufficient cash");
     if (existing) {
       const newQty = Number(existing.qty) + shares;
       const newAvg = (Number(existing.avg_price) * Number(existing.qty) + fillPrice * shares) / newQty;
@@ -175,30 +196,55 @@ async function executePaperFill(opts: {
         account_id: paperAccountId, user_id: USER_ID, symbol, qty: shares, avg_price: fillPrice,
       });
     }
-    await supabaseAdmin.from("paper_accounts").update({ cash: Number(account.cash) - notional - fee }).eq("id", paperAccountId);
+    cashAfter = cashBefore - notional - fee;
+    await supabaseAdmin.from("paper_accounts").update({ cash: cashAfter }).eq("id", paperAccountId);
   } else {
     if (!existing || Number(existing.qty) < shares) throw new Error("Position insufficient for sell");
-    realizedPnl = (fillPrice - Number(existing.avg_price)) * shares - fee;
+    realizedPnl = +((fillPrice - Number(existing.avg_price)) * shares - fee).toFixed(2);
     const remaining = Number(existing.qty) - shares;
     if (remaining === 0) await supabaseAdmin.from("paper_positions").delete().eq("user_id", USER_ID).eq("symbol", symbol);
     else await supabaseAdmin.from("paper_positions").update({ qty: remaining }).eq("user_id", USER_ID).eq("symbol", symbol);
-    await supabaseAdmin.from("paper_accounts").update({ cash: Number(account.cash) + notional - fee }).eq("id", paperAccountId);
+    cashAfter = cashBefore + notional - fee;
+    await supabaseAdmin.from("paper_accounts").update({ cash: cashAfter }).eq("id", paperAccountId);
   }
 
   const { data: order } = await supabaseAdmin.from("paper_orders").insert({
     account_id: paperAccountId, user_id: USER_ID, symbol, side, type: "market", qty: shares,
     price, filled_price: fillPrice, status: "filled", filled_at: new Date().toISOString(),
-    realized_pnl: realizedPnl,
+    realized_pnl: realizedPnl, slippage_pct: slipPct, fee,
   }).select("*").single();
 
+  const paperExecution = {
+    executed: true, orderId: order?.id ?? null,
+    paperBalanceBefore: cashBefore, paperBalanceAfter: cashAfter,
+    requestedPrice: price, simulatedFillPrice: fillPrice,
+    slippagePercent: slipPct, fee, feePercent: feePct,
+    realisticFill: true, rejectionReason: null,
+  };
+
   await supabaseAdmin.from("ai_agent_training_events").insert({
-    agent_id: agentId, order_id: order?.id, symbol,
-    decision_output: { side, shares, fillPrice, reason },
-    actual_outcome: { realizedPnl, fee },
-    pnl: realizedPnl, model_version: "agent-v1.0",
+    agent_id: agentId, order_id: order?.id, decision_id: decisionId ?? null, symbol,
+    real_market_data: (decision?.realMarketData ?? null) as any,
+    real_technical_data: (decision?.realTechnicalData ?? null) as any,
+    real_news_data: (decision?.realNewsData ?? null) as any,
+    real_disclosure_data: (decision?.realDisclosureData ?? null) as any,
+    real_market_context: (decision?.realMarketContext ?? null) as any,
+    ai_decision: decision ? ({
+      action: decision.action, confidence: decision.confidence,
+      rawConfidence: decision.rawConfidence, calibrationReason: decision.calibrationReason,
+      strategy: decision.strategy, allocationAmount: decision.allocationAmount,
+      lot: decision.suggestedLot, shares: decision.suggestedShares,
+      entryPrice: decision.entryPrice, stopLoss: decision.stopLoss,
+      takeProfit: decision.takeProfit, riskRewardRatio: decision.riskRewardRatio,
+      reasoning: decision.reasoning,
+    } as any) : ({ side, shares, fillPrice, reason } as any),
+    paper_execution: paperExecution as any,
+    decision_output: { side, shares, fillPrice, reason } as any,
+    actual_outcome: { realizedPnl, fee } as any,
+    pnl: realizedPnl, model_version: "agent-v1.1", strategy_version: "real-data-v1",
   });
 
-  return { order, realizedPnl, fillPrice };
+  return { order, realizedPnl, fillPrice, slipPct, fee, cashBefore, cashAfter };
 }
 
 async function loadActivePosition(symbol: string): Promise<Position | undefined> {
