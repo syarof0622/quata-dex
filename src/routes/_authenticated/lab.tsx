@@ -166,6 +166,138 @@ function Lab() {
   );
 }
 
+// ---- Helpers for AI Trade Agent UI presentation ----
+
+type ExecStatus =
+  | "allowed"
+  | "blocked_emergency"
+  | "blocked_paused"
+  | "blocked_stopped"
+  | "blocked_market_closed"
+  | "blocked_market_break"
+  | "blocked_data_stale"
+  | "blocked_data_unavailable"
+  | "blocked_insufficient_balance"
+  | "blocked_risk_limit"
+  | "blocked_low_confidence"
+  | "blocked_duplicate_order"
+  | "blocked_rr_invalid";
+
+const EXEC_LABEL: Record<ExecStatus, string> = {
+  allowed: "Allowed",
+  blocked_emergency: "Blocked — Emergency stop",
+  blocked_paused: "Blocked — Agent paused",
+  blocked_stopped: "Blocked — Agent stopped",
+  blocked_market_closed: "Blocked — Market closed",
+  blocked_market_break: "Blocked — Market break",
+  blocked_data_stale: "Blocked — Data stale",
+  blocked_data_unavailable: "Blocked — Data unavailable",
+  blocked_insufficient_balance: "Blocked — Insufficient paper balance",
+  blocked_risk_limit: "Blocked — Risk limit reached",
+  blocked_low_confidence: "Blocked — Confidence below threshold",
+  blocked_duplicate_order: "Blocked — Duplicate order guard",
+  blocked_rr_invalid: "Blocked — Risk/reward invalid",
+};
+
+function deriveExecutionStatusForCard(
+  agent: any,
+  session: any,
+  d: any,
+): { status: ExecStatus; primary: string; detail: string; secondary?: string } {
+  const agentStatus = agent?.status ?? "stopped";
+  const reasoning = String(d?.reasoning ?? "").toLowerCase();
+  const dStatus = d?.decision_status as string | undefined;
+
+  if (agentStatus === "error") {
+    return { status: "blocked_emergency", primary: "Emergency stop",
+      detail: "Agent dihentikan paksa. Tidak ada order baru sampai agent di-start ulang." };
+  }
+  if (agentStatus === "paused") {
+    return { status: "blocked_paused", primary: "Agent paused",
+      detail: "Agent sedang dijeda. Eksekusi paper order sementara diblokir." };
+  }
+  if (agentStatus === "stopped") {
+    return { status: "blocked_stopped", primary: "Agent stopped",
+      detail: "Agent tidak aktif. Klik Start untuk mulai cycle." };
+  }
+  if (session && !session.isOpen) {
+    if (session.isBreak) {
+      return { status: "blocked_market_break", primary: "Market break",
+        detail: "IDX sedang dalam sesi istirahat. Agent tidak dapat membuka order baru sampai market kembali dibuka.",
+        secondary: "Signal & confidence tidak dievaluasi karena eksekusi diblokir oleh market session." };
+    }
+    return { status: "blocked_market_closed", primary: "Market closed",
+      detail: "Market IDX sedang tutup. Agent hanya menjalankan analisis pasif — tidak ada paper order yang dibuat.",
+      secondary: "Confidence tidak dievaluasi karena eksekusi diblokir." };
+  }
+  if (/tidak fresh|stale/.test(reasoning)) {
+    return { status: "blocked_data_stale", primary: "Data harga stale",
+      detail: "Data harga belum cukup fresh untuk keputusan eksekusi." };
+  }
+  if (/harga aktual tidak tersedia|quote unavailable|tidak tersedia/.test(reasoning)) {
+    return { status: "blocked_data_unavailable", primary: "Price data unavailable",
+      detail: "Data harga belum tersedia dari sumber. Menunggu refresh berikutnya." };
+  }
+  if (dStatus === "limit_reached" || /batas risiko|risk limit/.test(reasoning)) {
+    return { status: "blocked_risk_limit", primary: "Batas risiko harian tercapai",
+      detail: "Agent masuk mode risk-paused sampai window berikutnya." };
+  }
+  if (dStatus === "cooldown" || /cooldown/.test(reasoning)) {
+    return { status: "blocked_duplicate_order", primary: "Cooldown aktif",
+      detail: "Menunggu jeda antar aksi pada simbol ini untuk mencegah duplikat order." };
+  }
+  if (/saldo .* tidak cukup|saldo paper|insufficient/.test(reasoning)) {
+    return { status: "blocked_insufficient_balance", primary: "Saldo paper tidak cukup",
+      detail: "Saldo paper trading tidak cukup untuk minimal 1 lot." };
+  }
+  if (/confidence .* < threshold|confidence sinyal/.test(reasoning)) {
+    return { status: "blocked_low_confidence", primary: "Confidence di bawah threshold",
+      detail: "Confidence sinyal masih di bawah threshold eksekusi yang dikonfigurasi." };
+  }
+  if (d?.action === "HOLD") {
+    return { status: "blocked_low_confidence", primary: "Belum ada setup eksekusi",
+      detail: "Tidak ada setup yang memenuhi syarat pada tick ini. Menunggu sinyal berikutnya." };
+  }
+  return { status: "allowed", primary: "Allowed", detail: "Setup valid untuk eksekusi paper order." };
+}
+
+type DataStatus = "fresh" | "stale" | "unavailable";
+function classifyFreshness(seconds: number | null | undefined): DataStatus {
+  if (seconds == null) return "unavailable";
+  if (seconds <= 600) return "fresh";
+  if (seconds <= 3600) return "stale";
+  return "stale";
+}
+function statusBadgeClass(s: DataStatus | "allowed" | "blocked") {
+  if (s === "fresh" || s === "allowed") return "bg-bull/15 text-bull";
+  if (s === "stale") return "bg-amber-500/15 text-amber-600 dark:text-amber-400";
+  if (s === "blocked") return "bg-bear/15 text-bear";
+  return "bg-muted text-muted-foreground";
+}
+
+function confidenceCell(agent: any, session: any, d: any) {
+  const agentStatus = agent?.status ?? "stopped";
+  const raw = Number(d?.raw_confidence ?? d?.confidence ?? 0);
+  const cal = Number(d?.calibrated_confidence ?? d?.confidence ?? 0);
+  if (agentStatus === "paused") return { label: "Paused", tooltip: "Agent paused. Confidence tidak dievaluasi.", muted: true };
+  if (session && !session.isOpen) {
+    return { label: "Paused",
+      tooltip: session.isBreak ? "Confidence tidak dievaluasi karena IDX sedang break." : "Confidence tidak dievaluasi karena market tutup.",
+      muted: true };
+  }
+  if (raw === 0 && cal === 0) {
+    return { label: "Not evaluated", tooltip: "Confidence belum dihitung karena price/technical data belum tersedia.", muted: true };
+  }
+  return { label: `${(raw * 100).toFixed(0)}% → ${(cal * 100).toFixed(0)}%`, tooltip: "Raw → calibrated confidence.", muted: false };
+}
+
+function runButtonCopy(agent: any, session: any) {
+  const s = agent?.status ?? "stopped";
+  if (s === "paused") return { label: "Run analysis preview", tip: "Agent sedang pause. Analisis dapat dijalankan sebagai preview tanpa eksekusi." };
+  if (session && !session.isOpen) return { label: "Run analysis now", tip: "Market sedang tidak buka. Agent hanya akan melakukan analisis pasif dan tidak akan membuat order." };
+  return { label: "Run decision now", tip: "Jalankan decision cycle sekarang. Agent dapat membuat paper order jika valid." };
+}
+
 function AIAgentPanel() {
   const status = useQuery({ queryKey: ["ai-agent"], queryFn: () => getAgentStatus(), refetchInterval: 10000 });
   const agent = status.data?.agent as any;
