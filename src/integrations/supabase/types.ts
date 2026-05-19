@@ -14,6 +14,354 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_agent_decisions: {
+        Row: {
+          action: string
+          agent_id: string
+          allocation_amount: number | null
+          confidence: number | null
+          created_at: string
+          data_snapshot: Json | null
+          decision_status: string | null
+          entry_price: number | null
+          id: string
+          idempotency_key: string | null
+          paper_account_id: string
+          portfolio_snapshot: Json | null
+          reasoning: string | null
+          risk_reward_ratio: number | null
+          risk_snapshot: Json | null
+          sentiment_snapshot: Json | null
+          stop_loss: number | null
+          strategy: string | null
+          suggested_lot: number | null
+          suggested_shares: number | null
+          symbol: string
+          take_profit: number | null
+          technical_snapshot: Json | null
+        }
+        Insert: {
+          action: string
+          agent_id: string
+          allocation_amount?: number | null
+          confidence?: number | null
+          created_at?: string
+          data_snapshot?: Json | null
+          decision_status?: string | null
+          entry_price?: number | null
+          id?: string
+          idempotency_key?: string | null
+          paper_account_id: string
+          portfolio_snapshot?: Json | null
+          reasoning?: string | null
+          risk_reward_ratio?: number | null
+          risk_snapshot?: Json | null
+          sentiment_snapshot?: Json | null
+          stop_loss?: number | null
+          strategy?: string | null
+          suggested_lot?: number | null
+          suggested_shares?: number | null
+          symbol: string
+          take_profit?: number | null
+          technical_snapshot?: Json | null
+        }
+        Update: {
+          action?: string
+          agent_id?: string
+          allocation_amount?: number | null
+          confidence?: number | null
+          created_at?: string
+          data_snapshot?: Json | null
+          decision_status?: string | null
+          entry_price?: number | null
+          id?: string
+          idempotency_key?: string | null
+          paper_account_id?: string
+          portfolio_snapshot?: Json | null
+          reasoning?: string | null
+          risk_reward_ratio?: number | null
+          risk_snapshot?: Json | null
+          sentiment_snapshot?: Json | null
+          stop_loss?: number | null
+          strategy?: string | null
+          suggested_lot?: number | null
+          suggested_shares?: number | null
+          symbol?: string
+          take_profit?: number | null
+          technical_snapshot?: Json | null
+        }
+        Relationships: []
+      }
+      ai_agent_performance: {
+        Row: {
+          agent_id: string
+          avg_holding_time: number | null
+          avg_loss: number | null
+          avg_win: number | null
+          best_trade: number | null
+          daily_return: number | null
+          id: string
+          loss_rate: number | null
+          max_drawdown: number | null
+          paper_account_id: string
+          profit_factor: number | null
+          total_return: number | null
+          total_trades: number | null
+          updated_at: string
+          win_rate: number | null
+          worst_trade: number | null
+        }
+        Insert: {
+          agent_id: string
+          avg_holding_time?: number | null
+          avg_loss?: number | null
+          avg_win?: number | null
+          best_trade?: number | null
+          daily_return?: number | null
+          id?: string
+          loss_rate?: number | null
+          max_drawdown?: number | null
+          paper_account_id: string
+          profit_factor?: number | null
+          total_return?: number | null
+          total_trades?: number | null
+          updated_at?: string
+          win_rate?: number | null
+          worst_trade?: number | null
+        }
+        Update: {
+          agent_id?: string
+          avg_holding_time?: number | null
+          avg_loss?: number | null
+          avg_win?: number | null
+          best_trade?: number | null
+          daily_return?: number | null
+          id?: string
+          loss_rate?: number | null
+          max_drawdown?: number | null
+          paper_account_id?: string
+          profit_factor?: number | null
+          total_return?: number | null
+          total_trades?: number | null
+          updated_at?: string
+          win_rate?: number | null
+          worst_trade?: number | null
+        }
+        Relationships: []
+      }
+      ai_agent_risk_logs: {
+        Row: {
+          action_taken: string | null
+          agent_id: string
+          created_at: string
+          id: string
+          message: string | null
+          risk_level: string | null
+          risk_type: string | null
+          symbol: string | null
+        }
+        Insert: {
+          action_taken?: string | null
+          agent_id: string
+          created_at?: string
+          id?: string
+          message?: string | null
+          risk_level?: string | null
+          risk_type?: string | null
+          symbol?: string | null
+        }
+        Update: {
+          action_taken?: string | null
+          agent_id?: string
+          created_at?: string
+          id?: string
+          message?: string | null
+          risk_level?: string | null
+          risk_type?: string | null
+          symbol?: string | null
+        }
+        Relationships: []
+      }
+      ai_agent_training_events: {
+        Row: {
+          actual_outcome: Json | null
+          agent_id: string
+          created_at: string
+          decision_id: string | null
+          decision_output: Json | null
+          holding_period_minutes: number | null
+          id: string
+          input_features: Json | null
+          lesson_label: string | null
+          max_adverse_excursion: number | null
+          max_favorable_excursion: number | null
+          model_version: string | null
+          order_id: string | null
+          pnl: number | null
+          pnl_percent: number | null
+          position_id: string | null
+          symbol: string
+          updated_at: string
+          was_correct: boolean | null
+        }
+        Insert: {
+          actual_outcome?: Json | null
+          agent_id: string
+          created_at?: string
+          decision_id?: string | null
+          decision_output?: Json | null
+          holding_period_minutes?: number | null
+          id?: string
+          input_features?: Json | null
+          lesson_label?: string | null
+          max_adverse_excursion?: number | null
+          max_favorable_excursion?: number | null
+          model_version?: string | null
+          order_id?: string | null
+          pnl?: number | null
+          pnl_percent?: number | null
+          position_id?: string | null
+          symbol: string
+          updated_at?: string
+          was_correct?: boolean | null
+        }
+        Update: {
+          actual_outcome?: Json | null
+          agent_id?: string
+          created_at?: string
+          decision_id?: string | null
+          decision_output?: Json | null
+          holding_period_minutes?: number | null
+          id?: string
+          input_features?: Json | null
+          lesson_label?: string | null
+          max_adverse_excursion?: number | null
+          max_favorable_excursion?: number | null
+          model_version?: string | null
+          order_id?: string | null
+          pnl?: number | null
+          pnl_percent?: number | null
+          position_id?: string | null
+          symbol?: string
+          updated_at?: string
+          was_correct?: boolean | null
+        }
+        Relationships: []
+      }
+      ai_trade_agents: {
+        Row: {
+          allocation_amount: number | null
+          allocation_mode: string
+          allocation_percent: number | null
+          allow_average_down: boolean | null
+          allow_buy: boolean | null
+          allow_pyramiding: boolean | null
+          allow_sell: boolean | null
+          allow_short_sell: boolean | null
+          auto_stop_loss: boolean | null
+          auto_take_profit: boolean | null
+          created_at: string
+          id: string
+          last_error: string | null
+          last_run_at: string | null
+          max_daily_loss: number | null
+          max_daily_trades: number | null
+          max_drawdown: number | null
+          max_position_per_symbol: number | null
+          min_confidence_to_trade: number | null
+          mode: string
+          name: string
+          paper_account_id: string
+          paused_at: string | null
+          require_fresh_data: boolean | null
+          risk_level: string
+          selected_symbols: Json
+          started_at: string | null
+          status: string
+          stopped_at: string | null
+          strategy_mode: string
+          trading_enabled: boolean | null
+          trading_hours_only: boolean | null
+          trailing_stop: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          allocation_amount?: number | null
+          allocation_mode?: string
+          allocation_percent?: number | null
+          allow_average_down?: boolean | null
+          allow_buy?: boolean | null
+          allow_pyramiding?: boolean | null
+          allow_sell?: boolean | null
+          allow_short_sell?: boolean | null
+          auto_stop_loss?: boolean | null
+          auto_take_profit?: boolean | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          last_run_at?: string | null
+          max_daily_loss?: number | null
+          max_daily_trades?: number | null
+          max_drawdown?: number | null
+          max_position_per_symbol?: number | null
+          min_confidence_to_trade?: number | null
+          mode?: string
+          name?: string
+          paper_account_id: string
+          paused_at?: string | null
+          require_fresh_data?: boolean | null
+          risk_level?: string
+          selected_symbols?: Json
+          started_at?: string | null
+          status?: string
+          stopped_at?: string | null
+          strategy_mode?: string
+          trading_enabled?: boolean | null
+          trading_hours_only?: boolean | null
+          trailing_stop?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          allocation_amount?: number | null
+          allocation_mode?: string
+          allocation_percent?: number | null
+          allow_average_down?: boolean | null
+          allow_buy?: boolean | null
+          allow_pyramiding?: boolean | null
+          allow_sell?: boolean | null
+          allow_short_sell?: boolean | null
+          auto_stop_loss?: boolean | null
+          auto_take_profit?: boolean | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          last_run_at?: string | null
+          max_daily_loss?: number | null
+          max_daily_trades?: number | null
+          max_drawdown?: number | null
+          max_position_per_symbol?: number | null
+          min_confidence_to_trade?: number | null
+          mode?: string
+          name?: string
+          paper_account_id?: string
+          paused_at?: string | null
+          require_fresh_data?: boolean | null
+          risk_level?: string
+          selected_symbols?: Json
+          started_at?: string | null
+          status?: string
+          stopped_at?: string | null
+          strategy_mode?: string
+          trading_enabled?: boolean | null
+          trading_hours_only?: boolean | null
+          trailing_stop?: boolean | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       alerts: {
         Row: {
           active: boolean
