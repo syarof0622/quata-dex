@@ -149,11 +149,27 @@ function* chunks<T>(arr: T[], n: number): Generator<T[]> {
   for (let i = 0; i < arr.length; i += n) yield arr.slice(i, i + n);
 }
 
+function checkCronAuth(request: Request): Response | null {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) return null;
+  const provided = request.headers.get("x-cron-secret") ?? new URL(request.url).searchParams.get("secret");
+  if (provided !== cronSecret) return new Response("Unauthorized", { status: 401 });
+  return null;
+}
+
 export const Route = createFileRoute("/api/public/cron/news")({
   server: {
     handlers: {
-      GET: async () => Response.json(await refreshAll()),
-      POST: async () => Response.json(await refreshAll()),
+      GET: async ({ request }) => {
+        const denied = checkCronAuth(request);
+        if (denied) return denied;
+        return Response.json(await refreshAll());
+      },
+      POST: async ({ request }) => {
+        const denied = checkCronAuth(request);
+        if (denied) return denied;
+        return Response.json(await refreshAll());
+      },
     },
   },
 });
