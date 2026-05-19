@@ -448,7 +448,7 @@ async function backfillTrainingOutcomes(agentId: string) {
       if (!px) continue;
 
       const pnlPctRaw = ((px - entry) / entry) * 100 * (isLong ? 1 : (isExit ? -1 : 1));
-      const patch: Record<string, unknown> = { evaluated_at: new Date().toISOString() };
+      const patch: any = { evaluated_at: new Date().toISOString() };
 
       if (!ev.outcome_15m && ageMin >= 15) {
         patch.outcome_15m = { priceAfter15m: px, pnlPercent: +pnlPctRaw.toFixed(3) };
