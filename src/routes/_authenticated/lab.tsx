@@ -12,9 +12,10 @@ import { toast } from "sonner";
 import { runBacktest } from "@/lib/backtest.functions";
 import { generateStrategy } from "@/lib/strategy.functions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles, X } from "lucide-react";
+import { Sparkles, X, Bot, Play, Pause, Square, AlertTriangle } from "lucide-react";
 import { JournalPanel } from "@/components/JournalPanel";
 import { ChatPanel } from "@/components/ChatPanel";
+import { startAgent, pauseAgent, stopAgent, emergencyStop, getAgentStatus, runAgentNow } from "@/lib/ai-trade-agent.functions";
 
 export const Route = createFileRoute("/_authenticated/lab")({
   head: () => ({ meta: [{ title: "Simulation Lab — Quanta Terminal" }] }),
@@ -66,6 +67,7 @@ function Lab() {
           <TabsTrigger value="journal">Trading Journal</TabsTrigger>
           <TabsTrigger value="backtest">Backtest</TabsTrigger>
           <TabsTrigger value="coach">AI Coach</TabsTrigger>
+          <TabsTrigger value="agent"><Bot className="size-3 mr-1" />AI Trade Agent</TabsTrigger>
         </TabsList>
         <TabsContent value="positions">
           <div className="panel p-2 overflow-x-auto">
@@ -155,7 +157,151 @@ function Lab() {
         <TabsContent value="journal"><JournalPanel /></TabsContent>
         <TabsContent value="backtest"><Backtester /></TabsContent>
         <TabsContent value="coach"><AICoach /></TabsContent>
+        <TabsContent value="agent"><AIAgentPanel /></TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+function AIAgentPanel() {
+  const status = useQuery({ queryKey: ["ai-agent"], queryFn: () => getAgentStatus(), refetchInterval: 10000 });
+  const agent = status.data?.agent as any;
+  const session = status.data?.session as any;
+  const decisions = (status.data?.decisions ?? []) as any[];
+  const risks = (status.data?.risks ?? []) as any[];
+  const performance = status.data?.performance as any;
+
+  const [symbols, setSymbols] = useState("BBCA.JK, BBRI.JK");
+  const [alloc, setAlloc] = useState("1000000");
+  const [risk, setRisk] = useState<"conservative" | "balanced" | "aggressive">("balanced");
+  const [conf, setConf] = useState("0.70");
+
+  const start = useMutation({
+    mutationFn: () => startAgent({ data: {
+      selectedSymbols: symbols.split(",").map(s => s.trim()).filter(Boolean),
+      allocationAmount: Number(alloc) || 1_000_000,
+      riskLevel: risk, minConfidenceToTrade: Number(conf) || 0.7,
+      strategyMode: "hybrid", maxPositionPerSymbol: 0.25, maxDailyTrades: 5,
+      maxDailyLoss: 0.02, maxDrawdown: 0.05, autoStopLoss: true, autoTakeProfit: true,
+      trailingStop: false, tradingHoursOnly: true, requireFreshData: true,
+      allowBuy: true, allowSell: true,
+    } }),
+    onSuccess: () => { toast.success("Agent started"); status.refetch(); },
+    onError: (e: any) => toast.error(e?.message ?? "Start failed"),
+  });
+  const pause = useMutation({
+    mutationFn: () => pauseAgent({ data: { id: agent.id } }),
+    onSuccess: () => { toast.success("Agent paused"); status.refetch(); },
+  });
+  const stop = useMutation({
+    mutationFn: () => stopAgent({ data: { id: agent.id } }),
+    onSuccess: () => { toast.success("Agent stopped"); status.refetch(); },
+  });
+  const estop = useMutation({
+    mutationFn: () => emergencyStop({ data: { id: agent.id } }),
+    onSuccess: () => { toast.success("Emergency stop"); status.refetch(); },
+  });
+  const tick = useMutation({
+    mutationFn: () => runAgentNow({ data: { id: agent.id } }),
+    onSuccess: (r: any) => { toast.success(`Tick: ${r.count} decisions, ${r.executed} executed`); status.refetch(); },
+    onError: (e: any) => toast.error(e?.message ?? "Tick failed"),
+  });
+
+  const isActive = agent && agent.status !== "stopped" && agent.status !== "error";
+
+  return (
+    <div className="space-y-3">
+      <div className="panel p-4 space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <Bot className="size-5 text-primary" />
+            <div>
+              <div className="font-semibold">AI Trade Agent <span className="text-xs text-muted-foreground">(paper trading only)</span></div>
+              <div className="text-xs text-muted-foreground">
+                Status: <span className="font-mono">{agent?.status ?? "stopped"}</span> · IDX session: <span className="font-mono">{session?.label ?? "—"}</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            {!isActive && <Button size="sm" onClick={() => start.mutate()} disabled={start.isPending}><Play className="size-3 mr-1" />Start</Button>}
+            {isActive && agent.status !== "paused" && <Button size="sm" variant="outline" onClick={() => pause.mutate()}><Pause className="size-3 mr-1" />Pause</Button>}
+            {isActive && <Button size="sm" variant="outline" onClick={() => tick.mutate()} disabled={tick.isPending}>Run now</Button>}
+            {isActive && <Button size="sm" variant="outline" onClick={() => stop.mutate()}><Square className="size-3 mr-1" />Stop</Button>}
+            {isActive && <Button size="sm" variant="destructive" onClick={() => estop.mutate()}><AlertTriangle className="size-3 mr-1" />Emergency</Button>}
+          </div>
+        </div>
+
+        {!isActive && (
+          <div className="grid md:grid-cols-4 gap-2">
+            <div className="md:col-span-2"><label className="text-xs text-muted-foreground">Symbols (comma-separated, .JK for IDX)</label><Input value={symbols} onChange={e => setSymbols(e.target.value)} /></div>
+            <div><label className="text-xs text-muted-foreground">Allocation / trade (IDR)</label><Input type="number" value={alloc} onChange={e => setAlloc(e.target.value)} /></div>
+            <div>
+              <label className="text-xs text-muted-foreground">Risk level</label>
+              <Select value={risk} onValueChange={(v) => setRisk(v as any)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="conservative">Conservative (SL 1.5% / TP 3.5%)</SelectItem>
+                  <SelectItem value="balanced">Balanced (SL 2.5% / TP 5%)</SelectItem>
+                  <SelectItem value="aggressive">Aggressive (SL 4% / TP 8%)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div><label className="text-xs text-muted-foreground">Min confidence (0–1)</label><Input value={conf} onChange={e => setConf(e.target.value)} /></div>
+          </div>
+        )}
+      </div>
+
+      {performance && (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+          <Stat label="Total trades" value={String(performance.total_trades ?? 0)} />
+          <Stat label="Win rate" value={Number(performance.win_rate ?? 0).toFixed(1) + "%"} tone={Number(performance.win_rate) >= 50 ? "bull" : "bear"} />
+          <Stat label="Profit factor" value={Number(performance.profit_factor ?? 0).toFixed(2)} />
+          <Stat label="Total return" value={formatIDRCompact(Number(performance.total_return ?? 0))} tone={Number(performance.total_return) >= 0 ? "bull" : "bear"} />
+          <Stat label="Best / Worst" value={`${formatIDRCompact(Number(performance.best_trade ?? 0))} / ${formatIDRCompact(Number(performance.worst_trade ?? 0))}`} />
+        </div>
+      )}
+
+      <div className="panel p-2 overflow-x-auto">
+        <div className="px-2 py-1 text-xs text-muted-foreground">Decision feed</div>
+        <table className="w-full text-sm min-w-[720px]">
+          <thead className="text-xs text-muted-foreground">
+            <tr><th className="text-left p-2">Time</th><th className="text-left p-2">Symbol</th><th className="text-left p-2">Action</th>
+              <th className="text-right p-2">Conf</th><th className="text-right p-2">Lot</th>
+              <th className="text-right p-2">Entry</th><th className="text-right p-2">SL</th><th className="text-right p-2">TP</th>
+              <th className="text-left p-2">Status</th><th className="text-left p-2">Reasoning</th></tr>
+          </thead>
+          <tbody>
+            {decisions.map((d: any) => (
+              <tr key={d.id} className="border-t border-border align-top">
+                <td className="p-2 text-xs text-muted-foreground whitespace-nowrap">{new Date(d.created_at).toLocaleTimeString("id-ID")}</td>
+                <td className="p-2 font-medium">{d.symbol}</td>
+                <td className={`p-2 text-xs font-semibold ${d.action === "BUY" ? "text-bull" : d.action === "EXIT" || d.action === "SELL" ? "text-bear" : ""}`}>{d.action}</td>
+                <td className="p-2 text-right font-mono">{(Number(d.confidence ?? 0) * 100).toFixed(0)}%</td>
+                <td className="p-2 text-right font-mono">{d.suggested_lot ?? "—"}</td>
+                <td className="p-2 text-right font-mono">{d.entry_price ? formatPrice(d.entry_price) : "—"}</td>
+                <td className="p-2 text-right font-mono">{d.stop_loss ? formatPrice(d.stop_loss) : "—"}</td>
+                <td className="p-2 text-right font-mono">{d.take_profit ? formatPrice(d.take_profit) : "—"}</td>
+                <td className="p-2 text-xs">{d.decision_status ?? "—"}</td>
+                <td className="p-2 text-xs text-muted-foreground max-w-md">{d.reasoning}</td>
+              </tr>
+            ))}
+            {decisions.length === 0 && <tr><td colSpan={10} className="p-6 text-center text-muted-foreground">No decisions yet. Start the agent or click "Run now".</td></tr>}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="panel p-2">
+        <div className="px-2 py-1 text-xs text-muted-foreground">Risk guard log</div>
+        <ul className="text-xs divide-y divide-border">
+          {risks.map((r: any) => (
+            <li key={r.id} className="p-2 flex justify-between gap-2">
+              <span><span className="font-semibold uppercase">{r.risk_type}</span> · {r.symbol ?? ""} — {r.message}</span>
+              <span className="text-muted-foreground">{new Date(r.created_at).toLocaleString("id-ID")}</span>
+            </li>
+          ))}
+          {risks.length === 0 && <li className="p-3 text-center text-muted-foreground">No risk events.</li>}
+        </ul>
+      </div>
     </div>
   );
 }
