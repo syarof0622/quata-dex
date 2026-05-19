@@ -605,3 +605,14 @@ export const runAgentNow = createServerFn({ method: "POST" })
     const out = await runAgentOnce(data.id);
     return { ok: true, executed: out.executed, count: out.decisions.length };
   });
+
+export const listTradeMemory = createServerFn({ method: "GET" })
+  .inputValidator((d: { agentId: string }) => z.object({ agentId: z.string().uuid() }).parse(d))
+  .handler(async ({ data }) => {
+    const { data: rows } = await supabaseAdmin
+      .from("ai_agent_trade_memory")
+      .select("*")
+      .eq("agent_id", data.agentId)
+      .order("updated_at", { ascending: false });
+    return rows ?? [];
+  });
