@@ -294,7 +294,7 @@ export async function evaluateSymbol(
   const rawConfidence = Math.min(0.99, Math.abs(composite));
 
   // 9. Calibrate using historic outcomes
-  const calib = await calibrateConfidence(agent.id, sym, rawConfidence);
+  const calib = await calibrateConfidence(agent.id, sym, rawConfidence, agent.strategyMode);
   const confidence = calib.value;
 
   const warnings: string[] = [];
