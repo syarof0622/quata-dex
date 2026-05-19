@@ -149,22 +149,43 @@ async function recentCooldownActive(agentId: string, symbol: string, action: str
   return (count ?? 0) > 0;
 }
 
+// Realistic slippage by cap proxy (LQ45 list approximated by ticker prefix).
+const LARGE_CAP_IDX = new Set([
+  "BBCA", "BBRI", "BMRI", "BBNI", "TLKM", "ASII", "UNVR", "HMSP", "GGRM",
+  "ICBP", "INDF", "KLBF", "SMGR", "INTP", "PGAS", "ADRO", "PTBA", "ITMG",
+  "ANTM", "MEDC", "MDKA", "INKP", "TKIM", "GOTO", "ARTO", "BRIS", "BRPT",
+  "EMTK", "EXCL", "INCO", "PWON", "TPIA", "UNTR", "BUKA", "MAPA", "MAPI",
+]);
+
+function slippagePctFor(symbol: string): number {
+  const base = symbol.replace(/\.JK$/i, "").toUpperCase();
+  if (LARGE_CAP_IDX.has(base)) return 0.0008;   // ~0.08% large-cap
+  if (isIDXSymbol(symbol)) return 0.0025;       // mid/small IDX
+  return 0.0005;                                 // US/global large
+}
+const BUY_FEE_PCT  = 0.0015; // 0.15%
+const SELL_FEE_PCT = 0.0025; // 0.25%
+
 async function executePaperFill(opts: {
   agentId: string; paperAccountId: string; symbol: string; side: "buy" | "sell";
   shares: number; price: number; existing?: Position; reason: string;
+  decision?: AgentDecision; decisionId?: string | null;
 }) {
-  const { agentId, paperAccountId, symbol, side, shares, price, existing, reason } = opts;
-  const slip = 0.0005 * (side === "buy" ? 1 : -1);
-  const fillPrice = price * (1 + slip);
+  const { agentId, paperAccountId, symbol, side, shares, price, existing, reason, decision, decisionId } = opts;
+  const slipPct = slippagePctFor(symbol);
+  const fillPrice = +(price * (1 + slipPct * (side === "buy" ? 1 : -1))).toFixed(4);
   const notional = fillPrice * shares;
-  const fee = notional * 0.001;
+  const feePct = side === "buy" ? BUY_FEE_PCT : SELL_FEE_PCT;
+  const fee = +(notional * feePct).toFixed(2);
 
   const { data: account } = await supabaseAdmin.from("paper_accounts").select("*").eq("id", paperAccountId).single();
   if (!account) throw new Error("paper account missing");
+  const cashBefore = Number(account.cash);
 
   let realizedPnl = 0;
+  let cashAfter = cashBefore;
   if (side === "buy") {
-    if (Number(account.cash) < notional + fee) throw new Error("Insufficient cash");
+    if (cashBefore < notional + fee) throw new Error("Insufficient cash");
     if (existing) {
       const newQty = Number(existing.qty) + shares;
       const newAvg = (Number(existing.avg_price) * Number(existing.qty) + fillPrice * shares) / newQty;
@@ -175,30 +196,55 @@ async function executePaperFill(opts: {
         account_id: paperAccountId, user_id: USER_ID, symbol, qty: shares, avg_price: fillPrice,
       });
     }
-    await supabaseAdmin.from("paper_accounts").update({ cash: Number(account.cash) - notional - fee }).eq("id", paperAccountId);
+    cashAfter = cashBefore - notional - fee;
+    await supabaseAdmin.from("paper_accounts").update({ cash: cashAfter }).eq("id", paperAccountId);
   } else {
     if (!existing || Number(existing.qty) < shares) throw new Error("Position insufficient for sell");
-    realizedPnl = (fillPrice - Number(existing.avg_price)) * shares - fee;
+    realizedPnl = +((fillPrice - Number(existing.avg_price)) * shares - fee).toFixed(2);
     const remaining = Number(existing.qty) - shares;
     if (remaining === 0) await supabaseAdmin.from("paper_positions").delete().eq("user_id", USER_ID).eq("symbol", symbol);
     else await supabaseAdmin.from("paper_positions").update({ qty: remaining }).eq("user_id", USER_ID).eq("symbol", symbol);
-    await supabaseAdmin.from("paper_accounts").update({ cash: Number(account.cash) + notional - fee }).eq("id", paperAccountId);
+    cashAfter = cashBefore + notional - fee;
+    await supabaseAdmin.from("paper_accounts").update({ cash: cashAfter }).eq("id", paperAccountId);
   }
 
   const { data: order } = await supabaseAdmin.from("paper_orders").insert({
     account_id: paperAccountId, user_id: USER_ID, symbol, side, type: "market", qty: shares,
     price, filled_price: fillPrice, status: "filled", filled_at: new Date().toISOString(),
-    realized_pnl: realizedPnl,
+    realized_pnl: realizedPnl, slippage_pct: slipPct, fee,
   }).select("*").single();
 
+  const paperExecution = {
+    executed: true, orderId: order?.id ?? null,
+    paperBalanceBefore: cashBefore, paperBalanceAfter: cashAfter,
+    requestedPrice: price, simulatedFillPrice: fillPrice,
+    slippagePercent: slipPct, fee, feePercent: feePct,
+    realisticFill: true, rejectionReason: null,
+  };
+
   await supabaseAdmin.from("ai_agent_training_events").insert({
-    agent_id: agentId, order_id: order?.id, symbol,
-    decision_output: { side, shares, fillPrice, reason },
-    actual_outcome: { realizedPnl, fee },
-    pnl: realizedPnl, model_version: "agent-v1.0",
+    agent_id: agentId, order_id: order?.id, decision_id: decisionId ?? null, symbol,
+    real_market_data: (decision?.realMarketData ?? null) as any,
+    real_technical_data: (decision?.realTechnicalData ?? null) as any,
+    real_news_data: (decision?.realNewsData ?? null) as any,
+    real_disclosure_data: (decision?.realDisclosureData ?? null) as any,
+    real_market_context: (decision?.realMarketContext ?? null) as any,
+    ai_decision: decision ? ({
+      action: decision.action, confidence: decision.confidence,
+      rawConfidence: decision.rawConfidence, calibrationReason: decision.calibrationReason,
+      strategy: decision.strategy, allocationAmount: decision.allocationAmount,
+      lot: decision.suggestedLot, shares: decision.suggestedShares,
+      entryPrice: decision.entryPrice, stopLoss: decision.stopLoss,
+      takeProfit: decision.takeProfit, riskRewardRatio: decision.riskRewardRatio,
+      reasoning: decision.reasoning,
+    } as any) : ({ side, shares, fillPrice, reason } as any),
+    paper_execution: paperExecution as any,
+    decision_output: { side, shares, fillPrice, reason } as any,
+    actual_outcome: { realizedPnl, fee } as any,
+    pnl: realizedPnl, model_version: "agent-v1.1", strategy_version: "real-data-v1",
   });
 
-  return { order, realizedPnl, fillPrice };
+  return { order, realizedPnl, fillPrice, slipPct, fee, cashBefore, cashAfter };
 }
 
 async function loadActivePosition(symbol: string): Promise<Position | undefined> {
@@ -280,7 +326,7 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
               const res = await executePaperFill({
                 agentId: agent.id, paperAccountId: agent.paper_account_id,
                 symbol: sym, side, shares, price: decision.entryPrice,
-                existing, reason: decision.reasoning,
+                existing, reason: decision.reasoning, decision,
               });
               orderId = res.order?.id ?? null;
               decisionStatus = "executed";
@@ -300,13 +346,21 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
       await supabaseAdmin.from("ai_agent_decisions").insert({
         agent_id: agent.id, paper_account_id: agent.paper_account_id,
         symbol: sym, action: decision.action, confidence: decision.confidence,
+        raw_confidence: decision.rawConfidence,
+        calibrated_confidence: decision.confidence,
+        calibration_reason: decision.calibrationReason,
+        data_freshness_seconds: decision.dataFreshnessSeconds,
+        data_source: decision.dataSource,
         strategy: decision.strategy, allocation_amount: decision.allocationAmount,
         suggested_lot: decision.suggestedLot, suggested_shares: decision.suggestedShares,
         entry_price: decision.entryPrice, stop_loss: decision.stopLoss, take_profit: decision.takeProfit,
         risk_reward_ratio: decision.riskRewardRatio, reasoning: decision.reasoning,
-        data_snapshot: decision.dataSnapshot as any, technical_snapshot: decision.technicalSnapshot as any,
-        sentiment_snapshot: decision.sentimentSnapshot as any, portfolio_snapshot: decision.portfolioSnapshot as any,
-        risk_snapshot: decision.riskSnapshot as any, decision_status: decisionStatus,
+        data_snapshot: decision.realMarketData as any,
+        technical_snapshot: decision.realTechnicalData as any,
+        sentiment_snapshot: { news: decision.realNewsData, disclosure: decision.realDisclosureData } as any,
+        portfolio_snapshot: decision.portfolioSnapshot as any,
+        risk_snapshot: { ...decision.riskSnapshot, marketContext: decision.realMarketContext } as any,
+        decision_status: decisionStatus,
         idempotency_key: idemKey(agent.id, sym, decision.action),
       });
     } catch (e: any) {
@@ -350,10 +404,91 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
     }
   }
 
+  // Outcome backfill + lesson labeling based on real price movement
+  await backfillTrainingOutcomes(agent.id);
+
   // Recompute performance summary
   await recomputePerformance(agent.id, agent.paper_account_id);
 
   return { decisions, executed };
+}
+
+/** Evaluate open training events with real price ticks; fill 15m/1h/eod/final. */
+async function backfillTrainingOutcomes(agentId: string) {
+  const since = new Date(Date.now() - 48 * 3600_000).toISOString();
+  const { data: events } = await supabaseAdmin
+    .from("ai_agent_training_events")
+    .select("id, symbol, ai_decision, paper_execution, outcome_15m, outcome_1h, outcome_eod, final_outcome, created_at, pnl")
+    .eq("agent_id", agentId).gte("created_at", since)
+    .order("created_at", { ascending: false }).limit(50);
+  if (!events?.length) return;
+
+  const quoteCache = new Map<string, number | null>();
+  const fetchPx = async (sym: string) => {
+    if (quoteCache.has(sym)) return quoteCache.get(sym)!;
+    try {
+      const q: any = await getQuote({ data: { symbol: sym } });
+      const px = q?.price ? Number(q.price) : null;
+      quoteCache.set(sym, px);
+      return px;
+    } catch { quoteCache.set(sym, null); return null; }
+  };
+
+  for (const ev of events) {
+    try {
+      const dec: any = ev.ai_decision ?? {};
+      const exec: any = ev.paper_execution ?? {};
+      const entry = Number(exec.simulatedFillPrice ?? dec.entryPrice);
+      if (!entry || !ev.symbol) continue;
+      const side = (dec.action ?? "").toUpperCase();
+      const isLong = side === "BUY";
+      const isExit = side === "EXIT" || side === "SELL";
+      const ageMin = (Date.now() - new Date(ev.created_at).getTime()) / 60000;
+      const px = await fetchPx(ev.symbol);
+      if (!px) continue;
+
+      const pnlPctRaw = ((px - entry) / entry) * 100 * (isLong ? 1 : (isExit ? -1 : 1));
+      const patch: any = { evaluated_at: new Date().toISOString() };
+
+      if (!ev.outcome_15m && ageMin >= 15) {
+        patch.outcome_15m = { priceAfter15m: px, pnlPercent: +pnlPctRaw.toFixed(3) };
+      }
+      if (!ev.outcome_1h && ageMin >= 60) {
+        patch.outcome_1h = { priceAfter1h: px, pnlPercent: +pnlPctRaw.toFixed(3) };
+      }
+      // End-of-day (≥ 6 hours since decision = same trading day window)
+      if (!ev.outcome_eod && ageMin >= 360) {
+        patch.outcome_eod = { endOfDayPrice: px, pnlPercent: +pnlPctRaw.toFixed(3) };
+      }
+      // Finalize: realized exit OR > 24h elapsed
+      if (!ev.final_outcome && (Number(ev.pnl ?? 0) !== 0 || ageMin >= 1440)) {
+        const realized = Number(ev.pnl ?? 0);
+        const pnlPercent = realized !== 0
+          ? +((realized / Math.max(1, entry * (dec.shares ?? 1))) * 100).toFixed(3)
+          : +pnlPctRaw.toFixed(3);
+        const wasCorrect = isLong ? pnlPercent > 0 : isExit ? pnlPercent < 0 : null;
+        let lesson = "data_stale_hold_correct";
+        if (isLong && pnlPercent >= 2) lesson = "take_profit_success";
+        else if (isLong && pnlPercent <= -1.5) lesson = "stop_loss_too_tight";
+        else if (isLong && pnlPercent > 0) lesson = "good_entry";
+        else if (isLong && pnlPercent <= 0) lesson = "false_positive_signal";
+        else if (isExit && pnlPercent < 0) lesson = "good_exit";
+        else if (isExit && pnlPercent >= 0) lesson = "bad_exit";
+
+        patch.final_outcome = {
+          exitPrice: px, paperPnL: realized, paperPnLPercent: pnlPercent,
+          wasDirectionCorrect: wasCorrect,
+        };
+        patch.paper_pnl_percent = pnlPercent;
+        patch.was_correct = wasCorrect;
+        patch.lesson_label = lesson;
+      }
+
+      if (Object.keys(patch).length > 1) {
+        await supabaseAdmin.from("ai_agent_training_events").update(patch).eq("id", ev.id);
+      }
+    } catch { /* tolerate per-row */ }
+  }
 }
 
 async function recomputePerformance(agentId: string, paperAccountId: string) {
