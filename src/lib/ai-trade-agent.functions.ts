@@ -73,6 +73,20 @@ export const startAgent = createServerFn({ method: "POST" })
     return agent;
   });
 
+export const updateAgentSymbols = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({
+    id: z.string().uuid(),
+    selectedSymbols: z.array(z.string().min(1).max(20)).min(1).max(20),
+  }).parse(d))
+  .handler(async ({ data }) => {
+    const symbols = Array.from(new Set(data.selectedSymbols.map(s => s.toUpperCase()))).slice(0, 20);
+    const { error } = await supabaseAdmin.from("ai_trade_agents")
+      .update({ selected_symbols: symbols })
+      .eq("id", data.id).eq("user_id", USER_ID);
+    if (error) throw new Error(error.message);
+    return { ok: true, symbols };
+  });
+
 export const pauseAgent = createServerFn({ method: "POST" })
   .inputValidator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
