@@ -326,7 +326,7 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
               const res = await executePaperFill({
                 agentId: agent.id, paperAccountId: agent.paper_account_id,
                 symbol: sym, side, shares, price: decision.entryPrice,
-                existing, reason: decision.reasoning,
+                existing, reason: decision.reasoning, decision,
               });
               orderId = res.order?.id ?? null;
               decisionStatus = "executed";
@@ -346,13 +346,21 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
       await supabaseAdmin.from("ai_agent_decisions").insert({
         agent_id: agent.id, paper_account_id: agent.paper_account_id,
         symbol: sym, action: decision.action, confidence: decision.confidence,
+        raw_confidence: decision.rawConfidence,
+        calibrated_confidence: decision.confidence,
+        calibration_reason: decision.calibrationReason,
+        data_freshness_seconds: decision.dataFreshnessSeconds,
+        data_source: decision.dataSource,
         strategy: decision.strategy, allocation_amount: decision.allocationAmount,
         suggested_lot: decision.suggestedLot, suggested_shares: decision.suggestedShares,
         entry_price: decision.entryPrice, stop_loss: decision.stopLoss, take_profit: decision.takeProfit,
         risk_reward_ratio: decision.riskRewardRatio, reasoning: decision.reasoning,
-        data_snapshot: decision.dataSnapshot as any, technical_snapshot: decision.technicalSnapshot as any,
-        sentiment_snapshot: decision.sentimentSnapshot as any, portfolio_snapshot: decision.portfolioSnapshot as any,
-        risk_snapshot: decision.riskSnapshot as any, decision_status: decisionStatus,
+        data_snapshot: decision.realMarketData as any,
+        technical_snapshot: decision.realTechnicalData as any,
+        sentiment_snapshot: { news: decision.realNewsData, disclosure: decision.realDisclosureData } as any,
+        portfolio_snapshot: decision.portfolioSnapshot as any,
+        risk_snapshot: { ...decision.riskSnapshot, marketContext: decision.realMarketContext } as any,
+        decision_status: decisionStatus,
         idempotency_key: idemKey(agent.id, sym, decision.action),
       });
     } catch (e: any) {
