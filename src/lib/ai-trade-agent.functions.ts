@@ -404,10 +404,91 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
     }
   }
 
+  // Outcome backfill + lesson labeling based on real price movement
+  await backfillTrainingOutcomes(agent.id);
+
   // Recompute performance summary
   await recomputePerformance(agent.id, agent.paper_account_id);
 
   return { decisions, executed };
+}
+
+/** Evaluate open training events with real price ticks; fill 15m/1h/eod/final. */
+async function backfillTrainingOutcomes(agentId: string) {
+  const since = new Date(Date.now() - 48 * 3600_000).toISOString();
+  const { data: events } = await supabaseAdmin
+    .from("ai_agent_training_events")
+    .select("id, symbol, ai_decision, paper_execution, outcome_15m, outcome_1h, outcome_eod, final_outcome, created_at, pnl")
+    .eq("agent_id", agentId).gte("created_at", since)
+    .order("created_at", { ascending: false }).limit(50);
+  if (!events?.length) return;
+
+  const quoteCache = new Map<string, number | null>();
+  const fetchPx = async (sym: string) => {
+    if (quoteCache.has(sym)) return quoteCache.get(sym)!;
+    try {
+      const q: any = await getQuote({ data: { symbol: sym } });
+      const px = q?.price ? Number(q.price) : null;
+      quoteCache.set(sym, px);
+      return px;
+    } catch { quoteCache.set(sym, null); return null; }
+  };
+
+  for (const ev of events) {
+    try {
+      const dec: any = ev.ai_decision ?? {};
+      const exec: any = ev.paper_execution ?? {};
+      const entry = Number(exec.simulatedFillPrice ?? dec.entryPrice);
+      if (!entry || !ev.symbol) continue;
+      const side = (dec.action ?? "").toUpperCase();
+      const isLong = side === "BUY";
+      const isExit = side === "EXIT" || side === "SELL";
+      const ageMin = (Date.now() - new Date(ev.created_at).getTime()) / 60000;
+      const px = await fetchPx(ev.symbol);
+      if (!px) continue;
+
+      const pnlPctRaw = ((px - entry) / entry) * 100 * (isLong ? 1 : (isExit ? -1 : 1));
+      const patch: Record<string, unknown> = { evaluated_at: new Date().toISOString() };
+
+      if (!ev.outcome_15m && ageMin >= 15) {
+        patch.outcome_15m = { priceAfter15m: px, pnlPercent: +pnlPctRaw.toFixed(3) };
+      }
+      if (!ev.outcome_1h && ageMin >= 60) {
+        patch.outcome_1h = { priceAfter1h: px, pnlPercent: +pnlPctRaw.toFixed(3) };
+      }
+      // End-of-day (≥ 6 hours since decision = same trading day window)
+      if (!ev.outcome_eod && ageMin >= 360) {
+        patch.outcome_eod = { endOfDayPrice: px, pnlPercent: +pnlPctRaw.toFixed(3) };
+      }
+      // Finalize: realized exit OR > 24h elapsed
+      if (!ev.final_outcome && (Number(ev.pnl ?? 0) !== 0 || ageMin >= 1440)) {
+        const realized = Number(ev.pnl ?? 0);
+        const pnlPercent = realized !== 0
+          ? +((realized / Math.max(1, entry * (dec.shares ?? 1))) * 100).toFixed(3)
+          : +pnlPctRaw.toFixed(3);
+        const wasCorrect = isLong ? pnlPercent > 0 : isExit ? pnlPercent < 0 : null;
+        let lesson = "data_stale_hold_correct";
+        if (isLong && pnlPercent >= 2) lesson = "take_profit_success";
+        else if (isLong && pnlPercent <= -1.5) lesson = "stop_loss_too_tight";
+        else if (isLong && pnlPercent > 0) lesson = "good_entry";
+        else if (isLong && pnlPercent <= 0) lesson = "false_positive_signal";
+        else if (isExit && pnlPercent < 0) lesson = "good_exit";
+        else if (isExit && pnlPercent >= 0) lesson = "bad_exit";
+
+        patch.final_outcome = {
+          exitPrice: px, paperPnL: realized, paperPnLPercent: pnlPercent,
+          wasDirectionCorrect: wasCorrect,
+        };
+        patch.paper_pnl_percent = pnlPercent;
+        patch.was_correct = wasCorrect;
+        patch.lesson_label = lesson;
+      }
+
+      if (Object.keys(patch).length > 1) {
+        await supabaseAdmin.from("ai_agent_training_events").update(patch).eq("id", ev.id);
+      }
+    } catch { /* tolerate per-row */ }
+  }
 }
 
 async function recomputePerformance(agentId: string, paperAccountId: string) {
