@@ -9,7 +9,7 @@ const FilterSchema = z.object({
   sentiment: z.enum(["positive", "neutral", "negative"]).optional(),
   ticker: z.string().optional(),
   impactLevel: z.enum(["low", "medium", "high"]).optional(),
-  search: z.string().optional(),
+  search: z.string().max(100).regex(/^[\p{L}\p{N}\s.\-_'"&]+$/u, "Invalid characters in search").optional(),
   fromDate: z.string().optional(),
   toDate: z.string().optional(),
 });
