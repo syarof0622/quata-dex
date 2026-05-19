@@ -16,6 +16,9 @@ import { Sparkles, X, Bot, Play, Pause, Square, AlertTriangle } from "lucide-rea
 import { JournalPanel } from "@/components/JournalPanel";
 import { ChatPanel } from "@/components/ChatPanel";
 import { startAgent, pauseAgent, stopAgent, emergencyStop, getAgentStatus, runAgentNow } from "@/lib/ai-trade-agent.functions";
+import { TickerSearch } from "@/components/TickerSearch";
+
+const MAX_AGENT_SYMBOLS = 5;
 
 export const Route = createFileRoute("/_authenticated/lab")({
   head: () => ({ meta: [{ title: "Simulation Lab — Quanta Terminal" }] }),
