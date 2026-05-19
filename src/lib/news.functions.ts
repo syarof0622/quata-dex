@@ -9,7 +9,7 @@ const FilterSchema = z.object({
   sentiment: z.enum(["positive", "neutral", "negative"]).optional(),
   ticker: z.string().optional(),
   impactLevel: z.enum(["low", "medium", "high"]).optional(),
-  search: z.string().optional(),
+  search: z.string().max(100).regex(/^[\p{L}\p{N}\s.\-_'"&]+$/u, "Invalid characters in search").optional(),
   fromDate: z.string().optional(),
   toDate: z.string().optional(),
 });
@@ -34,8 +34,14 @@ export const listNews = createServerFn({ method: "POST" })
     if (data.impactLevel) q = q.eq("impact_level", data.impactLevel);
     if (data.ticker) q = q.contains("tickers", [data.ticker.toUpperCase()]);
     if (data.search) {
-      const term = data.search.trim().replace(/[%_]/g, "\\$&");
-      q = q.or(`title.ilike.%${term}%,summary.ilike.%${term}%`);
+      // Strip PostgREST filter metacharacters and SQL LIKE wildcards to prevent
+      // OR-filter injection. Schema regex already restricts the charset; this is
+      // defense-in-depth before interpolation into a raw .or() string.
+      const safe = data.search.trim()
+        .replace(/[,()%_*\\]/g, " ")
+        .replace(/\s+/g, " ")
+        .slice(0, 80);
+      if (safe) q = q.or(`title.ilike.%${safe}%,summary.ilike.%${safe}%`);
     }
     if (data.fromDate) q = q.gte("published_at", data.fromDate);
     if (data.toDate) q = q.lte("published_at", data.toDate);
