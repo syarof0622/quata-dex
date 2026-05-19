@@ -179,14 +179,33 @@ function AIAgentPanel() {
   const [risk, setRisk] = useState<"conservative" | "balanced" | "aggressive">("balanced");
   const [conf, setConf] = useState("0.70");
 
+  // Sync local symbols from active agent on load
+  useEffect(() => {
+    const agentSyms = (agent?.selected_symbols ?? []) as string[];
+    if (agentSyms.length > 0) setSymbols(agentSyms.slice(0, MAX_AGENT_SYMBOLS));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agent?.id]);
+
+  const updateSyms = useMutation({
+    mutationFn: (next: string[]) => updateAgentSymbols({ data: { id: agent.id, selectedSymbols: next } }),
+    onSuccess: () => { toast.success("Daftar emiten diperbarui"); status.refetch(); },
+    onError: (e: any) => toast.error(e?.message ?? "Update failed"),
+  });
+
   function addSymbol(sym: string) {
     const s = sym.trim().toUpperCase();
     if (!s) return;
     if (symbols.includes(s)) { toast.info(`${s} sudah ada di daftar`); return; }
     if (symbols.length >= MAX_AGENT_SYMBOLS) { toast.error(`Maksimal ${MAX_AGENT_SYMBOLS} emiten`); return; }
-    setSymbols([...symbols, s]);
+    const next = [...symbols, s];
+    setSymbols(next);
+    if (agent?.id && agent.status !== "stopped") updateSyms.mutate(next);
   }
-  function removeSymbol(sym: string) { setSymbols(symbols.filter(s => s !== sym)); }
+  function removeSymbol(sym: string) {
+    const next = symbols.filter(s => s !== sym);
+    setSymbols(next);
+    if (agent?.id && agent.status !== "stopped" && next.length > 0) updateSyms.mutate(next);
+  }
 
   const start = useMutation({
     mutationFn: () => startAgent({ data: {
