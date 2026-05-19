@@ -304,9 +304,9 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
         suggested_lot: decision.suggestedLot, suggested_shares: decision.suggestedShares,
         entry_price: decision.entryPrice, stop_loss: decision.stopLoss, take_profit: decision.takeProfit,
         risk_reward_ratio: decision.riskRewardRatio, reasoning: decision.reasoning,
-        data_snapshot: decision.dataSnapshot, technical_snapshot: decision.technicalSnapshot,
-        sentiment_snapshot: decision.sentimentSnapshot, portfolio_snapshot: decision.portfolioSnapshot,
-        risk_snapshot: decision.riskSnapshot, decision_status: decisionStatus,
+        data_snapshot: decision.dataSnapshot as any, technical_snapshot: decision.technicalSnapshot as any,
+        sentiment_snapshot: decision.sentimentSnapshot as any, portfolio_snapshot: decision.portfolioSnapshot as any,
+        risk_snapshot: decision.riskSnapshot as any, decision_status: decisionStatus,
         idempotency_key: idemKey(agent.id, sym, decision.action),
       });
     } catch (e: any) {
