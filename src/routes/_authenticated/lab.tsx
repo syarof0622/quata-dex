@@ -278,26 +278,38 @@ function AIAgentPanel() {
         <table className="w-full text-sm min-w-[720px]">
           <thead className="text-xs text-muted-foreground">
             <tr><th className="text-left p-2">Time</th><th className="text-left p-2">Symbol</th><th className="text-left p-2">Action</th>
-              <th className="text-right p-2">Conf</th><th className="text-right p-2">Lot</th>
+              <th className="text-right p-2">Conf (raw→cal)</th><th className="text-right p-2">Lot</th>
               <th className="text-right p-2">Entry</th><th className="text-right p-2">SL</th><th className="text-right p-2">TP</th>
+              <th className="text-left p-2">Source · Fresh</th>
               <th className="text-left p-2">Status</th><th className="text-left p-2">Reasoning</th></tr>
           </thead>
           <tbody>
-            {decisions.map((d: any) => (
-              <tr key={d.id} className="border-t border-border align-top">
-                <td className="p-2 text-xs text-muted-foreground whitespace-nowrap">{new Date(d.created_at).toLocaleTimeString("id-ID")}</td>
-                <td className="p-2 font-medium">{d.symbol}</td>
-                <td className={`p-2 text-xs font-semibold ${d.action === "BUY" ? "text-bull" : d.action === "EXIT" || d.action === "SELL" ? "text-bear" : ""}`}>{d.action}</td>
-                <td className="p-2 text-right font-mono">{(Number(d.confidence ?? 0) * 100).toFixed(0)}%</td>
-                <td className="p-2 text-right font-mono">{d.suggested_lot ?? "—"}</td>
-                <td className="p-2 text-right font-mono">{d.entry_price ? formatPrice(d.entry_price) : "—"}</td>
-                <td className="p-2 text-right font-mono">{d.stop_loss ? formatPrice(d.stop_loss) : "—"}</td>
-                <td className="p-2 text-right font-mono">{d.take_profit ? formatPrice(d.take_profit) : "—"}</td>
-                <td className="p-2 text-xs">{d.decision_status ?? "—"}</td>
-                <td className="p-2 text-xs text-muted-foreground max-w-md">{d.reasoning}</td>
-              </tr>
-            ))}
-            {decisions.length === 0 && <tr><td colSpan={10} className="p-6 text-center text-muted-foreground">No decisions yet. Start the agent or click "Run now".</td></tr>}
+            {decisions.map((d: any) => {
+              const raw = Number(d.raw_confidence ?? d.confidence ?? 0);
+              const cal = Number(d.calibrated_confidence ?? d.confidence ?? 0);
+              const fresh = d.data_freshness_seconds;
+              return (
+                <tr key={d.id} className="border-t border-border align-top">
+                  <td className="p-2 text-xs text-muted-foreground whitespace-nowrap">{new Date(d.created_at).toLocaleTimeString("id-ID")}</td>
+                  <td className="p-2 font-medium">{d.symbol}</td>
+                  <td className={`p-2 text-xs font-semibold ${d.action === "BUY" ? "text-bull" : d.action === "EXIT" || d.action === "SELL" ? "text-bear" : ""}`}>{d.action}</td>
+                  <td className="p-2 text-right font-mono text-xs">{(raw * 100).toFixed(0)}% → <span className="font-semibold">{(cal * 100).toFixed(0)}%</span></td>
+                  <td className="p-2 text-right font-mono">{d.suggested_lot ?? "—"}</td>
+                  <td className="p-2 text-right font-mono">{d.entry_price ? formatPrice(d.entry_price) : "—"}</td>
+                  <td className="p-2 text-right font-mono">{d.stop_loss ? formatPrice(d.stop_loss) : "—"}</td>
+                  <td className="p-2 text-right font-mono">{d.take_profit ? formatPrice(d.take_profit) : "—"}</td>
+                  <td className="p-2 text-[11px] text-muted-foreground max-w-[180px] truncate" title={d.data_source ?? ""}>
+                    {d.data_source ?? "—"}{fresh != null ? ` · ${fresh}s` : ""}
+                  </td>
+                  <td className="p-2 text-xs">{d.decision_status ?? "—"}</td>
+                  <td className="p-2 text-xs text-muted-foreground max-w-md">
+                    {d.reasoning}
+                    {d.calibration_reason ? <div className="mt-1 text-[10px] italic opacity-80">↳ {d.calibration_reason}</div> : null}
+                  </td>
+                </tr>
+              );
+            })}
+            {decisions.length === 0 && <tr><td colSpan={11} className="p-6 text-center text-muted-foreground">No decisions yet. Start the agent or click "Run now".</td></tr>}
           </tbody>
         </table>
       </div>
