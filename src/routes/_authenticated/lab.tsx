@@ -257,7 +257,25 @@ function AIAgentPanel() {
 
         {!isActive && (
           <div className="grid md:grid-cols-4 gap-2">
-            <div className="md:col-span-2"><label className="text-xs text-muted-foreground">Symbols (comma-separated, .JK for IDX)</label><Input value={symbols} onChange={e => setSymbols(e.target.value)} /></div>
+            <div className="md:col-span-2">
+              <label className="text-xs text-muted-foreground">Emiten (maks {MAX_AGENT_SYMBOLS})</label>
+              <TickerSearch
+                placeholder="Cari emiten (BBCA.JK, AAPL, …)"
+                onPick={(sym) => addSymbol(sym)}
+              />
+              <div className="flex flex-wrap gap-1 mt-2 min-h-6">
+                {symbols.length === 0 && <span className="text-xs text-muted-foreground">Belum ada emiten dipilih.</span>}
+                {symbols.map(s => (
+                  <span key={s} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-accent text-xs font-mono">
+                    {s}
+                    <button type="button" onClick={() => removeSymbol(s)} className="hover:text-destructive" aria-label={`Hapus ${s}`}>
+                      <X className="size-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <div className="text-[10px] text-muted-foreground mt-1">{symbols.length}/{MAX_AGENT_SYMBOLS} dipilih</div>
+            </div>
             <div><label className="text-xs text-muted-foreground">Allocation / trade (IDR)</label><Input type="number" value={alloc} onChange={e => setAlloc(e.target.value)} /></div>
             <div>
               <label className="text-xs text-muted-foreground">Risk level</label>
