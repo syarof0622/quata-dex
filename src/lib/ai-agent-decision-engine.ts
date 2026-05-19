@@ -158,13 +158,13 @@ async function buildMarketContext(symbol: string) {
 async function calibrateConfidence(agentId: string, symbol: string, raw: number) {
   const { data: past } = await supabaseAdmin
     .from("ai_agent_training_events")
-    .select("was_direction_correct")
+    .select("was_correct")
     .eq("agent_id", agentId).eq("symbol", symbol)
-    .not("was_direction_correct", "is", null)
+    .not("was_correct", "is", null)
     .order("created_at", { ascending: false }).limit(30);
   const n = past?.length ?? 0;
   if (n < 5) return { value: raw, reason: `Belum cukup riwayat (${n} sampel) — confidence apa adanya.` };
-  const wins = (past ?? []).filter(p => p.was_direction_correct === true).length;
+  const wins = (past ?? []).filter(p => p.was_correct === true).length;
   const winRate = wins / n;            // 0..1
   // Multiplier 0.6..1.15 around 50% baseline.
   const mult = 0.6 + winRate * 0.55;
