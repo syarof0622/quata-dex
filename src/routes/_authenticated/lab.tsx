@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sparkles, X, Bot, Play, Pause, Square, AlertTriangle } from "lucide-react";
 import { JournalPanel } from "@/components/JournalPanel";
 import { ChatPanel } from "@/components/ChatPanel";
-import { startAgent, pauseAgent, stopAgent, emergencyStop, getAgentStatus, runAgentNow, updateAgentSymbols } from "@/lib/ai-trade-agent.functions";
+import { startAgent, pauseAgent, stopAgent, emergencyStop, getAgentStatus, runAgentNow, updateAgentSymbols, listTradeMemory } from "@/lib/ai-trade-agent.functions";
 import { TickerSearch } from "@/components/TickerSearch";
 
 const MAX_AGENT_SYMBOLS = 5;
@@ -174,6 +174,14 @@ function AIAgentPanel() {
   const risks = (status.data?.risks ?? []) as any[];
   const performance = status.data?.performance as any;
 
+  const memory = useQuery({
+    queryKey: ["ai-agent-memory", agent?.id],
+    queryFn: () => listTradeMemory({ data: { agentId: agent.id } }),
+    enabled: !!agent?.id,
+    refetchInterval: 15000,
+  });
+  const memoryRows = (memory.data ?? []) as any[];
+
   const [symbols, setSymbols] = useState<string[]>(["BBCA.JK", "BBRI.JK", "TLKM.JK", "ASII.JK", "BMRI.JK"]);
   const [alloc, setAlloc] = useState("1000000");
   const [risk, setRisk] = useState<"conservative" | "balanced" | "aggressive">("balanced");
@@ -328,6 +336,49 @@ function AIAgentPanel() {
           <Stat label="Best / Worst" value={`${formatIDRCompact(Number(performance.best_trade ?? 0))} / ${formatIDRCompact(Number(performance.worst_trade ?? 0))}`} />
         </div>
       )}
+
+      {memoryRows.length > 0 && (
+        <div className="panel p-2 overflow-x-auto">
+          <div className="px-2 py-1 text-xs text-muted-foreground flex items-center gap-2">
+            <span>Trade Memory per emiten</span>
+            <span className="text-[10px] uppercase bg-primary/10 text-primary px-1.5 py-0.5 rounded">Calibration input</span>
+          </div>
+          <table className="w-full text-sm min-w-[720px]">
+            <thead className="text-xs text-muted-foreground">
+              <tr>
+                <th className="text-left p-2">Symbol</th>
+                <th className="text-right p-2">Win rate</th>
+                <th className="text-right p-2">Avg return</th>
+                <th className="text-right p-2">Samples</th>
+                <th className="text-left p-2">Best strategy</th>
+                <th className="text-left p-2">Worst strategy</th>
+                <th className="text-left p-2">Last result · Recent mistake</th>
+              </tr>
+            </thead>
+            <tbody>
+              {memoryRows.map((m) => {
+                const wr = Number(m.recent_win_rate ?? 0);
+                const ar = Number(m.recent_avg_return ?? 0);
+                return (
+                  <tr key={m.id} className="border-t border-border/40">
+                    <td className="p-2 font-mono">{m.symbol}</td>
+                    <td className={`p-2 text-right font-mono ${wr >= 50 ? "text-bull" : "text-bear"}`}>{wr.toFixed(1)}%</td>
+                    <td className={`p-2 text-right font-mono ${ar >= 0 ? "text-bull" : "text-bear"}`}>{ar.toFixed(2)}%</td>
+                    <td className="p-2 text-right font-mono">{m.sample_size ?? 0}</td>
+                    <td className="p-2 text-xs">{m.best_strategy ?? "—"}</td>
+                    <td className="p-2 text-xs">{m.worst_strategy ?? "—"}</td>
+                    <td className="p-2 text-xs text-muted-foreground">
+                      {(m.last_trade_result ?? "—")}{m.recent_mistake ? ` · ${m.recent_mistake}` : ""}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+
 
       <div className="panel p-2 overflow-x-auto">
         <div className="px-2 py-1 text-xs text-muted-foreground">Decision feed</div>
