@@ -216,7 +216,13 @@ function AIAgentPanel() {
           <div className="flex items-center gap-2">
             <Bot className="size-5 text-primary" />
             <div>
-              <div className="font-semibold">AI Trade Agent <span className="text-xs text-muted-foreground">(paper trading only)</span></div>
+              <div className="font-semibold flex items-center gap-2 flex-wrap">
+                AI Trade Agent
+                <span className="text-[10px] uppercase font-semibold bg-primary/15 text-primary px-1.5 py-0.5 rounded">Real Market Data</span>
+                <span className="text-[10px] uppercase font-semibold bg-bull/15 text-bull px-1.5 py-0.5 rounded">Paper Trading Execution</span>
+                <span className="text-[10px] uppercase font-semibold bg-muted text-muted-foreground px-1.5 py-0.5 rounded">Simulated Fill</span>
+                <span className="text-[10px] uppercase font-semibold bg-muted text-muted-foreground px-1.5 py-0.5 rounded">Training Data Saved</span>
+              </div>
               <div className="text-xs text-muted-foreground">
                 Status: <span className="font-mono">{agent?.status ?? "stopped"}</span> · IDX session: <span className="font-mono">{session?.label ?? "—"}</span>
               </div>
@@ -230,6 +236,12 @@ function AIAgentPanel() {
             {isActive && <Button size="sm" variant="destructive" onClick={() => estop.mutate()}><AlertTriangle className="size-3 mr-1" />Emergency</Button>}
           </div>
         </div>
+
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          AI Agent menggunakan data pasar, berita, sentimen, dan harga aktual sebagai bahan analisis.
+          Namun seluruh transaksi dilakukan hanya di Paper Trading menggunakan saldo virtual — tidak ada eksekusi real-money,
+          tidak terhubung ke broker, dan tidak ada order ke sekuritas.
+        </p>
 
         {!isActive && (
           <div className="grid md:grid-cols-4 gap-2">
