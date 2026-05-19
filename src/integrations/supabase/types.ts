@@ -19,15 +19,20 @@ export type Database = {
           action: string
           agent_id: string
           allocation_amount: number | null
+          calibrated_confidence: number | null
+          calibration_reason: string | null
           confidence: number | null
           created_at: string
+          data_freshness_seconds: number | null
           data_snapshot: Json | null
+          data_source: string | null
           decision_status: string | null
           entry_price: number | null
           id: string
           idempotency_key: string | null
           paper_account_id: string
           portfolio_snapshot: Json | null
+          raw_confidence: number | null
           reasoning: string | null
           risk_reward_ratio: number | null
           risk_snapshot: Json | null
@@ -44,15 +49,20 @@ export type Database = {
           action: string
           agent_id: string
           allocation_amount?: number | null
+          calibrated_confidence?: number | null
+          calibration_reason?: string | null
           confidence?: number | null
           created_at?: string
+          data_freshness_seconds?: number | null
           data_snapshot?: Json | null
+          data_source?: string | null
           decision_status?: string | null
           entry_price?: number | null
           id?: string
           idempotency_key?: string | null
           paper_account_id: string
           portfolio_snapshot?: Json | null
+          raw_confidence?: number | null
           reasoning?: string | null
           risk_reward_ratio?: number | null
           risk_snapshot?: Json | null
@@ -69,15 +79,20 @@ export type Database = {
           action?: string
           agent_id?: string
           allocation_amount?: number | null
+          calibrated_confidence?: number | null
+          calibration_reason?: string | null
           confidence?: number | null
           created_at?: string
+          data_freshness_seconds?: number | null
           data_snapshot?: Json | null
+          data_source?: string | null
           decision_status?: string | null
           entry_price?: number | null
           id?: string
           idempotency_key?: string | null
           paper_account_id?: string
           portfolio_snapshot?: Json | null
+          raw_confidence?: number | null
           reasoning?: string | null
           risk_reward_ratio?: number | null
           risk_snapshot?: Json | null
@@ -186,9 +201,12 @@ export type Database = {
         Row: {
           actual_outcome: Json | null
           agent_id: string
+          ai_decision: Json | null
           created_at: string
           decision_id: string | null
           decision_output: Json | null
+          evaluated_at: string | null
+          final_outcome: Json | null
           holding_period_minutes: number | null
           id: string
           input_features: Json | null
@@ -197,9 +215,20 @@ export type Database = {
           max_favorable_excursion: number | null
           model_version: string | null
           order_id: string | null
+          outcome_15m: Json | null
+          outcome_1h: Json | null
+          outcome_eod: Json | null
+          paper_execution: Json | null
+          paper_pnl_percent: number | null
           pnl: number | null
           pnl_percent: number | null
           position_id: string | null
+          real_disclosure_data: Json | null
+          real_market_context: Json | null
+          real_market_data: Json | null
+          real_news_data: Json | null
+          real_technical_data: Json | null
+          strategy_version: string | null
           symbol: string
           updated_at: string
           was_correct: boolean | null
@@ -207,9 +236,12 @@ export type Database = {
         Insert: {
           actual_outcome?: Json | null
           agent_id: string
+          ai_decision?: Json | null
           created_at?: string
           decision_id?: string | null
           decision_output?: Json | null
+          evaluated_at?: string | null
+          final_outcome?: Json | null
           holding_period_minutes?: number | null
           id?: string
           input_features?: Json | null
@@ -218,9 +250,20 @@ export type Database = {
           max_favorable_excursion?: number | null
           model_version?: string | null
           order_id?: string | null
+          outcome_15m?: Json | null
+          outcome_1h?: Json | null
+          outcome_eod?: Json | null
+          paper_execution?: Json | null
+          paper_pnl_percent?: number | null
           pnl?: number | null
           pnl_percent?: number | null
           position_id?: string | null
+          real_disclosure_data?: Json | null
+          real_market_context?: Json | null
+          real_market_data?: Json | null
+          real_news_data?: Json | null
+          real_technical_data?: Json | null
+          strategy_version?: string | null
           symbol: string
           updated_at?: string
           was_correct?: boolean | null
@@ -228,9 +271,12 @@ export type Database = {
         Update: {
           actual_outcome?: Json | null
           agent_id?: string
+          ai_decision?: Json | null
           created_at?: string
           decision_id?: string | null
           decision_output?: Json | null
+          evaluated_at?: string | null
+          final_outcome?: Json | null
           holding_period_minutes?: number | null
           id?: string
           input_features?: Json | null
@@ -239,9 +285,20 @@ export type Database = {
           max_favorable_excursion?: number | null
           model_version?: string | null
           order_id?: string | null
+          outcome_15m?: Json | null
+          outcome_1h?: Json | null
+          outcome_eod?: Json | null
+          paper_execution?: Json | null
+          paper_pnl_percent?: number | null
           pnl?: number | null
           pnl_percent?: number | null
           position_id?: string | null
+          real_disclosure_data?: Json | null
+          real_market_context?: Json | null
+          real_market_data?: Json | null
+          real_news_data?: Json | null
+          real_technical_data?: Json | null
+          strategy_version?: string | null
           symbol?: string
           updated_at?: string
           was_correct?: boolean | null
@@ -671,6 +728,7 @@ export type Database = {
         Row: {
           account_id: string
           created_at: string
+          fee: number | null
           filled_at: string | null
           filled_price: number | null
           id: string
@@ -679,6 +737,7 @@ export type Database = {
           qty: number
           realized_pnl: number
           side: string
+          slippage_pct: number | null
           status: string
           stop_loss: number | null
           stop_price: number | null
@@ -692,6 +751,7 @@ export type Database = {
         Insert: {
           account_id: string
           created_at?: string
+          fee?: number | null
           filled_at?: string | null
           filled_price?: number | null
           id?: string
@@ -700,6 +760,7 @@ export type Database = {
           qty: number
           realized_pnl?: number
           side: string
+          slippage_pct?: number | null
           status?: string
           stop_loss?: number | null
           stop_price?: number | null
@@ -713,6 +774,7 @@ export type Database = {
         Update: {
           account_id?: string
           created_at?: string
+          fee?: number | null
           filled_at?: string | null
           filled_price?: number | null
           id?: string
@@ -721,6 +783,7 @@ export type Database = {
           qty?: number
           realized_pnl?: number
           side?: string
+          slippage_pct?: number | null
           status?: string
           stop_loss?: number | null
           stop_price?: number | null
