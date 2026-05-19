@@ -166,6 +166,138 @@ function Lab() {
   );
 }
 
+// ---- Helpers for AI Trade Agent UI presentation ----
+
+type ExecStatus =
+  | "allowed"
+  | "blocked_emergency"
+  | "blocked_paused"
+  | "blocked_stopped"
+  | "blocked_market_closed"
+  | "blocked_market_break"
+  | "blocked_data_stale"
+  | "blocked_data_unavailable"
+  | "blocked_insufficient_balance"
+  | "blocked_risk_limit"
+  | "blocked_low_confidence"
+  | "blocked_duplicate_order"
+  | "blocked_rr_invalid";
+
+const EXEC_LABEL: Record<ExecStatus, string> = {
+  allowed: "Allowed",
+  blocked_emergency: "Blocked — Emergency stop",
+  blocked_paused: "Blocked — Agent paused",
+  blocked_stopped: "Blocked — Agent stopped",
+  blocked_market_closed: "Blocked — Market closed",
+  blocked_market_break: "Blocked — Market break",
+  blocked_data_stale: "Blocked — Data stale",
+  blocked_data_unavailable: "Blocked — Data unavailable",
+  blocked_insufficient_balance: "Blocked — Insufficient paper balance",
+  blocked_risk_limit: "Blocked — Risk limit reached",
+  blocked_low_confidence: "Blocked — Confidence below threshold",
+  blocked_duplicate_order: "Blocked — Duplicate order guard",
+  blocked_rr_invalid: "Blocked — Risk/reward invalid",
+};
+
+function deriveExecutionStatusForCard(
+  agent: any,
+  session: any,
+  d: any,
+): { status: ExecStatus; primary: string; detail: string; secondary?: string } {
+  const agentStatus = agent?.status ?? "stopped";
+  const reasoning = String(d?.reasoning ?? "").toLowerCase();
+  const dStatus = d?.decision_status as string | undefined;
+
+  if (agentStatus === "error") {
+    return { status: "blocked_emergency", primary: "Emergency stop",
+      detail: "Agent dihentikan paksa. Tidak ada order baru sampai agent di-start ulang." };
+  }
+  if (agentStatus === "paused") {
+    return { status: "blocked_paused", primary: "Agent paused",
+      detail: "Agent sedang dijeda. Eksekusi paper order sementara diblokir." };
+  }
+  if (agentStatus === "stopped") {
+    return { status: "blocked_stopped", primary: "Agent stopped",
+      detail: "Agent tidak aktif. Klik Start untuk mulai cycle." };
+  }
+  if (session && !session.isOpen) {
+    if (session.isBreak) {
+      return { status: "blocked_market_break", primary: "Market break",
+        detail: "IDX sedang dalam sesi istirahat. Agent tidak dapat membuka order baru sampai market kembali dibuka.",
+        secondary: "Signal & confidence tidak dievaluasi karena eksekusi diblokir oleh market session." };
+    }
+    return { status: "blocked_market_closed", primary: "Market closed",
+      detail: "Market IDX sedang tutup. Agent hanya menjalankan analisis pasif — tidak ada paper order yang dibuat.",
+      secondary: "Confidence tidak dievaluasi karena eksekusi diblokir." };
+  }
+  if (/tidak fresh|stale/.test(reasoning)) {
+    return { status: "blocked_data_stale", primary: "Data harga stale",
+      detail: "Data harga belum cukup fresh untuk keputusan eksekusi." };
+  }
+  if (/harga aktual tidak tersedia|quote unavailable|tidak tersedia/.test(reasoning)) {
+    return { status: "blocked_data_unavailable", primary: "Price data unavailable",
+      detail: "Data harga belum tersedia dari sumber. Menunggu refresh berikutnya." };
+  }
+  if (dStatus === "limit_reached" || /batas risiko|risk limit/.test(reasoning)) {
+    return { status: "blocked_risk_limit", primary: "Batas risiko harian tercapai",
+      detail: "Agent masuk mode risk-paused sampai window berikutnya." };
+  }
+  if (dStatus === "cooldown" || /cooldown/.test(reasoning)) {
+    return { status: "blocked_duplicate_order", primary: "Cooldown aktif",
+      detail: "Menunggu jeda antar aksi pada simbol ini untuk mencegah duplikat order." };
+  }
+  if (/saldo .* tidak cukup|saldo paper|insufficient/.test(reasoning)) {
+    return { status: "blocked_insufficient_balance", primary: "Saldo paper tidak cukup",
+      detail: "Saldo paper trading tidak cukup untuk minimal 1 lot." };
+  }
+  if (/confidence .* < threshold|confidence sinyal/.test(reasoning)) {
+    return { status: "blocked_low_confidence", primary: "Confidence di bawah threshold",
+      detail: "Confidence sinyal masih di bawah threshold eksekusi yang dikonfigurasi." };
+  }
+  if (d?.action === "HOLD") {
+    return { status: "blocked_low_confidence", primary: "Belum ada setup eksekusi",
+      detail: "Tidak ada setup yang memenuhi syarat pada tick ini. Menunggu sinyal berikutnya." };
+  }
+  return { status: "allowed", primary: "Allowed", detail: "Setup valid untuk eksekusi paper order." };
+}
+
+type DataStatus = "fresh" | "stale" | "unavailable";
+function classifyFreshness(seconds: number | null | undefined): DataStatus {
+  if (seconds == null) return "unavailable";
+  if (seconds <= 600) return "fresh";
+  if (seconds <= 3600) return "stale";
+  return "stale";
+}
+function statusBadgeClass(s: DataStatus | "allowed" | "blocked") {
+  if (s === "fresh" || s === "allowed") return "bg-bull/15 text-bull";
+  if (s === "stale") return "bg-amber-500/15 text-amber-600 dark:text-amber-400";
+  if (s === "blocked") return "bg-bear/15 text-bear";
+  return "bg-muted text-muted-foreground";
+}
+
+function confidenceCell(agent: any, session: any, d: any) {
+  const agentStatus = agent?.status ?? "stopped";
+  const raw = Number(d?.raw_confidence ?? d?.confidence ?? 0);
+  const cal = Number(d?.calibrated_confidence ?? d?.confidence ?? 0);
+  if (agentStatus === "paused") return { label: "Paused", tooltip: "Agent paused. Confidence tidak dievaluasi.", muted: true };
+  if (session && !session.isOpen) {
+    return { label: "Paused",
+      tooltip: session.isBreak ? "Confidence tidak dievaluasi karena IDX sedang break." : "Confidence tidak dievaluasi karena market tutup.",
+      muted: true };
+  }
+  if (raw === 0 && cal === 0) {
+    return { label: "Not evaluated", tooltip: "Confidence belum dihitung karena price/technical data belum tersedia.", muted: true };
+  }
+  return { label: `${(raw * 100).toFixed(0)}% → ${(cal * 100).toFixed(0)}%`, tooltip: "Raw → calibrated confidence.", muted: false };
+}
+
+function runButtonCopy(agent: any, session: any) {
+  const s = agent?.status ?? "stopped";
+  if (s === "paused") return { label: "Run analysis preview", tip: "Agent sedang pause. Analisis dapat dijalankan sebagai preview tanpa eksekusi." };
+  if (session && !session.isOpen) return { label: "Run analysis now", tip: "Market sedang tidak buka. Agent hanya akan melakukan analisis pasif dan tidak akan membuat order." };
+  return { label: "Run decision now", tip: "Jalankan decision cycle sekarang. Agent dapat membuat paper order jika valid." };
+}
+
 function AIAgentPanel() {
   const status = useQuery({ queryKey: ["ai-agent"], queryFn: () => getAgentStatus(), refetchInterval: 10000 });
   const agent = status.data?.agent as any;
@@ -247,6 +379,25 @@ function AIAgentPanel() {
   });
 
   const isActive = agent && agent.status !== "stopped" && agent.status !== "error";
+  const runCopy = runButtonCopy(agent, session);
+  const selectedSet = new Set((agent?.selected_symbols ?? symbols) as string[]);
+  const trainingBadge = decisions.length > 0
+    ? { label: "Training Data Saved", cls: "bg-bull/15 text-bull" }
+    : { label: "Waiting for Training Data", cls: "bg-muted text-muted-foreground" };
+
+  // Data Readiness from the most-recent decision (any symbol)
+  const newestDecision = decisions[0];
+  const newestSnap: any = newestDecision?.data_snapshot ?? {};
+  const newestTech: any = newestDecision?.technical_snapshot ?? {};
+  const newestSent: any = newestDecision?.sentiment_snapshot ?? {};
+  const priceStatus: DataStatus = newestSnap?.price ? classifyFreshness(newestDecision?.data_freshness_seconds) : "unavailable";
+  const techStatus: DataStatus = newestTech && (newestTech.score != null || newestTech.label) ? "fresh" : "unavailable";
+  const newsCount = Number(newestSent?.news?.latestNewsCount ?? 0);
+  const newsStatus: DataStatus = newsCount > 0 ? "fresh" : "unavailable";
+  const sentStatus: DataStatus = newestSent?.news ? "fresh" : "unavailable";
+  const discStatus: DataStatus = newestSent?.disclosure?.hasRecentDisclosure ? "fresh"
+    : newestSent?.disclosure ? "stale" : "unavailable";
+  const execAllowed = !!session?.isOpen && agent?.status !== "paused" && agent?.status !== "error" && agent?.status !== "stopped";
 
   return (
     <div className="space-y-3">
@@ -260,7 +411,7 @@ function AIAgentPanel() {
                 <span className="text-[10px] uppercase font-semibold bg-primary/15 text-primary px-1.5 py-0.5 rounded">Real Market Data</span>
                 <span className="text-[10px] uppercase font-semibold bg-bull/15 text-bull px-1.5 py-0.5 rounded">Paper Trading Execution</span>
                 <span className="text-[10px] uppercase font-semibold bg-muted text-muted-foreground px-1.5 py-0.5 rounded">Simulated Fill</span>
-                <span className="text-[10px] uppercase font-semibold bg-muted text-muted-foreground px-1.5 py-0.5 rounded">Training Data Saved</span>
+                <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${trainingBadge.cls}`}>{trainingBadge.label}</span>
               </div>
               <div className="text-xs text-muted-foreground">
                 Status: <span className="font-mono">{agent?.status ?? "stopped"}</span> · IDX session: <span className="font-mono">{session?.label ?? "—"}</span>
@@ -270,7 +421,7 @@ function AIAgentPanel() {
           <div className="flex gap-2">
             {!isActive && <Button size="sm" onClick={() => start.mutate()} disabled={start.isPending}><Play className="size-3 mr-1" />Start</Button>}
             {isActive && agent.status !== "paused" && <Button size="sm" variant="outline" onClick={() => pause.mutate()}><Pause className="size-3 mr-1" />Pause</Button>}
-            {isActive && <Button size="sm" variant="outline" onClick={() => tick.mutate()} disabled={tick.isPending}>Run now</Button>}
+            {isActive && <Button size="sm" variant="outline" onClick={() => tick.mutate()} disabled={tick.isPending} title={runCopy.tip}>{runCopy.label}</Button>}
             {isActive && <Button size="sm" variant="outline" onClick={() => stop.mutate()}><Square className="size-3 mr-1" />Stop</Button>}
             {isActive && <Button size="sm" variant="destructive" onClick={() => estop.mutate()}><AlertTriangle className="size-3 mr-1" />Emergency</Button>}
           </div>
@@ -327,13 +478,54 @@ function AIAgentPanel() {
         </div>
       </div>
 
-      {performance && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-          <Stat label="Total trades" value={String(performance.total_trades ?? 0)} />
-          <Stat label="Win rate" value={Number(performance.win_rate ?? 0).toFixed(1) + "%"} tone={Number(performance.win_rate) >= 50 ? "bull" : "bear"} />
-          <Stat label="Profit factor" value={Number(performance.profit_factor ?? 0).toFixed(2)} />
-          <Stat label="Total return" value={formatIDRCompact(Number(performance.total_return ?? 0))} tone={Number(performance.total_return) >= 0 ? "bull" : "bear"} />
-          <Stat label="Best / Worst" value={`${formatIDRCompact(Number(performance.best_trade ?? 0))} / ${formatIDRCompact(Number(performance.worst_trade ?? 0))}`} />
+      {/* Data Readiness Card */}
+      <div className="panel p-3 space-y-2">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="text-xs font-semibold uppercase tracking-wide">Data Readiness</div>
+          <div className="text-[10px] text-muted-foreground">
+            Last update: {newestDecision ? new Date(newestDecision.created_at).toLocaleTimeString("id-ID") : "—"}
+          </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 text-[11px]">
+          {[
+            { k: "Price",       v: priceStatus },
+            { k: "Technical",   v: techStatus },
+            { k: "News",        v: newsStatus },
+            { k: "Sentiment",   v: sentStatus },
+            { k: "Disclosure",  v: discStatus },
+          ].map(item => (
+            <div key={item.k} className="flex items-center justify-between gap-2 px-2 py-1 rounded bg-muted/30">
+              <span className="text-muted-foreground">{item.k}</span>
+              <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${statusBadgeClass(item.v)}`}>{item.v}</span>
+            </div>
+          ))}
+          <div className="flex items-center justify-between gap-2 px-2 py-1 rounded bg-muted/30">
+            <span className="text-muted-foreground">Market</span>
+            <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${session?.isOpen ? "bg-bull/15 text-bull" : session?.isBreak ? "bg-amber-500/15 text-amber-600 dark:text-amber-400" : "bg-muted text-muted-foreground"}`}>
+              {session?.label ?? "—"}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-2 px-2 py-1 rounded bg-muted/30">
+            <span className="text-muted-foreground">Execution</span>
+            <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${execAllowed ? "bg-bull/15 text-bull" : "bg-bear/15 text-bear"}`}>
+              {execAllowed ? "Allowed" : "Blocked"}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Performance — show with empty state if no executed trades yet */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+        <Stat label="Total trades" value={String(performance?.total_trades ?? 0)} />
+        <Stat label="Win rate" value={Number(performance?.win_rate ?? 0).toFixed(1) + "%"} tone={Number(performance?.win_rate ?? 0) >= 50 ? "bull" : "bear"} />
+        <Stat label="Profit factor" value={Number(performance?.profit_factor ?? 0).toFixed(2)} />
+        <Stat label="Total return" value={formatIDRCompact(Number(performance?.total_return ?? 0))} tone={Number(performance?.total_return ?? 0) >= 0 ? "bull" : "bear"} />
+        <Stat label="Best / Worst" value={`${formatIDRCompact(Number(performance?.best_trade ?? 0))} / ${formatIDRCompact(Number(performance?.worst_trade ?? 0))}`} />
+      </div>
+      {(!performance || Number(performance.total_trades ?? 0) === 0) && (
+        <div className="panel p-3 text-xs text-muted-foreground flex items-center justify-between flex-wrap gap-2">
+          <span>Belum ada trade tereksekusi. Performa agent akan dihitung setelah paper order pertama berhasil filled.</span>
+          <span className="text-[10px] uppercase bg-muted px-1.5 py-0.5 rounded">Waiting for first executed trade</span>
         </div>
       )}
 
@@ -378,13 +570,12 @@ function AIAgentPanel() {
         </div>
       )}
 
-      {/* Trade Plan + No-Trade Reason cards (latest decision per emiten) */}
-      {decisions.length > 0 && (() => {
+      {/* Trade Plan: only emiten currently in selectedSymbols. */}
+      {(() => {
         const latestPerSymbol = new Map<string, any>();
-        for (const d of decisions) {
-          if (!latestPerSymbol.has(d.symbol)) latestPerSymbol.set(d.symbol, d);
-        }
-        const cards = Array.from(latestPerSymbol.values());
+        for (const d of decisions) if (!latestPerSymbol.has(d.symbol)) latestPerSymbol.set(d.symbol, d);
+        const cards = Array.from(selectedSet).map(sym => latestPerSymbol.get(sym) ?? { symbol: sym, _placeholder: true });
+        if (cards.length === 0) return null;
         return (
           <div>
             <div className="text-xs text-muted-foreground px-1 pb-2 flex items-center gap-2">
@@ -393,6 +584,17 @@ function AIAgentPanel() {
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-2">
               {cards.map((d: any) => {
+                if (d._placeholder) {
+                  return (
+                    <div key={d.symbol} className="panel p-3 space-y-2 border border-border opacity-80">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="font-mono font-semibold">{d.symbol}</div>
+                        <span className="text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded bg-muted text-muted-foreground">Menunggu</span>
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">Menunggu refresh data berikutnya untuk menghasilkan trade plan.</div>
+                    </div>
+                  );
+                }
                 const isBuy = d.action === "BUY";
                 const isExit = d.action === "EXIT" || d.action === "SELL";
                 const isHold = d.action === "HOLD";
@@ -400,19 +602,21 @@ function AIAgentPanel() {
                 const sl = d.stop_loss ? Number(d.stop_loss) : null;
                 const tp = d.take_profit ? Number(d.take_profit) : null;
                 const rr = d.risk_reward_ratio ? Number(d.risk_reward_ratio) : null;
-                const cal = Number(d.calibrated_confidence ?? d.confidence ?? 0);
-                const noTradeReason = isHold || d.decision_status === "rejected" || d.decision_status === "cooldown" || d.decision_status === "limit_reached"
-                  ? (d.decision_status === "cooldown" ? "Cooldown aktif — menunggu jeda antar aksi"
-                    : d.decision_status === "limit_reached" ? "Batas trade harian tercapai"
-                    : d.decision_status === "rejected" ? "Ditolak guard risiko / sesi pasar"
-                    : "Confidence / sinyal belum cukup untuk eksekusi")
-                  : null;
+                const conf = confidenceCell(agent, session, d);
+                const exec = deriveExecutionStatusForCard(agent, session, d);
+                const snap: any = d.data_snapshot ?? {};
+                const tech: any = d.technical_snapshot ?? {};
+                const sent: any = d.sentiment_snapshot ?? {};
+                const dPrice: DataStatus = snap?.price ? classifyFreshness(d.data_freshness_seconds) : "unavailable";
+                const dTech: DataStatus = tech?.label || tech?.score != null ? "fresh" : "unavailable";
+                const dNews: DataStatus = Number(sent?.news?.latestNewsCount ?? 0) > 0 ? "fresh" : "unavailable";
+                const dSent: DataStatus = sent?.news ? "fresh" : "unavailable";
                 return (
                   <div key={d.id} className={`panel p-3 space-y-2 border ${isBuy ? "border-bull/40" : isExit ? "border-bear/40" : "border-border"}`}>
                     <div className="flex items-center justify-between gap-2">
                       <div className="font-mono font-semibold">{d.symbol}</div>
-                      <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${isBuy ? "bg-bull/15 text-bull" : isExit ? "bg-bear/15 text-bear" : "bg-muted text-muted-foreground"}`}>
-                        {d.action} · {(cal * 100).toFixed(0)}%
+                      <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${isBuy ? "bg-bull/15 text-bull" : isExit ? "bg-bear/15 text-bear" : "bg-muted text-muted-foreground"}`} title={conf.tooltip}>
+                        {d.action} · {conf.label}
                       </span>
                     </div>
                     {!isHold && (
@@ -425,22 +629,22 @@ function AIAgentPanel() {
                         <div><div className="text-muted-foreground">Strategy</div><div className="text-[10px]">{d.strategy ?? "—"}</div></div>
                       </div>
                     )}
-                    {noTradeReason && (
-                      <div className="text-[11px] bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2 py-1 rounded">
+                    {isHold && (
+                      <div className="text-[11px] bg-amber-500/10 text-amber-700 dark:text-amber-400 px-2 py-1.5 rounded space-y-1">
                         <div className="font-semibold uppercase text-[9px] tracking-wide">No-Trade Reason</div>
-                        {noTradeReason}
+                        <div className="font-semibold">{exec.primary}</div>
+                        <div className="text-muted-foreground">{exec.detail}</div>
+                        {exec.secondary && <div className="text-[10px] opacity-80">↳ {exec.secondary}</div>}
                       </div>
                     )}
-                    {d.reasoning && (
-                      <div className="text-[11px] text-muted-foreground leading-relaxed line-clamp-3" title={d.reasoning}>
-                        {d.reasoning}
-                      </div>
-                    )}
-                    {d.calibration_reason && (
-                      <div className="text-[10px] italic opacity-80">↳ {d.calibration_reason}</div>
-                    )}
+                    <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px]">
+                      <div className="flex justify-between"><span className="text-muted-foreground">Price</span><span className={statusBadgeClass(dPrice).split(" ")[1]}>{dPrice}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">Technical</span><span className={statusBadgeClass(dTech).split(" ")[1]}>{dTech}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">News</span><span className={statusBadgeClass(dNews).split(" ")[1]}>{dNews}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">Sentiment</span><span className={statusBadgeClass(dSent).split(" ")[1]}>{dSent}</span></div>
+                    </div>
                     <div className="text-[10px] text-muted-foreground flex items-center justify-between">
-                      <span>{d.data_source ?? "—"}{d.data_freshness_seconds != null ? ` · ${d.data_freshness_seconds}s` : ""}</span>
+                      <span title={d.data_source ?? ""}>{d.data_source ?? "Source belum tersedia"}</span>
                       <span>{new Date(d.created_at).toLocaleTimeString("id-ID")}</span>
                     </div>
                   </div>
@@ -451,9 +655,11 @@ function AIAgentPanel() {
         );
       })()}
 
-
       <div className="panel p-2 overflow-x-auto">
-        <div className="px-2 py-1 text-xs text-muted-foreground">Decision feed</div>
+        <div className="px-2 py-1 text-xs text-muted-foreground flex items-center justify-between">
+          <span>Decision feed</span>
+          <span className="text-[10px] text-muted-foreground">menampilkan semua history; emiten tidak aktif diberi tanda</span>
+        </div>
         <table className="w-full text-sm min-w-[720px]">
           <thead className="text-xs text-muted-foreground">
             <tr><th className="text-left p-2">Time</th><th className="text-left p-2">Symbol</th><th className="text-left p-2">Action</th>
@@ -464,31 +670,41 @@ function AIAgentPanel() {
           </thead>
           <tbody>
             {decisions.map((d: any) => {
-              const raw = Number(d.raw_confidence ?? d.confidence ?? 0);
-              const cal = Number(d.calibrated_confidence ?? d.confidence ?? 0);
+              const conf = confidenceCell(agent, session, d);
               const fresh = d.data_freshness_seconds;
+              const inactive = !selectedSet.has(d.symbol);
+              const exec = deriveExecutionStatusForCard(agent, session, d);
+              const reasoningPretty = d.action === "HOLD" ? `${exec.primary}. ${exec.detail}` : (d.reasoning ?? "—");
+              const sourceLabel = d.data_source ?? (d.action === "HOLD" ? "Price unavailable" : "Source belum tersedia");
               return (
                 <tr key={d.id} className="border-t border-border align-top">
                   <td className="p-2 text-xs text-muted-foreground whitespace-nowrap">{new Date(d.created_at).toLocaleTimeString("id-ID")}</td>
-                  <td className="p-2 font-medium">{d.symbol}</td>
+                  <td className="p-2 font-medium">
+                    {d.symbol}
+                    {inactive && <span className="ml-1 text-[9px] uppercase bg-muted text-muted-foreground px-1 py-0.5 rounded align-middle">previous session</span>}
+                  </td>
                   <td className={`p-2 text-xs font-semibold ${d.action === "BUY" ? "text-bull" : d.action === "EXIT" || d.action === "SELL" ? "text-bear" : ""}`}>{d.action}</td>
-                  <td className="p-2 text-right font-mono text-xs">{(raw * 100).toFixed(0)}% → <span className="font-semibold">{(cal * 100).toFixed(0)}%</span></td>
+                  <td className={`p-2 text-right font-mono text-xs ${conf.muted ? "text-muted-foreground" : ""}`} title={conf.tooltip}>{conf.label}</td>
                   <td className="p-2 text-right font-mono">{d.suggested_lot ?? "—"}</td>
                   <td className="p-2 text-right font-mono">{d.entry_price ? formatPrice(d.entry_price) : "—"}</td>
                   <td className="p-2 text-right font-mono">{d.stop_loss ? formatPrice(d.stop_loss) : "—"}</td>
                   <td className="p-2 text-right font-mono">{d.take_profit ? formatPrice(d.take_profit) : "—"}</td>
                   <td className="p-2 text-[11px] text-muted-foreground max-w-[180px] truncate" title={d.data_source ?? ""}>
-                    {d.data_source ?? "—"}{fresh != null ? ` · ${fresh}s` : ""}
+                    {sourceLabel}{fresh != null ? ` · ${fresh}s` : ""}
                   </td>
-                  <td className="p-2 text-xs">{d.decision_status ?? "—"}</td>
+                  <td className="p-2 text-xs">
+                    <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${exec.status === "allowed" ? "bg-bull/15 text-bull" : "bg-bear/10 text-bear"}`}>
+                      {EXEC_LABEL[exec.status]}
+                    </span>
+                  </td>
                   <td className="p-2 text-xs text-muted-foreground max-w-md">
-                    {d.reasoning}
+                    {reasoningPretty}
                     {d.calibration_reason ? <div className="mt-1 text-[10px] italic opacity-80">↳ {d.calibration_reason}</div> : null}
                   </td>
                 </tr>
               );
             })}
-            {decisions.length === 0 && <tr><td colSpan={11} className="p-6 text-center text-muted-foreground">No decisions yet. Start the agent or click "Run now".</td></tr>}
+            {decisions.length === 0 && <tr><td colSpan={11} className="p-6 text-center text-muted-foreground">Belum ada keputusan. Klik "{runCopy.label}" untuk memulai analysis cycle.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -502,7 +718,7 @@ function AIAgentPanel() {
               <span className="text-muted-foreground">{new Date(r.created_at).toLocaleString("id-ID")}</span>
             </li>
           ))}
-          {risks.length === 0 && <li className="p-3 text-center text-muted-foreground">No risk events.</li>}
+          {risks.length === 0 && <li className="p-3 text-center text-muted-foreground">Belum ada event risiko.</li>}
         </ul>
       </div>
     </div>
