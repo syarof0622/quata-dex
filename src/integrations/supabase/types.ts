@@ -197,6 +197,63 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_agent_trade_memory: {
+        Row: {
+          agent_id: string
+          best_strategy: string | null
+          created_at: string
+          id: string
+          last_entry_reason: string | null
+          last_trade_result: string | null
+          recent_avg_return: number
+          recent_mistake: string | null
+          recent_win_rate: number
+          sample_size: number
+          sector_stats: Json
+          strategy_stats: Json
+          symbol: string
+          ticker_stats: Json
+          updated_at: string
+          worst_strategy: string | null
+        }
+        Insert: {
+          agent_id: string
+          best_strategy?: string | null
+          created_at?: string
+          id?: string
+          last_entry_reason?: string | null
+          last_trade_result?: string | null
+          recent_avg_return?: number
+          recent_mistake?: string | null
+          recent_win_rate?: number
+          sample_size?: number
+          sector_stats?: Json
+          strategy_stats?: Json
+          symbol: string
+          ticker_stats?: Json
+          updated_at?: string
+          worst_strategy?: string | null
+        }
+        Update: {
+          agent_id?: string
+          best_strategy?: string | null
+          created_at?: string
+          id?: string
+          last_entry_reason?: string | null
+          last_trade_result?: string | null
+          recent_avg_return?: number
+          recent_mistake?: string | null
+          recent_win_rate?: number
+          sample_size?: number
+          sector_stats?: Json
+          strategy_stats?: Json
+          symbol?: string
+          ticker_stats?: Json
+          updated_at?: string
+          worst_strategy?: string | null
+        }
+        Relationships: []
+      }
       ai_agent_training_events: {
         Row: {
           actual_outcome: Json | null

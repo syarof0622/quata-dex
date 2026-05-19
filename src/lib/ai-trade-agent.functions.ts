@@ -421,10 +421,79 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
   // Outcome backfill + lesson labeling based on real price movement
   await backfillTrainingOutcomes(agent.id);
 
-  // Recompute performance summary
+  // Recompute performance summary + per-ticker trade memory
   await recomputePerformance(agent.id, agent.paper_account_id);
+  await recomputeTradeMemory(agent.id);
 
   return { decisions, executed };
+}
+
+/** Aggregate finalized training events per symbol into ai_agent_trade_memory. */
+async function recomputeTradeMemory(agentId: string) {
+  const { data: events } = await supabaseAdmin
+    .from("ai_agent_training_events")
+    .select("symbol, was_correct, paper_pnl_percent, lesson_label, ai_decision, final_outcome, created_at")
+    .eq("agent_id", agentId)
+    .not("final_outcome", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(500);
+  if (!events?.length) return;
+
+  // Bucket by symbol → keep last 30 finalized per symbol.
+  const bySym = new Map<string, typeof events>();
+  for (const e of events) {
+    if (!e.symbol) continue;
+    const arr = bySym.get(e.symbol) ?? [];
+    if (arr.length < 30) { arr.push(e); bySym.set(e.symbol, arr); }
+  }
+
+  for (const [symbol, list] of bySym) {
+    const n = list.length;
+    const wins = list.filter(e => e.was_correct === true).length;
+    const winRate = n ? wins / n : 0;
+    const avgRet = n
+      ? list.reduce((s, e) => s + Number(e.paper_pnl_percent ?? 0), 0) / n
+      : 0;
+
+    // Strategy stats: count wins/total per strategy from ai_decision.strategy.
+    const stratStats: Record<string, { n: number; wins: number; pnl: number }> = {};
+    for (const e of list) {
+      const strat = (e.ai_decision as any)?.strategy ?? "unknown";
+      const s = (stratStats[strat] ||= { n: 0, wins: 0, pnl: 0 });
+      s.n += 1;
+      if (e.was_correct) s.wins += 1;
+      s.pnl += Number(e.paper_pnl_percent ?? 0);
+    }
+    let best: string | null = null, worst: string | null = null;
+    let bestScore = -Infinity, worstScore = Infinity;
+    for (const [k, v] of Object.entries(stratStats)) {
+      if (v.n < 2) continue;
+      const score = (v.wins / v.n) + v.pnl / 100;
+      if (score > bestScore) { bestScore = score; best = k; }
+      if (score < worstScore) { worstScore = score; worst = k; }
+    }
+    if (best === worst) worst = null;
+
+    const latest = list[0];
+    const lastResult = latest.was_correct === true ? "win" : latest.was_correct === false ? "loss" : null;
+    const recentMistake = list.find(e => e.was_correct === false)?.lesson_label ?? null;
+    const lastEntryReason = (latest.ai_decision as any)?.reasoning ?? null;
+
+    await supabaseAdmin.from("ai_agent_trade_memory").upsert({
+      agent_id: agentId, symbol,
+      recent_win_rate: +winRate.toFixed(4),
+      recent_avg_return: +avgRet.toFixed(4),
+      sample_size: n,
+      last_trade_result: lastResult,
+      last_entry_reason: lastEntryReason ? String(lastEntryReason).slice(0, 500) : null,
+      recent_mistake: recentMistake,
+      best_strategy: best,
+      worst_strategy: worst,
+      strategy_stats: stratStats as any,
+      ticker_stats: { winRate, avgReturn: avgRet, n } as any,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "agent_id,symbol" });
+  }
 }
 
 /** Evaluate open training events with real price ticks; fill 15m/1h/eod/final. */
@@ -535,4 +604,15 @@ export const runAgentNow = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const out = await runAgentOnce(data.id);
     return { ok: true, executed: out.executed, count: out.decisions.length };
+  });
+
+export const listTradeMemory = createServerFn({ method: "GET" })
+  .inputValidator((d: { agentId: string }) => z.object({ agentId: z.string().uuid() }).parse(d))
+  .handler(async ({ data }) => {
+    const { data: rows } = await supabaseAdmin
+      .from("ai_agent_trade_memory")
+      .select("*")
+      .eq("agent_id", data.agentId)
+      .order("updated_at", { ascending: false });
+    return rows ?? [];
   });
