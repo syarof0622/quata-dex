@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sparkles, X, Bot, Play, Pause, Square, AlertTriangle } from "lucide-react";
 import { JournalPanel } from "@/components/JournalPanel";
 import { ChatPanel } from "@/components/ChatPanel";
-import { startAgent, pauseAgent, stopAgent, emergencyStop, getAgentStatus, runAgentNow } from "@/lib/ai-trade-agent.functions";
+import { startAgent, pauseAgent, stopAgent, emergencyStop, getAgentStatus, runAgentNow, updateAgentSymbols } from "@/lib/ai-trade-agent.functions";
 import { TickerSearch } from "@/components/TickerSearch";
 
 const MAX_AGENT_SYMBOLS = 5;
@@ -179,14 +179,33 @@ function AIAgentPanel() {
   const [risk, setRisk] = useState<"conservative" | "balanced" | "aggressive">("balanced");
   const [conf, setConf] = useState("0.70");
 
+  // Sync local symbols from active agent on load
+  useEffect(() => {
+    const agentSyms = (agent?.selected_symbols ?? []) as string[];
+    if (agentSyms.length > 0) setSymbols(agentSyms.slice(0, MAX_AGENT_SYMBOLS));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agent?.id]);
+
+  const updateSyms = useMutation({
+    mutationFn: (next: string[]) => updateAgentSymbols({ data: { id: agent.id, selectedSymbols: next } }),
+    onSuccess: () => { toast.success("Daftar emiten diperbarui"); status.refetch(); },
+    onError: (e: any) => toast.error(e?.message ?? "Update failed"),
+  });
+
   function addSymbol(sym: string) {
     const s = sym.trim().toUpperCase();
     if (!s) return;
     if (symbols.includes(s)) { toast.info(`${s} sudah ada di daftar`); return; }
     if (symbols.length >= MAX_AGENT_SYMBOLS) { toast.error(`Maksimal ${MAX_AGENT_SYMBOLS} emiten`); return; }
-    setSymbols([...symbols, s]);
+    const next = [...symbols, s];
+    setSymbols(next);
+    if (agent?.id && agent.status !== "stopped") updateSyms.mutate(next);
   }
-  function removeSymbol(sym: string) { setSymbols(symbols.filter(s => s !== sym)); }
+  function removeSymbol(sym: string) {
+    const next = symbols.filter(s => s !== sym);
+    setSymbols(next);
+    if (agent?.id && agent.status !== "stopped" && next.length > 0) updateSyms.mutate(next);
+  }
 
   const start = useMutation({
     mutationFn: () => startAgent({ data: {
@@ -255,28 +274,28 @@ function AIAgentPanel() {
           tidak terhubung ke broker, dan tidak ada order ke sekuritas.
         </p>
 
-        {!isActive && (
-          <div className="grid md:grid-cols-4 gap-2">
-            <div className="md:col-span-2">
-              <label className="text-xs text-muted-foreground">Emiten (maks {MAX_AGENT_SYMBOLS})</label>
-              <TickerSearch
-                placeholder="Cari emiten (BBCA.JK, AAPL, …)"
-                onPick={(sym) => addSymbol(sym)}
-              />
-              <div className="flex flex-wrap gap-1 mt-2 min-h-6">
-                {symbols.length === 0 && <span className="text-xs text-muted-foreground">Belum ada emiten dipilih.</span>}
-                {symbols.map(s => (
-                  <span key={s} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-accent text-xs font-mono">
-                    {s}
-                    <button type="button" onClick={() => removeSymbol(s)} className="hover:text-destructive" aria-label={`Hapus ${s}`}>
-                      <X className="size-3" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-              <div className="text-[10px] text-muted-foreground mt-1">{symbols.length}/{MAX_AGENT_SYMBOLS} dipilih</div>
+        <div className="grid md:grid-cols-4 gap-2">
+          <div className="md:col-span-2">
+            <label className="text-xs text-muted-foreground">Emiten (maks {MAX_AGENT_SYMBOLS}) {isActive && <span className="text-[10px] text-primary">· perubahan langsung diterapkan ke agent</span>}</label>
+            <TickerSearch
+              placeholder="Cari emiten (BBCA.JK, AAPL, …)"
+              onPick={(sym) => addSymbol(sym)}
+            />
+            <div className="flex flex-wrap gap-1 mt-2 min-h-6">
+              {symbols.length === 0 && <span className="text-xs text-muted-foreground">Belum ada emiten dipilih.</span>}
+              {symbols.map(s => (
+                <span key={s} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-accent text-xs font-mono">
+                  {s}
+                  <button type="button" onClick={() => removeSymbol(s)} className="hover:text-destructive" aria-label={`Hapus ${s}`}>
+                    <X className="size-3" />
+                  </button>
+                </span>
+              ))}
             </div>
-            <div><label className="text-xs text-muted-foreground">Allocation / trade (IDR)</label><Input type="number" value={alloc} onChange={e => setAlloc(e.target.value)} /></div>
+            <div className="text-[10px] text-muted-foreground mt-1">{symbols.length}/{MAX_AGENT_SYMBOLS} dipilih</div>
+          </div>
+          {!isActive && <div><label className="text-xs text-muted-foreground">Allocation / trade (IDR)</label><Input type="number" value={alloc} onChange={e => setAlloc(e.target.value)} /></div>}
+          {!isActive && (
             <div>
               <label className="text-xs text-muted-foreground">Risk level</label>
               <Select value={risk} onValueChange={(v) => setRisk(v as any)}>
@@ -288,9 +307,9 @@ function AIAgentPanel() {
                 </SelectContent>
               </Select>
             </div>
-            <div><label className="text-xs text-muted-foreground">Min confidence (0–1)</label><Input value={conf} onChange={e => setConf(e.target.value)} /></div>
-          </div>
-        )}
+          )}
+          {!isActive && <div><label className="text-xs text-muted-foreground">Min confidence (0–1)</label><Input value={conf} onChange={e => setConf(e.target.value)} /></div>}
+        </div>
       </div>
 
       {performance && (
