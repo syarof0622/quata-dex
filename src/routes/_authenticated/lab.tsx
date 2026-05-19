@@ -378,6 +378,7 @@ function AIAgentPanel() {
     onError: (e: any) => toast.error(e?.message ?? "Tick failed"),
   });
 
+  const isActive = agent && agent.status !== "stopped" && agent.status !== "error";
   const runCopy = runButtonCopy(agent, session);
   const selectedSet = new Set((agent?.selected_symbols ?? symbols) as string[]);
   const trainingBadge = decisions.length > 0
