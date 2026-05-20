@@ -114,7 +114,7 @@ export const runPostTradeReview = createServerFn({ method: "POST" })
               : lesson === "stop_loss_too_tight"
                 ? "Stop loss terlalu rapat — noise harga memicu exit."
                 : "Setup gagal — tinjau ulang strategi.";
-        if (train?.ai_decision?.confidence > 0.7)
+        if (Number(aiDec?.confidence ?? 0) > 0.7)
           wentRight = "Setup confidence tinggi tetapi market berbalik.";
       } else {
         wentRight = "Tidak ada kerugian material.";
