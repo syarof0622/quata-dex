@@ -52,6 +52,9 @@ export type AgentConfig = {
   allowSell: boolean;
   tradingHoursOnly: boolean;
   requireFreshData: boolean;
+  // Undervalued strategy gating (only enforced when strategyMode contains "undervalued")
+  minUndervalueScore?: number;
+  maxValueTrapRisk?: number;
 };
 
 export type Position = { symbol: string; qty: number; avg_price: number };
