@@ -346,7 +346,68 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
   let executed = 0;
   let tradesUsed = 0;
 
-  for (const sym of (agent.selected_symbols as string[])) {
+  // ---- Resolve symbol set: manual = stored list, autonomous = scanner output.
+  const isAutonomous = (agent.symbol_selection_mode ?? "manual") === "autonomous";
+  let symbolsToEvaluate: string[] = (agent.selected_symbols as string[]) ?? [];
+  let autonomousScanId: string | null = null;
+  const autonomousMeta = new Map<string, { rank: number; score: number; reason: string }>();
+
+  if (isAutonomous) {
+    const intervalMs = Number(agent.autonomous_rescan_interval_minutes ?? 15) * 60_000;
+    const lastScanAt = agent.last_autonomous_scan_at ? new Date(agent.last_autonomous_scan_at).getTime() : 0;
+    const rescanDue = Date.now() - lastScanAt >= intervalMs;
+
+    let scan = null as Awaited<ReturnType<typeof runAutonomousScan>> | null;
+    if (rescanDue) {
+      try { scan = await runAutonomousScan(agent); } catch (e: any) {
+        await supabaseAdmin.from("ai_agent_risk_logs").insert({
+          agent_id: agent.id, risk_type: "scanner_error", risk_level: "warning",
+          message: e?.message ?? "scanner failed", action_taken: "skip",
+        });
+      }
+    } else {
+      // Reuse last scan's selected_symbols when interval not yet elapsed.
+      const { data: last } = await supabaseAdmin
+        .from("ai_agent_scans").select("*")
+        .eq("agent_id", agent.id).order("scan_time", { ascending: false }).limit(1).maybeSingle();
+      if (last) {
+        scan = {
+          scanId: (last as any).id, agentId: agent.id, universe: (last as any).universe,
+          scannedCount: (last as any).symbols_scanned_count,
+          validCount: (last as any).valid_candidates_count,
+          selected: ((last as any).selected_symbols ?? []) as string[],
+          topCandidates: ((last as any).top_candidates ?? []) as any[],
+          rejected: ((last as any).rejected_candidates ?? []) as any[],
+          reasoning: (last as any).reasoning ?? "",
+        };
+      }
+    }
+
+    if (scan) {
+      autonomousScanId = scan.scanId;
+      symbolsToEvaluate = scan.selected;
+      for (const c of scan.topCandidates) {
+        autonomousMeta.set(c.symbol, {
+          rank: c.rank ?? 0, score: c.autonomousScore, reason: c.reason,
+        });
+      }
+      // Keep agent.selected_symbols in sync with current AI pick for the UI.
+      await supabaseAdmin.from("ai_trade_agents")
+        .update({ selected_symbols: symbolsToEvaluate })
+        .eq("id", agent.id);
+    } else {
+      symbolsToEvaluate = [];
+    }
+  }
+
+  // Respect maxActivePositions for autonomous (existing positions count first).
+  const maxActive = Number(agent.max_active_positions ?? 3);
+  const openSymbols = new Set(posList.map(p => p.symbol));
+  const slotsLeft = isAutonomous ? Math.max(0, maxActive - openSymbols.size) : Number.MAX_SAFE_INTEGER;
+  let newEntriesUsed = 0;
+  const maxNew = Number(agent.max_new_entries_per_day ?? 3);
+
+  for (const sym of symbolsToEvaluate) {
     try {
       const decision = await evaluateSymbol(cfg, sym, account, posList);
       decisions.push(decision);
@@ -355,7 +416,13 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
       let orderId: string | null = null;
 
       const isTrade = decision.action === "BUY" || decision.action === "EXIT";
+      const isNewEntry = decision.action === "BUY" && !openSymbols.has(sym);
+
       if (isTrade && tradesUsed >= dailyTradesLeft) {
+        decisionStatus = "limit_reached";
+      } else if (isAutonomous && isNewEntry && slotsLeft - newEntriesUsed <= 0) {
+        decisionStatus = "limit_reached";
+      } else if (isAutonomous && isNewEntry && newEntriesUsed >= maxNew) {
         decisionStatus = "limit_reached";
       } else if (isTrade) {
         const action = decision.action;
@@ -374,6 +441,7 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
               orderId = res.order?.id ?? null;
               decisionStatus = "executed";
               tradesUsed += 1;
+              if (isNewEntry) newEntriesUsed += 1;
               executed += 1;
             } else decisionStatus = "rejected";
           } catch (e: any) {
@@ -386,6 +454,7 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
         } else decisionStatus = "rejected";
       }
 
+      const meta = autonomousMeta.get(sym);
       await supabaseAdmin.from("ai_agent_decisions").insert({
         agent_id: agent.id, paper_account_id: agent.paper_account_id,
         symbol: sym, action: decision.action, confidence: decision.confidence,
@@ -405,6 +474,11 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
         risk_snapshot: { ...decision.riskSnapshot, marketContext: decision.realMarketContext } as any,
         decision_status: decisionStatus,
         idempotency_key: idemKey(agent.id, sym, decision.action),
+        selection_mode: isAutonomous ? "autonomous" : "manual",
+        autonomous_scan_id: autonomousScanId,
+        autonomous_rank: meta?.rank ?? null,
+        autonomous_score: meta?.score ?? null,
+        selection_reason: meta?.reason ?? null,
       });
     } catch (e: any) {
       await supabaseAdmin.from("ai_agent_risk_logs").insert({
@@ -413,6 +487,7 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
       });
     }
   }
+
 
   // Stop-loss / take-profit guard on open positions (only when IDX market open)
   if (session.isOpen) {
