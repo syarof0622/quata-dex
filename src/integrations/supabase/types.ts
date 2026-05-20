@@ -25,8 +25,10 @@ export type Database = {
           calibrated_confidence: number | null
           calibration_reason: string | null
           confidence: number | null
+          confidence_adjustments: Json | null
           created_at: string
           data_freshness_seconds: number | null
+          data_quality_snapshot: Json | null
           data_snapshot: Json | null
           data_source: string | null
           decision_status: string | null
@@ -60,8 +62,10 @@ export type Database = {
           calibrated_confidence?: number | null
           calibration_reason?: string | null
           confidence?: number | null
+          confidence_adjustments?: Json | null
           created_at?: string
           data_freshness_seconds?: number | null
+          data_quality_snapshot?: Json | null
           data_snapshot?: Json | null
           data_source?: string | null
           decision_status?: string | null
@@ -95,8 +99,10 @@ export type Database = {
           calibrated_confidence?: number | null
           calibration_reason?: string | null
           confidence?: number | null
+          confidence_adjustments?: Json | null
           created_at?: string
           data_freshness_seconds?: number | null
+          data_quality_snapshot?: Json | null
           data_snapshot?: Json | null
           data_source?: string | null
           decision_status?: string | null
@@ -393,7 +399,9 @@ export type Database = {
           ai_decision: Json | null
           autonomous_scan_snapshot: Json | null
           candidate_scores: Json | null
+          confidence_calibration_snapshot: Json | null
           created_at: string
+          data_quality_snapshot: Json | null
           decision_id: string | null
           decision_output: Json | null
           evaluated_at: string | null
@@ -441,7 +449,9 @@ export type Database = {
           ai_decision?: Json | null
           autonomous_scan_snapshot?: Json | null
           candidate_scores?: Json | null
+          confidence_calibration_snapshot?: Json | null
           created_at?: string
+          data_quality_snapshot?: Json | null
           decision_id?: string | null
           decision_output?: Json | null
           evaluated_at?: string | null
@@ -489,7 +499,9 @@ export type Database = {
           ai_decision?: Json | null
           autonomous_scan_snapshot?: Json | null
           candidate_scores?: Json | null
+          confidence_calibration_snapshot?: Json | null
           created_at?: string
+          data_quality_snapshot?: Json | null
           decision_id?: string | null
           decision_output?: Json | null
           evaluated_at?: string | null
@@ -530,6 +542,45 @@ export type Database = {
           valuation_classification?: string | null
           value_trap_risk_score?: number | null
           was_correct?: boolean | null
+        }
+        Relationships: []
+      }
+      ai_confidence_calibration_logs: {
+        Row: {
+          adjustments: Json
+          agent_id: string
+          calibrated_confidence: number
+          calibration_reason: string | null
+          created_at: string
+          id: string
+          raw_confidence: number
+          sample_size: number
+          strategy: string | null
+          symbol: string
+        }
+        Insert: {
+          adjustments?: Json
+          agent_id: string
+          calibrated_confidence?: number
+          calibration_reason?: string | null
+          created_at?: string
+          id?: string
+          raw_confidence?: number
+          sample_size?: number
+          strategy?: string | null
+          symbol: string
+        }
+        Update: {
+          adjustments?: Json
+          agent_id?: string
+          calibrated_confidence?: number
+          calibration_reason?: string | null
+          created_at?: string
+          id?: string
+          raw_confidence?: number
+          sample_size?: number
+          strategy?: string | null
+          symbol?: string
         }
         Relationships: []
       }
@@ -828,6 +879,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      data_quality_snapshots: {
+        Row: {
+          created_at: string
+          decision_allowed: boolean
+          disclosure_quality: string
+          fundamental_quality: string
+          id: string
+          news_quality: string
+          overall_data_quality_score: number
+          price_quality: string
+          raw_payload: Json | null
+          sentiment_quality: string
+          source_reliability_score: number
+          symbol: string
+          technical_quality: string
+          warnings: Json
+        }
+        Insert: {
+          created_at?: string
+          decision_allowed?: boolean
+          disclosure_quality?: string
+          fundamental_quality?: string
+          id?: string
+          news_quality?: string
+          overall_data_quality_score?: number
+          price_quality?: string
+          raw_payload?: Json | null
+          sentiment_quality?: string
+          source_reliability_score?: number
+          symbol: string
+          technical_quality?: string
+          warnings?: Json
+        }
+        Update: {
+          created_at?: string
+          decision_allowed?: boolean
+          disclosure_quality?: string
+          fundamental_quality?: string
+          id?: string
+          news_quality?: string
+          overall_data_quality_score?: number
+          price_quality?: string
+          raw_payload?: Json | null
+          sentiment_quality?: string
+          source_reliability_score?: number
+          symbol?: string
+          technical_quality?: string
+          warnings?: Json
+        }
+        Relationships: []
       }
       news_articles: {
         Row: {
