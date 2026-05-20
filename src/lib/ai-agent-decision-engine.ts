@@ -83,6 +83,7 @@ function emptySnap(symbol: string, reason: string, extra: Partial<AgentDecision>
     realMarketData: {}, realTechnicalData: {}, realNewsData: {},
     realDisclosureData: {}, realMarketContext: {},
     portfolioSnapshot: {}, riskSnapshot: {},
+    dataQuality: null,
     warnings: [reason],
     ...extra,
   };
