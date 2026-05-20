@@ -1,4 +1,5 @@
-import type { Classification } from "@/lib/undervalue-scorer.server";
+// Classification is one of: strong_undervalued | undervalued | fair_value | overvalued | value_trap_risk | insufficient_data
+type Classification = string;
 
 const MAP: Record<string, { label: string; cls: string }> = {
   strong_undervalued: { label: "STRONG UNDERVALUED", cls: "bg-bull text-primary-foreground" },
