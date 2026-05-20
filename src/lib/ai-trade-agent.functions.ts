@@ -22,7 +22,7 @@ async function ensurePaperAccount() {
 }
 
 const StartSchema = z.object({
-  selectedSymbols: z.array(z.string().min(1).max(20)).min(1).max(20),
+  selectedSymbols: z.array(z.string().min(1).max(20)).max(20).default([]),
   allocationAmount: z.number().positive().max(1e10).default(1_000_000),
   strategyMode: z.string().default("hybrid"),
   riskLevel: z.enum(["conservative", "balanced", "aggressive"]).default("balanced"),
@@ -38,12 +38,27 @@ const StartSchema = z.object({
   requireFreshData: z.boolean().default(true),
   allowBuy: z.boolean().default(true),
   allowSell: z.boolean().default(true),
+  // Autonomous mode (all optional with safe defaults).
+  symbolSelectionMode: z.enum(["manual", "autonomous"]).default("manual"),
+  autonomousUniverse: z.enum(["idx_liquid", "watchlist_plus", "bluechip", "custom_universe", "all_supported"]).default("idx_liquid"),
+  maxAutonomousSymbols: z.number().int().min(1).max(10).default(5),
+  maxActivePositions: z.number().int().min(1).max(10).default(3),
+  maxNewEntriesPerDay: z.number().int().min(0).max(20).default(3),
+  minAutonomousScore: z.number().min(0).max(100).default(70),
+  minLiquidityScore: z.number().min(0).max(100).default(60),
+  minDataQualityScore: z.number().min(0).max(100).default(70),
+  allowAutonomousRotation: z.boolean().default(true),
+  autonomousRescanIntervalMinutes: z.number().int().min(1).max(240).default(15),
+  autonomousAllocationMode: z.enum(["equal_weight", "confidence_weighted", "risk_weighted", "dynamic_ai"]).default("dynamic_ai"),
 });
 
 export const startAgent = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => StartSchema.parse(d))
   .handler(async ({ data }) => {
     const acct = await ensurePaperAccount();
+    if (data.symbolSelectionMode === "manual" && data.selectedSymbols.length === 0) {
+      throw new Error("Pilih minimal 1 emiten untuk mode Manual.");
+    }
     // Single active agent: deactivate any other running agent for this user
     await supabaseAdmin.from("ai_trade_agents").update({ status: "stopped", stopped_at: new Date().toISOString() })
       .eq("user_id", USER_ID).neq("status", "stopped");
@@ -69,6 +84,19 @@ export const startAgent = createServerFn({ method: "POST" })
       min_confidence_to_trade: data.minConfidenceToTrade,
       trading_enabled: true,
       started_at: new Date().toISOString(),
+      // Autonomous fields:
+      symbol_selection_mode: data.symbolSelectionMode,
+      autonomous_universe: data.autonomousUniverse,
+      max_autonomous_symbols: data.maxAutonomousSymbols,
+      max_active_positions: data.maxActivePositions,
+      max_new_entries_per_day: data.maxNewEntriesPerDay,
+      min_autonomous_score: data.minAutonomousScore,
+      min_liquidity_score: data.minLiquidityScore,
+      min_data_quality_score: data.minDataQualityScore,
+      allow_autonomous_rotation: data.allowAutonomousRotation,
+      autonomous_rescan_interval_minutes: data.autonomousRescanIntervalMinutes,
+      autonomous_allocation_mode: data.autonomousAllocationMode,
+      paper_trading_only: true,
     }).select("*").single();
     if (error) throw new Error(error.message);
     return agent;
