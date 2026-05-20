@@ -79,7 +79,8 @@ export const runPostTradeReview = createServerFn({ method: "POST" })
         .limit(1)
         .maybeSingle();
 
-      const entryPrice = Number(train?.ai_decision?.entry_price ?? o.filled_price);
+      const aiDec = (train?.ai_decision ?? {}) as any;
+      const entryPrice = Number(aiDec?.entry_price ?? o.filled_price);
       const exitPrice = Number(o.filled_price ?? o.price ?? 0);
       const qty = Number(o.qty ?? 0);
       const pnl = (exitPrice - entryPrice) * qty;
