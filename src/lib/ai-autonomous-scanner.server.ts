@@ -1,0 +1,352 @@
+// Autonomous Universe Scanner for AI Trade Agent.
+// Server-only: imports supabaseAdmin. Naming convention `.server.ts` so the
+// bundler blocks any accidental client import.
+//
+// Responsibility: given an agent + universe mode, build a candidate list,
+// score each candidate across 8 dimensions, filter and rank them, persist
+// scan + per-candidate rows, and return the top-N symbols the agent should
+// evaluate this tick. Heavy market analysis (entry/SL/TP/order sizing) stays
+// in `evaluateSymbol`; the scanner only decides WHICH symbols to look at.
+
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { getQuote } from "./market.functions";
+import { getTradeSetup } from "./signals.functions";
+import { IDX_LQ45, US_TOP } from "./symbols";
+import { isIDXSymbol } from "./lot-sizing";
+import { getIDXMarketSession } from "./idx-market-session";
+
+export type UniverseKey =
+  | "idx_liquid" | "watchlist_plus" | "bluechip" | "custom_universe" | "all_supported";
+
+export type ScanCandidate = {
+  symbol: string;
+  rank: number | null;
+  autonomousScore: number;
+  dataQualityScore: number;
+  liquidityScore: number;
+  technicalScore: number;
+  sentimentScore: number;
+  disclosureScore: number;
+  marketContextScore: number;
+  riskScore: number;
+  tradeSetupScore: number;
+  recommendation: "candidate_buy" | "watch" | "skip";
+  reason: string;
+  warnings: string[];
+  passedFilters: boolean;
+  rejectionReason: string | null;
+};
+
+export type ScanResult = {
+  scanId: string;
+  agentId: string;
+  universe: UniverseKey;
+  scannedCount: number;
+  validCount: number;
+  selected: string[];
+  topCandidates: ScanCandidate[];
+  rejected: ScanCandidate[];
+  reasoning: string;
+};
+
+const BLUECHIP_PREFIXES = new Set([
+  "BBCA", "BBRI", "BMRI", "BBNI", "TLKM", "ASII", "UNVR", "ICBP", "INDF",
+  "KLBF", "SMGR", "INTP", "ADRO", "PTBA", "GOTO",
+]);
+
+async function buildUniverse(
+  agentId: string,
+  mode: UniverseKey,
+  fallbackSymbols: string[],
+): Promise<string[]> {
+  const seen = new Set<string>();
+  const push = (sym: string) => {
+    const s = sym.trim().toUpperCase();
+    if (s) seen.add(s);
+  };
+
+  if (mode === "bluechip") {
+    for (const s of IDX_LQ45) if (BLUECHIP_PREFIXES.has(s.replace(/\.JK$/, ""))) push(s);
+  } else if (mode === "idx_liquid") {
+    for (const s of IDX_LQ45) push(s);
+  } else if (mode === "all_supported") {
+    for (const s of IDX_LQ45) push(s);
+    for (const s of US_TOP.slice(0, 25)) push(s);
+  } else if (mode === "watchlist_plus") {
+    for (const s of IDX_LQ45.slice(0, 20)) push(s);
+    const { data: wl } = await supabaseAdmin
+      .from("watchlist").select("symbol").limit(40);
+    for (const w of wl ?? []) push((w as any).symbol);
+  } else if (mode === "custom_universe") {
+    for (const s of fallbackSymbols) push(s);
+    if (seen.size === 0) for (const s of IDX_LQ45.slice(0, 15)) push(s);
+  }
+
+  // Always merge trending tickers from last-24h news so AI can react to news flow.
+  try {
+    const since = new Date(Date.now() - 24 * 3600_000).toISOString();
+    const { data: news } = await supabaseAdmin
+      .from("news_articles")
+      .select("tickers, impact_level")
+      .gte("published_at", since)
+      .eq("is_duplicate", false)
+      .order("published_at", { ascending: false })
+      .limit(80);
+    for (const n of news ?? []) {
+      for (const t of ((n as any).tickers ?? []) as string[]) {
+        const sym = t.includes(".") ? t : `${t}.JK`;
+        push(sym);
+      }
+    }
+  } catch { /* tolerate */ }
+
+  // Hard cap to keep scan fast under cron budget.
+  return Array.from(seen).slice(0, 30);
+}
+
+function clamp(n: number, lo = 0, hi = 100) {
+  return Math.max(lo, Math.min(hi, n));
+}
+
+async function scoreSymbol(symbol: string): Promise<ScanCandidate> {
+  const warnings: string[] = [];
+  let dataQuality = 0, liquidity = 0, technical = 50, sentiment = 50;
+  let disclosure = 50, marketContext = 50, risk = 50, tradeSetup = 50;
+  let priceOk = false, techOk = false, volume = 0;
+
+  // 1. Price + liquidity (single quote per symbol — keeps scanner cheap).
+  try {
+    const q: any = await getQuote({ data: { symbol } });
+    if (q?.price) {
+      priceOk = true;
+      const session = getIDXMarketSession();
+      const fresh = session.isOpen && isIDXSymbol(symbol) ? 5 : 600;
+      dataQuality = fresh < 30 ? 95 : fresh < 300 ? 80 : 60;
+      volume = Number(q.volume ?? 0);
+      if (volume > 5_000_000) liquidity = 95;
+      else if (volume > 1_000_000) liquidity = 80;
+      else if (volume > 250_000) liquidity = 65;
+      else if (volume > 50_000) liquidity = 50;
+      else { liquidity = 25; warnings.push("Volume rendah"); }
+      const ch = Number(q.changePercent ?? 0);
+      // Risk: prefer moderate volatility; penalize extreme moves.
+      const absCh = Math.abs(ch);
+      risk = absCh > 8 ? 30 : absCh > 4 ? 55 : 80;
+      if (absCh > 8) warnings.push("Pergerakan harga ekstrim");
+    } else {
+      warnings.push("Harga tidak tersedia");
+    }
+  } catch (e: any) {
+    warnings.push(`Quote error: ${e?.message ?? "fetch failed"}`);
+  }
+
+  // 2. Technical from cached/live setup.
+  try {
+    const setup: any = await getTradeSetup({ data: { symbol, timeframe: "1d" } });
+    const score = Number(setup?.signal?.score ?? 0); // -100..100
+    const label: string = setup?.signal?.label ?? "HOLD";
+    techOk = setup?.signal != null;
+    // Map -100..100 to 0..100 (bullish bias rewarded).
+    technical = clamp(50 + score * 0.5);
+    if (setup?.setup?.stopDistancePct != null) {
+      const sd = Number(setup.setup.stopDistancePct);
+      // 1–4% stop is healthy; tighter = whippy; wider = bad RR.
+      const setupScore = sd > 0 && sd < 0.05 ? 80 : sd >= 0.05 && sd < 0.1 ? 65 : 45;
+      tradeSetup = label === "BUY" ? Math.min(95, setupScore + 10)
+                  : label === "SELL" ? 35 : setupScore;
+    } else {
+      tradeSetup = label === "BUY" ? 70 : label === "SELL" ? 35 : 50;
+    }
+  } catch { /* technical stays default */ }
+
+  // 3. Sentiment (cached aggregate).
+  try {
+    const { data: s } = await supabaseAdmin
+      .from("ticker_sentiment_summary").select("*").eq("symbol", symbol).maybeSingle();
+    if (s) {
+      const avg = Number((s as any).average_sentiment_score ?? 0); // -1..1
+      sentiment = clamp(50 + avg * 50);
+      const hi = Number((s as any).high_impact_news_count ?? 0);
+      if (hi > 3) warnings.push("Banyak berita high-impact");
+    }
+  } catch { /* default */ }
+
+  // 4. Disclosure scan from last 24h news_articles.
+  try {
+    const base = symbol.replace(/\.JK$/i, "");
+    const since = new Date(Date.now() - 24 * 3600_000).toISOString();
+    const { data: arts } = await supabaseAdmin
+      .from("news_articles")
+      .select("sentiment, impact_level, category, source, title")
+      .or(`tickers.cs.{${base}},tickers.cs.{${symbol}}`)
+      .eq("is_duplicate", false)
+      .gte("published_at", since)
+      .limit(20);
+    const list = arts ?? [];
+    const isDisc = (a: any) =>
+      /idx|bursa|keterbukaan|disclosure|rups|dividen|buyback|right.?issue|suspen|stock.?split|akuisisi|merger|ipo|uma/
+        .test(`${a.source ?? ""} ${a.category ?? ""} ${a.title ?? ""}`.toLowerCase());
+    const disc = list.find(isDisc);
+    if (disc) {
+      const sent = (disc as any).sentiment;
+      const high = (disc as any).impact_level === "high";
+      disclosure = sent === "positive" ? (high ? 90 : 75)
+                 : sent === "negative" ? (high ? 20 : 40) : 60;
+      if (sent === "negative" && high) warnings.push("Disclosure negatif high-impact");
+      const titleLower = String((disc as any).title ?? "").toLowerCase();
+      if (/suspen|uma/.test(titleLower)) {
+        warnings.push("Saham terkait suspensi/UMA");
+        risk = Math.min(risk, 20);
+      }
+    } else {
+      disclosure = 55;
+    }
+  } catch { /* default */ }
+
+  // 5. Market context: IHSG bias proxy from any recent index quote we can read.
+  try {
+    const idxQuote: any = await getQuote({ data: { symbol: "^JKSE" } });
+    const ch = Number(idxQuote?.changePercent ?? 0);
+    marketContext = clamp(50 + ch * 8);
+  } catch { /* default */ }
+
+  // Composite score: technical/setup heaviest, then data/liquidity gates.
+  const composite =
+    dataQuality * 0.15 +
+    liquidity   * 0.15 +
+    technical   * 0.20 +
+    sentiment   * 0.10 +
+    disclosure  * 0.10 +
+    marketContext * 0.05 +
+    risk        * 0.10 +
+    tradeSetup  * 0.15;
+
+  const autonomousScore = +clamp(composite).toFixed(2);
+
+  let recommendation: ScanCandidate["recommendation"] = "skip";
+  if (autonomousScore >= 70 && tradeSetup >= 60 && technical >= 55) recommendation = "candidate_buy";
+  else if (autonomousScore >= 55) recommendation = "watch";
+
+  if (!priceOk) warnings.push("Data harga tidak siap");
+  if (!techOk) warnings.push("Technical signal belum tersedia");
+
+  const reason = !priceOk
+    ? "Harga tidak tersedia untuk scoring."
+    : `Tech ${technical.toFixed(0)}, Setup ${tradeSetup.toFixed(0)}, Sentimen ${sentiment.toFixed(0)}, Liquidity ${liquidity.toFixed(0)}, Risk ${risk.toFixed(0)}.`;
+
+  return {
+    symbol, rank: null, autonomousScore,
+    dataQualityScore: +dataQuality.toFixed(2),
+    liquidityScore: +liquidity.toFixed(2),
+    technicalScore: +technical.toFixed(2),
+    sentimentScore: +sentiment.toFixed(2),
+    disclosureScore: +disclosure.toFixed(2),
+    marketContextScore: +marketContext.toFixed(2),
+    riskScore: +risk.toFixed(2),
+    tradeSetupScore: +tradeSetup.toFixed(2),
+    recommendation, reason, warnings,
+    passedFilters: false, rejectionReason: null,
+  };
+}
+
+function applyFilters(
+  c: ScanCandidate,
+  agent: { min_autonomous_score: number; min_data_quality_score: number; min_liquidity_score: number },
+): ScanCandidate {
+  if (c.autonomousScore < Number(agent.min_autonomous_score ?? 70)) {
+    return { ...c, passedFilters: false, rejectionReason: `Score ${c.autonomousScore} < ${agent.min_autonomous_score}` };
+  }
+  if (c.dataQualityScore < Number(agent.min_data_quality_score ?? 70)) {
+    return { ...c, passedFilters: false, rejectionReason: `Data quality ${c.dataQualityScore} < ${agent.min_data_quality_score}` };
+  }
+  if (c.liquidityScore < Number(agent.min_liquidity_score ?? 60)) {
+    return { ...c, passedFilters: false, rejectionReason: `Liquidity ${c.liquidityScore} < ${agent.min_liquidity_score}` };
+  }
+  if (c.warnings.some(w => /suspen|UMA/i.test(w))) {
+    return { ...c, passedFilters: false, rejectionReason: "Suspended/UMA risk" };
+  }
+  if (c.recommendation === "skip") {
+    return { ...c, passedFilters: false, rejectionReason: "Recommendation = skip" };
+  }
+  return { ...c, passedFilters: true };
+}
+
+export async function runAutonomousScan(agent: any): Promise<ScanResult> {
+  const mode = (agent.autonomous_universe ?? "idx_liquid") as UniverseKey;
+  const universe = await buildUniverse(
+    agent.id, mode, (agent.selected_symbols ?? []) as string[],
+  );
+
+  // Score in parallel but capped concurrency via Promise.all on a sliced batch.
+  const candidates: ScanCandidate[] = [];
+  const batchSize = 5;
+  for (let i = 0; i < universe.length; i += batchSize) {
+    const batch = universe.slice(i, i + batchSize);
+    const scored = await Promise.all(batch.map(sym => scoreSymbol(sym).catch(() => null)));
+    for (const c of scored) if (c) candidates.push(c);
+  }
+
+  const filtered = candidates.map(c => applyFilters(c, agent))
+    .sort((a, b) => b.autonomousScore - a.autonomousScore);
+  filtered.forEach((c, i) => { c.rank = i + 1; });
+
+  const passed = filtered.filter(c => c.passedFilters);
+  const rejected = filtered.filter(c => !c.passedFilters);
+  const topN = Math.max(1, Math.min(10, Number(agent.max_autonomous_symbols ?? 5)));
+  const selected = passed.slice(0, topN).map(c => c.symbol);
+
+  const reasoning = selected.length === 0
+    ? `Scan ${universe.length} symbol; tidak ada kandidat lolos filter (min score ${agent.min_autonomous_score}).`
+    : `Scan ${universe.length} symbol; ${passed.length} valid; pilih top ${selected.length}: ${selected.join(", ")}.`;
+
+  // Persist scan + candidate rows.
+  const { data: scanRow, error: scanErr } = await supabaseAdmin
+    .from("ai_agent_scans").insert({
+      agent_id: agent.id,
+      selection_mode: "autonomous",
+      universe: mode,
+      symbols_scanned_count: universe.length,
+      valid_candidates_count: passed.length,
+      selected_symbols: selected as any,
+      top_candidates: passed.slice(0, 10) as any,
+      rejected_candidates: rejected.slice(0, 20) as any,
+      scan_status: "completed",
+      reasoning,
+    }).select("*").single();
+  if (scanErr) throw new Error(scanErr.message);
+
+  const scanId = (scanRow as any).id as string;
+
+  if (filtered.length > 0) {
+    await supabaseAdmin.from("ai_agent_scan_candidates").insert(
+      filtered.slice(0, 50).map(c => ({
+        scan_id: scanId, agent_id: agent.id, symbol: c.symbol, rank: c.rank,
+        autonomous_score: c.autonomousScore,
+        data_quality_score: c.dataQualityScore,
+        liquidity_score: c.liquidityScore,
+        technical_score: c.technicalScore,
+        sentiment_score: c.sentimentScore,
+        disclosure_score: c.disclosureScore,
+        market_context_score: c.marketContextScore,
+        risk_score: c.riskScore,
+        trade_setup_score: c.tradeSetupScore,
+        recommendation: c.recommendation,
+        reason: c.reason,
+        warnings: c.warnings as any,
+        passed_filters: c.passedFilters,
+        rejection_reason: c.rejectionReason,
+      })),
+    );
+  }
+
+  await supabaseAdmin.from("ai_trade_agents")
+    .update({ last_autonomous_scan_at: new Date().toISOString() })
+    .eq("id", agent.id);
+
+  return {
+    scanId, agentId: agent.id, universe: mode,
+    scannedCount: universe.length, validCount: passed.length,
+    selected, topCandidates: passed.slice(0, 10), rejected: rejected.slice(0, 20),
+    reasoning,
+  };
+}
