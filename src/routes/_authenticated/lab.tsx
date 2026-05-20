@@ -104,7 +104,7 @@ function Lab() {
                     <td className="p-2 text-right font-mono">{p.mark != null ? formatPrice(p.mark) : "—"}</td>
                     <td className={`p-2 text-right font-mono ${colorForChange(p.pnl)}`}>{p.pnl != null ? fmtMoney(p.pnl) : "—"}</td>
                     <td className={`p-2 text-right font-mono ${colorForChange(p.pnlPct)}`}>{p.pnlPct != null ? formatPct(p.pnlPct) : "—"}</td>
-                    <td className="p-2 text-right text-xs text-muted-foreground">{new Date(p.opened_at).toLocaleString("id-ID")}</td>
+                    <td className="p-2 text-right text-xs text-muted-foreground">{fmtWIBDateTime(p.opened_at)}</td>
                   </tr>
                 ))}
                 {positions.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">No open positions. Place a paper trade from any chart.</td></tr>}
@@ -134,7 +134,7 @@ function Lab() {
                       {o.type === "stop_limit" && `stop ${formatPrice(o.stop_price)} / lim ${formatPrice(o.limit_price)}`}
                       {o.type === "trailing_stop" && `trail ${o.trailing_pct}% from ${formatPrice(o.trail_anchor)}`}
                     </td>
-                    <td className="p-2 text-right text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString()}</td>
+                    <td className="p-2 text-right text-xs text-muted-foreground">{fmtWIBDateTime(o.created_at)}</td>
                     <td className="p-2 text-right">
                       <Button size="sm" variant="ghost" onClick={() => cancel.mutate(o.id)}><X className="size-3" /></Button>
                     </td>
@@ -154,7 +154,7 @@ function Lab() {
               <tbody>
                 {orders.map((o: any) => (
                   <tr key={o.id} className="border-t border-border">
-                    <td className="p-2 text-xs text-muted-foreground">{new Date(o.filled_at ?? o.created_at).toLocaleString()}</td>
+                    <td className="p-2 text-xs text-muted-foreground">{fmtWIBDateTime(o.filled_at ?? o.created_at)}</td>
                     <td className="p-2 font-medium">{o.symbol}</td>
                     <td className={`p-2 uppercase text-xs ${o.side === "buy" ? "text-bull" : "text-bear"}`}>{o.side}</td>
                     <td className="p-2 text-right font-mono">{o.qty}</td>
@@ -501,7 +501,7 @@ function AIAgentPanel() {
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="text-xs font-semibold uppercase tracking-wide">Data Readiness</div>
           <div className="text-[10px] text-muted-foreground">
-            Last update: {newestDecision ? new Date(newestDecision.created_at).toLocaleTimeString("id-ID") : "—"}
+            Last update: {newestDecision ? fmtWIBTime(newestDecision.created_at) : "—"}
           </div>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 text-[11px]">
@@ -663,7 +663,7 @@ function AIAgentPanel() {
                     </div>
                     <div className="text-[10px] text-muted-foreground flex items-center justify-between">
                       <span title={d.data_source ?? ""}>{d.data_source ?? "Source belum tersedia"}</span>
-                      <span>{new Date(d.created_at).toLocaleTimeString("id-ID")}</span>
+                      <span>{fmtWIBTime(d.created_at)}</span>
                     </div>
                   </div>
                 );
@@ -696,7 +696,7 @@ function AIAgentPanel() {
               const sourceLabel = d.data_source ?? (d.action === "HOLD" ? "Price unavailable" : "Source belum tersedia");
               return (
                 <tr key={d.id} className="border-t border-border align-top">
-                  <td className="p-2 text-xs text-muted-foreground whitespace-nowrap">{new Date(d.created_at).toLocaleTimeString("id-ID")}</td>
+                  <td className="p-2 text-xs text-muted-foreground whitespace-nowrap">{fmtWIBTime(d.created_at)}</td>
                   <td className="p-2 font-medium">
                     {d.symbol}
                     {inactive && <span className="ml-1 text-[9px] uppercase bg-muted text-muted-foreground px-1 py-0.5 rounded align-middle">previous session</span>}
@@ -733,7 +733,7 @@ function AIAgentPanel() {
           {risks.map((r: any) => (
             <li key={r.id} className="p-2 flex justify-between gap-2">
               <span><span className="font-semibold uppercase">{r.risk_type}</span> · {r.symbol ?? ""} — {r.message}</span>
-              <span className="text-muted-foreground">{new Date(r.created_at).toLocaleString("id-ID")}</span>
+              <span className="text-muted-foreground">{fmtWIBDateTime(r.created_at)}</span>
             </li>
           ))}
           {risks.length === 0 && <li className="p-3 text-center text-muted-foreground">Belum ada event risiko.</li>}
@@ -995,7 +995,7 @@ function AutonomousScannerPanel({ agent }: { agent: any }) {
           <div className="text-xs font-semibold uppercase tracking-wide">Autonomous Scanner</div>
           <div className="text-[11px] text-muted-foreground">
             Universe <span className="font-mono">{scan?.universe ?? agent?.autonomous_universe ?? "idx_liquid"}</span>
-            {scan ? <> · {scan.symbols_scanned_count} scanned · {scan.valid_candidates_count} valid · last {new Date(scan.scan_time).toLocaleTimeString("id-ID")}</> : " · belum pernah scan"}
+            {scan ? <> · {scan.symbols_scanned_count} scanned · {scan.valid_candidates_count} valid · last {fmtWIBTime(scan.scan_time)}</> : " · belum pernah scan"}
           </div>
         </div>
         <Button size="sm" variant="outline" onClick={() => rescan.mutate()} disabled={rescan.isPending}>
