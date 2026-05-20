@@ -7,6 +7,7 @@ import { evaluateSymbol, type AgentConfig, type AgentDecision, type Position } f
 import { isIDXSymbol, convertSharesToLot } from "./lot-sizing";
 import { getQuote } from "./market.functions";
 import { canExecutePaperTrade, getIDXMarketSession } from "./idx-market-session";
+import { runAutonomousScan } from "./ai-autonomous-scanner.server";
 
 const USER_ID = "00000000-0000-0000-0000-000000000001";
 const COOLDOWN_MS = { BUY: 15 * 60_000, SELL: 10 * 60_000, EXIT: 10 * 60_000 };
