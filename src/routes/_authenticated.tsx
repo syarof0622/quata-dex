@@ -8,6 +8,7 @@ import { Activity, Bell, Bot, FlaskConical, LayoutDashboard, Newspaper, PieChart
 import { useRouterState } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { TickerSearch } from "@/components/TickerSearch";
+import { OnboardingDialog } from "@/components/OnboardingDialog";
 
 export const Route = createFileRoute("/_authenticated")({
   component: AuthedLayout,
@@ -84,6 +85,7 @@ function AuthedLayout() {
             </div>
           </header>
           <main className="flex-1 min-w-0 overflow-auto"><Outlet /></main>
+          <OnboardingDialog />
         </div>
       </div>
     </SidebarProvider>

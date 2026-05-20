@@ -17,6 +17,7 @@ import { JournalPanel } from "@/components/JournalPanel";
 import { ChatPanel } from "@/components/ChatPanel";
 import { startAgent, pauseAgent, stopAgent, emergencyStop, getAgentStatus, runAgentNow, updateAgentSymbols, listTradeMemory, setSelectionMode, runAutonomousScanNow, getLatestScan } from "@/lib/ai-trade-agent.functions";
 import { TickerSearch } from "@/components/TickerSearch";
+import { AiInsightsPanel } from "@/components/AiInsightsPanel";
 
 const MAX_AGENT_SYMBOLS = 5;
 
@@ -80,6 +81,7 @@ function Lab() {
           <TabsTrigger value="backtest">Backtest</TabsTrigger>
           <TabsTrigger value="coach">AI Coach</TabsTrigger>
           <TabsTrigger value="agent"><Bot className="size-3 mr-1" />AI Trade Agent</TabsTrigger>
+          <TabsTrigger value="insights"><Sparkles className="size-3 mr-1" />AI Insights</TabsTrigger>
         </TabsList>
         <TabsContent value="positions">
           <div className="panel p-2 overflow-x-auto">
@@ -170,6 +172,7 @@ function Lab() {
         <TabsContent value="backtest"><Backtester /></TabsContent>
         <TabsContent value="coach"><AICoach /></TabsContent>
         <TabsContent value="agent"><AIAgentPanel /></TabsContent>
+        <TabsContent value="insights"><AiInsightsPanel /></TabsContent>
       </Tabs>
     </div>
   );
