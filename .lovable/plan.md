@@ -1,117 +1,149 @@
-# Plan: Full Autonomous AI Trade Agent (Paper Only)
+## Tujuan
 
-Update existing AI Trade Agent in Simulation Lab to support a new
-`symbolSelectionMode = "manual" | "autonomous"`. Manual mode keeps current
-behavior. Autonomous mode lets the agent scan a universe, score candidates,
-rank them, allocate paper capital, and execute paper trades — with strict
-no-trade and risk guards. Nothing existing is removed.
+Menambahkan modul AI Fundamental Valuation Scanner ke aplikasi tanpa mengubah/menghapus fitur existing (AI Trade Agent, Autonomous Mode, Paper Trading, Technical Scanner, News Sentiment, Market Context, IDX Disclosure, Data Readiness, Trade Plan, Training Data, Performance Panel).
 
-## 1. Database (migration)
+AI harus bisa membedakan tiga hal:
+- Cheap stock (murah, tapi belum tentu bagus)
+- Undervalued stock (murah, fundamental sehat)
+- Value trap (murah, fundamental memburuk)
 
-New tables:
-- `ai_agent_scans` — one row per scan run (agent_id, scan_time, universe,
-  symbols_scanned_count, valid_candidates_count, selected_symbols jsonb,
-  top_candidates jsonb, rejected_candidates jsonb, scan_status, reasoning).
-- `ai_agent_scan_candidates` — one row per candidate per scan (all 8 sub-scores,
-  autonomous_score, rank, recommendation, reason, warnings, passed_filters,
-  rejection_reason).
+Mode `NO_API_MODE` tetap dipatuhi — tidak ada API berbayar baru; data fundamental ditarik dari Yahoo Finance public quoteSummary (sudah dipakai project untuk quotes) + optional manual entry. Jika data tidak cukup → `Insufficient Data`, bukan asumsi.
 
-New columns:
-- `ai_trade_agents`: `symbol_selection_mode`, `autonomous_universe`,
-  `max_autonomous_symbols`, `max_active_positions`, `max_new_entries_per_day`,
-  `min_autonomous_score`, `min_liquidity_score`, `min_data_quality_score`,
-  `allow_autonomous_rotation`, `autonomous_rescan_interval_minutes`,
-  `autonomous_allocation_mode`, `autonomous_mode_acknowledged`,
-  `paper_trading_only` (default true).
-- `ai_agent_decisions`: `selection_mode`, `autonomous_scan_id`,
-  `autonomous_rank`, `autonomous_score`, `selection_reason`.
-- `ai_agent_training_events`: `selection_mode`, `autonomous_scan_snapshot`,
-  `candidate_scores`, `selection_outcome`.
+---
 
-RLS: same pattern as existing tables (hardcoded super-admin UUID for write
-policies; authenticated read for scans/candidates).
+## 1. Database (1 migration)
 
-## 2. Backend logic
+Tabel baru `public.stock_fundamentals`:
+- `symbol` (PK), `company_name`, `sector`, `industry`, `market_cap`
+- Rasio: `per`, `pbv`, `eps`, `book_value_per_share`, `roe`, `roa`, `der`
+- Income/cashflow: `revenue`, `revenue_growth_yoy`, `net_profit`, `net_profit_growth_yoy`, `gross_margin`, `net_margin`, `operating_cash_flow`, `free_cash_flow`
+- Dividend: `dividend_yield`, `dividend_payout_ratio`
+- Historis & sektor: `historical_per_avg`, `historical_pbv_avg`, `sector_per_avg`, `sector_pbv_avg`, `sector_roe_avg`
+- Meta: `financial_report_date`, `data_source`, `data_freshness` (timestamptz), `raw_payload jsonb`, `created_at`, `updated_at`
 
-New file `src/lib/ai-autonomous-scanner.ts`:
-- `buildUniverse(mode)` — assembles candidate symbols from watchlist, trending
-  news tickers, recent disclosures, and a curated IDX-liquid list.
-- `scoreCandidate(agent, symbol, account, positions)` — reuses
-  `evaluateSymbol` data fetchers (price, technical, news, disclosure, sentiment,
-  market context) and computes 8 sub-scores + composite `autonomousScore` (0-100).
-- `passesAutonomousFilters(candidate, agent)` — applies min score / liquidity
-  / data-quality thresholds, freshness, suspended/UMA guard, RR ≥ 1.5.
-- `allocateAutonomous(candidates, agent, account, mode)` — equal/confidence/
-  risk/dynamic weighting; respects `max_position_per_symbol`, cash, min lot.
+Tabel baru `public.ai_undervalue_scores`:
+- `symbol`, 8 skor (`valuation_score`, `quality_score`, `growth_score`, `financial_health_score`, `dividend_score`, `sector_relative_score`, `technical_timing_score`, `value_trap_risk_score`), `final_undervalue_score`
+- `classification` text (strong_undervalued | undervalued | fair_value | overvalued | value_trap_risk | insufficient_data)
+- `reasoning` text, `warnings jsonb`, timestamps
+- Index `(symbol, created_at desc)`
 
-Update `src/lib/ai-trade-agent.functions.ts`:
-- In `runAgentOnce(agentId)`, branch on `symbol_selection_mode`:
-  - `manual` → existing path unchanged.
-  - `autonomous` → run scanner → persist `ai_agent_scans` + candidates →
-    pick top N → call `evaluateSymbol` per chosen symbol (now passed
-    `autonomous_scan_id/rank/score/selection_reason` via context) → execute
-    paper orders with existing guards → write training events with new
-    `autonomous_scan_snapshot` + `candidate_scores`.
-- New server fns: `listAgentScans`, `getLatestScan`,
-  `acknowledgeAutonomousMode`, `updateAgentSelectionMode`.
+Extend `ai_agent_training_events`:
+- `fundamental_snapshot jsonb`
+- `undervalue_score_snapshot jsonb`
+- `valuation_classification text`
+- `value_trap_risk_score numeric`
+- `sector_comparison_snapshot jsonb`
+- `outcome_1d jsonb`, `outcome_1w jsonb`, `outcome_1m jsonb`
+- `paper_return numeric`
 
-Reuse existing market-session guard, cooldown, idempotency, freshness,
-risk-pause, and daily-trade-limit logic — no duplication.
+Extend `ai_trade_agents`:
+- Allow `strategy_mode` value baru: `undervalued_swing`, `undervalued_accumulation`, `autonomous_undervalued` (kolom text, tidak perlu ALTER)
+- Allow `autonomous_universe` value baru: `undervalued_candidates`, `quality_undervalued`, `dividend_undervalued`, `sector_discount`, `hybrid_trading_and_value`
+- Tambah kolom config: `min_undervalue_score numeric default 65`, `max_value_trap_risk numeric default 40`, `require_fundamental_data boolean default true`
 
-## 3. UI (src/routes/_authenticated/lab.tsx)
+RLS: ikuti pola existing (`auth_read_*` SELECT untuk authenticated; deny public write). `stock_fundamentals` & `ai_undervalue_scores` read-only ke authenticated; ditulis lewat service role di server fn.
 
-Inside existing AI Trade Agent card:
-- **Mode toggle**: `Manual | Autonomous AI`. Switching to Autonomous the first
-  time shows a confirmation dialog with the safety copy from the brief and
-  sets `autonomous_mode_acknowledged = true`.
-- **Manual ticker picker**: hidden/disabled when mode = autonomous.
-- **Autonomous Scanner Panel** (new, shown only in autonomous mode):
-  universe label, scanned count, valid candidates, selected symbols,
-  last/next scan time, scan status, manual "Rescan now" button.
-- **Autonomous Ranking Table**: rank, symbol, autonomous score, sub-scores
-  (Data/Liquidity/Technical/Sentiment/Risk), action, reason.
-- **Trade Plan cards**: add badges `AUTO SELECTED`, `AI RANK #N`,
-  `PASSED RISK CHECK`, `WAITING SETUP`, `NO VALID ENTRY`. Show
-  selection_mode/rank/score/selection_reason when present.
-- **Decision Feed**: add Mode (Manual/Auto) + Rank + Score columns.
-- Empty state when scanner finds nothing: "No valid autonomous setup found".
+---
 
-All existing panels (Data Readiness, Decision Feed, Trade Plan, Trade Memory,
-Performance, Risk, Source Health) are kept intact; only additions.
+## 2. Backend modules
 
-## 4. Settings panel additions
+### `src/lib/fundamentals-fetcher.server.ts` (baru)
+- `fetchFundamentalsFromYahoo(symbol)`: GET `https://query2.finance.yahoo.com/v10/finance/quoteSummary/{symbol}?modules=summaryDetail,defaultKeyStatistics,financialData,assetProfile,incomeStatementHistory,balanceSheetHistory,cashflowStatementHistory` — endpoint publik, sudah digunakan pola yang sama oleh `market.functions.ts`.
+- Mapping ke schema `stock_fundamentals`. Field yang missing → `null`.
+- `upsertFundamentals(row)` via `supabaseAdmin`.
+- `getFundamentals(symbol)`: baca DB; jika `data_freshness` > 7 hari → refetch.
 
-In the agent settings form: selection mode, autonomous universe dropdown,
-max autonomous symbols, max active positions, max new entries/day, min
-scores (autonomous/liquidity/data-quality), allocation mode, rescan
-interval, allow rotation toggle. Defaults match the brief.
+### `src/lib/sector-benchmarks.server.ts` (baru)
+- Hitung `sector_per_avg`, `sector_pbv_avg`, `sector_roe_avg` dari rata-rata `stock_fundamentals` per sektor.
+- Cache ringan di memori (per request).
 
-## 5. Safety invariants kept
+### `src/lib/undervalue-scorer.server.ts` (baru)
+Pure function `scoreUndervalue(f: Fundamentals, tech?: TechSnapshot, news?: NewsSnapshot): UndervalueResult`:
+- 8 sub-score 0–100, masing-masing dengan rule yang jelas dan toleran terhadap null (skip dimensi → bobot didistribusi).
+- `valueTrapRiskScore` agresif: revenue/profit turun > 20% YoY, DER > 2, FCF negatif, sentiment news negatif dominan, downtrend murni → naik.
+- `finalUndervalueScore = weighted(valuation 25%, quality 20%, financialHealth 15%, growth 10%, dividend 5%, sectorRelative 15%, technicalTiming 10%) − valueTrapRiskPenalty`.
+- Klasifikasi: `≥80 strong_undervalued`, `65–79 undervalued`, `50–64 fair_value`, `<50 overvalued`, `valueTrapRisk ≥ 60 → value_trap_risk` (override), `coverage < 50% → insufficient_data`.
+- Return `reasoning` (bahasa Indonesia, menyebut alasan utama) + `warnings[]`.
 
-- Paper-trading only (`paper_trading_only = true`, server-enforced).
-- Market session guard, freshness, suspended/UMA filter, daily loss limit,
-  cooldown, idempotency, max position — all unchanged and applied to
-  autonomous decisions too.
-- If sample size < 20 OR autonomous win rate < 45%, scanner halves
-  allocation (conservative mode).
-- HOLD when no valid setup; never force entry.
+### `src/lib/undervalue.functions.ts` (baru, server fn)
+- `getUndervalueScore({symbol})` — fetch fundamentals, score, upsert ke `ai_undervalue_scores`, return result.
+- `scanUndervalueUniverse({universe, limit})` — loop universe (pakai `IDX_LQ45` + watchlist + tickers dari `ai_agent_scans` terakhir), batasi 30 simbol per panggilan, return ranked list.
+- `getLatestUndervalueScores({limit, classification?})` — read.
+- `listFundamentals({symbol})` — read untuk UI detail.
 
-## 6. Cron
+### Extend `src/lib/ai-autonomous-scanner.server.ts`
+- Tambah branch: ketika `agent.autonomous_universe ∈ {undervalued_candidates, quality_undervalued, dividend_undervalued, sector_discount, hybrid_trading_and_value}` → universe = top symbol dari `ai_undervalue_scores` sesuai filter klasifikasi.
+- Tambah dimensi skor `undervalueScore` ke kandidat output (untuk badge UI).
 
-Existing `/api/public/cron/ai-agent` already iterates active agents and
-calls `runAgentOnce`. No new cron needed — autonomous runs piggyback on it.
-Scanner respects `autonomous_rescan_interval_minutes` (skip if last scan is
-fresher than interval).
+### Extend `src/lib/ai-agent-decision-engine.ts`
+- Saat `strategyMode ∈ {undervalued_swing, undervalued_accumulation, autonomous_undervalued}`:
+  - Ambil `getUndervalueScore(symbol)`.
+  - Tolak BUY jika `classification ∈ {value_trap_risk, insufficient_data, overvalued}` atau `valueTrapRiskScore > agent.max_value_trap_risk` atau `finalUndervalueScore < agent.min_undervalue_score`.
+  - Composite signal di-blend dengan `finalUndervalueScore` (bobot 0.4 untuk mode undervalued).
+  - `selection_reason` di-set "Undervalued candidate — {classification}".
+  - Snapshot fundamental & score dimasukkan ke `realMarketData.fundamentals` & ke `data_snapshot` untuk persist sebagai training data.
 
-## Files touched
+### Extend `runAgentOnce` di `ai-trade-agent.functions.ts`
+- Setelah keputusan diambil, tulis ke `ai_agent_training_events`:
+  - `fundamental_snapshot`, `undervalue_score_snapshot`, `valuation_classification`, `value_trap_risk_score`, `sector_comparison_snapshot`.
 
-- `supabase/migrations/<new>.sql` (new tables + columns + RLS)
-- `src/lib/ai-autonomous-scanner.ts` (new)
-- `src/lib/ai-trade-agent.functions.ts` (branch on mode, persist scans, new fns)
-- `src/lib/ai-agent-decision-engine.ts` (accept optional autonomous context to
-  stamp on decision row)
-- `src/routes/_authenticated/lab.tsx` (mode toggle, scanner panel, ranking
-  table, badges, decision feed columns, settings additions, confirm dialog)
-- `src/integrations/supabase/types.ts` (auto-regenerated after migration)
+---
 
-No existing file/route/table/function is removed.
+## 3. UI
+
+### Tab baru di Screener (`src/routes/_authenticated/screener.tsx`)
+- "Undervalued" tab pakai `scanUndervalueUniverse` + `getLatestUndervalueScores`.
+- Kolom: Symbol, Classification badge, Final Score, Valuation, Quality, Growth, Financial Health, Value Trap Risk, Sector Compare, Reasoning (expandable).
+- Tombol "Refresh fundamentals" per row → memicu `getUndervalueScore`.
+- Filter dropdown: All / Strong / Undervalued / Fair / Overvalued / Value Trap Risk / Insufficient Data.
+
+### Panel baru di `lab.tsx` (AI Trade Agent)
+- Komponen `UndervalueIntegrationPanel` (ditampilkan jika `strategy_mode` mengandung "undervalued" atau autonomous universe mengandung "undervalued"):
+  - Ringkasan: jumlah kandidat per klasifikasi.
+  - Top 10 ranked undervalued candidates dari `ai_undervalue_scores` (klik → fill ke selected_symbols saat manual mode).
+- Tambah pilihan `strategyMode` baru di config select.
+- Tambah pilihan `autonomousUniverse` baru.
+- Tambah 3 input numerik di settings agent: `min_undervalue_score`, `max_value_trap_risk`, `require_fundamental_data` toggle.
+- Trade Plan card: jika `selection_reason` mulai dengan "Undervalued candidate" → tampilkan badge "UNDERVALUED PICK" + score.
+- Decision Feed: tampilkan `valuation_classification`, `finalUndervalueScore`, `valueTrapRiskScore` (kalau ada di snapshot).
+
+### Komponen kecil baru
+- `src/components/UndervalueBadge.tsx`: maps classification → warna (strong = bull, undervalued = primary, fair = muted, overvalued = warning, value_trap_risk = bear, insufficient_data = muted).
+
+---
+
+## 4. Cron / refresh
+
+- Reuse cron existing `/api/public/cron/ai-agent.ts`: setiap kali agent autonomous undervalued berjalan, fetch fundamentals untuk symbol universe yang stale (`data_freshness > 7 days`) — limit 5 simbol per cron tick supaya tidak rate-limit Yahoo.
+- Tidak menambah cron job baru.
+
+---
+
+## 5. Safety & invariants (tidak berubah)
+
+- Tetap paper-only, tidak ada real-money path.
+- Market session guard tetap berlaku.
+- Risk management & data-readiness check existing tetap dijalankan sebelum execute.
+- Semua tabel ikut RLS pattern existing.
+
+---
+
+## Technical details (untuk reviewer)
+
+- Tidak ada API berbayar baru. Yahoo `quoteSummary` adalah endpoint publik yang sama digunakan komponen quotes.
+- Semua scoring deterministik di server (`undervalue-scorer.server.ts`), tidak memanggil LLM untuk klasifikasi — reproducible & cepat.
+- Reasoning bahasa Indonesia, template-based, mencantumkan 3–5 fakta utama dari skor; tidak halusinasi.
+- File baru server-only menggunakan suffix `.server.ts` agar tidak masuk client bundle. Server-fn baru di `.functions.ts`.
+- Tidak menyentuh `routeTree.gen.ts`, `client.ts`, `types.ts` (akan regenerate otomatis setelah migration approval).
+
+---
+
+## Urutan implementasi
+
+1. Approval migration (DB).
+2. Setelah types regenerate, tambah `fundamentals-fetcher.server.ts`, `undervalue-scorer.server.ts`, `sector-benchmarks.server.ts`, `undervalue.functions.ts`.
+3. Extend `ai-autonomous-scanner.server.ts` + `ai-agent-decision-engine.ts` + `ai-trade-agent.functions.ts`.
+4. UI: tab Screener, panel Lab, komponen badge.
+5. Smoke test: panggil `scanUndervalueUniverse` untuk LQ45 top 10 via invoke-server-function.
+
+Estimasi: ~6 file baru, ~4 file diedit. Tidak ada perubahan struktur app.

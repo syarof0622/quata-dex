@@ -398,6 +398,7 @@ export type Database = {
           decision_output: Json | null
           evaluated_at: string | null
           final_outcome: Json | null
+          fundamental_snapshot: Json | null
           holding_period_minutes: number | null
           id: string
           input_features: Json | null
@@ -407,10 +408,14 @@ export type Database = {
           model_version: string | null
           order_id: string | null
           outcome_15m: Json | null
+          outcome_1d: Json | null
           outcome_1h: Json | null
+          outcome_1m: Json | null
+          outcome_1w: Json | null
           outcome_eod: Json | null
           paper_execution: Json | null
           paper_pnl_percent: number | null
+          paper_return: number | null
           pnl: number | null
           pnl_percent: number | null
           position_id: string | null
@@ -419,11 +424,15 @@ export type Database = {
           real_market_data: Json | null
           real_news_data: Json | null
           real_technical_data: Json | null
+          sector_comparison_snapshot: Json | null
           selection_mode: string | null
           selection_outcome: Json | null
           strategy_version: string | null
           symbol: string
+          undervalue_score_snapshot: Json | null
           updated_at: string
+          valuation_classification: string | null
+          value_trap_risk_score: number | null
           was_correct: boolean | null
         }
         Insert: {
@@ -437,6 +446,7 @@ export type Database = {
           decision_output?: Json | null
           evaluated_at?: string | null
           final_outcome?: Json | null
+          fundamental_snapshot?: Json | null
           holding_period_minutes?: number | null
           id?: string
           input_features?: Json | null
@@ -446,10 +456,14 @@ export type Database = {
           model_version?: string | null
           order_id?: string | null
           outcome_15m?: Json | null
+          outcome_1d?: Json | null
           outcome_1h?: Json | null
+          outcome_1m?: Json | null
+          outcome_1w?: Json | null
           outcome_eod?: Json | null
           paper_execution?: Json | null
           paper_pnl_percent?: number | null
+          paper_return?: number | null
           pnl?: number | null
           pnl_percent?: number | null
           position_id?: string | null
@@ -458,11 +472,15 @@ export type Database = {
           real_market_data?: Json | null
           real_news_data?: Json | null
           real_technical_data?: Json | null
+          sector_comparison_snapshot?: Json | null
           selection_mode?: string | null
           selection_outcome?: Json | null
           strategy_version?: string | null
           symbol: string
+          undervalue_score_snapshot?: Json | null
           updated_at?: string
+          valuation_classification?: string | null
+          value_trap_risk_score?: number | null
           was_correct?: boolean | null
         }
         Update: {
@@ -476,6 +494,7 @@ export type Database = {
           decision_output?: Json | null
           evaluated_at?: string | null
           final_outcome?: Json | null
+          fundamental_snapshot?: Json | null
           holding_period_minutes?: number | null
           id?: string
           input_features?: Json | null
@@ -485,10 +504,14 @@ export type Database = {
           model_version?: string | null
           order_id?: string | null
           outcome_15m?: Json | null
+          outcome_1d?: Json | null
           outcome_1h?: Json | null
+          outcome_1m?: Json | null
+          outcome_1w?: Json | null
           outcome_eod?: Json | null
           paper_execution?: Json | null
           paper_pnl_percent?: number | null
+          paper_return?: number | null
           pnl?: number | null
           pnl_percent?: number | null
           position_id?: string | null
@@ -497,11 +520,15 @@ export type Database = {
           real_market_data?: Json | null
           real_news_data?: Json | null
           real_technical_data?: Json | null
+          sector_comparison_snapshot?: Json | null
           selection_mode?: string | null
           selection_outcome?: Json | null
           strategy_version?: string | null
           symbol?: string
+          undervalue_score_snapshot?: Json | null
           updated_at?: string
+          valuation_classification?: string | null
+          value_trap_risk_score?: number | null
           was_correct?: boolean | null
         }
         Relationships: []
@@ -535,16 +562,19 @@ export type Database = {
           max_drawdown: number | null
           max_new_entries_per_day: number
           max_position_per_symbol: number | null
+          max_value_trap_risk: number
           min_autonomous_score: number
           min_confidence_to_trade: number | null
           min_data_quality_score: number
           min_liquidity_score: number
+          min_undervalue_score: number
           mode: string
           name: string
           paper_account_id: string
           paper_trading_only: boolean
           paused_at: string | null
           require_fresh_data: boolean | null
+          require_fundamental_data: boolean
           risk_level: string
           selected_symbols: Json
           started_at: string | null
@@ -586,16 +616,19 @@ export type Database = {
           max_drawdown?: number | null
           max_new_entries_per_day?: number
           max_position_per_symbol?: number | null
+          max_value_trap_risk?: number
           min_autonomous_score?: number
           min_confidence_to_trade?: number | null
           min_data_quality_score?: number
           min_liquidity_score?: number
+          min_undervalue_score?: number
           mode?: string
           name?: string
           paper_account_id: string
           paper_trading_only?: boolean
           paused_at?: string | null
           require_fresh_data?: boolean | null
+          require_fundamental_data?: boolean
           risk_level?: string
           selected_symbols?: Json
           started_at?: string | null
@@ -637,16 +670,19 @@ export type Database = {
           max_drawdown?: number | null
           max_new_entries_per_day?: number
           max_position_per_symbol?: number | null
+          max_value_trap_risk?: number
           min_autonomous_score?: number
           min_confidence_to_trade?: number | null
           min_data_quality_score?: number
           min_liquidity_score?: number
+          min_undervalue_score?: number
           mode?: string
           name?: string
           paper_account_id?: string
           paper_trading_only?: boolean
           paused_at?: string | null
           require_fresh_data?: boolean | null
+          require_fundamental_data?: boolean
           risk_level?: string
           selected_symbols?: Json
           started_at?: string | null
@@ -659,6 +695,66 @@ export type Database = {
           trailing_stop?: boolean | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      ai_undervalue_scores: {
+        Row: {
+          classification: string
+          created_at: string
+          data_coverage: number
+          dividend_score: number
+          final_undervalue_score: number
+          financial_health_score: number
+          growth_score: number
+          id: string
+          quality_score: number
+          reasoning: string | null
+          sector_relative_score: number
+          symbol: string
+          technical_timing_score: number
+          updated_at: string
+          valuation_score: number
+          value_trap_risk_score: number
+          warnings: Json
+        }
+        Insert: {
+          classification?: string
+          created_at?: string
+          data_coverage?: number
+          dividend_score?: number
+          final_undervalue_score?: number
+          financial_health_score?: number
+          growth_score?: number
+          id?: string
+          quality_score?: number
+          reasoning?: string | null
+          sector_relative_score?: number
+          symbol: string
+          technical_timing_score?: number
+          updated_at?: string
+          valuation_score?: number
+          value_trap_risk_score?: number
+          warnings?: Json
+        }
+        Update: {
+          classification?: string
+          created_at?: string
+          data_coverage?: number
+          dividend_score?: number
+          final_undervalue_score?: number
+          financial_health_score?: number
+          growth_score?: number
+          id?: string
+          quality_score?: number
+          reasoning?: string | null
+          sector_relative_score?: number
+          symbol?: string
+          technical_timing_score?: number
+          updated_at?: string
+          valuation_score?: number
+          value_trap_risk_score?: number
+          warnings?: Json
         }
         Relationships: []
       }
@@ -1247,6 +1343,117 @@ export type Database = {
           score?: number
           symbol?: string
           timeframe?: string
+        }
+        Relationships: []
+      }
+      stock_fundamentals: {
+        Row: {
+          book_value_per_share: number | null
+          company_name: string | null
+          created_at: string
+          data_freshness: string
+          data_source: string | null
+          der: number | null
+          dividend_payout_ratio: number | null
+          dividend_yield: number | null
+          eps: number | null
+          financial_report_date: string | null
+          free_cash_flow: number | null
+          gross_margin: number | null
+          historical_pbv_avg: number | null
+          historical_per_avg: number | null
+          id: string
+          industry: string | null
+          market_cap: number | null
+          net_margin: number | null
+          net_profit: number | null
+          net_profit_growth_yoy: number | null
+          operating_cash_flow: number | null
+          pbv: number | null
+          per: number | null
+          raw_payload: Json | null
+          revenue: number | null
+          revenue_growth_yoy: number | null
+          roa: number | null
+          roe: number | null
+          sector: string | null
+          sector_pbv_avg: number | null
+          sector_per_avg: number | null
+          sector_roe_avg: number | null
+          symbol: string
+          updated_at: string
+        }
+        Insert: {
+          book_value_per_share?: number | null
+          company_name?: string | null
+          created_at?: string
+          data_freshness?: string
+          data_source?: string | null
+          der?: number | null
+          dividend_payout_ratio?: number | null
+          dividend_yield?: number | null
+          eps?: number | null
+          financial_report_date?: string | null
+          free_cash_flow?: number | null
+          gross_margin?: number | null
+          historical_pbv_avg?: number | null
+          historical_per_avg?: number | null
+          id?: string
+          industry?: string | null
+          market_cap?: number | null
+          net_margin?: number | null
+          net_profit?: number | null
+          net_profit_growth_yoy?: number | null
+          operating_cash_flow?: number | null
+          pbv?: number | null
+          per?: number | null
+          raw_payload?: Json | null
+          revenue?: number | null
+          revenue_growth_yoy?: number | null
+          roa?: number | null
+          roe?: number | null
+          sector?: string | null
+          sector_pbv_avg?: number | null
+          sector_per_avg?: number | null
+          sector_roe_avg?: number | null
+          symbol: string
+          updated_at?: string
+        }
+        Update: {
+          book_value_per_share?: number | null
+          company_name?: string | null
+          created_at?: string
+          data_freshness?: string
+          data_source?: string | null
+          der?: number | null
+          dividend_payout_ratio?: number | null
+          dividend_yield?: number | null
+          eps?: number | null
+          financial_report_date?: string | null
+          free_cash_flow?: number | null
+          gross_margin?: number | null
+          historical_pbv_avg?: number | null
+          historical_per_avg?: number | null
+          id?: string
+          industry?: string | null
+          market_cap?: number | null
+          net_margin?: number | null
+          net_profit?: number | null
+          net_profit_growth_yoy?: number | null
+          operating_cash_flow?: number | null
+          pbv?: number | null
+          per?: number | null
+          raw_payload?: Json | null
+          revenue?: number | null
+          revenue_growth_yoy?: number | null
+          roa?: number | null
+          roe?: number | null
+          sector?: string | null
+          sector_pbv_avg?: number | null
+          sector_per_avg?: number | null
+          sector_roe_avg?: number | null
+          symbol?: string
+          updated_at?: string
         }
         Relationships: []
       }

@@ -16,7 +16,9 @@ import { isIDXSymbol } from "./lot-sizing";
 import { getIDXMarketSession } from "./idx-market-session";
 
 export type UniverseKey =
-  | "idx_liquid" | "watchlist_plus" | "bluechip" | "custom_universe" | "all_supported";
+  | "idx_liquid" | "watchlist_plus" | "bluechip" | "custom_universe" | "all_supported"
+  | "undervalued_candidates" | "quality_undervalued" | "dividend_undervalued"
+  | "sector_discount" | "hybrid_trading_and_value";
 
 export type ScanCandidate = {
   symbol: string;
@@ -79,6 +81,44 @@ async function buildUniverse(
     for (const w of wl ?? []) push((w as any).symbol);
   } else if (mode === "custom_universe") {
     for (const s of fallbackSymbols) push(s);
+    if (seen.size === 0) for (const s of IDX_LQ45.slice(0, 15)) push(s);
+  } else if (
+    mode === "undervalued_candidates" ||
+    mode === "quality_undervalued" ||
+    mode === "dividend_undervalued" ||
+    mode === "sector_discount" ||
+    mode === "hybrid_trading_and_value"
+  ) {
+    // Pull from latest undervalue scores filtered per mode; fall back to LQ45.
+    const { data: rows } = await supabaseAdmin
+      .from("ai_undervalue_scores")
+      .select("symbol, classification, final_undervalue_score, quality_score, dividend_score, sector_relative_score, technical_timing_score, value_trap_risk_score, created_at")
+      .order("created_at", { ascending: false })
+      .limit(300);
+    const seenSym = new Set<string>();
+    const latest: any[] = [];
+    for (const r of rows ?? []) {
+      const s = (r as any).symbol;
+      if (seenSym.has(s)) continue;
+      seenSym.add(s);
+      latest.push(r);
+    }
+    const pred = (r: any) => {
+      if (r.value_trap_risk_score >= 60 || r.classification === "insufficient_data") return false;
+      if (mode === "undervalued_candidates")
+        return r.classification === "undervalued" || r.classification === "strong_undervalued";
+      if (mode === "quality_undervalued")
+        return r.final_undervalue_score >= 65 && r.quality_score >= 65;
+      if (mode === "dividend_undervalued")
+        return r.dividend_score >= 65 && r.final_undervalue_score >= 55;
+      if (mode === "sector_discount") return r.sector_relative_score >= 70;
+      if (mode === "hybrid_trading_and_value")
+        return r.final_undervalue_score >= 55 && r.technical_timing_score >= 60;
+      return false;
+    };
+    for (const r of latest.filter(pred).slice(0, 25)) push((r as any).symbol);
+    // Fallback: if no scored data yet, seed with LQ45 so scanner still has work
+    // (the agent will populate scores over time).
     if (seen.size === 0) for (const s of IDX_LQ45.slice(0, 15)) push(s);
   }
 
