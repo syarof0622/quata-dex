@@ -20,6 +20,15 @@ import { TickerSearch } from "@/components/TickerSearch";
 
 const MAX_AGENT_SYMBOLS = 5;
 
+// IDX (saham Indonesia) selalu ditampilkan dalam WIB (Asia/Jakarta).
+const WIB_TZ = "Asia/Jakarta";
+const fmtWIBDateTime = (d: string | number | Date) =>
+  new Date(d).toLocaleString("id-ID", { timeZone: WIB_TZ, hour12: false }) + " WIB";
+const fmtWIBTime = (d: string | number | Date) =>
+  new Date(d).toLocaleTimeString("id-ID", { timeZone: WIB_TZ, hour12: false }) + " WIB";
+const fmtWIBDate = (d: string | number | Date) =>
+  new Date(d).toLocaleDateString("id-ID", { timeZone: WIB_TZ });
+
 export const Route = createFileRoute("/_authenticated/lab")({
   head: () => ({ meta: [{ title: "Simulation Lab — Quanta Terminal" }] }),
   component: Lab,
