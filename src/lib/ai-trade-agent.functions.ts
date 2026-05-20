@@ -40,7 +40,7 @@ const StartSchema = z.object({
   allowSell: z.boolean().default(true),
   // Autonomous mode (all optional with safe defaults).
   symbolSelectionMode: z.enum(["manual", "autonomous"]).default("manual"),
-  autonomousUniverse: z.enum(["idx_liquid", "watchlist_plus", "bluechip", "custom_universe", "all_supported"]).default("idx_liquid"),
+  autonomousUniverse: z.enum(["idx_liquid", "watchlist_plus", "bluechip", "custom_universe", "all_supported", "undervalued_candidates", "quality_undervalued", "dividend_undervalued", "sector_discount", "hybrid_trading_and_value"]).default("idx_liquid"),
   maxAutonomousSymbols: z.number().int().min(1).max(10).default(5),
   maxActivePositions: z.number().int().min(1).max(10).default(3),
   maxNewEntriesPerDay: z.number().int().min(0).max(20).default(3),
@@ -340,6 +340,8 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
     autoStopLoss: !!agent.auto_stop_loss, autoTakeProfit: !!agent.auto_take_profit,
     allowBuy: !!agent.allow_buy, allowSell: !!agent.allow_sell,
     tradingHoursOnly: !!agent.trading_hours_only, requireFreshData: !!agent.require_fresh_data,
+    minUndervalueScore: Number(agent.min_undervalue_score ?? 65),
+    maxValueTrapRisk: Number(agent.max_value_trap_risk ?? 40),
   };
 
   const decisions: AgentDecision[] = [];
@@ -727,7 +729,7 @@ export const setSelectionMode = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({
     id: z.string().uuid(),
     mode: z.enum(["manual", "autonomous"]),
-    autonomousUniverse: z.enum(["idx_liquid", "watchlist_plus", "bluechip", "custom_universe", "all_supported"]).optional(),
+    autonomousUniverse: z.enum(["idx_liquid", "watchlist_plus", "bluechip", "custom_universe", "all_supported", "undervalued_candidates", "quality_undervalued", "dividend_undervalued", "sector_discount", "hybrid_trading_and_value"]).optional(),
     acknowledge: z.boolean().optional(),
   }).parse(d))
   .handler(async ({ data }) => {

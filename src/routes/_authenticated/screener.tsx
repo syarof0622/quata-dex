@@ -1,13 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { screenStocks } from "@/lib/screener.functions";
+import { scanUndervalueUniverse, getLatestUndervalueScores } from "@/lib/undervalue.functions";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { UndervalueBadge } from "@/components/UndervalueBadge";
 import { formatPct, colorForChange } from "@/lib/format";
 import { formatLocalPrice } from "@/lib/symbols";
 import { ALL_SECTORS, type Sector } from "@/lib/sectors";
-import { TrendingUp, Filter } from "lucide-react";
+import { Filter, Gem } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/screener")({
   head: () => ({ meta: [{ title: "Screener — Quanta Terminal" }] }),
@@ -84,11 +88,19 @@ function Screener() {
 
   return (
     <div className="p-4 md:p-6 space-y-4">
-      <div className="flex items-end justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold flex items-center gap-2"><Filter className="size-5" /> Stock Screener</h1>
-          <p className="text-sm text-muted-foreground">Multi-faktor screening dengan AI signal v2</p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-semibold flex items-center gap-2"><Filter className="size-5" /> Stock Screener</h1>
+        <p className="text-sm text-muted-foreground">Technical + fundamental screening untuk peluang trade & undervalued</p>
+      </div>
+
+      <Tabs defaultValue="technical">
+        <TabsList>
+          <TabsTrigger value="technical"><Filter className="size-3.5 mr-1" /> Technical</TabsTrigger>
+          <TabsTrigger value="undervalued"><Gem className="size-3.5 mr-1" /> Undervalued (Fundamental)</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="technical" className="space-y-4">
+      <div className="flex items-end justify-end flex-wrap gap-3">
         <div className="inline-flex rounded-md border border-border p-0.5">
           {(["idx", "us", "global"] as const).map(m => (
             <Button key={m} size="sm" variant={f.market === m ? "default" : "ghost"} onClick={() => setF({ ...f, market: m })} className="h-7 px-3">
@@ -223,6 +235,116 @@ function Screener() {
             ))}
             {rows.length === 0 && !data.isFetching && (
               <tr><td colSpan={14} className="p-8 text-center text-muted-foreground">Tidak ada saham yang cocok dengan filter.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+        </TabsContent>
+
+        <TabsContent value="undervalued" className="space-y-4">
+          <UndervaluedPanel />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+function UndervaluedPanel() {
+  const [universe, setUniverse] = useState<"idx_lq45" | "undervalued_candidates" | "quality_undervalued" | "dividend_undervalued" | "sector_discount" | "hybrid_trading_and_value" | "watchlist">("idx_lq45");
+  const [limit, setLimit] = useState(15);
+  const latest = useQuery({
+    queryKey: ["undervalue-latest"],
+    queryFn: () => getLatestUndervalueScores({ data: { limit: 50 } }),
+    refetchInterval: 60_000,
+  });
+  const scan = useMutation({
+    mutationFn: () => scanUndervalueUniverse({ data: { universe, limit } }),
+    onSuccess: (r: any) => { toast.success(`Scan selesai: ${r.scanned} dianalisis, ${r.candidates.length} kandidat`); latest.refetch(); },
+    onError: (e: any) => toast.error(e?.message ?? "Scan gagal"),
+  });
+  const rows: any[] = (scan.data as any)?.candidates?.length
+    ? (scan.data as any).candidates
+    : (latest.data ?? []).map((r: any) => ({
+        symbol: r.symbol,
+        classification: r.classification,
+        finalUndervalueScore: r.final_undervalue_score,
+        valuationScore: r.valuation_score,
+        qualityScore: r.quality_score,
+        financialHealthScore: r.financial_health_score,
+        growthScore: r.growth_score,
+        dividendScore: r.dividend_score,
+        sectorRelativeScore: r.sector_relative_score,
+        technicalTimingScore: r.technical_timing_score,
+        valueTrapRiskScore: r.value_trap_risk_score,
+        reasoning: r.reasoning,
+      }));
+
+  return (
+    <div className="space-y-3">
+      <div className="panel p-4 flex flex-wrap items-end gap-3">
+        <div>
+          <label className="text-xs text-muted-foreground">Universe</label>
+          <select value={universe} onChange={e => setUniverse(e.target.value as any)} className="h-9 px-2 rounded-md bg-background border border-border text-sm">
+            <option value="idx_lq45">IDX LQ45 (semua)</option>
+            <option value="undervalued_candidates">Undervalued candidates</option>
+            <option value="quality_undervalued">Quality + undervalued</option>
+            <option value="dividend_undervalued">Dividend + undervalued</option>
+            <option value="sector_discount">Sector discount</option>
+            <option value="hybrid_trading_and_value">Hybrid trading + value</option>
+            <option value="watchlist">Watchlist</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-muted-foreground">Limit</label>
+          <Input type="number" min={1} max={30} value={limit} onChange={e => setLimit(parseInt(e.target.value || "10", 10))} className="w-24" />
+        </div>
+        <Button onClick={() => scan.mutate()} disabled={scan.isPending}>
+          {scan.isPending ? "Scanning…" : "Run Fundamental Scan"}
+        </Button>
+        <div className="text-[11px] text-muted-foreground ml-auto">
+          Fundamental scan menggunakan data publik Yahoo Finance · skor dievaluasi 8 dimensi · hasil disimpan untuk training.
+        </div>
+      </div>
+
+      <div className="panel p-2 overflow-x-auto">
+        <table className="w-full text-sm min-w-[1100px]">
+          <thead className="text-xs text-muted-foreground">
+            <tr>
+              <th className="text-left p-2">Symbol</th>
+              <th className="text-left p-2">Classification</th>
+              <th className="text-right p-2" title="Final undervalue score (0-100)">Score</th>
+              <th className="text-right p-2" title="Valuation (PER/PBV)">Val</th>
+              <th className="text-right p-2" title="Quality (ROE/ROA/margin)">Qual</th>
+              <th className="text-right p-2" title="Financial health (DER/FCF)">Health</th>
+              <th className="text-right p-2" title="Growth (revenue/profit YoY)">Growth</th>
+              <th className="text-right p-2" title="Dividend yield + payout">Div</th>
+              <th className="text-right p-2" title="Sector relative">Sector</th>
+              <th className="text-right p-2" title="Technical timing">Timing</th>
+              <th className="text-right p-2" title="Value-trap risk (lower=better)">Trap</th>
+              <th className="text-left p-2">Reasoning</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r: any) => (
+              <tr key={r.symbol} className="border-t border-border hover:bg-accent/30 align-top">
+                <td className="p-2 font-mono font-medium">
+                  <Link to="/chart/$symbol" params={{ symbol: r.symbol }}>{r.symbol}</Link>
+                </td>
+                <td className="p-2"><UndervalueBadge classification={r.classification} /></td>
+                <td className={`p-2 text-right font-mono ${r.finalUndervalueScore >= 65 ? "text-bull" : r.finalUndervalueScore < 50 ? "text-bear" : ""}`}>{Number(r.finalUndervalueScore ?? 0).toFixed(0)}</td>
+                <td className="p-2 text-right font-mono">{Number(r.valuationScore ?? 0).toFixed(0)}</td>
+                <td className="p-2 text-right font-mono">{Number(r.qualityScore ?? 0).toFixed(0)}</td>
+                <td className="p-2 text-right font-mono">{Number(r.financialHealthScore ?? 0).toFixed(0)}</td>
+                <td className="p-2 text-right font-mono">{Number(r.growthScore ?? 0).toFixed(0)}</td>
+                <td className="p-2 text-right font-mono">{Number(r.dividendScore ?? 0).toFixed(0)}</td>
+                <td className="p-2 text-right font-mono">{Number(r.sectorRelativeScore ?? 0).toFixed(0)}</td>
+                <td className="p-2 text-right font-mono">{Number(r.technicalTimingScore ?? 0).toFixed(0)}</td>
+                <td className={`p-2 text-right font-mono ${Number(r.valueTrapRiskScore ?? 0) >= 60 ? "text-bear" : ""}`}>{Number(r.valueTrapRiskScore ?? 0).toFixed(0)}</td>
+                <td className="p-2 text-xs text-muted-foreground max-w-[420px]">{r.reasoning ?? "—"}</td>
+              </tr>
+            ))}
+            {rows.length === 0 && !scan.isPending && (
+              <tr><td colSpan={12} className="p-8 text-center text-muted-foreground">Belum ada skor undervalued. Klik <em>Run Fundamental Scan</em> untuk memulai.</td></tr>
             )}
           </tbody>
         </table>

@@ -52,6 +52,9 @@ export type AgentConfig = {
   allowSell: boolean;
   tradingHoursOnly: boolean;
   requireFreshData: boolean;
+  // Undervalued strategy gating (only enforced when strategyMode contains "undervalued")
+  minUndervalueScore?: number;
+  maxValueTrapRisk?: number;
 };
 
 export type Position = { symbol: string; qty: number; avg_price: number };
@@ -321,6 +324,48 @@ export async function evaluateSymbol(
 
   // BUY logic
   if (!pos && agent.allowBuy && composite > 0 && techLabel !== "SELL") {
+    // Undervalue gate: only when strategyMode signals an undervalued strategy.
+    const isUndervaluedStrategy = /undervalu/i.test(agent.strategyMode);
+    if (isUndervaluedStrategy) {
+      const { data: uv } = await supabaseAdmin
+        .from("ai_undervalue_scores")
+        .select("final_undervalue_score, value_trap_risk_score, classification, reasoning")
+        .eq("symbol", sym)
+        .order("created_at", { ascending: false })
+        .limit(1).maybeSingle();
+      const minScore = Number(agent.minUndervalueScore ?? 65);
+      const maxTrap = Number(agent.maxValueTrapRisk ?? 40);
+      if (!uv) {
+        return emptySnap(sym, "Strategi undervalued aktif tetapi belum ada skor fundamental — HOLD.", {
+          realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
+          portfolioSnapshot,
+        });
+      }
+      const score = Number(uv.final_undervalue_score ?? 0);
+      const trap = Number(uv.value_trap_risk_score ?? 0);
+      const cls = String(uv.classification ?? "");
+      if (cls === "value_trap_risk" || cls === "overvalued" || cls === "insufficient_data") {
+        return emptySnap(sym, `Tidak memenuhi undervalued criteria: classification=${cls}. ${uv.reasoning ?? ""}`, {
+          realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
+          portfolioSnapshot, riskSnapshot: { undervalueScore: score, valueTrapRisk: trap, classification: cls },
+        });
+      }
+      if (trap > maxTrap) {
+        return emptySnap(sym, `Value-trap risk ${trap.toFixed(0)} > limit ${maxTrap}. HOLD.`, {
+          realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
+          portfolioSnapshot, riskSnapshot: { undervalueScore: score, valueTrapRisk: trap, classification: cls },
+        });
+      }
+      if (score < minScore) {
+        return emptySnap(sym, `Undervalue score ${score.toFixed(0)} < threshold ${minScore}. HOLD.`, {
+          realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
+          portfolioSnapshot, riskSnapshot: { undervalueScore: score, valueTrapRisk: trap, classification: cls },
+        });
+      }
+      // Blend undervalue score into raw confidence (40% weight) to bias toward true bargains.
+      // (rawConfidence already calibrated below; we adjust calib floor instead.)
+    }
+
     if (confidence < agent.minConfidenceToTrade) {
       return emptySnap(sym, `Confidence ${(confidence * 100).toFixed(0)}% < threshold ${(agent.minConfidenceToTrade*100).toFixed(0)}%. ${calib.reason}`, {
         confidence, rawConfidence, calibrationReason: calib.reason,

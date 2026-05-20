@@ -1,4 +1,5 @@
-import type { Classification } from "@/lib/undervalue-scorer.server";
+// Classification is one of: strong_undervalued | undervalued | fair_value | overvalued | value_trap_risk | insufficient_data
+type Classification = string;
 
 const MAP: Record<string, { label: string; cls: string }> = {
   strong_undervalued: { label: "STRONG UNDERVALUED", cls: "bg-bull text-primary-foreground" },
@@ -9,7 +10,7 @@ const MAP: Record<string, { label: string; cls: string }> = {
   insufficient_data:  { label: "INSUFFICIENT DATA",  cls: "bg-muted text-muted-foreground" },
 };
 
-export function UndervalueBadge({ classification }: { classification: Classification | string }) {
+export function UndervalueBadge({ classification }: { classification: Classification }) {
   const m = MAP[classification] ?? MAP.insufficient_data;
   return (
     <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded whitespace-nowrap ${m.cls}`}>
