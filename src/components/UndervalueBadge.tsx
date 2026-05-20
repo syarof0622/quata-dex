@@ -10,7 +10,7 @@ const MAP: Record<string, { label: string; cls: string }> = {
   insufficient_data:  { label: "INSUFFICIENT DATA",  cls: "bg-muted text-muted-foreground" },
 };
 
-export function UndervalueBadge({ classification }: { classification: Classification | string }) {
+export function UndervalueBadge({ classification }: { classification: Classification }) {
   const m = MAP[classification] ?? MAP.insufficient_data;
   return (
     <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded whitespace-nowrap ${m.cls}`}>
