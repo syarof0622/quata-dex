@@ -225,6 +225,7 @@ export type Database = {
           created_at: string
           data_quality_score: number
           disclosure_score: number
+          fundamental_score: number
           id: string
           liquidity_score: number
           market_context_score: number
@@ -232,13 +233,16 @@ export type Database = {
           rank: number | null
           reason: string | null
           recommendation: string | null
+          regime_fit_score: number
           rejection_reason: string | null
           risk_score: number
           scan_id: string
+          sector_fit_score: number
           sentiment_score: number
           symbol: string
           technical_score: number
           trade_setup_score: number
+          undervalue_score: number
           warnings: Json
         }
         Insert: {
@@ -247,6 +251,7 @@ export type Database = {
           created_at?: string
           data_quality_score?: number
           disclosure_score?: number
+          fundamental_score?: number
           id?: string
           liquidity_score?: number
           market_context_score?: number
@@ -254,13 +259,16 @@ export type Database = {
           rank?: number | null
           reason?: string | null
           recommendation?: string | null
+          regime_fit_score?: number
           rejection_reason?: string | null
           risk_score?: number
           scan_id: string
+          sector_fit_score?: number
           sentiment_score?: number
           symbol: string
           technical_score?: number
           trade_setup_score?: number
+          undervalue_score?: number
           warnings?: Json
         }
         Update: {
@@ -269,6 +277,7 @@ export type Database = {
           created_at?: string
           data_quality_score?: number
           disclosure_score?: number
+          fundamental_score?: number
           id?: string
           liquidity_score?: number
           market_context_score?: number
@@ -276,13 +285,16 @@ export type Database = {
           rank?: number | null
           reason?: string | null
           recommendation?: string | null
+          regime_fit_score?: number
           rejection_reason?: string | null
           risk_score?: number
           scan_id?: string
+          sector_fit_score?: number
           sentiment_score?: number
           symbol?: string
           technical_score?: number
           trade_setup_score?: number
+          undervalue_score?: number
           warnings?: Json
         }
         Relationships: []
@@ -545,6 +557,42 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_alerts_definitions: {
+        Row: {
+          alert_type: string
+          category: string
+          created_at: string
+          default_rule: Json
+          description: string | null
+          enabled: boolean
+          id: string
+          name: string
+          severity: string
+        }
+        Insert: {
+          alert_type: string
+          category?: string
+          created_at?: string
+          default_rule?: Json
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          name: string
+          severity?: string
+        }
+        Update: {
+          alert_type?: string
+          category?: string
+          created_at?: string
+          default_rule?: Json
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          name?: string
+          severity?: string
+        }
+        Relationships: []
+      }
       ai_confidence_calibration_logs: {
         Row: {
           adjustments: Json
@@ -749,6 +797,75 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_trade_reviews: {
+        Row: {
+          agent_id: string
+          ai_review: string | null
+          created_at: string
+          decision_id: string | null
+          entry_context: Json | null
+          entry_price: number | null
+          exit_context: Json | null
+          exit_price: number | null
+          holding_minutes: number | null
+          id: string
+          lesson_label: string | null
+          outcome: string
+          paper_account_id: string
+          pnl: number | null
+          pnl_pct: number | null
+          qty: number | null
+          symbol: string
+          training_event_id: string | null
+          what_went_right: string | null
+          what_went_wrong: string | null
+        }
+        Insert: {
+          agent_id: string
+          ai_review?: string | null
+          created_at?: string
+          decision_id?: string | null
+          entry_context?: Json | null
+          entry_price?: number | null
+          exit_context?: Json | null
+          exit_price?: number | null
+          holding_minutes?: number | null
+          id?: string
+          lesson_label?: string | null
+          outcome?: string
+          paper_account_id: string
+          pnl?: number | null
+          pnl_pct?: number | null
+          qty?: number | null
+          symbol: string
+          training_event_id?: string | null
+          what_went_right?: string | null
+          what_went_wrong?: string | null
+        }
+        Update: {
+          agent_id?: string
+          ai_review?: string | null
+          created_at?: string
+          decision_id?: string | null
+          entry_context?: Json | null
+          entry_price?: number | null
+          exit_context?: Json | null
+          exit_price?: number | null
+          holding_minutes?: number | null
+          id?: string
+          lesson_label?: string | null
+          outcome?: string
+          paper_account_id?: string
+          pnl?: number | null
+          pnl_pct?: number | null
+          qty?: number | null
+          symbol?: string
+          training_event_id?: string | null
+          what_went_right?: string | null
+          what_went_wrong?: string | null
+        }
+        Relationships: []
+      }
       ai_undervalue_scores: {
         Row: {
           classification: string
@@ -841,31 +958,43 @@ export type Database = {
       }
       backtests: {
         Row: {
+          drift_score: number | null
           equity_curve_json: Json
           id: string
           metrics_json: Json
           ran_at: string
+          regime: string | null
+          sector: string | null
           strategy_id: string | null
+          strategy_version: string | null
           symbol: string
           timeframe: string
           user_id: string
         }
         Insert: {
+          drift_score?: number | null
           equity_curve_json?: Json
           id?: string
           metrics_json?: Json
           ran_at?: string
+          regime?: string | null
+          sector?: string | null
           strategy_id?: string | null
+          strategy_version?: string | null
           symbol: string
           timeframe: string
           user_id: string
         }
         Update: {
+          drift_score?: number | null
           equity_curve_json?: Json
           id?: string
           metrics_json?: Json
           ran_at?: string
+          regime?: string | null
+          sector?: string | null
           strategy_id?: string | null
+          strategy_version?: string | null
           symbol?: string
           timeframe?: string
           user_id?: string
@@ -928,6 +1057,54 @@ export type Database = {
           symbol?: string
           technical_quality?: string
           warnings?: Json
+        }
+        Relationships: []
+      }
+      market_regime_snapshots: {
+        Row: {
+          advancers: number | null
+          breadth_pct: number | null
+          created_at: string
+          decliners: number | null
+          id: string
+          idx_change_pct: number | null
+          idx_level: number | null
+          raw_payload: Json | null
+          reasoning: string | null
+          regime_breadth: string
+          regime_classification: string
+          regime_trend: string
+          regime_volatility: string
+        }
+        Insert: {
+          advancers?: number | null
+          breadth_pct?: number | null
+          created_at?: string
+          decliners?: number | null
+          id?: string
+          idx_change_pct?: number | null
+          idx_level?: number | null
+          raw_payload?: Json | null
+          reasoning?: string | null
+          regime_breadth?: string
+          regime_classification?: string
+          regime_trend?: string
+          regime_volatility?: string
+        }
+        Update: {
+          advancers?: number | null
+          breadth_pct?: number | null
+          created_at?: string
+          decliners?: number | null
+          id?: string
+          idx_change_pct?: number | null
+          idx_level?: number | null
+          raw_payload?: Json | null
+          reasoning?: string | null
+          regime_breadth?: string
+          regime_classification?: string
+          regime_trend?: string
+          regime_volatility?: string
         }
         Relationships: []
       }
@@ -1310,21 +1487,84 @@ export type Database = {
         }
         Relationships: []
       }
+      portfolio_risk_snapshots: {
+        Row: {
+          agent_id: string | null
+          cash_pct: number
+          concentration_hhi: number
+          created_at: string
+          current_drawdown: number
+          daily_pnl: number
+          daily_pnl_pct: number
+          gross_exposure: number
+          id: string
+          max_position_weight: number
+          net_exposure: number
+          paper_account_id: string
+          risk_level: string
+          sector_concentration: Json
+          trades_today: number
+          warnings: Json
+        }
+        Insert: {
+          agent_id?: string | null
+          cash_pct?: number
+          concentration_hhi?: number
+          created_at?: string
+          current_drawdown?: number
+          daily_pnl?: number
+          daily_pnl_pct?: number
+          gross_exposure?: number
+          id?: string
+          max_position_weight?: number
+          net_exposure?: number
+          paper_account_id: string
+          risk_level?: string
+          sector_concentration?: Json
+          trades_today?: number
+          warnings?: Json
+        }
+        Update: {
+          agent_id?: string | null
+          cash_pct?: number
+          concentration_hhi?: number
+          created_at?: string
+          current_drawdown?: number
+          daily_pnl?: number
+          daily_pnl_pct?: number
+          gross_exposure?: number
+          id?: string
+          max_position_weight?: number
+          net_exposure?: number
+          paper_account_id?: string
+          risk_level?: string
+          sector_concentration?: Json
+          trades_today?: number
+          warnings?: Json
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
+          demo_mode: boolean
           display_name: string | null
           id: string
+          onboarding_completed: boolean
         }
         Insert: {
           created_at?: string
+          demo_mode?: boolean
           display_name?: string | null
           id: string
+          onboarding_completed?: boolean
         }
         Update: {
           created_at?: string
+          demo_mode?: boolean
           display_name?: string | null
           id?: string
+          onboarding_completed?: boolean
         }
         Relationships: []
       }
@@ -1346,6 +1586,42 @@ export type Database = {
           searched_at?: string
           symbol?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      sector_strength_snapshots: {
+        Row: {
+          breadth_score: number
+          classification: string
+          created_at: string
+          id: string
+          momentum_score: number
+          reasoning: string | null
+          relative_strength: number
+          sector: string
+          top_symbols: Json
+        }
+        Insert: {
+          breadth_score?: number
+          classification?: string
+          created_at?: string
+          id?: string
+          momentum_score?: number
+          reasoning?: string | null
+          relative_strength?: number
+          sector: string
+          top_symbols?: Json
+        }
+        Update: {
+          breadth_score?: number
+          classification?: string
+          created_at?: string
+          id?: string
+          momentum_score?: number
+          reasoning?: string | null
+          relative_strength?: number
+          sector?: string
+          top_symbols?: Json
         }
         Relationships: []
       }
