@@ -448,5 +448,6 @@ export async function evaluateSymbol(
     realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
     portfolioSnapshot, dataFreshnessSeconds: freshness,
     dataSource: "Yahoo Finance + scraped news",
+    dataQuality,
   });
 }
