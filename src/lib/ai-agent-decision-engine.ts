@@ -280,6 +280,35 @@ export async function evaluateSymbol(
   const { data: sentRow } = await supabaseAdmin
     .from("ticker_sentiment_summary").select("*").eq("symbol", sym).maybeSingle();
   const sentScore = Number(sentRow?.average_sentiment_score ?? 0); // -1..1
+  const sentSamples = Number(sentRow?.positive_count ?? 0)
+                    + Number(sentRow?.negative_count ?? 0)
+                    + Number(sentRow?.neutral_count ?? 0);
+
+  // 6b. Fundamental availability for data-quality scoring
+  const { data: fundRow } = await supabaseAdmin
+    .from("stock_fundamentals")
+    .select("per, pbv, roe, der, financial_report_date")
+    .eq("symbol", sym).maybeSingle();
+  const hasCoreRatios = !!fundRow && [fundRow.per, fundRow.pbv, fundRow.roe, fundRow.der]
+    .filter(v => v != null).length >= 2;
+  const reportAgeDays = fundRow?.financial_report_date
+    ? Math.round((Date.now() - new Date(fundRow.financial_report_date).getTime()) / 86400_000)
+    : null;
+
+  // 6c. Compute data quality from snapshots already in hand
+  const dataQuality = computeDataQuality({
+    symbol: sym,
+    price: { value: price, freshnessSeconds: freshness },
+    technical: { hasData: !!setup, score: techScore },
+    news: {
+      count: realNewsData.latestNewsCount,
+      sources: realNewsData.sources?.length ?? 0,
+      highImpact: realNewsData.highImpactNewsCount,
+    },
+    sentiment: { score: sentScore, sampleCount: sentSamples },
+    disclosure: { hasRecent: !!realDisclosureData.hasRecentDisclosure },
+    fundamental: { hasCoreRatios, reportAgeDays },
+  });
 
   // 7. Portfolio context
   const pos = positions.find(p => p.symbol === sym);
@@ -297,7 +326,11 @@ export async function evaluateSymbol(
                      : realMarketContext.ihsgBias === "bearish" ? -0.05 : 0);
   const composite = techNorm * 0.50 + sentScore * 0.20 + newsBiasNorm * 0.20
                   + disclosureBoost + macroBoost;
-  const rawConfidence = Math.min(0.99, Math.abs(composite));
+  let rawConfidence = Math.min(0.99, Math.abs(composite));
+
+  // Penalize raw confidence by data-quality shortfall
+  const dqPenalty = (100 - dataQuality.overallDataQualityScore) / 200; // up to -0.5
+  rawConfidence = Math.max(0, rawConfidence - dqPenalty);
 
   // 9. Calibrate using historic outcomes
   const calib = await calibrateConfidence(agent.id, sym, rawConfidence, agent.strategyMode);
