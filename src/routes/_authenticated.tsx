@@ -85,6 +85,7 @@ function AuthedLayout() {
             </div>
           </header>
           <main className="flex-1 min-w-0 overflow-auto"><Outlet /></main>
+          <OnboardingDialog />
         </div>
       </div>
     </SidebarProvider>
