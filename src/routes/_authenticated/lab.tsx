@@ -172,6 +172,7 @@ function Lab() {
         <TabsContent value="backtest"><Backtester /></TabsContent>
         <TabsContent value="coach"><AICoach /></TabsContent>
         <TabsContent value="agent"><AIAgentPanel /></TabsContent>
+        <TabsContent value="insights"><AiInsightsPanel /></TabsContent>
       </Tabs>
     </div>
   );
