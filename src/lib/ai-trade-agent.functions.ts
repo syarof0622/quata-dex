@@ -720,3 +720,49 @@ export const listTradeMemory = createServerFn({ method: "GET" })
       .order("updated_at", { ascending: false });
     return rows ?? [];
   });
+
+// ---- Autonomous mode server fns ----
+
+export const setSelectionMode = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({
+    id: z.string().uuid(),
+    mode: z.enum(["manual", "autonomous"]),
+    autonomousUniverse: z.enum(["idx_liquid", "watchlist_plus", "bluechip", "custom_universe", "all_supported"]).optional(),
+    acknowledge: z.boolean().optional(),
+  }).parse(d))
+  .handler(async ({ data }) => {
+    const patch: any = { symbol_selection_mode: data.mode };
+    if (data.autonomousUniverse) patch.autonomous_universe = data.autonomousUniverse;
+    if (data.acknowledge) patch.autonomous_mode_acknowledged = true;
+    const { error } = await supabaseAdmin.from("ai_trade_agents")
+      .update(patch).eq("id", data.id).eq("user_id", USER_ID);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const runAutonomousScanNow = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data }) => {
+    const { data: agent } = await supabaseAdmin.from("ai_trade_agents")
+      .select("*").eq("id", data.id).eq("user_id", USER_ID).maybeSingle();
+    if (!agent) throw new Error("agent not found");
+    // Force immediate rescan by clearing the timestamp guard.
+    await supabaseAdmin.from("ai_trade_agents")
+      .update({ last_autonomous_scan_at: null }).eq("id", data.id);
+    const scan = await runAutonomousScan(agent);
+    return scan;
+  });
+
+export const getLatestScan = createServerFn({ method: "GET" })
+  .inputValidator((d: unknown) => z.object({ agentId: z.string().uuid() }).parse(d))
+  .handler(async ({ data }) => {
+    const { data: scan } = await supabaseAdmin
+      .from("ai_agent_scans").select("*")
+      .eq("agent_id", data.agentId)
+      .order("scan_time", { ascending: false }).limit(1).maybeSingle();
+    if (!scan) return { scan: null, candidates: [] };
+    const { data: cands } = await supabaseAdmin
+      .from("ai_agent_scan_candidates").select("*")
+      .eq("scan_id", (scan as any).id).order("rank", { ascending: true });
+    return { scan, candidates: cands ?? [] };
+  });
