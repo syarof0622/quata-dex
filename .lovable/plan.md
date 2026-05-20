@@ -53,7 +53,10 @@ Permintaan ini sangat besar (10 modul, banyak tabel baru, integrasi lintas fitur
 - ✅ RLS pakai pola existing (hardcoded UUID per security memory).
 - ✅ Tidak menghapus fitur existing.
 
-## Saya minta konfirmasi
-Mau saya mulai dari **Fase A (Data Quality + Confidence Calibration)** di turn berikutnya? Itu yang paling berdampak dan dipakai semua modul lain.
+## Status
 
-Jika kamu mau urutan berbeda (mis. Demo/Onboarding dulu karena lebih cepat dipakai), sebutkan saja.
+- ✅ Fase A — Data Quality + Confidence Calibration (ter-ship)
+- ✅ Fase B — Market Regime + Sector Rotation + Portfolio Risk (ter-ship)
+- ✅ Fase C — Post-Trade Review + Lessons Learned (ter-ship)
+- ✅ Fase D — Backtest fields + AI Alerts Definitions (15 tipe) + Evaluator (ter-ship)
+- ✅ Fase E — Demo Mode + Onboarding Dialog + Default Watchlist Seed (ter-ship)
