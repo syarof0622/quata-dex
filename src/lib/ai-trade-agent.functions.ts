@@ -474,6 +474,7 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
         sentiment_snapshot: { news: decision.realNewsData, disclosure: decision.realDisclosureData } as any,
         portfolio_snapshot: decision.portfolioSnapshot as any,
         risk_snapshot: { ...decision.riskSnapshot, marketContext: decision.realMarketContext } as any,
+        data_quality_snapshot: decision.dataQuality as any,
         decision_status: decisionStatus,
         idempotency_key: idemKey(agent.id, sym, decision.action),
         selection_mode: isAutonomous ? "autonomous" : "manual",

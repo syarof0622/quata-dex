@@ -8,6 +8,7 @@ import { getTradeSetup } from "./signals.functions";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sizeOrder, isIDXSymbol, convertSharesToLot } from "./lot-sizing";
 import { canExecutePaperTrade, getIDXMarketSession } from "./idx-market-session";
+import { computeDataQuality, type DataQualityReport } from "./data-quality";
 
 export type AgentAction = "BUY" | "SELL" | "HOLD" | "EXIT";
 
@@ -36,6 +37,7 @@ export type AgentDecision = {
   realMarketContext: Record<string, unknown>;
   portfolioSnapshot: Record<string, unknown>;
   riskSnapshot: Record<string, unknown>;
+  dataQuality: DataQualityReport | null;
   warnings: string[];
 };
 
@@ -81,6 +83,7 @@ function emptySnap(symbol: string, reason: string, extra: Partial<AgentDecision>
     realMarketData: {}, realTechnicalData: {}, realNewsData: {},
     realDisclosureData: {}, realMarketContext: {},
     portfolioSnapshot: {}, riskSnapshot: {},
+    dataQuality: null,
     warnings: [reason],
     ...extra,
   };
@@ -277,6 +280,35 @@ export async function evaluateSymbol(
   const { data: sentRow } = await supabaseAdmin
     .from("ticker_sentiment_summary").select("*").eq("symbol", sym).maybeSingle();
   const sentScore = Number(sentRow?.average_sentiment_score ?? 0); // -1..1
+  const sentSamples = Number(sentRow?.positive_count ?? 0)
+                    + Number(sentRow?.negative_count ?? 0)
+                    + Number(sentRow?.neutral_count ?? 0);
+
+  // 6b. Fundamental availability for data-quality scoring
+  const { data: fundRow } = await supabaseAdmin
+    .from("stock_fundamentals")
+    .select("per, pbv, roe, der, financial_report_date")
+    .eq("symbol", sym).maybeSingle();
+  const hasCoreRatios = !!fundRow && [fundRow.per, fundRow.pbv, fundRow.roe, fundRow.der]
+    .filter(v => v != null).length >= 2;
+  const reportAgeDays = fundRow?.financial_report_date
+    ? Math.round((Date.now() - new Date(fundRow.financial_report_date).getTime()) / 86400_000)
+    : null;
+
+  // 6c. Compute data quality from snapshots already in hand
+  const dataQuality = computeDataQuality({
+    symbol: sym,
+    price: { value: price, freshnessSeconds: freshness },
+    technical: { hasData: !!setup, score: techScore },
+    news: {
+      count: realNewsData.latestNewsCount,
+      sources: realNewsData.sources?.length ?? 0,
+      highImpact: realNewsData.highImpactNewsCount,
+    },
+    sentiment: { score: sentScore, sampleCount: sentSamples },
+    disclosure: { hasRecent: !!realDisclosureData.hasRecentDisclosure },
+    fundamental: { hasCoreRatios, reportAgeDays },
+  });
 
   // 7. Portfolio context
   const pos = positions.find(p => p.symbol === sym);
@@ -294,7 +326,11 @@ export async function evaluateSymbol(
                      : realMarketContext.ihsgBias === "bearish" ? -0.05 : 0);
   const composite = techNorm * 0.50 + sentScore * 0.20 + newsBiasNorm * 0.20
                   + disclosureBoost + macroBoost;
-  const rawConfidence = Math.min(0.99, Math.abs(composite));
+  let rawConfidence = Math.min(0.99, Math.abs(composite));
+
+  // Penalize raw confidence by data-quality shortfall
+  const dqPenalty = (100 - dataQuality.overallDataQualityScore) / 200; // up to -0.5
+  rawConfidence = Math.max(0, rawConfidence - dqPenalty);
 
   // 9. Calibrate using historic outcomes
   const calib = await calibrateConfidence(agent.id, sym, rawConfidence, agent.strategyMode);
@@ -318,7 +354,7 @@ export async function evaluateSymbol(
       dataFreshnessSeconds: freshness, dataSource: "Yahoo Finance + scraped news",
       realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
       portfolioSnapshot,
-      riskSnapshot: { exposure: symbolExposure }, warnings,
+      riskSnapshot: { exposure: symbolExposure }, dataQuality, warnings,
     };
   }
 
@@ -403,7 +439,7 @@ export async function evaluateSymbol(
       dataFreshnessSeconds: freshness, dataSource: "Yahoo Finance + scraped news + IDX disclosure",
       realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
       portfolioSnapshot,
-      riskSnapshot: { slPct: preset.slPct, tpPct: preset.tpPct, rr }, warnings,
+      riskSnapshot: { slPct: preset.slPct, tpPct: preset.tpPct, rr }, dataQuality, warnings,
     };
   }
 
@@ -412,5 +448,6 @@ export async function evaluateSymbol(
     realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
     portfolioSnapshot, dataFreshnessSeconds: freshness,
     dataSource: "Yahoo Finance + scraped news",
+    dataQuality,
   });
 }
