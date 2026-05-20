@@ -354,7 +354,7 @@ export async function evaluateSymbol(
       dataFreshnessSeconds: freshness, dataSource: "Yahoo Finance + scraped news",
       realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
       portfolioSnapshot,
-      riskSnapshot: { exposure: symbolExposure }, warnings,
+      riskSnapshot: { exposure: symbolExposure }, dataQuality, warnings,
     };
   }
 
