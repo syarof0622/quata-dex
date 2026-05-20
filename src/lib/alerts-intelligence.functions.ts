@@ -19,7 +19,7 @@ type EvaluatedAlert = {
   name: string;
   severity: string;
   message: string;
-  payload: Record<string, unknown>;
+  payload: any;
   triggered_at: string;
 };
 
