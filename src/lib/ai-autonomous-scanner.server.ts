@@ -16,7 +16,9 @@ import { isIDXSymbol } from "./lot-sizing";
 import { getIDXMarketSession } from "./idx-market-session";
 
 export type UniverseKey =
-  | "idx_liquid" | "watchlist_plus" | "bluechip" | "custom_universe" | "all_supported";
+  | "idx_liquid" | "watchlist_plus" | "bluechip" | "custom_universe" | "all_supported"
+  | "undervalued_candidates" | "quality_undervalued" | "dividend_undervalued"
+  | "sector_discount" | "hybrid_trading_and_value";
 
 export type ScanCandidate = {
   symbol: string;
