@@ -37,6 +37,7 @@ export type AgentDecision = {
   realMarketContext: Record<string, unknown>;
   portfolioSnapshot: Record<string, unknown>;
   riskSnapshot: Record<string, unknown>;
+  dataQuality: DataQualityReport | null;
   warnings: string[];
 };
 
