@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sparkles, X, Bot, Play, Pause, Square, AlertTriangle } from "lucide-react";
 import { JournalPanel } from "@/components/JournalPanel";
 import { ChatPanel } from "@/components/ChatPanel";
-import { startAgent, pauseAgent, stopAgent, emergencyStop, getAgentStatus, runAgentNow, updateAgentSymbols, listTradeMemory } from "@/lib/ai-trade-agent.functions";
+import { startAgent, pauseAgent, stopAgent, emergencyStop, getAgentStatus, runAgentNow, updateAgentSymbols, listTradeMemory, setSelectionMode, runAutonomousScanNow, getLatestScan } from "@/lib/ai-trade-agent.functions";
 import { TickerSearch } from "@/components/TickerSearch";
 
 const MAX_AGENT_SYMBOLS = 5;
@@ -433,33 +433,42 @@ function AIAgentPanel() {
           tidak terhubung ke broker, dan tidak ada order ke sekuritas.
         </p>
 
+        <AutonomousModeControls agent={agent} onChange={() => status.refetch()} />
+
         <div className="grid md:grid-cols-4 gap-2">
-          <div className="md:col-span-2">
-            <label className="text-xs text-muted-foreground">Emiten (maks {MAX_AGENT_SYMBOLS}) {isActive && <span className="text-[10px] text-primary">· perubahan langsung diterapkan ke agent</span>}</label>
-            <TickerSearch
-              placeholder="Cari emiten (BBCA.JK, AAPL, …)"
-              onPick={(sym) => addSymbol(sym)}
-            />
-            <div className="flex flex-wrap gap-1 mt-2 min-h-6">
-              {symbols.length === 0 && <span className="text-xs text-muted-foreground">Belum ada emiten dipilih.</span>}
-              {symbols.map(s => (
-                <span key={s} className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded bg-accent text-xs font-mono">
-                  {s}
-                  <button
-                    type="button"
-                    onClick={() => removeSymbol(s)}
-                    className="inline-flex items-center gap-1 ml-1 px-1.5 py-0.5 rounded bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
-                    aria-label={`Hentikan AI Agent untuk ${s}`}
-                    title={isActive ? `Hentikan AI Agent untuk ${s}` : `Hapus ${s}`}
-                  >
-                    <Square className="size-2.5 fill-current" />
-                    <span className="text-[10px] font-sans font-medium">Stop</span>
-                  </button>
-                </span>
-              ))}
+          {(agent?.symbol_selection_mode ?? "manual") !== "autonomous" && (
+            <div className="md:col-span-2">
+              <label className="text-xs text-muted-foreground">Emiten (maks {MAX_AGENT_SYMBOLS}) {isActive && <span className="text-[10px] text-primary">· perubahan langsung diterapkan ke agent</span>}</label>
+              <TickerSearch
+                placeholder="Cari emiten (BBCA.JK, AAPL, …)"
+                onPick={(sym) => addSymbol(sym)}
+              />
+              <div className="flex flex-wrap gap-1 mt-2 min-h-6">
+                {symbols.length === 0 && <span className="text-xs text-muted-foreground">Belum ada emiten dipilih.</span>}
+                {symbols.map(s => (
+                  <span key={s} className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded bg-accent text-xs font-mono">
+                    {s}
+                    <button
+                      type="button"
+                      onClick={() => removeSymbol(s)}
+                      className="inline-flex items-center gap-1 ml-1 px-1.5 py-0.5 rounded bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                      aria-label={`Hentikan AI Agent untuk ${s}`}
+                      title={isActive ? `Hentikan AI Agent untuk ${s}` : `Hapus ${s}`}
+                    >
+                      <Square className="size-2.5 fill-current" />
+                      <span className="text-[10px] font-sans font-medium">Stop</span>
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <div className="text-[10px] text-muted-foreground mt-1">{symbols.length}/{MAX_AGENT_SYMBOLS} dipilih</div>
             </div>
-            <div className="text-[10px] text-muted-foreground mt-1">{symbols.length}/{MAX_AGENT_SYMBOLS} dipilih</div>
-          </div>
+          )}
+          {(agent?.symbol_selection_mode ?? "manual") === "autonomous" && (
+            <div className="md:col-span-2">
+              <AutonomousScannerPanel agent={agent} />
+            </div>
+          )}
           {!isActive && <div><label className="text-xs text-muted-foreground">Allocation / trade (IDR)</label><Input type="number" value={alloc} onChange={e => setAlloc(e.target.value)} /></div>}
           {!isActive && (
             <div>

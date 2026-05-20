@@ -7,6 +7,7 @@ import { evaluateSymbol, type AgentConfig, type AgentDecision, type Position } f
 import { isIDXSymbol, convertSharesToLot } from "./lot-sizing";
 import { getQuote } from "./market.functions";
 import { canExecutePaperTrade, getIDXMarketSession } from "./idx-market-session";
+import { runAutonomousScan } from "./ai-autonomous-scanner.server";
 
 const USER_ID = "00000000-0000-0000-0000-000000000001";
 const COOLDOWN_MS = { BUY: 15 * 60_000, SELL: 10 * 60_000, EXIT: 10 * 60_000 };
@@ -21,7 +22,7 @@ async function ensurePaperAccount() {
 }
 
 const StartSchema = z.object({
-  selectedSymbols: z.array(z.string().min(1).max(20)).min(1).max(20),
+  selectedSymbols: z.array(z.string().min(1).max(20)).max(20).default([]),
   allocationAmount: z.number().positive().max(1e10).default(1_000_000),
   strategyMode: z.string().default("hybrid"),
   riskLevel: z.enum(["conservative", "balanced", "aggressive"]).default("balanced"),
@@ -37,12 +38,27 @@ const StartSchema = z.object({
   requireFreshData: z.boolean().default(true),
   allowBuy: z.boolean().default(true),
   allowSell: z.boolean().default(true),
+  // Autonomous mode (all optional with safe defaults).
+  symbolSelectionMode: z.enum(["manual", "autonomous"]).default("manual"),
+  autonomousUniverse: z.enum(["idx_liquid", "watchlist_plus", "bluechip", "custom_universe", "all_supported"]).default("idx_liquid"),
+  maxAutonomousSymbols: z.number().int().min(1).max(10).default(5),
+  maxActivePositions: z.number().int().min(1).max(10).default(3),
+  maxNewEntriesPerDay: z.number().int().min(0).max(20).default(3),
+  minAutonomousScore: z.number().min(0).max(100).default(70),
+  minLiquidityScore: z.number().min(0).max(100).default(60),
+  minDataQualityScore: z.number().min(0).max(100).default(70),
+  allowAutonomousRotation: z.boolean().default(true),
+  autonomousRescanIntervalMinutes: z.number().int().min(1).max(240).default(15),
+  autonomousAllocationMode: z.enum(["equal_weight", "confidence_weighted", "risk_weighted", "dynamic_ai"]).default("dynamic_ai"),
 });
 
 export const startAgent = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => StartSchema.parse(d))
   .handler(async ({ data }) => {
     const acct = await ensurePaperAccount();
+    if (data.symbolSelectionMode === "manual" && data.selectedSymbols.length === 0) {
+      throw new Error("Pilih minimal 1 emiten untuk mode Manual.");
+    }
     // Single active agent: deactivate any other running agent for this user
     await supabaseAdmin.from("ai_trade_agents").update({ status: "stopped", stopped_at: new Date().toISOString() })
       .eq("user_id", USER_ID).neq("status", "stopped");
@@ -68,6 +84,19 @@ export const startAgent = createServerFn({ method: "POST" })
       min_confidence_to_trade: data.minConfidenceToTrade,
       trading_enabled: true,
       started_at: new Date().toISOString(),
+      // Autonomous fields:
+      symbol_selection_mode: data.symbolSelectionMode,
+      autonomous_universe: data.autonomousUniverse,
+      max_autonomous_symbols: data.maxAutonomousSymbols,
+      max_active_positions: data.maxActivePositions,
+      max_new_entries_per_day: data.maxNewEntriesPerDay,
+      min_autonomous_score: data.minAutonomousScore,
+      min_liquidity_score: data.minLiquidityScore,
+      min_data_quality_score: data.minDataQualityScore,
+      allow_autonomous_rotation: data.allowAutonomousRotation,
+      autonomous_rescan_interval_minutes: data.autonomousRescanIntervalMinutes,
+      autonomous_allocation_mode: data.autonomousAllocationMode,
+      paper_trading_only: true,
     }).select("*").single();
     if (error) throw new Error(error.message);
     return agent;
@@ -317,7 +346,68 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
   let executed = 0;
   let tradesUsed = 0;
 
-  for (const sym of (agent.selected_symbols as string[])) {
+  // ---- Resolve symbol set: manual = stored list, autonomous = scanner output.
+  const isAutonomous = (agent.symbol_selection_mode ?? "manual") === "autonomous";
+  let symbolsToEvaluate: string[] = (agent.selected_symbols as string[]) ?? [];
+  let autonomousScanId: string | null = null;
+  const autonomousMeta = new Map<string, { rank: number; score: number; reason: string }>();
+
+  if (isAutonomous) {
+    const intervalMs = Number(agent.autonomous_rescan_interval_minutes ?? 15) * 60_000;
+    const lastScanAt = agent.last_autonomous_scan_at ? new Date(agent.last_autonomous_scan_at).getTime() : 0;
+    const rescanDue = Date.now() - lastScanAt >= intervalMs;
+
+    let scan = null as Awaited<ReturnType<typeof runAutonomousScan>> | null;
+    if (rescanDue) {
+      try { scan = await runAutonomousScan(agent); } catch (e: any) {
+        await supabaseAdmin.from("ai_agent_risk_logs").insert({
+          agent_id: agent.id, risk_type: "scanner_error", risk_level: "warning",
+          message: e?.message ?? "scanner failed", action_taken: "skip",
+        });
+      }
+    } else {
+      // Reuse last scan's selected_symbols when interval not yet elapsed.
+      const { data: last } = await supabaseAdmin
+        .from("ai_agent_scans").select("*")
+        .eq("agent_id", agent.id).order("scan_time", { ascending: false }).limit(1).maybeSingle();
+      if (last) {
+        scan = {
+          scanId: (last as any).id, agentId: agent.id, universe: (last as any).universe,
+          scannedCount: (last as any).symbols_scanned_count,
+          validCount: (last as any).valid_candidates_count,
+          selected: ((last as any).selected_symbols ?? []) as string[],
+          topCandidates: ((last as any).top_candidates ?? []) as any[],
+          rejected: ((last as any).rejected_candidates ?? []) as any[],
+          reasoning: (last as any).reasoning ?? "",
+        };
+      }
+    }
+
+    if (scan) {
+      autonomousScanId = scan.scanId;
+      symbolsToEvaluate = scan.selected;
+      for (const c of scan.topCandidates) {
+        autonomousMeta.set(c.symbol, {
+          rank: c.rank ?? 0, score: c.autonomousScore, reason: c.reason,
+        });
+      }
+      // Keep agent.selected_symbols in sync with current AI pick for the UI.
+      await supabaseAdmin.from("ai_trade_agents")
+        .update({ selected_symbols: symbolsToEvaluate })
+        .eq("id", agent.id);
+    } else {
+      symbolsToEvaluate = [];
+    }
+  }
+
+  // Respect maxActivePositions for autonomous (existing positions count first).
+  const maxActive = Number(agent.max_active_positions ?? 3);
+  const openSymbols = new Set(posList.map(p => p.symbol));
+  const slotsLeft = isAutonomous ? Math.max(0, maxActive - openSymbols.size) : Number.MAX_SAFE_INTEGER;
+  let newEntriesUsed = 0;
+  const maxNew = Number(agent.max_new_entries_per_day ?? 3);
+
+  for (const sym of symbolsToEvaluate) {
     try {
       const decision = await evaluateSymbol(cfg, sym, account, posList);
       decisions.push(decision);
@@ -326,7 +416,13 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
       let orderId: string | null = null;
 
       const isTrade = decision.action === "BUY" || decision.action === "EXIT";
+      const isNewEntry = decision.action === "BUY" && !openSymbols.has(sym);
+
       if (isTrade && tradesUsed >= dailyTradesLeft) {
+        decisionStatus = "limit_reached";
+      } else if (isAutonomous && isNewEntry && slotsLeft - newEntriesUsed <= 0) {
+        decisionStatus = "limit_reached";
+      } else if (isAutonomous && isNewEntry && newEntriesUsed >= maxNew) {
         decisionStatus = "limit_reached";
       } else if (isTrade) {
         const action = decision.action;
@@ -345,6 +441,7 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
               orderId = res.order?.id ?? null;
               decisionStatus = "executed";
               tradesUsed += 1;
+              if (isNewEntry) newEntriesUsed += 1;
               executed += 1;
             } else decisionStatus = "rejected";
           } catch (e: any) {
@@ -357,6 +454,7 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
         } else decisionStatus = "rejected";
       }
 
+      const meta = autonomousMeta.get(sym);
       await supabaseAdmin.from("ai_agent_decisions").insert({
         agent_id: agent.id, paper_account_id: agent.paper_account_id,
         symbol: sym, action: decision.action, confidence: decision.confidence,
@@ -376,6 +474,11 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
         risk_snapshot: { ...decision.riskSnapshot, marketContext: decision.realMarketContext } as any,
         decision_status: decisionStatus,
         idempotency_key: idemKey(agent.id, sym, decision.action),
+        selection_mode: isAutonomous ? "autonomous" : "manual",
+        autonomous_scan_id: autonomousScanId,
+        autonomous_rank: meta?.rank ?? null,
+        autonomous_score: meta?.score ?? null,
+        selection_reason: meta?.reason ?? null,
       });
     } catch (e: any) {
       await supabaseAdmin.from("ai_agent_risk_logs").insert({
@@ -384,6 +487,7 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
       });
     }
   }
+
 
   // Stop-loss / take-profit guard on open positions (only when IDX market open)
   if (session.isOpen) {
@@ -615,4 +719,50 @@ export const listTradeMemory = createServerFn({ method: "GET" })
       .eq("agent_id", data.agentId)
       .order("updated_at", { ascending: false });
     return rows ?? [];
+  });
+
+// ---- Autonomous mode server fns ----
+
+export const setSelectionMode = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({
+    id: z.string().uuid(),
+    mode: z.enum(["manual", "autonomous"]),
+    autonomousUniverse: z.enum(["idx_liquid", "watchlist_plus", "bluechip", "custom_universe", "all_supported"]).optional(),
+    acknowledge: z.boolean().optional(),
+  }).parse(d))
+  .handler(async ({ data }) => {
+    const patch: any = { symbol_selection_mode: data.mode };
+    if (data.autonomousUniverse) patch.autonomous_universe = data.autonomousUniverse;
+    if (data.acknowledge) patch.autonomous_mode_acknowledged = true;
+    const { error } = await supabaseAdmin.from("ai_trade_agents")
+      .update(patch).eq("id", data.id).eq("user_id", USER_ID);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const runAutonomousScanNow = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data }) => {
+    const { data: agent } = await supabaseAdmin.from("ai_trade_agents")
+      .select("*").eq("id", data.id).eq("user_id", USER_ID).maybeSingle();
+    if (!agent) throw new Error("agent not found");
+    // Force immediate rescan by clearing the timestamp guard.
+    await supabaseAdmin.from("ai_trade_agents")
+      .update({ last_autonomous_scan_at: null }).eq("id", data.id);
+    const scan = await runAutonomousScan(agent);
+    return scan;
+  });
+
+export const getLatestScan = createServerFn({ method: "GET" })
+  .inputValidator((d: unknown) => z.object({ agentId: z.string().uuid() }).parse(d))
+  .handler(async ({ data }) => {
+    const { data: scan } = await supabaseAdmin
+      .from("ai_agent_scans").select("*")
+      .eq("agent_id", data.agentId)
+      .order("scan_time", { ascending: false }).limit(1).maybeSingle();
+    if (!scan) return { scan: null, candidates: [] };
+    const { data: cands } = await supabaseAdmin
+      .from("ai_agent_scan_candidates").select("*")
+      .eq("scan_id", (scan as any).id).order("rank", { ascending: true });
+    return { scan, candidates: cands ?? [] };
   });
