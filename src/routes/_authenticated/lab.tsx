@@ -874,3 +874,178 @@ function ResetAccountControl({ onDone, currentCash, currency }: { onDone: () => 
 
 export { ChatPanel } from "@/components/ChatPanel";
 
+// ---------------- Autonomous Mode Controls ----------------
+function AutonomousModeControls({ agent, onChange }: { agent: any; onChange: () => void }) {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const mode = (agent?.symbol_selection_mode ?? "manual") as "manual" | "autonomous";
+  const universe = (agent?.autonomous_universe ?? "idx_liquid") as string;
+
+  const setMode = useMutation({
+    mutationFn: (vars: { mode: "manual" | "autonomous"; acknowledge?: boolean; autonomousUniverse?: string }) =>
+      setSelectionMode({ data: { id: agent.id, mode: vars.mode, acknowledge: vars.acknowledge, autonomousUniverse: vars.autonomousUniverse as any } }),
+    onSuccess: () => { toast.success("Mode updated"); onChange(); },
+    onError: (e: any) => toast.error(e?.message ?? "Update failed"),
+  });
+  const setUniverse = useMutation({
+    mutationFn: (u: string) => setSelectionMode({ data: { id: agent.id, mode: "autonomous", autonomousUniverse: u as any } }),
+    onSuccess: () => { toast.success("Universe updated"); onChange(); },
+    onError: (e: any) => toast.error(e?.message ?? "Update failed"),
+  });
+
+  if (!agent?.id) return null;
+
+  const onToggle = (next: "manual" | "autonomous") => {
+    if (next === mode) return;
+    if (next === "autonomous" && !agent.autonomous_mode_acknowledged) {
+      setConfirmOpen(true);
+      return;
+    }
+    setMode.mutate({ mode: next });
+  };
+
+  return (
+    <div className="rounded border border-border/60 p-3 space-y-2 bg-muted/20">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wide">Symbol Selection Mode</div>
+          <div className="text-[11px] text-muted-foreground">
+            {mode === "manual"
+              ? "Manual — Anda memilih emiten; AI hanya menganalisis daftar tsb."
+              : "Autonomous — AI scan market, memilih emiten sendiri, dan eksekusi paper trade."}
+          </div>
+        </div>
+        <div className="flex gap-1">
+          <Button size="sm" variant={mode === "manual" ? "default" : "outline"} onClick={() => onToggle("manual")} disabled={setMode.isPending}>Manual</Button>
+          <Button size="sm" variant={mode === "autonomous" ? "default" : "outline"} onClick={() => onToggle("autonomous")} disabled={setMode.isPending}>Autonomous AI</Button>
+        </div>
+      </div>
+
+      {mode === "autonomous" && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <label className="text-[11px] text-muted-foreground">Universe</label>
+          <Select value={universe} onValueChange={(v) => setUniverse.mutate(v)}>
+            <SelectTrigger className="h-7 w-[200px] text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="idx_liquid">IDX Liquid (LQ45)</SelectItem>
+              <SelectItem value="bluechip">Bluechip</SelectItem>
+              <SelectItem value="watchlist_plus">Watchlist + LQ45</SelectItem>
+              <SelectItem value="custom_universe">Custom (selected_symbols)</SelectItem>
+              <SelectItem value="all_supported">All Supported (IDX + US)</SelectItem>
+            </SelectContent>
+          </Select>
+          <span className="text-[10px] text-muted-foreground">
+            Max {agent.max_autonomous_symbols ?? 5} simbol · min score {agent.min_autonomous_score ?? 70}
+          </span>
+        </div>
+      )}
+
+      {confirmOpen && (
+        <div className="rounded border border-amber-500/40 bg-amber-500/10 p-3 space-y-2">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="size-4 text-amber-500 mt-0.5" />
+            <div className="text-xs leading-relaxed">
+              <div className="font-semibold mb-1">Aktifkan Autonomous Mode?</div>
+              <p>AI akan scan market secara otomatis, memilih emiten sendiri, dan mengeksekusi <strong>paper trade</strong> tanpa konfirmasi manual.
+              Semua transaksi tetap virtual — tidak ada real-money, tidak terhubung ke broker, dan tetap mengikuti risk management + market session guard.</p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button size="sm" variant="ghost" onClick={() => setConfirmOpen(false)}>Batal</Button>
+            <Button size="sm" onClick={() => { setConfirmOpen(false); setMode.mutate({ mode: "autonomous", acknowledge: true }); }}>
+              Saya mengerti, aktifkan
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------- Autonomous Scanner Panel ----------------
+function AutonomousScannerPanel({ agent }: { agent: any }) {
+  const latest = useQuery({
+    queryKey: ["autoScan", agent?.id],
+    queryFn: () => getLatestScan({ data: { agentId: agent.id } }),
+    enabled: !!agent?.id,
+    refetchInterval: 30_000,
+  });
+  const rescan = useMutation({
+    mutationFn: () => runAutonomousScanNow({ data: { id: agent.id } }),
+    onSuccess: () => { toast.success("Scan dijalankan"); latest.refetch(); },
+    onError: (e: any) => toast.error(e?.message ?? "Scan gagal"),
+  });
+
+  const scan = (latest.data as any)?.scan ?? null;
+  const candidates = ((latest.data as any)?.candidates ?? []) as any[];
+  const selected: string[] = (scan?.selected_symbols ?? []) as string[];
+
+  return (
+    <div className="rounded border border-border/60 p-3 space-y-2 bg-muted/10">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wide">Autonomous Scanner</div>
+          <div className="text-[11px] text-muted-foreground">
+            Universe <span className="font-mono">{scan?.universe ?? agent?.autonomous_universe ?? "idx_liquid"}</span>
+            {scan ? <> · {scan.symbols_scanned_count} scanned · {scan.valid_candidates_count} valid · last {new Date(scan.scan_time).toLocaleTimeString("id-ID")}</> : " · belum pernah scan"}
+          </div>
+        </div>
+        <Button size="sm" variant="outline" onClick={() => rescan.mutate()} disabled={rescan.isPending}>
+          {rescan.isPending ? "Scanning…" : "Rescan now"}
+        </Button>
+      </div>
+
+      <div>
+        <div className="text-[11px] text-muted-foreground mb-1">Selected (top {selected.length})</div>
+        <div className="flex flex-wrap gap-1 min-h-6">
+          {selected.length === 0 && <span className="text-xs text-muted-foreground">Belum ada simbol terpilih.</span>}
+          {selected.map((s, i) => (
+            <span key={s} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-primary/15 text-primary text-xs font-mono">
+              #{i + 1} {s}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {candidates.length > 0 && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-[11px] min-w-[480px]">
+            <thead className="text-muted-foreground">
+              <tr>
+                <th className="text-left p-1">#</th>
+                <th className="text-left p-1">Symbol</th>
+                <th className="text-right p-1">Score</th>
+                <th className="text-right p-1">Tech</th>
+                <th className="text-right p-1">Liq</th>
+                <th className="text-right p-1">Risk</th>
+                <th className="text-left p-1">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {candidates.slice(0, 10).map((c: any) => (
+                <tr key={c.id} className="border-t border-border/40">
+                  <td className="p-1 font-mono">{c.rank ?? "—"}</td>
+                  <td className="p-1 font-mono">{c.symbol}</td>
+                  <td className="p-1 text-right font-mono">{Number(c.autonomous_score ?? 0).toFixed(0)}</td>
+                  <td className="p-1 text-right font-mono">{Number(c.technical_score ?? 0).toFixed(0)}</td>
+                  <td className="p-1 text-right font-mono">{Number(c.liquidity_score ?? 0).toFixed(0)}</td>
+                  <td className="p-1 text-right font-mono">{Number(c.risk_score ?? 0).toFixed(0)}</td>
+                  <td className="p-1">
+                    {c.passed_filters
+                      ? <span className="text-bull">passed</span>
+                      : <span className="text-muted-foreground" title={c.rejection_reason ?? ""}>rejected</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {scan?.reasoning && (
+        <div className="text-[10px] text-muted-foreground italic">{scan.reasoning}</div>
+      )}
+    </div>
+  );
+}
+
+
