@@ -88,11 +88,19 @@ function Screener() {
 
   return (
     <div className="p-4 md:p-6 space-y-4">
-      <div className="flex items-end justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold flex items-center gap-2"><Filter className="size-5" /> Stock Screener</h1>
-          <p className="text-sm text-muted-foreground">Multi-faktor screening dengan AI signal v2</p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-semibold flex items-center gap-2"><Filter className="size-5" /> Stock Screener</h1>
+        <p className="text-sm text-muted-foreground">Technical + fundamental screening untuk peluang trade & undervalued</p>
+      </div>
+
+      <Tabs defaultValue="technical">
+        <TabsList>
+          <TabsTrigger value="technical"><Filter className="size-3.5 mr-1" /> Technical</TabsTrigger>
+          <TabsTrigger value="undervalued"><Gem className="size-3.5 mr-1" /> Undervalued (Fundamental)</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="technical" className="space-y-4">
+      <div className="flex items-end justify-end flex-wrap gap-3">
         <div className="inline-flex rounded-md border border-border p-0.5">
           {(["idx", "us", "global"] as const).map(m => (
             <Button key={m} size="sm" variant={f.market === m ? "default" : "ghost"} onClick={() => setF({ ...f, market: m })} className="h-7 px-3">
