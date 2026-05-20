@@ -439,7 +439,7 @@ export async function evaluateSymbol(
       dataFreshnessSeconds: freshness, dataSource: "Yahoo Finance + scraped news + IDX disclosure",
       realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
       portfolioSnapshot,
-      riskSnapshot: { slPct: preset.slPct, tpPct: preset.tpPct, rr }, warnings,
+      riskSnapshot: { slPct: preset.slPct, tpPct: preset.tpPct, rr }, dataQuality, warnings,
     };
   }
 
