@@ -340,6 +340,8 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
     autoStopLoss: !!agent.auto_stop_loss, autoTakeProfit: !!agent.auto_take_profit,
     allowBuy: !!agent.allow_buy, allowSell: !!agent.allow_sell,
     tradingHoursOnly: !!agent.trading_hours_only, requireFreshData: !!agent.require_fresh_data,
+    minUndervalueScore: Number(agent.min_undervalue_score ?? 65),
+    maxValueTrapRisk: Number(agent.max_value_trap_risk ?? 40),
   };
 
   const decisions: AgentDecision[] = [];
