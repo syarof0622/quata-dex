@@ -940,6 +940,11 @@ function AutonomousModeControls({ agent, onChange }: { agent: any; onChange: () 
               <SelectItem value="watchlist_plus">Watchlist + LQ45</SelectItem>
               <SelectItem value="custom_universe">Custom (selected_symbols)</SelectItem>
               <SelectItem value="all_supported">All Supported (IDX + US)</SelectItem>
+              <SelectItem value="undervalued_candidates">💎 Undervalued Candidates</SelectItem>
+              <SelectItem value="quality_undervalued">💎 Quality + Undervalued</SelectItem>
+              <SelectItem value="dividend_undervalued">💰 Dividend + Undervalued</SelectItem>
+              <SelectItem value="sector_discount">📉 Sector Discount</SelectItem>
+              <SelectItem value="hybrid_trading_and_value">🎯 Hybrid Trading + Value</SelectItem>
             </SelectContent>
           </Select>
           <span className="text-[10px] text-muted-foreground">
