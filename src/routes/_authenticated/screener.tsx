@@ -1,13 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { screenStocks } from "@/lib/screener.functions";
+import { scanUndervalueUniverse, getLatestUndervalueScores } from "@/lib/undervalue.functions";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { UndervalueBadge } from "@/components/UndervalueBadge";
 import { formatPct, colorForChange } from "@/lib/format";
 import { formatLocalPrice } from "@/lib/symbols";
 import { ALL_SECTORS, type Sector } from "@/lib/sectors";
-import { TrendingUp, Filter } from "lucide-react";
+import { TrendingUp, Filter, Gem } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/screener")({
   head: () => ({ meta: [{ title: "Screener — Quanta Terminal" }] }),
