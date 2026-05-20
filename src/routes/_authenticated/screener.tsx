@@ -10,7 +10,7 @@ import { UndervalueBadge } from "@/components/UndervalueBadge";
 import { formatPct, colorForChange } from "@/lib/format";
 import { formatLocalPrice } from "@/lib/symbols";
 import { ALL_SECTORS, type Sector } from "@/lib/sectors";
-import { TrendingUp, Filter, Gem } from "lucide-react";
+import { Filter, Gem } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/screener")({
