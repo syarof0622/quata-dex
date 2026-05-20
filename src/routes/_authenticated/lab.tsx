@@ -81,6 +81,7 @@ function Lab() {
           <TabsTrigger value="backtest">Backtest</TabsTrigger>
           <TabsTrigger value="coach">AI Coach</TabsTrigger>
           <TabsTrigger value="agent"><Bot className="size-3 mr-1" />AI Trade Agent</TabsTrigger>
+          <TabsTrigger value="insights"><Sparkles className="size-3 mr-1" />AI Insights</TabsTrigger>
         </TabsList>
         <TabsContent value="positions">
           <div className="panel p-2 overflow-x-auto">
