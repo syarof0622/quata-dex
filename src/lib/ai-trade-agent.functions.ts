@@ -936,3 +936,111 @@ export const getLatestScan = createServerFn({ method: "GET" })
       .eq("scan_id", (scan as any).id).order("rank", { ascending: true });
     return { scan, candidates: cands ?? [] };
   });
+
+// ---------------- Autonomous Risk Mode ----------------
+const RiskModeSchema = z.object({
+  id: z.string().uuid(),
+  riskMode: z.enum(["conservative", "balanced", "progressive", "expert_research"]),
+  allowWatchCandidates: z.boolean().optional(),
+  allowResearchCandidates: z.boolean().optional(),
+  allowSmallLotExploration: z.boolean().optional(),
+  allowOutcomeTrackingWithoutTrade: z.boolean().optional(),
+  allowPremarketPlanning: z.boolean().optional(),
+  acknowledge: z.boolean().optional(),
+});
+
+export const setAutonomousRiskMode = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => RiskModeSchema.parse(d))
+  .handler(async ({ data }) => {
+    const patch: any = { autonomous_risk_mode: data.riskMode };
+    // Sensible defaults per mode if the user has not explicitly chosen toggles.
+    if (data.riskMode === "conservative") {
+      patch.allow_watch_candidates = data.allowWatchCandidates ?? true;
+      patch.allow_research_candidates = data.allowResearchCandidates ?? false;
+      patch.allow_small_lot_exploration = data.allowSmallLotExploration ?? false;
+    } else if (data.riskMode === "balanced") {
+      patch.allow_watch_candidates = data.allowWatchCandidates ?? true;
+      patch.allow_research_candidates = data.allowResearchCandidates ?? true;
+      patch.allow_small_lot_exploration = data.allowSmallLotExploration ?? false;
+    } else if (data.riskMode === "progressive") {
+      patch.allow_watch_candidates = data.allowWatchCandidates ?? true;
+      patch.allow_research_candidates = data.allowResearchCandidates ?? true;
+      patch.allow_small_lot_exploration = data.allowSmallLotExploration ?? true;
+    } else if (data.riskMode === "expert_research") {
+      patch.allow_watch_candidates = data.allowWatchCandidates ?? true;
+      patch.allow_research_candidates = data.allowResearchCandidates ?? true;
+      patch.allow_small_lot_exploration = data.allowSmallLotExploration ?? true;
+    }
+    if (typeof data.allowOutcomeTrackingWithoutTrade === "boolean")
+      patch.allow_outcome_tracking_without_trade = data.allowOutcomeTrackingWithoutTrade;
+    if (typeof data.allowPremarketPlanning === "boolean")
+      patch.allow_premarket_planning = data.allowPremarketPlanning;
+    if (data.acknowledge) patch.autonomous_mode_acknowledged = true;
+
+    const { error } = await supabaseAdmin.from("ai_trade_agents")
+      .update(patch).eq("id", data.id).eq("user_id", USER_ID);
+    if (error) throw new Error(error.message);
+    return { ok: true, riskMode: data.riskMode };
+  });
+
+// ---------------- Backfill Hypothetical Outcomes ----------------
+// Computes hypothetical returns (15m / 1h / EOD) for watch/research candidates
+// that opted into outcome tracking. Pure observation — does NOT touch
+// paper_orders or paper_positions. Used to learn whether candidates the agent
+// skipped or only watched would have been profitable.
+const BackfillSchema = z.object({
+  agentId: z.string().uuid().optional(),
+  limit: z.number().int().min(1).max(200).default(50),
+});
+
+export const backfillScanCandidateOutcomes = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => BackfillSchema.parse(d ?? {}))
+  .handler(async ({ data }) => {
+    const now = Date.now();
+    let q = supabaseAdmin.from("ai_agent_scan_candidates")
+      .select("id, agent_id, symbol, scan_price, created_at, outcome_15m, outcome_1h, outcome_eod, hypothetical_tracking_enabled, candidate_classification")
+      .eq("hypothetical_tracking_enabled", true)
+      .not("scan_price", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(data.limit);
+    if (data.agentId) q = q.eq("agent_id", data.agentId);
+    const { data: rows, error } = await q;
+    if (error) throw new Error(error.message);
+
+    let processed = 0, updated = 0, skipped = 0;
+    for (const row of (rows ?? []) as any[]) {
+      processed++;
+      const ageMs = now - new Date(row.created_at).getTime();
+      const need15m = !row.outcome_15m && ageMs >= 15 * 60_000;
+      const need1h  = !row.outcome_1h  && ageMs >= 60 * 60_000;
+      const needEod = !row.outcome_eod && ageMs >= 6 * 60 * 60_000;
+      if (!need15m && !need1h && !needEod) { skipped++; continue; }
+
+      let quote: any = null;
+      try { quote = await getQuote({ data: { symbol: row.symbol } }); } catch { /* tolerate */ }
+      const price = Number(quote?.price ?? quote?.regularMarketPrice ?? NaN);
+      if (!Number.isFinite(price) || price <= 0) { skipped++; continue; }
+
+      const entry = Number(row.scan_price);
+      const ret = entry > 0 ? ((price - entry) / entry) * 100 : 0;
+      const stamp = new Date().toISOString();
+      const outcome = (label: string) => ({
+        observed_at: stamp,
+        price_now: price,
+        return_pct: Number(ret.toFixed(4)),
+        label,
+      });
+
+      const patch: any = {};
+      if (need15m) { patch.outcome_15m = outcome("15m"); patch.hypothetical_return_15m = Number(ret.toFixed(4)); }
+      if (need1h)  { patch.outcome_1h  = outcome("1h");  patch.hypothetical_return_1h  = Number(ret.toFixed(4)); }
+      if (needEod) { patch.outcome_eod = outcome("eod"); patch.hypothetical_return_eod = Number(ret.toFixed(4)); }
+
+      const { error: upErr } = await supabaseAdmin
+        .from("ai_agent_scan_candidates").update(patch).eq("id", row.id);
+      if (!upErr) updated++;
+    }
+
+    return { processed, updated, skipped };
+  });
+
