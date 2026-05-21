@@ -20,6 +20,16 @@ export type UniverseKey =
   | "undervalued_candidates" | "quality_undervalued" | "dividend_undervalued"
   | "sector_discount" | "hybrid_trading_and_value";
 
+export type RiskMode = "conservative" | "balanced" | "progressive" | "expert_research";
+
+export type CandidateClassification =
+  | "trade_candidate" | "watch_candidate" | "research_candidate"
+  | "rejected" | "premarket_watch" | "risk_blocked" | "data_blocked";
+
+export type ExecutionEligibility =
+  | "eligible" | "blocked_pre_open" | "blocked_market_closed"
+  | "blocked_risk" | "blocked_data" | "blocked_low_score";
+
 export type ScanCandidate = {
   symbol: string;
   rank: number | null;
@@ -37,6 +47,20 @@ export type ScanCandidate = {
   warnings: string[];
   passedFilters: boolean;
   rejectionReason: string | null;
+  // New classification fields (Progressive / Expert Research mode)
+  classification: CandidateClassification;
+  executionEligibility: ExecutionEligibility;
+  blockedReason: string | null;
+  researchTradeAllowed: boolean;
+  hypotheticalTrackingEnabled: boolean;
+  scanPrice: number | null;
+  riskMode: RiskMode;
+};
+
+export type ScanSummary = {
+  trade: number; watch: number; research: number;
+  rejected: number; blocked: number; total: number;
+  marketSession: "open" | "pre_open" | "closed" | "break";
 };
 
 export type ScanResult = {
@@ -49,7 +73,20 @@ export type ScanResult = {
   topCandidates: ScanCandidate[];
   rejected: ScanCandidate[];
   reasoning: string;
+  riskMode: RiskMode;
+  summary: ScanSummary;
 };
+
+function thresholdsForMode(mode: RiskMode) {
+  switch (mode) {
+    case "conservative":     return { trade: 70, watch: 65, research: 60 };
+    case "progressive":      return { trade: 65, watch: 55, research: 50 };
+    case "expert_research":  return { trade: 60, watch: 52, research: 48 };
+    case "balanced":
+    default:                 return { trade: 70, watch: 60, research: 50 };
+  }
+}
+
 
 const BLUECHIP_PREFIXES = new Set([
   "BBCA", "BBRI", "BMRI", "BBNI", "TLKM", "ASII", "UNVR", "ICBP", "INDF",
