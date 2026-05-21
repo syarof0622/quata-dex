@@ -1062,7 +1062,7 @@ function AutonomousScannerPanel({ agent }: { agent: any }) {
                   <td className="p-1 text-right font-mono">{Number(c.risk_score ?? 0).toFixed(0)}</td>
                   <td className="p-1">
                     {c.passed_filters
-                      ? <span className="text-bull">passed</span>
+                      ? <span className="text-bull" title="Lolos scanner awal. Eksekusi tetap menunggu confidence, risk, setup, dan paper trading validation.">candidate</span>
                       : <span className="text-muted-foreground" title={c.rejection_reason ?? ""}>rejected</span>}
                   </td>
                 </tr>
