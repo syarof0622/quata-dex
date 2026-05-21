@@ -213,8 +213,10 @@ async function executePaperFill(opts: {
   agentId: string; paperAccountId: string; symbol: string; side: "buy" | "sell";
   shares: number; price: number; existing?: Position; reason: string;
   decision?: AgentDecision; decisionId?: string | null;
+  closeReason?: "stop_loss_triggered" | "take_profit_triggered" | null;
+  explorationTrade?: boolean; researchTrade?: boolean;
 }) {
-  const { agentId, paperAccountId, symbol, side, shares, price, existing, reason, decision, decisionId } = opts;
+  const { agentId, paperAccountId, symbol, side, shares, price, existing, reason, decision, decisionId, closeReason } = opts;
   const slipPct = slippagePctFor(symbol);
   const fillPrice = +(price * (1 + slipPct * (side === "buy" ? 1 : -1))).toFixed(4);
   const notional = fillPrice * shares;
@@ -226,6 +228,7 @@ async function executePaperFill(opts: {
   const cashBefore = Number(account.cash);
 
   let realizedPnl = 0;
+  let entryAvgPrice: number | null = null;
   let cashAfter = cashBefore;
   if (side === "buy") {
     if (cashBefore < notional + fee) throw new Error("Insufficient cash");
@@ -243,7 +246,8 @@ async function executePaperFill(opts: {
     await supabaseAdmin.from("paper_accounts").update({ cash: cashAfter }).eq("id", paperAccountId);
   } else {
     if (!existing || Number(existing.qty) < shares) throw new Error("Position insufficient for sell");
-    realizedPnl = +((fillPrice - Number(existing.avg_price)) * shares - fee).toFixed(2);
+    entryAvgPrice = Number(existing.avg_price);
+    realizedPnl = +((fillPrice - entryAvgPrice) * shares - fee).toFixed(2);
     const remaining = Number(existing.qty) - shares;
     if (remaining === 0) await supabaseAdmin.from("paper_positions").delete().eq("user_id", USER_ID).eq("symbol", symbol);
     else await supabaseAdmin.from("paper_positions").update({ qty: remaining }).eq("user_id", USER_ID).eq("symbol", symbol);
@@ -252,7 +256,8 @@ async function executePaperFill(opts: {
   }
 
   const { data: order } = await supabaseAdmin.from("paper_orders").insert({
-    account_id: paperAccountId, user_id: USER_ID, symbol, side, type: "market", qty: shares,
+    account_id: paperAccountId, user_id: USER_ID, agent_id: agentId,
+    symbol, side, type: "market", qty: shares,
     price, filled_price: fillPrice, status: "filled", filled_at: new Date().toISOString(),
     realized_pnl: realizedPnl, slippage_pct: slipPct, fee,
   }).select("*").single();
@@ -263,6 +268,59 @@ async function executePaperFill(opts: {
     requestedPrice: price, simulatedFillPrice: fillPrice,
     slippagePercent: slipPct, fee, feePercent: feePct,
     realisticFill: true, rejectionReason: null,
+    side, shares,
+  };
+
+  // Distinguish open-trade BUY snapshots from completed-trade SELL/EXIT events.
+  const isOpenTrade = side === "buy";
+  const eventType = isOpenTrade ? "open_trade_snapshot" : "completed_trade";
+
+  // Synthetic decision wrapper for risk exits without an upstream AgentDecision.
+  const decisionPayload: any = decision ? {
+    action: decision.action, confidence: decision.confidence,
+    rawConfidence: decision.rawConfidence, calibrationReason: decision.calibrationReason,
+    strategy: decision.strategy, allocationAmount: decision.allocationAmount,
+    lot: decision.suggestedLot, shares: decision.suggestedShares,
+    entryPrice: decision.entryPrice, stopLoss: decision.stopLoss,
+    takeProfit: decision.takeProfit, riskRewardRatio: decision.riskRewardRatio,
+    reasoning: decision.reasoning,
+  } : closeReason ? {
+    // Risk-guard synthetic decision (SL/TP).
+    action: "EXIT",
+    strategy: "risk_guard",
+    closeReason,
+    entryPrice: entryAvgPrice,
+    exitPrice: fillPrice,
+    shares,
+    reasoning: closeReason === "stop_loss_triggered"
+      ? "Stop loss triggered"
+      : "Take profit triggered",
+  } : { side, shares, fillPrice, reason };
+
+  if (closeReason) decisionPayload.closeReason = closeReason;
+
+  // Pre-compute realized return % so completed-trade events can be aggregated
+  // without depending on a delayed backfill pass.
+  let paperPnlPercent: number | null = null;
+  if (!isOpenTrade && entryAvgPrice && entryAvgPrice > 0) {
+    paperPnlPercent = +(((fillPrice - entryAvgPrice) / entryAvgPrice) * 100).toFixed(3);
+  }
+
+  const finalOutcome = isOpenTrade ? {
+    eventType,
+    entryPrice: fillPrice,
+    shares,
+    paperPnL: 0,
+    paperPnLPercent: null,
+    tradeResult: null, // not closed yet
+  } : {
+    eventType,
+    closeReason: closeReason ?? null,
+    entryPrice: entryAvgPrice,
+    exitPrice: fillPrice,
+    paperPnL: realizedPnl,
+    paperPnLPercent: paperPnlPercent,
+    tradeResult: realizedPnl > 0 ? "win" : realizedPnl < 0 ? "loss" : "breakeven",
   };
 
   await supabaseAdmin.from("ai_agent_training_events").insert({
@@ -272,19 +330,15 @@ async function executePaperFill(opts: {
     real_news_data: (decision?.realNewsData ?? null) as any,
     real_disclosure_data: (decision?.realDisclosureData ?? null) as any,
     real_market_context: (decision?.realMarketContext ?? null) as any,
-    ai_decision: decision ? ({
-      action: decision.action, confidence: decision.confidence,
-      rawConfidence: decision.rawConfidence, calibrationReason: decision.calibrationReason,
-      strategy: decision.strategy, allocationAmount: decision.allocationAmount,
-      lot: decision.suggestedLot, shares: decision.suggestedShares,
-      entryPrice: decision.entryPrice, stopLoss: decision.stopLoss,
-      takeProfit: decision.takeProfit, riskRewardRatio: decision.riskRewardRatio,
-      reasoning: decision.reasoning,
-    } as any) : ({ side, shares, fillPrice, reason } as any),
+    ai_decision: decisionPayload as any,
     paper_execution: paperExecution as any,
-    decision_output: { side, shares, fillPrice, reason } as any,
-    actual_outcome: { realizedPnl, fee } as any,
-    pnl: realizedPnl, model_version: "agent-v1.1", strategy_version: "real-data-v1",
+    decision_output: { side, shares, fillPrice, reason, closeReason: closeReason ?? null } as any,
+    actual_outcome: { realizedPnl, fee, closeReason: closeReason ?? null } as any,
+    final_outcome: finalOutcome as any,
+    event_type: eventType,
+    close_reason: closeReason ?? null,
+    paper_pnl_percent: paperPnlPercent,
+    pnl: realizedPnl, model_version: "agent-v1.2", strategy_version: "real-data-v2",
   });
 
   return { order, realizedPnl, fillPrice, slipPct, fee, cashBefore, cashAfter };
@@ -305,32 +359,61 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
   if (!agent) throw new Error("agent not found");
   if (agent.status === "stopped" || agent.status === "error") return { decisions: [], executed: 0 };
 
-  // Reflect market session into agent.status (advisory)
+  // Reflect market session into agent.status — autonomous mode follows IDX session
+  // even when selected_symbols is empty (avoids false "active_market_open").
   const session = getIDXMarketSession();
-  const hasIdx = (agent.selected_symbols as string[]).some(isIDXSymbol);
+  const isAutonomousMode = (agent.symbol_selection_mode ?? "manual") === "autonomous";
+  const universeIsIdx = isAutonomousMode
+    ? String(agent.autonomous_universe ?? "idx_liquid").startsWith("idx")
+      || ["idx_liquid", "bluechip", "watchlist_plus", "undervalued_candidates",
+          "quality_undervalued", "dividend_undervalued", "sector_discount",
+          "hybrid_trading_and_value"].includes(String(agent.autonomous_universe ?? ""))
+    : (agent.selected_symbols as string[]).some(isIDXSymbol);
   let nextStatus = agent.status;
   if (agent.status !== "paused") {
-    if (hasIdx) {
+    if (universeIsIdx) {
       nextStatus = session.isOpen ? "active_market_open"
                  : session.isBreak ? "active_market_break" : "active_market_closed";
     } else nextStatus = "active_market_open";
   }
-  await supabaseAdmin.from("ai_trade_agents").update({ status: nextStatus, last_run_at: new Date().toISOString() })
-    .eq("id", agentId);
+  // Session-change detection → force autonomous rescan on transition.
+  const lastSession = (agent as any).last_market_session_state as string | null;
+  const sessionChanged = lastSession && lastSession !== session.state;
+  await supabaseAdmin.from("ai_trade_agents").update({
+    status: nextStatus,
+    last_run_at: new Date().toISOString(),
+    last_market_session_state: session.state,
+  }).eq("id", agentId);
 
   if (agent.status === "paused") return { decisions: [], executed: 0 };
 
-  // Daily trades cap
+  // Daily trades cap — per-agent only (not all user orders).
   const sinceDay = new Date(Date.now() - 24 * 3600_000).toISOString();
-  const { count: todayCount } = await supabaseAdmin.from("paper_orders")
+  const { count: todayCount } = await supabaseAdmin.from("ai_agent_decisions")
     .select("id", { count: "exact", head: true })
-    .eq("user_id", USER_ID).gte("created_at", sinceDay);
+    .eq("agent_id", agentId).eq("decision_status", "executed")
+    .gte("created_at", sinceDay);
   const dailyTradesLeft = Math.max(0, Number(agent.max_daily_trades) - (todayCount ?? 0));
 
   const { data: acct } = await supabaseAdmin.from("paper_accounts").select("*").eq("id", agent.paper_account_id).single();
   const { data: positions } = await supabaseAdmin.from("paper_positions").select("*").eq("user_id", USER_ID);
   const posList: Position[] = (positions ?? []).map((p: any) => ({ symbol: p.symbol, qty: Number(p.qty), avg_price: Number(p.avg_price) }));
-  const account = { cash: Number(acct!.cash), equity: Number(acct!.equity ?? acct!.cash) };
+
+  // Mark-to-market equity: cash + sum(qty * latest price) instead of stale DB equity.
+  let holdingsValue = 0;
+  for (const p of posList) {
+    try {
+      const q: any = await getQuote({ data: { symbol: p.symbol } });
+      const px = Number(q?.price);
+      if (Number.isFinite(px) && px > 0) holdingsValue += p.qty * px;
+      else holdingsValue += p.qty * p.avg_price;
+    } catch { holdingsValue += p.qty * p.avg_price; }
+  }
+  const mtmEquity = Number(acct!.cash) + holdingsValue;
+  // Persist refreshed equity (best-effort).
+  await supabaseAdmin.from("paper_accounts")
+    .update({ equity: mtmEquity }).eq("id", agent.paper_account_id);
+  const account = { cash: Number(acct!.cash), equity: mtmEquity };
 
   const cfg: AgentConfig = {
     id: agent.id, riskLevel: agent.risk_level, strategyMode: agent.strategy_mode,
