@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sparkles, X, Bot, Play, Pause, Square, AlertTriangle } from "lucide-react";
 import { JournalPanel } from "@/components/JournalPanel";
 import { ChatPanel } from "@/components/ChatPanel";
-import { startAgent, pauseAgent, stopAgent, emergencyStop, getAgentStatus, runAgentNow, updateAgentSymbols, listTradeMemory, setSelectionMode, runAutonomousScanNow, getLatestScan } from "@/lib/ai-trade-agent.functions";
+import { startAgent, pauseAgent, stopAgent, emergencyStop, getAgentStatus, runAgentNow, updateAgentSymbols, listTradeMemory, setSelectionMode, runAutonomousScanNow, getLatestScan, setAutonomousRiskMode, backfillScanCandidateOutcomes } from "@/lib/ai-trade-agent.functions";
 import { TickerSearch } from "@/components/TickerSearch";
 import { AiInsightsPanel } from "@/components/AiInsightsPanel";
 
