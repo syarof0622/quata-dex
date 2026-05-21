@@ -463,12 +463,14 @@ export type Database = {
           autonomous_scan_snapshot: Json | null
           candidate_classification: string | null
           candidate_scores: Json | null
+          close_reason: string | null
           confidence_calibration_snapshot: Json | null
           created_at: string
           data_quality_snapshot: Json | null
           decision_id: string | null
           decision_output: Json | null
           evaluated_at: string | null
+          event_type: string | null
           final_outcome: Json | null
           fundamental_snapshot: Json | null
           holding_period_minutes: number | null
@@ -516,12 +518,14 @@ export type Database = {
           autonomous_scan_snapshot?: Json | null
           candidate_classification?: string | null
           candidate_scores?: Json | null
+          close_reason?: string | null
           confidence_calibration_snapshot?: Json | null
           created_at?: string
           data_quality_snapshot?: Json | null
           decision_id?: string | null
           decision_output?: Json | null
           evaluated_at?: string | null
+          event_type?: string | null
           final_outcome?: Json | null
           fundamental_snapshot?: Json | null
           holding_period_minutes?: number | null
@@ -569,12 +573,14 @@ export type Database = {
           autonomous_scan_snapshot?: Json | null
           candidate_classification?: string | null
           candidate_scores?: Json | null
+          close_reason?: string | null
           confidence_calibration_snapshot?: Json | null
           created_at?: string
           data_quality_snapshot?: Json | null
           decision_id?: string | null
           decision_output?: Json | null
           evaluated_at?: string | null
+          event_type?: string | null
           final_outcome?: Json | null
           fundamental_snapshot?: Json | null
           holding_period_minutes?: number | null
@@ -720,6 +726,7 @@ export type Database = {
           id: string
           last_autonomous_scan_at: string | null
           last_error: string | null
+          last_market_session_state: string | null
           last_run_at: string | null
           max_active_positions: number
           max_autonomous_symbols: number
@@ -785,6 +792,7 @@ export type Database = {
           id?: string
           last_autonomous_scan_at?: string | null
           last_error?: string | null
+          last_market_session_state?: string | null
           last_run_at?: string | null
           max_active_positions?: number
           max_autonomous_symbols?: number
@@ -850,6 +858,7 @@ export type Database = {
           id?: string
           last_autonomous_scan_at?: string | null
           last_error?: string | null
+          last_market_session_state?: string | null
           last_run_at?: string | null
           max_active_positions?: number
           max_autonomous_symbols?: number
@@ -1444,6 +1453,7 @@ export type Database = {
       paper_orders: {
         Row: {
           account_id: string
+          agent_id: string | null
           created_at: string
           fee: number | null
           filled_at: string | null
@@ -1467,6 +1477,7 @@ export type Database = {
         }
         Insert: {
           account_id: string
+          agent_id?: string | null
           created_at?: string
           fee?: number | null
           filled_at?: string | null
@@ -1490,6 +1501,7 @@ export type Database = {
         }
         Update: {
           account_id?: string
+          agent_id?: string | null
           created_at?: string
           fee?: number | null
           filled_at?: string | null
