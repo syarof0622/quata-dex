@@ -218,9 +218,13 @@ export const resetPaperAccount = createServerFn({ method: "POST" })
       supabaseAdmin.from("paper_orders").delete().eq("user_id", USER_ID),
     ]);
     await supabaseAdmin.from("paper_accounts")
-      .update({ cash, equity: cash, currency })
+      .update({ cash, equity: cash, currency, initial_balance: cash, reset_at: new Date().toISOString() })
       .eq("id", account.id);
+    // Clear historical equity snapshots so the new baseline starts from this reset.
+    await supabaseAdmin.from("portfolio_equity_snapshots")
+      .delete().eq("paper_account_id", account.id);
     return { ok: true, cash, currency };
+
   });
 
 // Update currency only without resetting balance/positions
