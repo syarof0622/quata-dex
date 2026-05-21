@@ -352,7 +352,8 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
   const isAutonomous = (agent.symbol_selection_mode ?? "manual") === "autonomous";
   let symbolsToEvaluate: string[] = (agent.selected_symbols as string[]) ?? [];
   let autonomousScanId: string | null = null;
-  const autonomousMeta = new Map<string, { rank: number; score: number; reason: string }>();
+  const autonomousMeta = new Map<string, { rank: number; score: number; reason: string; classification?: string; eligibility?: string; researchTradeAllowed?: boolean }>();
+  const watchSnapshots: Array<{ symbol: string; rank: number; score: number; classification: string; eligibility: string; reason: string; scanPrice: number | null }> = [];
 
   if (isAutonomous) {
     const intervalMs = Number(agent.autonomous_rescan_interval_minutes ?? 15) * 60_000;
@@ -381,6 +382,8 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
           topCandidates: ((last as any).top_candidates ?? []) as any[],
           rejected: ((last as any).rejected_candidates ?? []) as any[],
           reasoning: (last as any).reasoning ?? "",
+          riskMode: (agent.autonomous_risk_mode ?? "balanced") as any,
+          summary: { trade: 0, watch: 0, research: 0, rejected: 0, blocked: 0, total: 0, marketSession: "closed" as any },
         };
       }
     }
@@ -391,6 +394,30 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
       for (const c of scan.topCandidates) {
         autonomousMeta.set(c.symbol, {
           rank: c.rank ?? 0, score: c.autonomousScore, reason: c.reason,
+          classification: (c as any).classification ?? "trade_candidate",
+          eligibility: (c as any).executionEligibility ?? "eligible",
+          researchTradeAllowed: (c as any).researchTradeAllowed ?? false,
+        });
+      }
+      // Collect watch / research / premarket candidates for HOLD snapshots.
+      const { data: extraCands } = await supabaseAdmin
+        .from("ai_agent_scan_candidates")
+        .select("symbol, rank, autonomous_score, candidate_classification, execution_eligibility, blocked_reason, scan_price")
+        .eq("scan_id", scan.scanId)
+        .in("candidate_classification", ["watch_candidate", "research_candidate", "premarket_watch"])
+        .order("rank", { ascending: true })
+        .limit(10);
+      for (const c of extraCands ?? []) {
+        const sym = (c as any).symbol as string;
+        if (symbolsToEvaluate.includes(sym)) continue;
+        watchSnapshots.push({
+          symbol: sym,
+          rank: Number((c as any).rank ?? 0),
+          score: Number((c as any).autonomous_score ?? 0),
+          classification: String((c as any).candidate_classification ?? ""),
+          eligibility: String((c as any).execution_eligibility ?? ""),
+          reason: String((c as any).blocked_reason ?? "Monitoring candidate."),
+          scanPrice: (c as any).scan_price != null ? Number((c as any).scan_price) : null,
         });
       }
       // Keep agent.selected_symbols in sync with current AI pick for the UI.
@@ -457,6 +484,9 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
       }
 
       const meta = autonomousMeta.get(sym);
+      const isExplorationTrade = !!meta?.researchTradeAllowed
+        && (decision.action === "BUY" || decision.action === "EXIT")
+        && decisionStatus === "executed";
       await supabaseAdmin.from("ai_agent_decisions").insert({
         agent_id: agent.id, paper_account_id: agent.paper_account_id,
         symbol: sym, action: decision.action, confidence: decision.confidence,
@@ -482,6 +512,10 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
         autonomous_rank: meta?.rank ?? null,
         autonomous_score: meta?.score ?? null,
         selection_reason: meta?.reason ?? null,
+        autonomous_risk_mode: (agent.autonomous_risk_mode ?? "balanced"),
+        candidate_classification: meta?.classification ?? null,
+        exploration_trade: isExplorationTrade && (agent.autonomous_risk_mode === "progressive"),
+        research_trade: isExplorationTrade && (agent.autonomous_risk_mode === "expert_research"),
       });
     } catch (e: any) {
       await supabaseAdmin.from("ai_agent_risk_logs").insert({
@@ -489,6 +523,49 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
         risk_level: "warning", message: e?.message ?? "engine error", action_taken: "skip",
       });
     }
+  }
+
+
+
+  // Record HOLD snapshots for watch / research / pre-market candidates so the
+  // Decision Feed / Trade Plan shows them as monitored (no paper order placed).
+  if (isAutonomous && watchSnapshots.length > 0) {
+    const riskMode = (agent.autonomous_risk_mode ?? "balanced") as string;
+    const rows = watchSnapshots.map(w => {
+      const statusMap: Record<string, string> = {
+        watch_candidate: "watch_only",
+        research_candidate: "research_only",
+        premarket_watch: "premarket_plan",
+      };
+      const status = statusMap[w.classification] ?? "watch_only";
+      const reasoning = w.classification === "premarket_watch"
+        ? `Pre-market plan: ${w.symbol} (score ${w.score.toFixed(0)}). Monitor saat market open.`
+        : w.classification === "watch_candidate"
+        ? `Watch candidate: score ${w.score.toFixed(0)} layak dipantau, belum cukup untuk trade.`
+        : `Research candidate: score ${w.score.toFixed(0)} disimpan untuk training/outcome tracking.`;
+      return {
+        agent_id: agent.id, paper_account_id: agent.paper_account_id,
+        symbol: w.symbol, action: "HOLD", confidence: 0,
+        raw_confidence: 0, calibrated_confidence: 0,
+        calibration_reason: "Watch/research snapshot — no trade executed.",
+        strategy: "monitoring", allocation_amount: 0,
+        suggested_lot: 0, suggested_shares: 0,
+        entry_price: w.scanPrice, stop_loss: null, take_profit: null,
+        risk_reward_ratio: null,
+        reasoning,
+        data_snapshot: { scanPrice: w.scanPrice } as any,
+        decision_status: status,
+        selection_mode: "autonomous",
+        autonomous_scan_id: autonomousScanId,
+        autonomous_rank: w.rank, autonomous_score: w.score,
+        selection_reason: w.reason,
+        autonomous_risk_mode: riskMode,
+        candidate_classification: w.classification,
+        exploration_trade: false, research_trade: false,
+        idempotency_key: idemKey(agent.id, w.symbol, `WATCH_${w.classification}`),
+      };
+    });
+    await supabaseAdmin.from("ai_agent_decisions").insert(rows);
   }
 
 

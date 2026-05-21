@@ -20,6 +20,16 @@ export type UniverseKey =
   | "undervalued_candidates" | "quality_undervalued" | "dividend_undervalued"
   | "sector_discount" | "hybrid_trading_and_value";
 
+export type RiskMode = "conservative" | "balanced" | "progressive" | "expert_research";
+
+export type CandidateClassification =
+  | "trade_candidate" | "watch_candidate" | "research_candidate"
+  | "rejected" | "premarket_watch" | "risk_blocked" | "data_blocked";
+
+export type ExecutionEligibility =
+  | "eligible" | "blocked_pre_open" | "blocked_market_closed"
+  | "blocked_risk" | "blocked_data" | "blocked_low_score";
+
 export type ScanCandidate = {
   symbol: string;
   rank: number | null;
@@ -37,6 +47,20 @@ export type ScanCandidate = {
   warnings: string[];
   passedFilters: boolean;
   rejectionReason: string | null;
+  // New classification fields (Progressive / Expert Research mode)
+  classification: CandidateClassification;
+  executionEligibility: ExecutionEligibility;
+  blockedReason: string | null;
+  researchTradeAllowed: boolean;
+  hypotheticalTrackingEnabled: boolean;
+  scanPrice: number | null;
+  riskMode: RiskMode;
+};
+
+export type ScanSummary = {
+  trade: number; watch: number; research: number;
+  rejected: number; blocked: number; total: number;
+  marketSession: "open" | "pre_open" | "closed" | "break";
 };
 
 export type ScanResult = {
@@ -49,7 +73,20 @@ export type ScanResult = {
   topCandidates: ScanCandidate[];
   rejected: ScanCandidate[];
   reasoning: string;
+  riskMode: RiskMode;
+  summary: ScanSummary;
 };
+
+function thresholdsForMode(mode: RiskMode) {
+  switch (mode) {
+    case "conservative":     return { trade: 70, watch: 65, research: 60 };
+    case "progressive":      return { trade: 65, watch: 55, research: 50 };
+    case "expert_research":  return { trade: 60, watch: 52, research: 48 };
+    case "balanced":
+    default:                 return { trade: 70, watch: 60, research: 50 };
+  }
+}
+
 
 const BLUECHIP_PREFIXES = new Set([
   "BBCA", "BBRI", "BMRI", "BBNI", "TLKM", "ASII", "UNVR", "ICBP", "INDF",
@@ -148,17 +185,19 @@ function clamp(n: number, lo = 0, hi = 100) {
   return Math.max(lo, Math.min(hi, n));
 }
 
-async function scoreSymbol(symbol: string): Promise<ScanCandidate> {
+async function scoreSymbol(symbol: string): Promise<ScanCandidate & { _priceAtScan: number | null }> {
   const warnings: string[] = [];
   let dataQuality = 0, liquidity = 0, technical = 50, sentiment = 50;
   let disclosure = 50, marketContext = 50, risk = 50, tradeSetup = 50;
   let priceOk = false, techOk = false, volume = 0;
+  let priceAtScan: number | null = null;
 
   // 1. Price + liquidity (single quote per symbol — keeps scanner cheap).
   try {
     const q: any = await getQuote({ data: { symbol } });
     if (q?.price) {
       priceOk = true;
+      priceAtScan = Number(q.price);
       const session = getIDXMarketSession();
       const fresh = session.isOpen && isIDXSymbol(symbol) ? 5 : 600;
       dataQuality = fresh < 30 ? 95 : fresh < 300 ? 80 : 60;
@@ -286,33 +325,129 @@ async function scoreSymbol(symbol: string): Promise<ScanCandidate> {
     tradeSetupScore: +tradeSetup.toFixed(2),
     recommendation, reason, warnings,
     passedFilters: false, rejectionReason: null,
+    // Defaults filled by classifyCandidate during runAutonomousScan.
+    classification: "rejected",
+    executionEligibility: "blocked_low_score",
+    blockedReason: null,
+    researchTradeAllowed: false,
+    hypotheticalTrackingEnabled: false,
+    scanPrice: priceAtScan,
+    riskMode: "balanced",
+    _priceAtScan: priceAtScan,
   };
 }
 
-function applyFilters(
+/** Assign classification + execution eligibility based on score thresholds,
+ *  data quality, liquidity, risk, and market session. Watch & research
+ *  candidates are NOT rejected — they are stored for monitoring. */
+function classifyCandidate(
   c: ScanCandidate,
-  agent: { min_autonomous_score: number; min_data_quality_score: number; min_liquidity_score: number },
+  agent: {
+    autonomous_risk_mode?: string;
+    min_data_quality_score?: number;
+    min_liquidity_score?: number;
+    allow_watch_candidates?: boolean;
+    allow_research_candidates?: boolean;
+    allow_small_lot_exploration?: boolean;
+  },
+  session: ReturnType<typeof getIDXMarketSession>,
+  isIDX: boolean,
 ): ScanCandidate {
-  if (c.autonomousScore < Number(agent.min_autonomous_score ?? 70)) {
-    return { ...c, passedFilters: false, rejectionReason: `Score ${c.autonomousScore} < ${agent.min_autonomous_score}` };
+  const mode = (agent.autonomous_risk_mode ?? "balanced") as RiskMode;
+  const th = thresholdsForMode(mode);
+
+  // Hard blocks first (data / risk).
+  const isRiskBlocked = c.warnings.some(w => /suspen|UMA/i.test(w));
+  const isDataBlocked = !c.scanPrice
+    || c.dataQualityScore < Number(agent.min_data_quality_score ?? 50);
+  const liquidityBad = c.liquidityScore < Number(agent.min_liquidity_score ?? 40);
+
+  let classification: CandidateClassification;
+  let executionEligibility: ExecutionEligibility = "eligible";
+  let blockedReason: string | null = null;
+
+  if (isRiskBlocked) {
+    classification = "risk_blocked";
+    executionEligibility = "blocked_risk";
+    blockedReason = "Suspensi / UMA / disclosure negatif high-impact.";
+  } else if (isDataBlocked) {
+    classification = "data_blocked";
+    executionEligibility = "blocked_data";
+    blockedReason = `Data quality ${c.dataQualityScore.toFixed(0)} < min ${agent.min_data_quality_score ?? 50}.`;
+  } else if (c.autonomousScore < th.research) {
+    classification = "rejected";
+    executionEligibility = "blocked_low_score";
+    blockedReason = `Score ${c.autonomousScore.toFixed(0)} di bawah research threshold (${th.research}).`;
+  } else if (c.autonomousScore < th.watch) {
+    classification = "research_candidate";
+    executionEligibility = "blocked_low_score";
+  } else if (c.autonomousScore < th.trade) {
+    classification = "watch_candidate";
+    executionEligibility = "blocked_low_score";
+  } else if (liquidityBad) {
+    classification = "watch_candidate";
+    executionEligibility = "blocked_risk";
+    blockedReason = `Liquidity ${c.liquidityScore.toFixed(0)} di bawah minimum.`;
+  } else {
+    classification = "trade_candidate";
   }
-  if (c.dataQualityScore < Number(agent.min_data_quality_score ?? 70)) {
-    return { ...c, passedFilters: false, rejectionReason: `Data quality ${c.dataQualityScore} < ${agent.min_data_quality_score}` };
+
+  // Market session gating only affects IDX trade candidates.
+  if (classification === "trade_candidate" && isIDX) {
+    if (session.state === "pre_open") {
+      executionEligibility = "blocked_pre_open";
+      blockedReason = "Market pre-open — pre-market watchlist saja.";
+      classification = "premarket_watch";
+    } else if (!session.isOpen) {
+      executionEligibility = "blocked_market_closed";
+      blockedReason = `Market ${session.label.toLowerCase()} — execution blocked.`;
+      classification = "premarket_watch";
+    }
   }
-  if (c.liquidityScore < Number(agent.min_liquidity_score ?? 60)) {
-    return { ...c, passedFilters: false, rejectionReason: `Liquidity ${c.liquidityScore} < ${agent.min_liquidity_score}` };
+
+  // Honor agent toggles: disabled classifications collapse to rejected (for
+  // visibility) but with explicit reason — they still appear in the table.
+  if (classification === "watch_candidate" && agent.allow_watch_candidates === false) {
+    classification = "rejected";
+    blockedReason = "Watch candidates disabled untuk agent ini.";
   }
-  if (c.warnings.some(w => /suspen|UMA/i.test(w))) {
-    return { ...c, passedFilters: false, rejectionReason: "Suspended/UMA risk" };
+  if (classification === "research_candidate" && agent.allow_research_candidates === false) {
+    classification = "rejected";
+    blockedReason = "Research candidates disabled untuk agent ini.";
   }
-  if (c.recommendation === "skip") {
-    return { ...c, passedFilters: false, rejectionReason: "Recommendation = skip" };
-  }
-  return { ...c, passedFilters: true };
+
+  // Research/exploration trade allowance — Progressive/Expert only; even then
+  // execution still requires market open + eligible.
+  const researchTradeAllowed = !!agent.allow_small_lot_exploration
+    && (mode === "progressive" || mode === "expert_research")
+    && (classification === "trade_candidate")
+    && executionEligibility === "eligible";
+
+  // Track outcomes for everything except hard data blocks (we have no price).
+  const hypotheticalTrackingEnabled = classification !== "data_blocked"
+    && classification !== "rejected"
+    && c.scanPrice != null;
+
+  const passedFilters = classification === "trade_candidate"
+    && executionEligibility === "eligible";
+
+  return {
+    ...c,
+    classification,
+    executionEligibility,
+    blockedReason,
+    researchTradeAllowed,
+    hypotheticalTrackingEnabled,
+    riskMode: mode,
+    passedFilters,
+    rejectionReason: blockedReason,
+  };
 }
 
 export async function runAutonomousScan(agent: any): Promise<ScanResult> {
   const mode = (agent.autonomous_universe ?? "idx_liquid") as UniverseKey;
+  const riskMode = (agent.autonomous_risk_mode ?? "balanced") as RiskMode;
+  const session = getIDXMarketSession();
   const universe = await buildUniverse(
     agent.id, mode, (agent.selected_symbols ?? []) as string[],
   );
@@ -326,18 +461,37 @@ export async function runAutonomousScan(agent: any): Promise<ScanResult> {
     for (const c of scored) if (c) candidates.push(c);
   }
 
-  const filtered = candidates.map(c => applyFilters(c, agent))
+  const classified = candidates
+    .map(c => classifyCandidate(c, agent, session, isIDXSymbol(c.symbol)))
     .sort((a, b) => b.autonomousScore - a.autonomousScore);
-  filtered.forEach((c, i) => { c.rank = i + 1; });
+  classified.forEach((c, i) => { c.rank = i + 1; });
 
-  const passed = filtered.filter(c => c.passedFilters);
-  const rejected = filtered.filter(c => !c.passedFilters);
+  const passed = classified.filter(c => c.passedFilters);
+  const watch = classified.filter(c => c.classification === "watch_candidate" || c.classification === "premarket_watch");
+  const research = classified.filter(c => c.classification === "research_candidate");
+  const rejected = classified.filter(c => c.classification === "rejected");
+  const blocked = classified.filter(c => c.classification === "risk_blocked" || c.classification === "data_blocked");
+
   const topN = Math.max(1, Math.min(10, Number(agent.max_autonomous_symbols ?? 5)));
   const selected = passed.slice(0, topN).map(c => c.symbol);
 
-  const reasoning = selected.length === 0
-    ? `Scan ${universe.length} symbol; tidak ada kandidat lolos filter (min score ${agent.min_autonomous_score}).`
-    : `Scan ${universe.length} symbol; ${passed.length} valid; pilih top ${selected.length}: ${selected.join(", ")}.`;
+  const summary: ScanSummary = {
+    trade: passed.length,
+    watch: watch.length,
+    research: research.length,
+    rejected: rejected.length,
+    blocked: blocked.length,
+    total: classified.length,
+    marketSession: session.state === "pre_open" ? "pre_open"
+      : session.isOpen ? "open"
+      : session.isBreak ? "break" : "closed",
+  };
+
+  const reasoning = selected.length > 0
+    ? `Scan ${universe.length} symbol [${riskMode}]; ${passed.length} trade-ready (top ${selected.length}: ${selected.join(", ")}), ${watch.length} watch, ${research.length} research.`
+    : summary.marketSession !== "open"
+    ? `Scan ${universe.length} symbol [${riskMode}]; market ${summary.marketSession}. ${watch.length} pre-market watch, ${research.length} research candidate.`
+    : `Scan ${universe.length} symbol [${riskMode}]; tidak ada trade candidate. ${watch.length} watch, ${research.length} research untuk dipantau.`;
 
   // Persist scan + candidate rows.
   const { data: scanRow, error: scanErr } = await supabaseAdmin
@@ -357,9 +511,9 @@ export async function runAutonomousScan(agent: any): Promise<ScanResult> {
 
   const scanId = (scanRow as any).id as string;
 
-  if (filtered.length > 0) {
+  if (classified.length > 0) {
     await supabaseAdmin.from("ai_agent_scan_candidates").insert(
-      filtered.slice(0, 50).map(c => ({
+      classified.slice(0, 50).map(c => ({
         scan_id: scanId, agent_id: agent.id, symbol: c.symbol, rank: c.rank,
         autonomous_score: c.autonomousScore,
         data_quality_score: c.dataQualityScore,
@@ -375,6 +529,13 @@ export async function runAutonomousScan(agent: any): Promise<ScanResult> {
         warnings: c.warnings as any,
         passed_filters: c.passedFilters,
         rejection_reason: c.rejectionReason,
+        candidate_classification: c.classification,
+        execution_eligibility: c.executionEligibility,
+        blocked_reason: c.blockedReason,
+        research_trade_allowed: c.researchTradeAllowed,
+        hypothetical_tracking_enabled: c.hypotheticalTrackingEnabled,
+        scan_price: c.scanPrice,
+        risk_mode: c.riskMode,
       })),
     );
   }
@@ -386,7 +547,8 @@ export async function runAutonomousScan(agent: any): Promise<ScanResult> {
   return {
     scanId, agentId: agent.id, universe: mode,
     scannedCount: universe.length, validCount: passed.length,
-    selected, topCandidates: passed.slice(0, 10), rejected: rejected.slice(0, 20),
-    reasoning,
+    selected, topCandidates: passed.slice(0, 10),
+    rejected: [...rejected, ...blocked].slice(0, 20),
+    reasoning, riskMode, summary,
   };
 }
