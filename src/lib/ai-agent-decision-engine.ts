@@ -355,6 +355,13 @@ export async function evaluateSymbol(
   // EXIT logic
   if (pos && (composite < -0.2 || techLabel === "SELL")) {
     if (!agent.allowSell) return emptySnap(sym, "Sell disabled untuk agent ini.");
+    if (!executionAllowed) {
+      return emptySnap(sym, executionBlockedReason ?? "Execution blocked", {
+        realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
+        portfolioSnapshot, dataFreshnessSeconds: freshness, dataQuality,
+        blockedReason: executionBlockedReason,
+      });
+    }
     return {
       symbol: sym, action: "EXIT", confidence, rawConfidence,
       calibrationReason: calib.reason,
@@ -365,6 +372,7 @@ export async function evaluateSymbol(
       entryPrice: price, stopLoss: null, takeProfit: null, riskRewardRatio: null,
       reasoning: `Posisi existing dilepas: teknikal ${techLabel} (${techScore.toFixed(0)}), sentimen ${sentScore.toFixed(2)}, news bias ${newsBiasNorm.toFixed(2)}.`,
       dataFreshnessSeconds: freshness, dataSource: "Yahoo Finance + public news feed",
+      executionAllowed: true, analysisOnly: false,
       realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
       portfolioSnapshot,
       riskSnapshot: { exposure: symbolExposure }, dataQuality, warnings,
