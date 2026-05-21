@@ -625,11 +625,11 @@ async function recomputeTradeMemory(agentId: string) {
 
     const latestRet = returns[0];
     const lastResult = getTradeResultFromReturn(latestRet);
-    // Consistency guard: if aggregate avg return is negative, the memory row
-    // must not advertise a "win" as last result (acceptance criteria #1/#2).
+    const totalRet = returns.reduce((s, r) => s + r, 0);
+    // Consistency guard (acceptance #1, #2, #7): if aggregate avg or total
+    // return is negative, memory row must not advertise "win" as last result.
     const safeLastResult =
-      (avgRet < 0 && lastResult === "win") ? "loss"
-      : (total => total < 0 && lastResult === "win" ? "loss" : lastResult)(returns.reduce((s, r) => s + r, 0));
+      (lastResult === "win" && (avgRet < 0 || totalRet < 0)) ? "loss" : lastResult;
 
     const lossIdx = returns.findIndex(r => r < 0);
     const recentMistake = lossIdx >= 0 ? (list[lossIdx].lesson_label ?? null) : null;
