@@ -374,17 +374,33 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
 
   if (agent.status === "paused") return { decisions: [], executed: 0 };
 
-  // Daily trades cap
+  // Daily trades cap — per-agent only (not all user orders).
   const sinceDay = new Date(Date.now() - 24 * 3600_000).toISOString();
-  const { count: todayCount } = await supabaseAdmin.from("paper_orders")
+  const { count: todayCount } = await supabaseAdmin.from("ai_agent_decisions")
     .select("id", { count: "exact", head: true })
-    .eq("user_id", USER_ID).gte("created_at", sinceDay);
+    .eq("agent_id", agentId).eq("decision_status", "executed")
+    .gte("created_at", sinceDay);
   const dailyTradesLeft = Math.max(0, Number(agent.max_daily_trades) - (todayCount ?? 0));
 
   const { data: acct } = await supabaseAdmin.from("paper_accounts").select("*").eq("id", agent.paper_account_id).single();
   const { data: positions } = await supabaseAdmin.from("paper_positions").select("*").eq("user_id", USER_ID);
   const posList: Position[] = (positions ?? []).map((p: any) => ({ symbol: p.symbol, qty: Number(p.qty), avg_price: Number(p.avg_price) }));
-  const account = { cash: Number(acct!.cash), equity: Number(acct!.equity ?? acct!.cash) };
+
+  // Mark-to-market equity: cash + sum(qty * latest price) instead of stale DB equity.
+  let holdingsValue = 0;
+  for (const p of posList) {
+    try {
+      const q: any = await getQuote({ data: { symbol: p.symbol } });
+      const px = Number(q?.price);
+      if (Number.isFinite(px) && px > 0) holdingsValue += p.qty * px;
+      else holdingsValue += p.qty * p.avg_price;
+    } catch { holdingsValue += p.qty * p.avg_price; }
+  }
+  const mtmEquity = Number(acct!.cash) + holdingsValue;
+  // Persist refreshed equity (best-effort).
+  await supabaseAdmin.from("paper_accounts")
+    .update({ equity: mtmEquity }).eq("id", agent.paper_account_id);
+  const account = { cash: Number(acct!.cash), equity: mtmEquity };
 
   const cfg: AgentConfig = {
     id: agent.id, riskLevel: agent.risk_level, strategyMode: agent.strategy_mode,
