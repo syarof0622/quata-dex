@@ -20,10 +20,12 @@ export type Database = {
           agent_id: string
           allocation_amount: number | null
           autonomous_rank: number | null
+          autonomous_risk_mode: string | null
           autonomous_scan_id: string | null
           autonomous_score: number | null
           calibrated_confidence: number | null
           calibration_reason: string | null
+          candidate_classification: string | null
           confidence: number | null
           confidence_adjustments: Json | null
           created_at: string
@@ -33,12 +35,14 @@ export type Database = {
           data_source: string | null
           decision_status: string | null
           entry_price: number | null
+          exploration_trade: boolean
           id: string
           idempotency_key: string | null
           paper_account_id: string
           portfolio_snapshot: Json | null
           raw_confidence: number | null
           reasoning: string | null
+          research_trade: boolean
           risk_reward_ratio: number | null
           risk_snapshot: Json | null
           selection_mode: string
@@ -57,10 +61,12 @@ export type Database = {
           agent_id: string
           allocation_amount?: number | null
           autonomous_rank?: number | null
+          autonomous_risk_mode?: string | null
           autonomous_scan_id?: string | null
           autonomous_score?: number | null
           calibrated_confidence?: number | null
           calibration_reason?: string | null
+          candidate_classification?: string | null
           confidence?: number | null
           confidence_adjustments?: Json | null
           created_at?: string
@@ -70,12 +76,14 @@ export type Database = {
           data_source?: string | null
           decision_status?: string | null
           entry_price?: number | null
+          exploration_trade?: boolean
           id?: string
           idempotency_key?: string | null
           paper_account_id: string
           portfolio_snapshot?: Json | null
           raw_confidence?: number | null
           reasoning?: string | null
+          research_trade?: boolean
           risk_reward_ratio?: number | null
           risk_snapshot?: Json | null
           selection_mode?: string
@@ -94,10 +102,12 @@ export type Database = {
           agent_id?: string
           allocation_amount?: number | null
           autonomous_rank?: number | null
+          autonomous_risk_mode?: string | null
           autonomous_scan_id?: string | null
           autonomous_score?: number | null
           calibrated_confidence?: number | null
           calibration_reason?: string | null
+          candidate_classification?: string | null
           confidence?: number | null
           confidence_adjustments?: Json | null
           created_at?: string
@@ -107,12 +117,14 @@ export type Database = {
           data_source?: string | null
           decision_status?: string | null
           entry_price?: number | null
+          exploration_trade?: boolean
           id?: string
           idempotency_key?: string | null
           paper_account_id?: string
           portfolio_snapshot?: Json | null
           raw_confidence?: number | null
           reasoning?: string | null
+          research_trade?: boolean
           risk_reward_ratio?: number | null
           risk_snapshot?: Json | null
           selection_mode?: string
@@ -222,21 +234,34 @@ export type Database = {
         Row: {
           agent_id: string
           autonomous_score: number
+          blocked_reason: string | null
+          candidate_classification: string
           created_at: string
           data_quality_score: number
           disclosure_score: number
+          execution_eligibility: string
           fundamental_score: number
+          hypothetical_return_15m: number | null
+          hypothetical_return_1h: number | null
+          hypothetical_return_eod: number | null
+          hypothetical_tracking_enabled: boolean
           id: string
           liquidity_score: number
           market_context_score: number
+          outcome_15m: Json | null
+          outcome_1h: Json | null
+          outcome_eod: Json | null
           passed_filters: boolean
           rank: number | null
           reason: string | null
           recommendation: string | null
           regime_fit_score: number
           rejection_reason: string | null
+          research_trade_allowed: boolean
+          risk_mode: string | null
           risk_score: number
           scan_id: string
+          scan_price: number | null
           sector_fit_score: number
           sentiment_score: number
           symbol: string
@@ -248,21 +273,34 @@ export type Database = {
         Insert: {
           agent_id: string
           autonomous_score?: number
+          blocked_reason?: string | null
+          candidate_classification?: string
           created_at?: string
           data_quality_score?: number
           disclosure_score?: number
+          execution_eligibility?: string
           fundamental_score?: number
+          hypothetical_return_15m?: number | null
+          hypothetical_return_1h?: number | null
+          hypothetical_return_eod?: number | null
+          hypothetical_tracking_enabled?: boolean
           id?: string
           liquidity_score?: number
           market_context_score?: number
+          outcome_15m?: Json | null
+          outcome_1h?: Json | null
+          outcome_eod?: Json | null
           passed_filters?: boolean
           rank?: number | null
           reason?: string | null
           recommendation?: string | null
           regime_fit_score?: number
           rejection_reason?: string | null
+          research_trade_allowed?: boolean
+          risk_mode?: string | null
           risk_score?: number
           scan_id: string
+          scan_price?: number | null
           sector_fit_score?: number
           sentiment_score?: number
           symbol: string
@@ -274,21 +312,34 @@ export type Database = {
         Update: {
           agent_id?: string
           autonomous_score?: number
+          blocked_reason?: string | null
+          candidate_classification?: string
           created_at?: string
           data_quality_score?: number
           disclosure_score?: number
+          execution_eligibility?: string
           fundamental_score?: number
+          hypothetical_return_15m?: number | null
+          hypothetical_return_1h?: number | null
+          hypothetical_return_eod?: number | null
+          hypothetical_tracking_enabled?: boolean
           id?: string
           liquidity_score?: number
           market_context_score?: number
+          outcome_15m?: Json | null
+          outcome_1h?: Json | null
+          outcome_eod?: Json | null
           passed_filters?: boolean
           rank?: number | null
           reason?: string | null
           recommendation?: string | null
           regime_fit_score?: number
           rejection_reason?: string | null
+          research_trade_allowed?: boolean
+          risk_mode?: string | null
           risk_score?: number
           scan_id?: string
+          scan_price?: number | null
           sector_fit_score?: number
           sentiment_score?: number
           symbol?: string
@@ -410,6 +461,7 @@ export type Database = {
           agent_id: string
           ai_decision: Json | null
           autonomous_scan_snapshot: Json | null
+          candidate_classification: string | null
           candidate_scores: Json | null
           confidence_calibration_snapshot: Json | null
           created_at: string
@@ -420,11 +472,13 @@ export type Database = {
           final_outcome: Json | null
           fundamental_snapshot: Json | null
           holding_period_minutes: number | null
+          hypothetical_tracking: Json | null
           id: string
           input_features: Json | null
           lesson_label: string | null
           max_adverse_excursion: number | null
           max_favorable_excursion: number | null
+          missed_opportunity_score: number | null
           model_version: string | null
           order_id: string | null
           outcome_15m: Json | null
@@ -460,6 +514,7 @@ export type Database = {
           agent_id: string
           ai_decision?: Json | null
           autonomous_scan_snapshot?: Json | null
+          candidate_classification?: string | null
           candidate_scores?: Json | null
           confidence_calibration_snapshot?: Json | null
           created_at?: string
@@ -470,11 +525,13 @@ export type Database = {
           final_outcome?: Json | null
           fundamental_snapshot?: Json | null
           holding_period_minutes?: number | null
+          hypothetical_tracking?: Json | null
           id?: string
           input_features?: Json | null
           lesson_label?: string | null
           max_adverse_excursion?: number | null
           max_favorable_excursion?: number | null
+          missed_opportunity_score?: number | null
           model_version?: string | null
           order_id?: string | null
           outcome_15m?: Json | null
@@ -510,6 +567,7 @@ export type Database = {
           agent_id?: string
           ai_decision?: Json | null
           autonomous_scan_snapshot?: Json | null
+          candidate_classification?: string | null
           candidate_scores?: Json | null
           confidence_calibration_snapshot?: Json | null
           created_at?: string
@@ -520,11 +578,13 @@ export type Database = {
           final_outcome?: Json | null
           fundamental_snapshot?: Json | null
           holding_period_minutes?: number | null
+          hypothetical_tracking?: Json | null
           id?: string
           input_features?: Json | null
           lesson_label?: string | null
           max_adverse_excursion?: number | null
           max_favorable_excursion?: number | null
+          missed_opportunity_score?: number | null
           model_version?: string | null
           order_id?: string | null
           outcome_15m?: Json | null
@@ -640,16 +700,23 @@ export type Database = {
           allow_autonomous_rotation: boolean
           allow_average_down: boolean | null
           allow_buy: boolean | null
+          allow_outcome_tracking_without_trade: boolean
+          allow_premarket_planning: boolean
           allow_pyramiding: boolean | null
+          allow_research_candidates: boolean
           allow_sell: boolean | null
           allow_short_sell: boolean | null
+          allow_small_lot_exploration: boolean
+          allow_watch_candidates: boolean
           auto_stop_loss: boolean | null
           auto_take_profit: boolean | null
           autonomous_allocation_mode: string
           autonomous_mode_acknowledged: boolean
           autonomous_rescan_interval_minutes: number
+          autonomous_risk_mode: string
           autonomous_universe: string
           created_at: string
+          expert_research_max_allocation_pct: number
           id: string
           last_autonomous_scan_at: string | null
           last_error: string | null
@@ -661,17 +728,21 @@ export type Database = {
           max_drawdown: number | null
           max_new_entries_per_day: number
           max_position_per_symbol: number | null
+          max_research_trades_per_day: number
           max_value_trap_risk: number
           min_autonomous_score: number
           min_confidence_to_trade: number | null
           min_data_quality_score: number
           min_liquidity_score: number
+          min_research_candidate_score: number
           min_undervalue_score: number
+          min_watch_candidate_score: number
           mode: string
           name: string
           paper_account_id: string
           paper_trading_only: boolean
           paused_at: string | null
+          progressive_max_allocation_pct: number
           require_fresh_data: boolean | null
           require_fundamental_data: boolean
           risk_level: string
@@ -694,16 +765,23 @@ export type Database = {
           allow_autonomous_rotation?: boolean
           allow_average_down?: boolean | null
           allow_buy?: boolean | null
+          allow_outcome_tracking_without_trade?: boolean
+          allow_premarket_planning?: boolean
           allow_pyramiding?: boolean | null
+          allow_research_candidates?: boolean
           allow_sell?: boolean | null
           allow_short_sell?: boolean | null
+          allow_small_lot_exploration?: boolean
+          allow_watch_candidates?: boolean
           auto_stop_loss?: boolean | null
           auto_take_profit?: boolean | null
           autonomous_allocation_mode?: string
           autonomous_mode_acknowledged?: boolean
           autonomous_rescan_interval_minutes?: number
+          autonomous_risk_mode?: string
           autonomous_universe?: string
           created_at?: string
+          expert_research_max_allocation_pct?: number
           id?: string
           last_autonomous_scan_at?: string | null
           last_error?: string | null
@@ -715,17 +793,21 @@ export type Database = {
           max_drawdown?: number | null
           max_new_entries_per_day?: number
           max_position_per_symbol?: number | null
+          max_research_trades_per_day?: number
           max_value_trap_risk?: number
           min_autonomous_score?: number
           min_confidence_to_trade?: number | null
           min_data_quality_score?: number
           min_liquidity_score?: number
+          min_research_candidate_score?: number
           min_undervalue_score?: number
+          min_watch_candidate_score?: number
           mode?: string
           name?: string
           paper_account_id: string
           paper_trading_only?: boolean
           paused_at?: string | null
+          progressive_max_allocation_pct?: number
           require_fresh_data?: boolean | null
           require_fundamental_data?: boolean
           risk_level?: string
@@ -748,16 +830,23 @@ export type Database = {
           allow_autonomous_rotation?: boolean
           allow_average_down?: boolean | null
           allow_buy?: boolean | null
+          allow_outcome_tracking_without_trade?: boolean
+          allow_premarket_planning?: boolean
           allow_pyramiding?: boolean | null
+          allow_research_candidates?: boolean
           allow_sell?: boolean | null
           allow_short_sell?: boolean | null
+          allow_small_lot_exploration?: boolean
+          allow_watch_candidates?: boolean
           auto_stop_loss?: boolean | null
           auto_take_profit?: boolean | null
           autonomous_allocation_mode?: string
           autonomous_mode_acknowledged?: boolean
           autonomous_rescan_interval_minutes?: number
+          autonomous_risk_mode?: string
           autonomous_universe?: string
           created_at?: string
+          expert_research_max_allocation_pct?: number
           id?: string
           last_autonomous_scan_at?: string | null
           last_error?: string | null
@@ -769,17 +858,21 @@ export type Database = {
           max_drawdown?: number | null
           max_new_entries_per_day?: number
           max_position_per_symbol?: number | null
+          max_research_trades_per_day?: number
           max_value_trap_risk?: number
           min_autonomous_score?: number
           min_confidence_to_trade?: number | null
           min_data_quality_score?: number
           min_liquidity_score?: number
+          min_research_candidate_score?: number
           min_undervalue_score?: number
+          min_watch_candidate_score?: number
           mode?: string
           name?: string
           paper_account_id?: string
           paper_trading_only?: boolean
           paused_at?: string | null
+          progressive_max_allocation_pct?: number
           require_fresh_data?: boolean | null
           require_fundamental_data?: boolean
           risk_level?: string
