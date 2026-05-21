@@ -359,18 +359,31 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
   if (!agent) throw new Error("agent not found");
   if (agent.status === "stopped" || agent.status === "error") return { decisions: [], executed: 0 };
 
-  // Reflect market session into agent.status (advisory)
+  // Reflect market session into agent.status — autonomous mode follows IDX session
+  // even when selected_symbols is empty (avoids false "active_market_open").
   const session = getIDXMarketSession();
-  const hasIdx = (agent.selected_symbols as string[]).some(isIDXSymbol);
+  const isAutonomousMode = (agent.symbol_selection_mode ?? "manual") === "autonomous";
+  const universeIsIdx = isAutonomousMode
+    ? String(agent.autonomous_universe ?? "idx_liquid").startsWith("idx")
+      || ["idx_liquid", "bluechip", "watchlist_plus", "undervalued_candidates",
+          "quality_undervalued", "dividend_undervalued", "sector_discount",
+          "hybrid_trading_and_value"].includes(String(agent.autonomous_universe ?? ""))
+    : (agent.selected_symbols as string[]).some(isIDXSymbol);
   let nextStatus = agent.status;
   if (agent.status !== "paused") {
-    if (hasIdx) {
+    if (universeIsIdx) {
       nextStatus = session.isOpen ? "active_market_open"
                  : session.isBreak ? "active_market_break" : "active_market_closed";
     } else nextStatus = "active_market_open";
   }
-  await supabaseAdmin.from("ai_trade_agents").update({ status: nextStatus, last_run_at: new Date().toISOString() })
-    .eq("id", agentId);
+  // Session-change detection → force autonomous rescan on transition.
+  const lastSession = (agent as any).last_market_session_state as string | null;
+  const sessionChanged = lastSession && lastSession !== session.state;
+  await supabaseAdmin.from("ai_trade_agents").update({
+    status: nextStatus,
+    last_run_at: new Date().toISOString(),
+    last_market_session_state: session.state,
+  }).eq("id", agentId);
 
   if (agent.status === "paused") return { decisions: [], executed: 0 };
 
