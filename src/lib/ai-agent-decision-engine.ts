@@ -444,6 +444,14 @@ export async function evaluateSymbol(
       riskSnapshot: { needed: sized.estimatedCost, cash: account.cash },
     });
 
+    if (!executionAllowed) {
+      return emptySnap(sym, executionBlockedReason ?? "Market closed — passive analysis only.", {
+        confidence, rawConfidence, calibrationReason: calib.reason,
+        realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
+        portfolioSnapshot, dataFreshnessSeconds: freshness, dataQuality,
+        blockedReason: executionBlockedReason,
+      });
+    }
     const preset = RISK_PRESETS[agent.riskLevel] ?? RISK_PRESETS.balanced;
     const stopLoss = agent.autoStopLoss ? +(price * (1 - preset.slPct)).toFixed(2) : null;
     const takeProfit = agent.autoTakeProfit ? +(price * (1 + preset.tpPct)).toFixed(2) : null;
@@ -458,6 +466,7 @@ export async function evaluateSymbol(
       entryPrice: price, stopLoss, takeProfit, riskRewardRatio: rr,
       reasoning: `Teknikal ${techLabel} (${techScore.toFixed(0)}), sentimen ${sentScore.toFixed(2)}, news +${realNewsData.positiveNewsCount}/-${realNewsData.negativeNewsCount} (high ${realNewsData.highImpactNewsCount}), IHSG ${realMarketContext.ihsgBias}. Composite ${(composite*100).toFixed(0)}%. ${calib.reason} Allocate ${sized.lot} lot @ ${price}.`,
       dataFreshnessSeconds: freshness, dataSource: "Yahoo Finance + Google News RSS + IDX disclosure",
+      executionAllowed: true, analysisOnly: false,
       realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
       portfolioSnapshot,
       riskSnapshot: { slPct: preset.slPct, tpPct: preset.tpPct, rr }, dataQuality, warnings,
