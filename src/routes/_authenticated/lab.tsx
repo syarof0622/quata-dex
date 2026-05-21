@@ -572,16 +572,30 @@ function AIAgentPanel() {
               {memoryRows.map((m) => {
                 const wr = Number(m.recent_win_rate ?? 0);
                 const ar = Number(m.recent_avg_return ?? 0);
+                const n = Number(m.sample_size ?? 0);
+                let lastResult: string = (m.last_trade_result ?? "—");
+                // UI guards: insufficient sample, or inconsistent avg/last result
+                if (n === 0) lastResult = "—";
+                else if (ar < 0 && lastResult === "win") lastResult = "loss";
+                const lastResultClass =
+                  lastResult === "win" ? "text-bull"
+                  : lastResult === "loss" ? "text-bear"
+                  : "text-muted-foreground";
                 return (
                   <tr key={m.id} className="border-t border-border/40">
                     <td className="p-2 font-mono">{m.symbol}</td>
-                    <td className={`p-2 text-right font-mono ${wr >= 50 ? "text-bull" : "text-bear"}`}>{wr.toFixed(1)}%</td>
-                    <td className={`p-2 text-right font-mono ${ar >= 0 ? "text-bull" : "text-bear"}`}>{ar.toFixed(2)}%</td>
-                    <td className="p-2 text-right font-mono">{m.sample_size ?? 0}</td>
+                    <td className={`p-2 text-right font-mono ${n === 0 ? "text-muted-foreground" : wr >= 50 ? "text-bull" : "text-bear"}`}>
+                      {n === 0 ? "—" : `${wr.toFixed(1)}%`}
+                    </td>
+                    <td className={`p-2 text-right font-mono ${n === 0 ? "text-muted-foreground" : ar >= 0 ? "text-bull" : "text-bear"}`}>
+                      {n === 0 ? "—" : `${ar.toFixed(2)}%`}
+                    </td>
+                    <td className="p-2 text-right font-mono">{n === 0 ? <span className="text-muted-foreground" title="Insufficient sample">—</span> : n}</td>
                     <td className="p-2 text-xs">{m.best_strategy ?? "—"}</td>
                     <td className="p-2 text-xs">{m.worst_strategy ?? "—"}</td>
-                    <td className="p-2 text-xs text-muted-foreground">
-                      {(m.last_trade_result ?? "—")}{m.recent_mistake ? ` · ${m.recent_mistake}` : ""}
+                    <td className="p-2 text-xs">
+                      <span className={lastResultClass}>{lastResult}</span>
+                      {m.recent_mistake ? <span className="text-muted-foreground"> · {m.recent_mistake}</span> : null}
                     </td>
                   </tr>
                 );
@@ -1048,7 +1062,7 @@ function AutonomousScannerPanel({ agent }: { agent: any }) {
                   <td className="p-1 text-right font-mono">{Number(c.risk_score ?? 0).toFixed(0)}</td>
                   <td className="p-1">
                     {c.passed_filters
-                      ? <span className="text-bull">passed</span>
+                      ? <span className="text-bull" title="Lolos scanner awal. Eksekusi tetap menunggu confidence, risk, setup, dan paper trading validation.">candidate</span>
                       : <span className="text-muted-foreground" title={c.rejection_reason ?? ""}>rejected</span>}
                   </td>
                 </tr>

@@ -535,20 +535,62 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
   return { decisions, executed };
 }
 
-/** Aggregate finalized training events per symbol into ai_agent_trade_memory. */
+/** Extract realized return % from a finalized training event. Prefers paper_pnl_percent. */
+function getEventReturnPct(event: any): number {
+  const direct = Number(event?.paper_pnl_percent);
+  if (Number.isFinite(direct) && direct !== 0) return direct;
+  const fromOutcome1 = Number(event?.final_outcome?.paperPnLPercent);
+  if (Number.isFinite(fromOutcome1) && fromOutcome1 !== 0) return fromOutcome1;
+  const fromOutcome2 = Number(event?.final_outcome?.paper_pnl_percent);
+  if (Number.isFinite(fromOutcome2) && fromOutcome2 !== 0) return fromOutcome2;
+  if (Number.isFinite(direct)) return direct;
+  if (Number.isFinite(fromOutcome1)) return fromOutcome1;
+  if (Number.isFinite(fromOutcome2)) return fromOutcome2;
+  return 0;
+}
+
+function getTradeResultFromReturn(returnPct: number): "win" | "loss" | "breakeven" {
+  if (returnPct > 0) return "win";
+  if (returnPct < 0) return "loss";
+  return "breakeven";
+}
+
+/** Is this training event a completed/closed trade (not HOLD, not open)? */
+function isCompletedTradeEvent(event: any): boolean {
+  if (!event?.final_outcome) return false;
+  const action = String(event?.ai_decision?.action ?? "").toUpperCase();
+  if (action === "HOLD" || action === "" || action === "NO_TRADE") return false;
+  if (!["BUY", "SELL", "EXIT"].includes(action)) return false;
+  // Reject explicit passive_analysis snapshots even if action mislabeled.
+  if (event?.final_outcome?.eventType === "passive_analysis") return false;
+  const exec = event?.paper_execution;
+  const executed = exec?.executed === true || exec?.status === "filled";
+  const hasRealizedPnl = Number.isFinite(Number(event?.paper_pnl_percent))
+    || Number.isFinite(Number(event?.final_outcome?.paperPnLPercent))
+    || Number.isFinite(Number(event?.final_outcome?.paper_pnl_percent))
+    || (Number.isFinite(Number(event?.pnl)) && Number(event?.pnl) !== 0);
+  return executed || hasRealizedPnl;
+}
+
+/** Aggregate finalized training events per symbol into ai_agent_trade_memory.
+ *  Trade win/loss is derived from realized P/L, NOT from was_correct. */
 async function recomputeTradeMemory(agentId: string) {
   const { data: events } = await supabaseAdmin
     .from("ai_agent_training_events")
-    .select("symbol, was_correct, paper_pnl_percent, lesson_label, ai_decision, final_outcome, created_at")
+    .select("symbol, was_correct, paper_pnl_percent, pnl, lesson_label, ai_decision, paper_execution, final_outcome, created_at")
     .eq("agent_id", agentId)
     .not("final_outcome", "is", null)
     .order("created_at", { ascending: false })
     .limit(500);
   if (!events?.length) return;
 
+  // Filter to completed trades only (exclude HOLD / passive snapshots / open).
+  const completed = events.filter(isCompletedTradeEvent);
+  if (!completed.length) return;
+
   // Bucket by symbol → keep last 30 finalized per symbol.
-  const bySym = new Map<string, typeof events>();
-  for (const e of events) {
+  const bySym = new Map<string, typeof completed>();
+  for (const e of completed) {
     if (!e.symbol) continue;
     const arr = bySym.get(e.symbol) ?? [];
     if (arr.length < 30) { arr.push(e); bySym.set(e.symbol, arr); }
@@ -556,21 +598,21 @@ async function recomputeTradeMemory(agentId: string) {
 
   for (const [symbol, list] of bySym) {
     const n = list.length;
-    const wins = list.filter(e => e.was_correct === true).length;
-    const winRate = n ? wins / n : 0;
-    const avgRet = n
-      ? list.reduce((s, e) => s + Number(e.paper_pnl_percent ?? 0), 0) / n
-      : 0;
+    const returns = list.map(getEventReturnPct);
+    const wins = returns.filter(r => r > 0).length;
+    const losses = returns.filter(r => r < 0).length;
+    const winRatePct = n ? (wins / n) * 100 : 0;
+    const avgRet = n ? returns.reduce((s, r) => s + r, 0) / n : 0;
 
-    // Strategy stats: count wins/total per strategy from ai_decision.strategy.
+    // Strategy stats: win attribution from realized P/L, not was_correct.
     const stratStats: Record<string, { n: number; wins: number; pnl: number }> = {};
-    for (const e of list) {
+    list.forEach((e, i) => {
       const strat = (e.ai_decision as any)?.strategy ?? "unknown";
       const s = (stratStats[strat] ||= { n: 0, wins: 0, pnl: 0 });
       s.n += 1;
-      if (e.was_correct) s.wins += 1;
-      s.pnl += Number(e.paper_pnl_percent ?? 0);
-    }
+      if (returns[i] > 0) s.wins += 1;
+      s.pnl += returns[i];
+    });
     let best: string | null = null, worst: string | null = null;
     let bestScore = -Infinity, worstScore = Infinity;
     for (const [k, v] of Object.entries(stratStats)) {
@@ -581,23 +623,28 @@ async function recomputeTradeMemory(agentId: string) {
     }
     if (best === worst) worst = null;
 
-    const latest = list[0];
-    const lastResult = latest.was_correct === true ? "win" : latest.was_correct === false ? "loss" : null;
-    const recentMistake = list.find(e => e.was_correct === false)?.lesson_label ?? null;
-    const lastEntryReason = (latest.ai_decision as any)?.reasoning ?? null;
+    const latestRet = returns[0];
+    const lastResult = getTradeResultFromReturn(latestRet);
+    // Guard: if avg negative & no wins exist but latest somehow says win, downgrade.
+    const safeLastResult =
+      (avgRet < 0 && lastResult === "win" && wins === 0) ? "loss" : lastResult;
+
+    const lossIdx = returns.findIndex(r => r < 0);
+    const recentMistake = lossIdx >= 0 ? (list[lossIdx].lesson_label ?? null) : null;
+    const lastEntryReason = (list[0].ai_decision as any)?.reasoning ?? null;
 
     await supabaseAdmin.from("ai_agent_trade_memory").upsert({
       agent_id: agentId, symbol,
-      recent_win_rate: +winRate.toFixed(4),
+      recent_win_rate: +winRatePct.toFixed(2),
       recent_avg_return: +avgRet.toFixed(4),
       sample_size: n,
-      last_trade_result: lastResult,
+      last_trade_result: safeLastResult,
       last_entry_reason: lastEntryReason ? String(lastEntryReason).slice(0, 500) : null,
       recent_mistake: recentMistake,
       best_strategy: best,
       worst_strategy: worst,
       strategy_stats: stratStats as any,
-      ticker_stats: { winRate, avgReturn: avgRet, n } as any,
+      ticker_stats: { winRatePct, avgReturn: avgRet, n, wins, losses } as any,
       updated_at: new Date().toISOString(),
     }, { onConflict: "agent_id,symbol" });
   }
@@ -633,11 +680,14 @@ async function backfillTrainingOutcomes(agentId: string) {
       const side = (dec.action ?? "").toUpperCase();
       const isLong = side === "BUY";
       const isExit = side === "EXIT" || side === "SELL";
+      const isHold = side === "HOLD";
       const ageMin = (Date.now() - new Date(ev.created_at).getTime()) / 60000;
       const px = await fetchPx(ev.symbol);
       if (!px) continue;
 
-      const pnlPctRaw = ((px - entry) / entry) * 100 * (isLong ? 1 : (isExit ? -1 : 1));
+      // Price direction movement (independent of trade exec). Sign flips for short/exit.
+      const priceMovePct = ((px - entry) / entry) * 100;
+      const pnlPctRaw = priceMovePct * (isLong || isHold ? 1 : (isExit ? -1 : 1));
       const patch: any = { evaluated_at: new Date().toISOString() };
 
       if (!ev.outcome_15m && ageMin >= 15) {
@@ -646,32 +696,58 @@ async function backfillTrainingOutcomes(agentId: string) {
       if (!ev.outcome_1h && ageMin >= 60) {
         patch.outcome_1h = { priceAfter1h: px, pnlPercent: +pnlPctRaw.toFixed(3) };
       }
-      // End-of-day (≥ 6 hours since decision = same trading day window)
       if (!ev.outcome_eod && ageMin >= 360) {
         patch.outcome_eod = { endOfDayPrice: px, pnlPercent: +pnlPctRaw.toFixed(3) };
       }
       // Finalize: realized exit OR > 24h elapsed
       if (!ev.final_outcome && (Number(ev.pnl ?? 0) !== 0 || ageMin >= 1440)) {
         const realized = Number(ev.pnl ?? 0);
-        const pnlPercent = realized !== 0
-          ? +((realized / Math.max(1, entry * (dec.shares ?? 1))) * 100).toFixed(3)
-          : +pnlPctRaw.toFixed(3);
-        const wasCorrect = isLong ? pnlPercent > 0 : isExit ? pnlPercent < 0 : null;
-        let lesson = "data_stale_hold_correct";
-        if (isLong && pnlPercent >= 2) lesson = "take_profit_success";
-        else if (isLong && pnlPercent <= -1.5) lesson = "stop_loss_too_tight";
-        else if (isLong && pnlPercent > 0) lesson = "good_entry";
-        else if (isLong && pnlPercent <= 0) lesson = "false_positive_signal";
-        else if (isExit && pnlPercent < 0) lesson = "good_exit";
-        else if (isExit && pnlPercent >= 0) lesson = "bad_exit";
+        const directionCorrect = isLong ? priceMovePct > 0
+          : isExit ? priceMovePct < 0
+          : isHold ? null
+          : null;
 
-        patch.final_outcome = {
-          exitPrice: px, paperPnL: realized, paperPnLPercent: pnlPercent,
-          wasDirectionCorrect: wasCorrect,
-        };
-        patch.paper_pnl_percent = pnlPercent;
-        patch.was_correct = wasCorrect;
-        patch.lesson_label = lesson;
+        if (isHold) {
+          // Passive analysis snapshot — NOT a trade. No P/L, not counted in performance/memory.
+          patch.final_outcome = {
+            eventType: "passive_analysis",
+            priceAtFinalize: px,
+            priceMovePercent: +priceMovePct.toFixed(3),
+            paperPnL: 0,
+            paperPnLPercent: null,
+            wasDirectionCorrect: directionCorrect,
+            tradeResult: null,
+          };
+          patch.was_correct = directionCorrect;
+          // Intentionally do NOT set paper_pnl_percent for HOLD.
+          patch.lesson_label = "hold_no_trade";
+        } else {
+          // Trade decision → realized P/L drives win/loss.
+          const pnlPercent = realized !== 0
+            ? +((realized / Math.max(1, entry * (dec.shares ?? 1))) * 100).toFixed(3)
+            : +pnlPctRaw.toFixed(3);
+          const tradeResult = getTradeResultFromReturn(pnlPercent);
+
+          let lesson = "data_stale";
+          if (isLong && pnlPercent >= 2) lesson = "take_profit_success";
+          else if (isLong && pnlPercent <= -1.5) lesson = "stop_loss_too_tight";
+          else if (isLong && pnlPercent > 0) lesson = "good_entry";
+          else if (isLong && pnlPercent <= 0) lesson = "false_positive_signal";
+          else if (isExit && pnlPercent < 0) lesson = "good_exit";
+          else if (isExit && pnlPercent >= 0) lesson = "bad_exit";
+
+          patch.final_outcome = {
+            eventType: "trade_decision",
+            exitPrice: px,
+            paperPnL: realized,
+            paperPnLPercent: pnlPercent,
+            wasDirectionCorrect: directionCorrect,
+            tradeResult,
+          };
+          patch.paper_pnl_percent = pnlPercent;
+          patch.was_correct = directionCorrect;
+          patch.lesson_label = lesson;
+        }
       }
 
       if (Object.keys(patch).length > 1) {
@@ -682,14 +758,26 @@ async function backfillTrainingOutcomes(agentId: string) {
 }
 
 async function recomputePerformance(agentId: string, paperAccountId: string) {
+  // Only finalized events; HOLD/passive/open are excluded by isCompletedTradeEvent.
   const { data: events } = await supabaseAdmin.from("ai_agent_training_events")
-    .select("pnl").eq("agent_id", agentId);
-  const arr = (events ?? []).map(e => Number(e.pnl ?? 0)).filter(n => !Number.isNaN(n));
-  const trades = arr.length;
-  const wins = arr.filter(n => n > 0);
-  const losses = arr.filter(n => n < 0);
+    .select("ai_decision, paper_execution, paper_pnl_percent, pnl, final_outcome")
+    .eq("agent_id", agentId)
+    .not("final_outcome", "is", null);
+
+  const completed = (events ?? []).filter(isCompletedTradeEvent);
+
+  // Signed pnl per trade for win/loss + magnitude. Prefer realized pnl; fall back to %.
+  const signed = completed.map(e => {
+    const realized = Number(e.pnl ?? 0);
+    if (Number.isFinite(realized) && realized !== 0) return realized;
+    return getEventReturnPct(e);
+  });
+
+  const trades = completed.length;
+  const wins = signed.filter(n => n > 0);
+  const losses = signed.filter(n => n < 0);
   const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
-  const total = sum(arr);
+  const total = sum(signed);
   const profitFactor = losses.length ? sum(wins) / Math.abs(sum(losses)) : (wins.length ? 99 : 0);
   const perf = {
     agent_id: agentId, paper_account_id: paperAccountId, total_trades: trades,
@@ -699,8 +787,8 @@ async function recomputePerformance(agentId: string, paperAccountId: string) {
     avg_loss: losses.length ? sum(losses) / losses.length : 0,
     profit_factor: Number.isFinite(profitFactor) ? profitFactor : 0,
     total_return: total,
-    best_trade: arr.length ? Math.max(...arr) : 0,
-    worst_trade: arr.length ? Math.min(...arr) : 0,
+    best_trade: signed.length ? Math.max(...signed) : 0,
+    worst_trade: signed.length ? Math.min(...signed) : 0,
     updated_at: new Date().toISOString(),
   };
   await supabaseAdmin.from("ai_agent_performance").upsert(perf, { onConflict: "agent_id" });
