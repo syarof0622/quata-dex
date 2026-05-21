@@ -213,8 +213,10 @@ async function executePaperFill(opts: {
   agentId: string; paperAccountId: string; symbol: string; side: "buy" | "sell";
   shares: number; price: number; existing?: Position; reason: string;
   decision?: AgentDecision; decisionId?: string | null;
+  closeReason?: "stop_loss_triggered" | "take_profit_triggered" | null;
+  explorationTrade?: boolean; researchTrade?: boolean;
 }) {
-  const { agentId, paperAccountId, symbol, side, shares, price, existing, reason, decision, decisionId } = opts;
+  const { agentId, paperAccountId, symbol, side, shares, price, existing, reason, decision, decisionId, closeReason } = opts;
   const slipPct = slippagePctFor(symbol);
   const fillPrice = +(price * (1 + slipPct * (side === "buy" ? 1 : -1))).toFixed(4);
   const notional = fillPrice * shares;
@@ -226,6 +228,7 @@ async function executePaperFill(opts: {
   const cashBefore = Number(account.cash);
 
   let realizedPnl = 0;
+  let entryAvgPrice: number | null = null;
   let cashAfter = cashBefore;
   if (side === "buy") {
     if (cashBefore < notional + fee) throw new Error("Insufficient cash");
@@ -243,7 +246,8 @@ async function executePaperFill(opts: {
     await supabaseAdmin.from("paper_accounts").update({ cash: cashAfter }).eq("id", paperAccountId);
   } else {
     if (!existing || Number(existing.qty) < shares) throw new Error("Position insufficient for sell");
-    realizedPnl = +((fillPrice - Number(existing.avg_price)) * shares - fee).toFixed(2);
+    entryAvgPrice = Number(existing.avg_price);
+    realizedPnl = +((fillPrice - entryAvgPrice) * shares - fee).toFixed(2);
     const remaining = Number(existing.qty) - shares;
     if (remaining === 0) await supabaseAdmin.from("paper_positions").delete().eq("user_id", USER_ID).eq("symbol", symbol);
     else await supabaseAdmin.from("paper_positions").update({ qty: remaining }).eq("user_id", USER_ID).eq("symbol", symbol);
@@ -252,7 +256,8 @@ async function executePaperFill(opts: {
   }
 
   const { data: order } = await supabaseAdmin.from("paper_orders").insert({
-    account_id: paperAccountId, user_id: USER_ID, symbol, side, type: "market", qty: shares,
+    account_id: paperAccountId, user_id: USER_ID, agent_id: agentId,
+    symbol, side, type: "market", qty: shares,
     price, filled_price: fillPrice, status: "filled", filled_at: new Date().toISOString(),
     realized_pnl: realizedPnl, slippage_pct: slipPct, fee,
   }).select("*").single();
@@ -263,6 +268,59 @@ async function executePaperFill(opts: {
     requestedPrice: price, simulatedFillPrice: fillPrice,
     slippagePercent: slipPct, fee, feePercent: feePct,
     realisticFill: true, rejectionReason: null,
+    side, shares,
+  };
+
+  // Distinguish open-trade BUY snapshots from completed-trade SELL/EXIT events.
+  const isOpenTrade = side === "buy";
+  const eventType = isOpenTrade ? "open_trade_snapshot" : "completed_trade";
+
+  // Synthetic decision wrapper for risk exits without an upstream AgentDecision.
+  const decisionPayload: any = decision ? {
+    action: decision.action, confidence: decision.confidence,
+    rawConfidence: decision.rawConfidence, calibrationReason: decision.calibrationReason,
+    strategy: decision.strategy, allocationAmount: decision.allocationAmount,
+    lot: decision.suggestedLot, shares: decision.suggestedShares,
+    entryPrice: decision.entryPrice, stopLoss: decision.stopLoss,
+    takeProfit: decision.takeProfit, riskRewardRatio: decision.riskRewardRatio,
+    reasoning: decision.reasoning,
+  } : closeReason ? {
+    // Risk-guard synthetic decision (SL/TP).
+    action: "EXIT",
+    strategy: "risk_guard",
+    closeReason,
+    entryPrice: entryAvgPrice,
+    exitPrice: fillPrice,
+    shares,
+    reasoning: closeReason === "stop_loss_triggered"
+      ? "Stop loss triggered"
+      : "Take profit triggered",
+  } : { side, shares, fillPrice, reason };
+
+  if (closeReason) decisionPayload.closeReason = closeReason;
+
+  // Pre-compute realized return % so completed-trade events can be aggregated
+  // without depending on a delayed backfill pass.
+  let paperPnlPercent: number | null = null;
+  if (!isOpenTrade && entryAvgPrice && entryAvgPrice > 0) {
+    paperPnlPercent = +(((fillPrice - entryAvgPrice) / entryAvgPrice) * 100).toFixed(3);
+  }
+
+  const finalOutcome = isOpenTrade ? {
+    eventType,
+    entryPrice: fillPrice,
+    shares,
+    paperPnL: 0,
+    paperPnLPercent: null,
+    tradeResult: null, // not closed yet
+  } : {
+    eventType,
+    closeReason: closeReason ?? null,
+    entryPrice: entryAvgPrice,
+    exitPrice: fillPrice,
+    paperPnL: realizedPnl,
+    paperPnLPercent: paperPnlPercent,
+    tradeResult: realizedPnl > 0 ? "win" : realizedPnl < 0 ? "loss" : "breakeven",
   };
 
   await supabaseAdmin.from("ai_agent_training_events").insert({
@@ -272,19 +330,15 @@ async function executePaperFill(opts: {
     real_news_data: (decision?.realNewsData ?? null) as any,
     real_disclosure_data: (decision?.realDisclosureData ?? null) as any,
     real_market_context: (decision?.realMarketContext ?? null) as any,
-    ai_decision: decision ? ({
-      action: decision.action, confidence: decision.confidence,
-      rawConfidence: decision.rawConfidence, calibrationReason: decision.calibrationReason,
-      strategy: decision.strategy, allocationAmount: decision.allocationAmount,
-      lot: decision.suggestedLot, shares: decision.suggestedShares,
-      entryPrice: decision.entryPrice, stopLoss: decision.stopLoss,
-      takeProfit: decision.takeProfit, riskRewardRatio: decision.riskRewardRatio,
-      reasoning: decision.reasoning,
-    } as any) : ({ side, shares, fillPrice, reason } as any),
+    ai_decision: decisionPayload as any,
     paper_execution: paperExecution as any,
-    decision_output: { side, shares, fillPrice, reason } as any,
-    actual_outcome: { realizedPnl, fee } as any,
-    pnl: realizedPnl, model_version: "agent-v1.1", strategy_version: "real-data-v1",
+    decision_output: { side, shares, fillPrice, reason, closeReason: closeReason ?? null } as any,
+    actual_outcome: { realizedPnl, fee, closeReason: closeReason ?? null } as any,
+    final_outcome: finalOutcome as any,
+    event_type: eventType,
+    close_reason: closeReason ?? null,
+    paper_pnl_percent: paperPnlPercent,
+    pnl: realizedPnl, model_version: "agent-v1.2", strategy_version: "real-data-v2",
   });
 
   return { order, realizedPnl, fillPrice, slipPct, fee, cashBefore, cashAfter };
