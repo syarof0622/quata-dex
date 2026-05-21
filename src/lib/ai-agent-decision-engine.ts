@@ -165,38 +165,52 @@ async function buildMarketContext(symbol: string) {
   }
 }
 
-/** Confidence calibration: blend persistent per-ticker memory + recent training events. */
+/** Confidence calibration: blend persistent per-ticker memory + recent training events.
+ *  Distinguishes tradeWinRate (realized P/L from completed trades) vs
+ *  directionAccuracy (was_correct from any snapshot, including HOLD). */
 async function calibrateConfidence(agentId: string, symbol: string, raw: number, strategy: string) {
-  // Persistent memory row (fast, single read; populated by runAgentOnce).
+  // Trade win rate: persistent memory row (populated from realized P/L).
   const { data: mem } = await supabaseAdmin
     .from("ai_agent_trade_memory")
     .select("recent_win_rate, sample_size, best_strategy, worst_strategy, recent_mistake")
     .eq("agent_id", agentId).eq("symbol", symbol).maybeSingle();
 
-  // Fallback: scan recent training events when memory not yet populated.
-  let n = Number(mem?.sample_size ?? 0);
-  let winRate = Number(mem?.recent_win_rate ?? 0);
-  if (n < 5) {
+  const tradeN = Number(mem?.sample_size ?? 0);
+  const tradeWinRate = Number(mem?.recent_win_rate ?? 0) / 100; // memory stores %, normalize to 0..1
+
+  // Direction accuracy (separate signal): includes HOLD/passive snapshots.
+  let dirN = 0;
+  let directionAccuracy = 0;
+  {
     const { data: past } = await supabaseAdmin
       .from("ai_agent_training_events")
       .select("was_correct")
       .eq("agent_id", agentId).eq("symbol", symbol)
       .not("was_correct", "is", null)
-      .order("created_at", { ascending: false }).limit(30);
-    n = past?.length ?? 0;
-    if (n >= 1) winRate = (past!.filter(p => p.was_correct === true).length) / n;
+      .order("created_at", { ascending: false }).limit(50);
+    dirN = past?.length ?? 0;
+    if (dirN >= 1) directionAccuracy = (past!.filter(p => p.was_correct === true).length) / dirN;
   }
 
-  if (n < 5) {
+  // Case A: no completed trades yet — surface direction accuracy explicitly,
+  // but do NOT use it as trade win rate.
+  if (tradeN < 5) {
+    if (dirN >= 5) {
+      return {
+        value: raw,
+        reason: `Direction accuracy tersedia (${(directionAccuracy*100).toFixed(0)}%, n=${dirN}), tetapi trade win rate belum cukup (n=${tradeN}). Confidence menggunakan raw signal.`,
+      };
+    }
     return {
       value: raw,
-      reason: `Calibration belum aktif: belum cukup riwayat trade untuk ticker ini (${n} sampel). Confidence menggunakan raw signal.`,
+      reason: `Calibration belum aktif: belum cukup completed trade untuk ticker ini (trade n=${tradeN}, direction n=${dirN}). Confidence menggunakan raw signal.`,
     };
   }
 
-  // Base multiplier 0.6..1.15 around 50% baseline.
-  let mult = 0.6 + winRate * 0.55;
-  const notes: string[] = [`win-rate historis ${(winRate * 100).toFixed(0)}% (n=${n})`];
+  // Case B: use trade win rate as primary calibration source.
+  let mult = 0.6 + tradeWinRate * 0.55;
+  const notes: string[] = [`trade win-rate ${(tradeWinRate * 100).toFixed(0)}% (n=${tradeN} completed)`];
+  if (dirN >= 5) notes.push(`direction accuracy ${(directionAccuracy*100).toFixed(0)}% (n=${dirN})`);
 
   // Strategy memory bias.
   if (mem?.best_strategy && mem.best_strategy === strategy) {
