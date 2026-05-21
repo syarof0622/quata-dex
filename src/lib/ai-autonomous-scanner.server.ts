@@ -325,6 +325,15 @@ async function scoreSymbol(symbol: string): Promise<ScanCandidate & { _priceAtSc
     tradeSetupScore: +tradeSetup.toFixed(2),
     recommendation, reason, warnings,
     passedFilters: false, rejectionReason: null,
+    // Defaults filled by classifyCandidate during runAutonomousScan.
+    classification: "rejected",
+    executionEligibility: "blocked_low_score",
+    blockedReason: null,
+    researchTradeAllowed: false,
+    hypotheticalTrackingEnabled: false,
+    scanPrice: priceAtScan,
+    riskMode: "balanced",
+    _priceAtScan: priceAtScan,
   };
 }
 
