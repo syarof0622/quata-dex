@@ -29,6 +29,10 @@ export type AgentDecision = {
   reasoning: string;
   dataFreshnessSeconds: number | null;
   dataSource: string;
+  // Execution gating (passive analysis vs executable)
+  executionAllowed: boolean;
+  analysisOnly: boolean;
+  blockedReason?: string | null;
   // snapshots (persisted as training data)
   realMarketData: Record<string, unknown>;
   realTechnicalData: Record<string, unknown>;
