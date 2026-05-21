@@ -183,7 +183,10 @@ async function calibrateConfidence(agentId: string, symbol: string, raw: number,
   }
 
   if (n < 5) {
-    return { value: raw, reason: `Belum cukup riwayat (${n} sampel) — confidence apa adanya.` };
+    return {
+      value: raw,
+      reason: `Calibration belum aktif: belum cukup riwayat trade untuk ticker ini (${n} sampel). Confidence menggunakan raw signal.`,
+    };
   }
 
   // Base multiplier 0.6..1.15 around 50% baseline.
