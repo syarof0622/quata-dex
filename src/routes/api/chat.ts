@@ -14,7 +14,7 @@ function extractTickers(text: string): string[] {
   return [...found].slice(0, 4);
 }
 
-// Build a compact, AI-friendly context block from scraped news + sentiment.
+// Build a compact, AI-friendly context block from public news + sentiment.
 async function buildMarketContext(userText: string): Promise<string> {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const tickers = extractTickers(userText);
@@ -72,7 +72,7 @@ async function buildMarketContext(userText: string): Promise<string> {
     perTicker = `\n\nTICKER FOCUS (${tickers.join(", ")}):\n${sumLines || "(no 24h summary)"}\n${tLines || "(no recent ticker news)"}`;
   }
 
-  return `LIVE MARKET CONTEXT (scraped, last 24h)
+  return `LIVE MARKET CONTEXT (public sources, last 24h)
 Sentiment: ${bias} (score ${avg}) — positive:${pos} neutral:${neu} negative:${neg} high-impact:${high}
 Top headlines:
 ${headlines || "(no recent headlines)"}${perTicker}`;
@@ -108,11 +108,11 @@ export const Route = createFileRoute("/api/chat")({
 
           const safeSystem = typeof system === "string" && system.length > 0 && system.length <= 2000 ? system : undefined;
           const baseSystem = safeSystem ?? `You are an institutional-grade trading analyst AI inside a Bloomberg-style IDX terminal.
-Ground every answer in the LIVE MARKET CONTEXT block below (scraped news + sentiment from the platform's database). Cite headlines briefly when relevant.
+Ground every answer in the LIVE MARKET CONTEXT block below (public news + sentiment from the platform's database). Cite headlines briefly when relevant.
 Explain with technical + fundamental reasoning, give risk-aware trade ideas in IDR for IDX tickers, and never give financial advice.
 Use concise markdown with bullets and small tables. Always include a "Risks" section.`;
 
-          // Pull scraped news + sentiment context from the last user turn
+          // Pull public news + sentiment context from the last user turn
           const lastUser = [...messages].reverse().find(m => m.role === "user")?.content ?? "";
           let contextBlock = "";
           try { contextBlock = await buildMarketContext(lastUser); }

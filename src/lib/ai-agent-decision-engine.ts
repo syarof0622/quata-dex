@@ -183,7 +183,10 @@ async function calibrateConfidence(agentId: string, symbol: string, raw: number,
   }
 
   if (n < 5) {
-    return { value: raw, reason: `Belum cukup riwayat (${n} sampel) — confidence apa adanya.` };
+    return {
+      value: raw,
+      reason: `Calibration belum aktif: belum cukup riwayat trade untuk ticker ini (${n} sampel). Confidence menggunakan raw signal.`,
+    };
   }
 
   // Base multiplier 0.6..1.15 around 50% baseline.
@@ -351,7 +354,7 @@ export async function evaluateSymbol(
       suggestedShares: pos.qty,
       entryPrice: price, stopLoss: null, takeProfit: null, riskRewardRatio: null,
       reasoning: `Posisi existing dilepas: teknikal ${techLabel} (${techScore.toFixed(0)}), sentimen ${sentScore.toFixed(2)}, news bias ${newsBiasNorm.toFixed(2)}.`,
-      dataFreshnessSeconds: freshness, dataSource: "Yahoo Finance + public news",
+      dataFreshnessSeconds: freshness, dataSource: "Yahoo Finance + public news feed",
       realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
       portfolioSnapshot,
       riskSnapshot: { exposure: symbolExposure }, dataQuality, warnings,
@@ -407,7 +410,7 @@ export async function evaluateSymbol(
         confidence, rawConfidence, calibrationReason: calib.reason,
         realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
         portfolioSnapshot, dataFreshnessSeconds: freshness,
-        dataSource: "Yahoo Finance + public news",
+        dataSource: "Yahoo Finance + public news feed",
       });
     }
     if (symbolExposure >= agent.maxPositionPerSymbol) {
@@ -436,7 +439,7 @@ export async function evaluateSymbol(
       suggestedLot: sized.lot, suggestedShares: sized.shares,
       entryPrice: price, stopLoss, takeProfit, riskRewardRatio: rr,
       reasoning: `Teknikal ${techLabel} (${techScore.toFixed(0)}), sentimen ${sentScore.toFixed(2)}, news +${realNewsData.positiveNewsCount}/-${realNewsData.negativeNewsCount} (high ${realNewsData.highImpactNewsCount}), IHSG ${realMarketContext.ihsgBias}. Composite ${(composite*100).toFixed(0)}%. ${calib.reason} Allocate ${sized.lot} lot @ ${price}.`,
-      dataFreshnessSeconds: freshness, dataSource: "Yahoo Finance + public news + IDX disclosure",
+      dataFreshnessSeconds: freshness, dataSource: "Yahoo Finance + Google News RSS + IDX disclosure",
       realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
       portfolioSnapshot,
       riskSnapshot: { slPct: preset.slPct, tpPct: preset.tpPct, rr }, dataQuality, warnings,
@@ -447,7 +450,7 @@ export async function evaluateSymbol(
     confidence, rawConfidence, calibrationReason: calib.reason,
     realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
     portfolioSnapshot, dataFreshnessSeconds: freshness,
-    dataSource: "Yahoo Finance + public news",
+    dataSource: "Yahoo Finance + public news feed",
     dataQuality,
   });
 }

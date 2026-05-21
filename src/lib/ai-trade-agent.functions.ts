@@ -625,9 +625,11 @@ async function recomputeTradeMemory(agentId: string) {
 
     const latestRet = returns[0];
     const lastResult = getTradeResultFromReturn(latestRet);
-    // Guard: if avg negative & no wins exist but latest somehow says win, downgrade.
+    const totalRet = returns.reduce((s, r) => s + r, 0);
+    // Consistency guard (acceptance #1, #2, #7): if aggregate avg or total
+    // return is negative, memory row must not advertise "win" as last result.
     const safeLastResult =
-      (avgRet < 0 && lastResult === "win" && wins === 0) ? "loss" : lastResult;
+      (lastResult === "win" && (avgRet < 0 || totalRet < 0)) ? "loss" : lastResult;
 
     const lossIdx = returns.findIndex(r => r < 0);
     const recentMistake = lossIdx >= 0 ? (list[lossIdx].lesson_label ?? null) : null;
