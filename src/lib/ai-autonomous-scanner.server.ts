@@ -197,6 +197,7 @@ async function scoreSymbol(symbol: string): Promise<ScanCandidate & { _priceAtSc
     const q: any = await getQuote({ data: { symbol } });
     if (q?.price) {
       priceOk = true;
+      priceAtScan = Number(q.price);
       const session = getIDXMarketSession();
       const fresh = session.isOpen && isIDXSymbol(symbol) ? 5 : 600;
       dataQuality = fresh < 30 ? 95 : fresh < 300 ? 80 : 60;
