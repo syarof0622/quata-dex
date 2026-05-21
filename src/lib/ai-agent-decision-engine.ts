@@ -84,6 +84,7 @@ function emptySnap(symbol: string, reason: string, extra: Partial<AgentDecision>
     entryPrice: null, stopLoss: null, takeProfit: null, riskRewardRatio: null,
     reasoning: reason,
     dataFreshnessSeconds: null, dataSource: "none",
+    executionAllowed: false, analysisOnly: true, blockedReason: reason,
     realMarketData: {}, realTechnicalData: {}, realNewsData: {},
     realDisclosureData: {}, realMarketContext: {},
     portfolioSnapshot: {}, riskSnapshot: {},
