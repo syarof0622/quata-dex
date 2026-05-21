@@ -21,6 +21,11 @@ export type PortfolioRisk = {
   trades_today: number;
   risk_level: "low" | "moderate" | "elevated" | "high";
   warnings: string[];
+  equity_snapshot: number;
+  cash_snapshot: number;
+  holdings_value_snapshot: number;
+  realized_pnl_snapshot: number;
+  unrealized_pnl_snapshot: number;
 };
 
 export const computePortfolioRisk = createServerFn({ method: "GET" }).handler(
@@ -45,18 +50,23 @@ export const computePortfolioRisk = createServerFn({ method: "GET" }).handler(
     );
 
     let gross = 0;
+    let costBasis = 0;
     const valueBySymbol: Record<string, number> = {};
     const valueBySector: Record<string, number> = {};
     for (const p of pos) {
       const price = priceMap.get(p.symbol) ?? Number(p.avg_price);
       const value = price * Number(p.qty);
+      const cost = Number(p.avg_price) * Number(p.qty);
       gross += value;
+      costBasis += cost;
       valueBySymbol[p.symbol] = (valueBySymbol[p.symbol] ?? 0) + value;
       const sec = sectorOf(p.symbol);
       valueBySector[sec] = (valueBySector[sec] ?? 0) + value;
     }
-    const equity = Number(account.cash ?? 0) + gross;
-    const cashPct = equity > 0 ? (Number(account.cash) / equity) * 100 : 100;
+    const cash = Number(account.cash ?? 0);
+    const equity = cash + gross;
+    const unrealized = gross - costBasis;
+    const cashPct = equity > 0 ? (cash / equity) * 100 : 100;
 
     // HHI: sum of squared portfolio weights (%)
     let hhi = 0;
@@ -76,7 +86,7 @@ export const computePortfolioRisk = createServerFn({ method: "GET" }).handler(
     since.setHours(0, 0, 0, 0);
     const { data: todayOrders } = await supabaseAdmin
       .from("paper_orders")
-      .select("realized_pnl, created_at")
+      .select("realized_pnl, created_at, side, status")
       .eq("user_id", USER_ID)
       .eq("status", "filled")
       .gte("created_at", since.toISOString());
@@ -84,30 +94,42 @@ export const computePortfolioRisk = createServerFn({ method: "GET" }).handler(
       (s: number, o: any) => s + Number(o.realized_pnl ?? 0),
       0,
     );
-    const tradesToday = (todayOrders ?? []).length;
+    // Only count SELL (closing) trades as "completed trades today".
+    const tradesToday = (todayOrders ?? []).filter((o: any) => o.side === "sell").length;
     const dailyPnlPct = equity > 0 ? (dailyPnl / equity) * 100 : 0;
 
-    // Drawdown from peak equity in last 30d using historical snapshots
+    // Cumulative realized P&L (for snapshot row).
+    const { data: allFilled } = await supabaseAdmin
+      .from("paper_orders")
+      .select("realized_pnl")
+      .eq("user_id", USER_ID)
+      .eq("status", "filled");
+    const realizedTotal = (allFilled ?? []).reduce(
+      (s: number, o: any) => s + Number(o.realized_pnl ?? 0),
+      0,
+    );
+
+    // Drawdown from REAL equity history (last 60 snapshots).
     const { data: hist } = await supabaseAdmin
       .from("portfolio_risk_snapshots")
-      .select("gross_exposure, created_at")
+      .select("equity_snapshot, created_at")
       .eq("paper_account_id", account.id)
       .order("created_at", { ascending: false })
       .limit(60);
     let peakEquity = equity;
     for (const h of hist ?? []) {
-      const histEquity = Number((h as any).gross_exposure ?? 0); // approx
-      if (histEquity > peakEquity) peakEquity = histEquity;
+      const e = Number((h as any).equity_snapshot ?? 0);
+      if (Number.isFinite(e) && e > peakEquity) peakEquity = e;
     }
     const drawdown = peakEquity > 0 ? ((equity - peakEquity) / peakEquity) * 100 : 0;
 
     const warnings: string[] = [];
-    if (maxWeight > 25) warnings.push(`Konsentrasi tinggi: posisi terbesar ${maxWeight.toFixed(1)}%.`);
-    if (hhi > 2500) warnings.push("Portofolio terlalu terkonsentrasi (HHI > 2500).");
+    if (pos.length > 1 && maxWeight > 25) warnings.push(`Konsentrasi tinggi: posisi terbesar ${maxWeight.toFixed(1)}%.`);
+    if (pos.length > 1 && hhi > 2500) warnings.push("Portofolio terlalu terkonsentrasi (HHI > 2500).");
     if (drawdown < -5) warnings.push(`Drawdown ${drawdown.toFixed(2)}% melewati ambang -5%.`);
     if (dailyPnlPct < -2) warnings.push(`Kerugian harian ${dailyPnlPct.toFixed(2)}% melewati -2%.`);
     for (const [s, w] of Object.entries(sectorConcPct)) {
-      if (w > 40) warnings.push(`Konsentrasi sektor ${s}: ${w.toFixed(1)}%.`);
+      if (pos.length > 1 && w > 40) warnings.push(`Konsentrasi sektor ${s}: ${w.toFixed(1)}%.`);
     }
 
     let riskLevel: PortfolioRisk["risk_level"] = "low";
@@ -129,12 +151,27 @@ export const computePortfolioRisk = createServerFn({ method: "GET" }).handler(
       trades_today: tradesToday,
       risk_level: riskLevel,
       warnings,
+      equity_snapshot: Number(equity.toFixed(2)),
+      cash_snapshot: Number(cash.toFixed(2)),
+      holdings_value_snapshot: Number(gross.toFixed(2)),
+      realized_pnl_snapshot: Number(realizedTotal.toFixed(2)),
+      unrealized_pnl_snapshot: Number(unrealized.toFixed(2)),
     };
 
     await supabaseAdmin.from("portfolio_risk_snapshots").insert(snapshot);
+    // Also persist an equity-curve point — this powers the analytics chart.
+    await supabaseAdmin.from("portfolio_equity_snapshots").insert({
+      paper_account_id: account.id,
+      equity: snapshot.equity_snapshot,
+      cash: snapshot.cash_snapshot,
+      holdings_value: snapshot.holdings_value_snapshot,
+      realized_pnl: snapshot.realized_pnl_snapshot,
+      unrealized_pnl: snapshot.unrealized_pnl_snapshot,
+    });
     return snapshot;
   },
 );
+
 
 export const getLatestPortfolioRisk = createServerFn({ method: "GET" }).handler(
   async () => {
