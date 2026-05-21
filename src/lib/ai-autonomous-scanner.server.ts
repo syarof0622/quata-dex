@@ -185,10 +185,12 @@ function clamp(n: number, lo = 0, hi = 100) {
   return Math.max(lo, Math.min(hi, n));
 }
 
-async function scoreSymbol(symbol: string): Promise<ScanCandidate> {
+async function scoreSymbol(symbol: string): Promise<ScanCandidate & { _priceAtScan: number | null }> {
   const warnings: string[] = [];
   let dataQuality = 0, liquidity = 0, technical = 50, sentiment = 50;
   let disclosure = 50, marketContext = 50, risk = 50, tradeSetup = 50;
+  let priceOk = false, techOk = false, volume = 0;
+  let priceAtScan: number | null = null;
   let priceOk = false, techOk = false, volume = 0;
 
   // 1. Price + liquidity (single quote per symbol — keeps scanner cheap).
