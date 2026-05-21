@@ -11,14 +11,24 @@ async function ensureAccount() {
   const { data, error } = await supabaseAdmin
     .from("paper_accounts").select("*").eq("user_id", USER_ID).maybeSingle();
   if (error) throw new Error(error.message);
-  if (data) return data;
+  if (data) {
+    // Backfill initial_balance if missing (older accounts created before this column existed).
+    if ((data as any).initial_balance == null) {
+      const baseline = Number((data as any).equity ?? (data as any).cash ?? DEFAULT_CASH);
+      await supabaseAdmin.from("paper_accounts")
+        .update({ initial_balance: baseline }).eq("id", (data as any).id);
+      (data as any).initial_balance = baseline;
+    }
+    return data;
+  }
   const { data: created, error: e2 } = await supabaseAdmin
     .from("paper_accounts")
-    .insert({ user_id: USER_ID, cash: DEFAULT_CASH, equity: DEFAULT_CASH })
+    .insert({ user_id: USER_ID, cash: DEFAULT_CASH, equity: DEFAULT_CASH, initial_balance: DEFAULT_CASH })
     .select("*").single();
   if (e2) throw new Error(e2.message);
   return created;
 }
+
 
 export const getPaperAccount = createServerFn({ method: "GET" }).handler(async () => {
   const account = await ensureAccount();
@@ -208,9 +218,13 @@ export const resetPaperAccount = createServerFn({ method: "POST" })
       supabaseAdmin.from("paper_orders").delete().eq("user_id", USER_ID),
     ]);
     await supabaseAdmin.from("paper_accounts")
-      .update({ cash, equity: cash, currency })
+      .update({ cash, equity: cash, currency, initial_balance: cash, reset_at: new Date().toISOString() })
       .eq("id", account.id);
+    // Clear historical equity snapshots so the new baseline starts from this reset.
+    await supabaseAdmin.from("portfolio_equity_snapshots")
+      .delete().eq("paper_account_id", account.id);
     return { ok: true, cash, currency };
+
   });
 
 // Update currency only without resetting balance/positions

@@ -1415,6 +1415,8 @@ export type Database = {
           currency: string
           equity: number
           id: string
+          initial_balance: number | null
+          reset_at: string | null
           user_id: string
         }
         Insert: {
@@ -1423,6 +1425,8 @@ export type Database = {
           currency?: string
           equity?: number
           id?: string
+          initial_balance?: number | null
+          reset_at?: string | null
           user_id: string
         }
         Update: {
@@ -1431,6 +1435,8 @@ export type Database = {
           currency?: string
           equity?: number
           id?: string
+          initial_balance?: number | null
+          reset_at?: string | null
           user_id?: string
         }
         Relationships: []
@@ -1553,6 +1559,39 @@ export type Database = {
           },
         ]
       }
+      portfolio_equity_snapshots: {
+        Row: {
+          cash: number
+          created_at: string
+          equity: number
+          holdings_value: number
+          id: string
+          paper_account_id: string
+          realized_pnl: number
+          unrealized_pnl: number
+        }
+        Insert: {
+          cash?: number
+          created_at?: string
+          equity?: number
+          holdings_value?: number
+          id?: string
+          paper_account_id: string
+          realized_pnl?: number
+          unrealized_pnl?: number
+        }
+        Update: {
+          cash?: number
+          created_at?: string
+          equity?: number
+          holdings_value?: number
+          id?: string
+          paper_account_id?: string
+          realized_pnl?: number
+          unrealized_pnl?: number
+        }
+        Relationships: []
+      }
       portfolio_holdings: {
         Row: {
           avg_price: number
@@ -1584,55 +1623,70 @@ export type Database = {
         Row: {
           agent_id: string | null
           cash_pct: number
+          cash_snapshot: number | null
           concentration_hhi: number
           created_at: string
           current_drawdown: number
           daily_pnl: number
           daily_pnl_pct: number
+          equity_snapshot: number | null
           gross_exposure: number
+          holdings_value_snapshot: number | null
           id: string
           max_position_weight: number
           net_exposure: number
           paper_account_id: string
+          realized_pnl_snapshot: number | null
           risk_level: string
           sector_concentration: Json
           trades_today: number
+          unrealized_pnl_snapshot: number | null
           warnings: Json
         }
         Insert: {
           agent_id?: string | null
           cash_pct?: number
+          cash_snapshot?: number | null
           concentration_hhi?: number
           created_at?: string
           current_drawdown?: number
           daily_pnl?: number
           daily_pnl_pct?: number
+          equity_snapshot?: number | null
           gross_exposure?: number
+          holdings_value_snapshot?: number | null
           id?: string
           max_position_weight?: number
           net_exposure?: number
           paper_account_id: string
+          realized_pnl_snapshot?: number | null
           risk_level?: string
           sector_concentration?: Json
           trades_today?: number
+          unrealized_pnl_snapshot?: number | null
           warnings?: Json
         }
         Update: {
           agent_id?: string | null
           cash_pct?: number
+          cash_snapshot?: number | null
           concentration_hhi?: number
           created_at?: string
           current_drawdown?: number
           daily_pnl?: number
           daily_pnl_pct?: number
+          equity_snapshot?: number | null
           gross_exposure?: number
+          holdings_value_snapshot?: number | null
           id?: string
           max_position_weight?: number
           net_exposure?: number
           paper_account_id?: string
+          realized_pnl_snapshot?: number | null
           risk_level?: string
           sector_concentration?: Json
           trades_today?: number
+          unrealized_pnl_snapshot?: number | null
           warnings?: Json
         }
         Relationships: []

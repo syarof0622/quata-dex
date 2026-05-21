@@ -76,7 +76,8 @@ export const getPortfolioAnalytics = createServerFn({ method: "GET" })
       };
     });
 
-    const equity = Number(account.cash) + totalValue;
+    const cash = Number(account.cash);
+    const equity = cash + totalValue;
     const exposure = equity ? (totalValue / equity) * 100 : 0;
     const top = [...enriched].sort((a, b) => b.value - a.value)[0];
     const concentration = totalValue && top ? (top.value / equity) * 100 : 0;
@@ -109,75 +110,71 @@ export const getPortfolioAnalytics = createServerFn({ method: "GET" })
     const winRate = totalTrades ? (totalWins / totalTrades) * 100 : 0;
 
     // Beta proxy: correlation of biggest position to benchmark
-    let beta = 1;
+    let beta: number | null = null;
+    let betaSamples = 0;
     if (top && benchReturns.length > 30) {
       try {
         const c = await getCandles({ data: { symbol: top.symbol, timeframe: "1d" } });
         const r: number[] = [];
         for (let i = 1; i < c.length; i++) r.push((c[i].close - c[i - 1].close) / c[i - 1].close);
         const n = Math.min(r.length, benchReturns.length);
-        const a = r.slice(-n), b = benchReturns.slice(-n);
-        const meanA = a.reduce((x, y) => x + y, 0) / n;
-        const meanB = b.reduce((x, y) => x + y, 0) / n;
-        let cov = 0, varB = 0;
-        for (let i = 0; i < n; i++) {
-          cov += (a[i] - meanA) * (b[i] - meanB);
-          varB += (b[i] - meanB) ** 2;
+        betaSamples = n;
+        if (n >= 30) {
+          const a = r.slice(-n), b = benchReturns.slice(-n);
+          const meanA = a.reduce((x, y) => x + y, 0) / n;
+          const meanB = b.reduce((x, y) => x + y, 0) / n;
+          let cov = 0, varB = 0;
+          for (let i = 0; i < n; i++) {
+            cov += (a[i] - meanA) * (b[i] - meanB);
+            varB += (b[i] - meanB) ** 2;
+          }
+          beta = varB ? cov / varB : null;
         }
-        beta = varB ? cov / varB : 1;
       } catch {/* */}
     }
 
-    // Equity curve from order history (very rough — assumes static cash baseline 100k)
-    const baseline = 100000;
-    const curve: { time: number; equity: number }[] = [];
-    let running = baseline;
-    let runningRealized = 0;
-    for (const o of (orders ?? [])) {
-      const t = new Date(o.filled_at ?? o.created_at).getTime() / 1000;
-      // running = baseline + cumulative realized; unrealized added at end
-      curve.push({ time: t, equity: running + runningRealized });
+    // Baseline: use account initial_balance (set on create/reset), fall back safely.
+    const initialBalance = Number(
+      (account as any).initial_balance ?? account.equity ?? account.cash ?? 0,
+    );
+
+    // Equity curve from persisted snapshots (true mark-to-market over time).
+    // Falls back to a 2-point line (initial -> current) when history is empty.
+    const { data: snaps } = await supabaseAdmin
+      .from("portfolio_equity_snapshots")
+      .select("equity, cash, holdings_value, created_at")
+      .eq("paper_account_id", account.id)
+      .order("created_at", { ascending: true })
+      .limit(500);
+    const curve: { time: number; equity: number; cash: number; holdings: number }[] = [];
+    for (const s of (snaps ?? []) as any[]) {
+      curve.push({
+        time: Math.floor(new Date(s.created_at).getTime() / 1000),
+        equity: Number(s.equity),
+        cash: Number(s.cash ?? 0),
+        holdings: Number(s.holdings_value ?? 0),
+      });
     }
-    // Recompute properly with FIFO realized stream
-    {
-      const lotsBySym = new Map<string, { qty: number; price: number }[]>();
-      let cum = 0;
-      curve.length = 0;
-      const sorted = [...(orders ?? [])].sort((a, b) =>
-        new Date(a.filled_at ?? a.created_at).getTime() - new Date(b.filled_at ?? b.created_at).getTime());
-      for (const o of sorted) {
-        const lots = lotsBySym.get(o.symbol) ?? [];
-        const qty = Number(o.qty);
-        const price = Number(o.filled_price ?? o.price ?? 0);
-        if (o.side === "buy") {
-          lots.push({ qty, price });
-        } else {
-          let rem = qty, cost = 0;
-          while (rem > 0 && lots.length) {
-            const lot = lots[0];
-            const take = Math.min(lot.qty, rem);
-            cost += take * lot.price;
-            lot.qty -= take;
-            rem -= take;
-            if (lot.qty <= 1e-9) lots.shift();
-          }
-          cum += qty * price - cost;
-        }
-        lotsBySym.set(o.symbol, lots);
-        const t = new Date(o.filled_at ?? o.created_at).getTime() / 1000;
-        curve.push({ time: t, equity: baseline + cum });
-      }
-      curve.push({ time: Math.floor(Date.now() / 1000), equity: equity });
-      running = baseline + cum;
-    }
+    // Always append the latest live equity as the most recent point.
+    curve.push({
+      time: Math.floor(Date.now() / 1000),
+      equity, cash, holdings: totalValue,
+    });
+
+    const totalReturnAmount = initialBalance > 0 ? equity - initialBalance : 0;
+    const pnlPct = initialBalance > 0 ? (totalReturnAmount / initialBalance) * 100 : 0;
 
     return {
-      cash: Number(account.cash),
-      equity, totalValue, totalCost, unrealized, realized: totalRealized,
-      pnlPct: baseline ? ((equity - baseline) / baseline) * 100 : 0,
-      exposure, concentration, beta,
+      currency: (account as any).currency ?? "IDR",
+      initialBalance,
+      cash, equity, totalValue, totalCost,
+      unrealized, realized: totalRealized,
+      totalReturnAmount, pnlPct,
+      exposure, concentration,
+      beta, betaSamples,
       winRate, totalTrades,
       positions: enriched, sectorBreakdown, perSymbol,
       curve,
     };
   });
+
