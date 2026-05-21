@@ -191,7 +191,6 @@ async function scoreSymbol(symbol: string): Promise<ScanCandidate & { _priceAtSc
   let disclosure = 50, marketContext = 50, risk = 50, tradeSetup = 50;
   let priceOk = false, techOk = false, volume = 0;
   let priceAtScan: number | null = null;
-  let priceOk = false, techOk = false, volume = 0;
 
   // 1. Price + liquidity (single quote per symbol — keeps scanner cheap).
   try {
