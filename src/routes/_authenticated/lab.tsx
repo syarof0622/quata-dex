@@ -1005,10 +1005,52 @@ function AutonomousScannerPanel({ agent }: { agent: any }) {
     onSuccess: () => { toast.success("Scan dijalankan"); latest.refetch(); },
     onError: (e: any) => toast.error(e?.message ?? "Scan gagal"),
   });
+  const setMode = useMutation({
+    mutationFn: (m: "conservative" | "balanced" | "progressive" | "expert_research") =>
+      setAutonomousRiskMode({ data: { id: agent.id, riskMode: m, acknowledge: true } }),
+    onSuccess: (r: any) => { toast.success(`Risk mode: ${r.riskMode}`); latest.refetch(); },
+    onError: (e: any) => toast.error(e?.message ?? "Gagal ganti mode"),
+  });
+  const backfill = useMutation({
+    mutationFn: () => backfillScanCandidateOutcomes({ data: { agentId: agent.id, limit: 50 } }),
+    onSuccess: (r: any) => { toast.success(`Outcome backfill: ${r.updated}/${r.processed} updated`); latest.refetch(); },
+    onError: (e: any) => toast.error(e?.message ?? "Backfill gagal"),
+  });
 
   const scan = (latest.data as any)?.scan ?? null;
   const candidates = ((latest.data as any)?.candidates ?? []) as any[];
   const selected: string[] = (scan?.selected_symbols ?? []) as string[];
+  const currentMode: string = agent?.autonomous_risk_mode ?? "balanced";
+
+  // Summary counts by classification.
+  const counts = candidates.reduce((acc: any, c: any) => {
+    const k = c.candidate_classification ?? (c.passed_filters ? "trade_candidate" : "rejected");
+    acc[k] = (acc[k] ?? 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  const tradeN = counts.trade_candidate ?? 0;
+  const watchN = (counts.watch_candidate ?? 0) + (counts.premarket_watch ?? 0);
+  const researchN = counts.research_candidate ?? 0;
+  const rejectedN = (counts.rejected ?? 0) + (counts.risk_blocked ?? 0) + (counts.data_blocked ?? 0);
+
+  const classLabel = (c: any): { label: string; cls: string; title: string } => {
+    const k = c.candidate_classification ?? (c.passed_filters ? "trade_candidate" : "rejected");
+    const elig = c.execution_eligibility ?? "";
+    if (k === "trade_candidate") return { label: "trade", cls: "text-bull", title: "Lolos filter penuh. Kandidat eksekusi paper trade." };
+    if (k === "watch_candidate") return { label: "watch", cls: "text-amber-500", title: "Tidak dieksekusi. Dipantau untuk outcome tracking." };
+    if (k === "premarket_watch") return { label: "pre-market", cls: "text-amber-500", title: "Market belum buka — disimpan sebagai pre-market watchlist." };
+    if (k === "research_candidate") return { label: "research", cls: "text-blue-400", title: "Skor rendah — disimpan untuk pembelajaran (Progressive/Expert)." };
+    if (k === "risk_blocked") return { label: "risk-blocked", cls: "text-muted-foreground", title: c.blocked_reason ?? c.rejection_reason ?? "Risk filter menolak." };
+    if (k === "data_blocked") return { label: "data-blocked", cls: "text-muted-foreground", title: c.blocked_reason ?? "Data quality kurang." };
+    return { label: "rejected", cls: "text-muted-foreground", title: c.rejection_reason ?? elig ?? "" };
+  };
+
+  const modes: Array<{ k: "conservative" | "balanced" | "progressive" | "expert_research"; label: string; hint: string }> = [
+    { k: "conservative", label: "Conservative", hint: "Hanya trade candidate skor tinggi." },
+    { k: "balanced", label: "Balanced", hint: "Trade + watch outcome tracking." },
+    { k: "progressive", label: "Progressive", hint: "Tambahkan small-lot exploration." },
+    { k: "expert_research", label: "Expert Research", hint: "Eksplorasi luas untuk training data." },
+  ];
 
   return (
     <div className="rounded border border-border/60 p-3 space-y-2 bg-muted/10">
@@ -1020,15 +1062,51 @@ function AutonomousScannerPanel({ agent }: { agent: any }) {
             {scan ? <> · {scan.symbols_scanned_count} scanned · {scan.valid_candidates_count} valid · last {fmtWIBTime(scan.scan_time)}</> : " · belum pernah scan"}
           </div>
         </div>
-        <Button size="sm" variant="outline" onClick={() => rescan.mutate()} disabled={rescan.isPending}>
-          {rescan.isPending ? "Scanning…" : "Rescan now"}
-        </Button>
+        <div className="flex gap-1">
+          <Button size="sm" variant="ghost" onClick={() => backfill.mutate()} disabled={backfill.isPending} title="Hitung hypothetical return untuk watch/research candidates">
+            {backfill.isPending ? "Backfill…" : "Backfill outcomes"}
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => rescan.mutate()} disabled={rescan.isPending}>
+            {rescan.isPending ? "Scanning…" : "Rescan now"}
+          </Button>
+        </div>
+      </div>
+
+      {/* Risk mode selector */}
+      <div>
+        <div className="text-[11px] text-muted-foreground mb-1">Risk mode</div>
+        <div className="flex flex-wrap gap-1">
+          {modes.map(m => (
+            <Button
+              key={m.k}
+              size="sm"
+              variant={currentMode === m.k ? "default" : "outline"}
+              onClick={() => setMode.mutate(m.k)}
+              disabled={setMode.isPending}
+              title={m.hint}
+              className="h-7 text-[11px]"
+            >
+              {m.label}
+            </Button>
+          ))}
+        </div>
+        <div className="text-[10px] text-muted-foreground mt-1">
+          {modes.find(m => m.k === currentMode)?.hint} Semua eksekusi tetap Paper Trading.
+        </div>
+      </div>
+
+      {/* Summary chips */}
+      <div className="flex flex-wrap gap-1 text-[11px]">
+        <span className="px-2 py-0.5 rounded bg-bull/15 text-bull">Trade {tradeN}</span>
+        <span className="px-2 py-0.5 rounded bg-amber-500/15 text-amber-500">Watch {watchN}</span>
+        <span className="px-2 py-0.5 rounded bg-blue-500/15 text-blue-400">Research {researchN}</span>
+        <span className="px-2 py-0.5 rounded bg-muted/40 text-muted-foreground">Rejected {rejectedN}</span>
       </div>
 
       <div>
-        <div className="text-[11px] text-muted-foreground mb-1">Selected (top {selected.length})</div>
+        <div className="text-[11px] text-muted-foreground mb-1">Selected for execution (top {selected.length})</div>
         <div className="flex flex-wrap gap-1 min-h-6">
-          {selected.length === 0 && <span className="text-xs text-muted-foreground">Belum ada simbol terpilih.</span>}
+          {selected.length === 0 && <span className="text-xs text-muted-foreground">Tidak ada trade candidate — lihat tabel untuk alasan.</span>}
           {selected.map((s, i) => (
             <span key={s} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-primary/15 text-primary text-xs font-mono">
               #{i + 1} {s}
@@ -1039,7 +1117,7 @@ function AutonomousScannerPanel({ agent }: { agent: any }) {
 
       {candidates.length > 0 && (
         <div className="overflow-x-auto">
-          <table className="w-full text-[11px] min-w-[480px]">
+          <table className="w-full text-[11px] min-w-[560px]">
             <thead className="text-muted-foreground">
               <tr>
                 <th className="text-left p-1">#</th>
@@ -1049,24 +1127,31 @@ function AutonomousScannerPanel({ agent }: { agent: any }) {
                 <th className="text-right p-1">Liq</th>
                 <th className="text-right p-1">Risk</th>
                 <th className="text-left p-1">Status</th>
+                <th className="text-right p-1" title="Hypothetical return jika di-entry pada scan price">Hypo 1h</th>
               </tr>
             </thead>
             <tbody>
-              {candidates.slice(0, 10).map((c: any) => (
-                <tr key={c.id} className="border-t border-border/40">
-                  <td className="p-1 font-mono">{c.rank ?? "—"}</td>
-                  <td className="p-1 font-mono">{c.symbol}</td>
-                  <td className="p-1 text-right font-mono">{Number(c.autonomous_score ?? 0).toFixed(0)}</td>
-                  <td className="p-1 text-right font-mono">{Number(c.technical_score ?? 0).toFixed(0)}</td>
-                  <td className="p-1 text-right font-mono">{Number(c.liquidity_score ?? 0).toFixed(0)}</td>
-                  <td className="p-1 text-right font-mono">{Number(c.risk_score ?? 0).toFixed(0)}</td>
-                  <td className="p-1">
-                    {c.passed_filters
-                      ? <span className="text-bull" title="Lolos scanner awal. Eksekusi tetap menunggu confidence, risk, setup, dan paper trading validation.">candidate</span>
-                      : <span className="text-muted-foreground" title={c.rejection_reason ?? ""}>rejected</span>}
-                  </td>
-                </tr>
-              ))}
+              {candidates.slice(0, 15).map((c: any) => {
+                const cl = classLabel(c);
+                const hypo = c.hypothetical_return_1h;
+                return (
+                  <tr key={c.id} className="border-t border-border/40">
+                    <td className="p-1 font-mono">{c.rank ?? "—"}</td>
+                    <td className="p-1 font-mono">{c.symbol}</td>
+                    <td className="p-1 text-right font-mono">{Number(c.autonomous_score ?? 0).toFixed(0)}</td>
+                    <td className="p-1 text-right font-mono">{Number(c.technical_score ?? 0).toFixed(0)}</td>
+                    <td className="p-1 text-right font-mono">{Number(c.liquidity_score ?? 0).toFixed(0)}</td>
+                    <td className="p-1 text-right font-mono">{Number(c.risk_score ?? 0).toFixed(0)}</td>
+                    <td className="p-1">
+                      <span className={cl.cls} title={cl.title}>{cl.label}</span>
+                    </td>
+                    <td className="p-1 text-right font-mono">
+                      {hypo == null ? <span className="text-muted-foreground">—</span> :
+                        <span className={Number(hypo) >= 0 ? "text-bull" : "text-bear"}>{Number(hypo).toFixed(2)}%</span>}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
