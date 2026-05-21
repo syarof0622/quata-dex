@@ -525,6 +525,14 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
     }
   }
 
+    } catch (e: any) {
+      await supabaseAdmin.from("ai_agent_risk_logs").insert({
+        agent_id: agent.id, symbol: sym, risk_type: "engine_error",
+        risk_level: "warning", message: e?.message ?? "engine error", action_taken: "skip",
+      });
+    }
+  }
+
   // Record HOLD snapshots for watch / research / pre-market candidates so the
   // Decision Feed / Trade Plan shows them as monitored (no paper order placed).
   if (isAutonomous && watchSnapshots.length > 0) {
@@ -564,13 +572,6 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
       };
     });
     await supabaseAdmin.from("ai_agent_decisions").insert(rows);
-  }
-    } catch (e: any) {
-      await supabaseAdmin.from("ai_agent_risk_logs").insert({
-        agent_id: agent.id, symbol: sym, risk_type: "engine_error",
-        risk_level: "warning", message: e?.message ?? "engine error", action_taken: "skip",
-      });
-    }
   }
 
 
