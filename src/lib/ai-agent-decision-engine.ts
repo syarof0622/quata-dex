@@ -218,12 +218,17 @@ export async function evaluateSymbol(
 ): Promise<AgentDecision> {
   const sym = symbol.trim().toUpperCase();
 
-  // 1. Market session guard for IDX symbols
+  // 1. Market session guard for IDX symbols — execution-only.
+  // Passive analysis (snapshots, technical, news) still proceeds so the
+  // agent can build training data outside trading hours.
+  let executionAllowed = true;
+  let executionBlockedReason: string | null = null;
   if (agent.tradingHoursOnly && isIDXSymbol(sym)) {
     const guard = canExecutePaperTrade();
-    if (!guard.ok) return emptySnap(sym, guard.reason ?? "Market closed", {
-      riskSnapshot: { session: getIDXMarketSession().state },
-    });
+    if (!guard.ok) {
+      executionAllowed = false;
+      executionBlockedReason = `${guard.reason ?? "Market closed"} — passive analysis only.`;
+    }
   }
 
   // 2. REAL price (Yahoo Finance public)
