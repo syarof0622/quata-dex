@@ -318,6 +318,21 @@ async function scoreSymbol(symbol: string): Promise<ScanCandidate & { _priceAtSc
     marketContext = clamp(50 + ch * 8);
   } catch { /* default */ }
 
+  // Module 8: momentum bonus — if today's quote shows real movement, add an
+  // additive boost so high-momentum names don't get auto-rejected by composite.
+  let momentumBoost = 0;
+  if (quoteSnapshot) {
+    try {
+      const { computeMomentum } = await import("./momentum-hunter.server");
+      const m = computeMomentum(quoteSnapshot);
+      // Map momentumScore (0..100) to a +0..+15 bonus, minus risk penalty share.
+      momentumBoost = clamp(m.momentumScore * 0.15 - m.riskPenalty * 0.05, 0, 15);
+      if (m.classification === "strong_momentum_candidate") momentumBoost += 5;
+      if (m.classification === "extended_momentum_risk") momentumBoost = Math.max(0, momentumBoost - 5);
+      if (m.classification === "failed_momentum") momentumBoost = -10;
+    } catch { /* tolerate */ }
+  }
+
   // Composite score: technical/setup heaviest, then data/liquidity gates.
   const composite =
     dataQuality * 0.15 +
@@ -327,7 +342,8 @@ async function scoreSymbol(symbol: string): Promise<ScanCandidate & { _priceAtSc
     disclosure  * 0.10 +
     marketContext * 0.05 +
     risk        * 0.10 +
-    tradeSetup  * 0.15;
+    tradeSetup  * 0.15 +
+    momentumBoost;
 
   const autonomousScore = +clamp(composite).toFixed(2);
 
