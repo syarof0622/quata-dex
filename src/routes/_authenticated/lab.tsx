@@ -181,6 +181,14 @@ function Lab() {
 // ---- Helpers for AI Trade Agent UI presentation ----
 
 type ExecStatus =
+  | "executed_buy"
+  | "executed_sell"
+  | "executed_exit"
+  | "executed_stop_loss"
+  | "executed_take_profit"
+  | "watch_snapshot"
+  | "research_snapshot"
+  | "premarket_snapshot"
   | "allowed"
   | "blocked_emergency"
   | "blocked_paused"
@@ -196,6 +204,14 @@ type ExecStatus =
   | "blocked_rr_invalid";
 
 const EXEC_LABEL: Record<ExecStatus, string> = {
+  executed_buy: "Executed — Paper BUY",
+  executed_sell: "Executed — Paper SELL",
+  executed_exit: "Executed — Paper EXIT",
+  executed_stop_loss: "Executed — Stop Loss",
+  executed_take_profit: "Executed — Take Profit",
+  watch_snapshot: "Watch snapshot",
+  research_snapshot: "Research snapshot",
+  premarket_snapshot: "Pre-market plan",
   allowed: "Allowed",
   blocked_emergency: "Blocked — Emergency stop",
   blocked_paused: "Blocked — Agent paused",
@@ -203,13 +219,52 @@ const EXEC_LABEL: Record<ExecStatus, string> = {
   blocked_market_closed: "Blocked — Market closed",
   blocked_market_break: "Blocked — Market break",
   blocked_data_stale: "Blocked — Data stale",
-  blocked_data_unavailable: "Blocked — Data unavailable",
+  blocked_data_unavailable: "Blocked — Price unavailable",
   blocked_insufficient_balance: "Blocked — Insufficient paper balance",
   blocked_risk_limit: "Blocked — Risk limit reached",
   blocked_low_confidence: "Blocked — Confidence below threshold",
   blocked_duplicate_order: "Blocked — Duplicate order guard",
   blocked_rr_invalid: "Blocked — Risk/reward invalid",
 };
+
+// True only when AI actually placed a simulated paper order for this decision.
+function isExecutedDecision(d: any): boolean {
+  if (!d) return false;
+  if (d.action === "HOLD") return false;
+  if (d.decision_status !== "executed") return false;
+  if (!(Number(d.suggested_lot) > 0)) return false;
+  return d.entry_price != null;
+}
+
+// Reference / scan price (NOT entry). Pulled from data_snapshot saved by the
+// autonomous scanner, falling back to entry_price for legacy rows.
+function referencePriceFor(d: any): number | null {
+  const snap: any = d?.data_snapshot ?? {};
+  const ref = snap.scanPrice ?? snap.referencePrice ?? snap.price;
+  if (ref != null && !Number.isNaN(Number(ref))) return Number(ref);
+  if (d?.action === "HOLD" && d?.entry_price != null) return Number(d.entry_price);
+  return null;
+}
+
+function lotZeroExplanation(execStatus: ExecStatus): string {
+  switch (execStatus) {
+    case "blocked_insufficient_balance":
+      return "Saldo paper trading tidak cukup untuk minimal 1 lot.";
+    case "blocked_low_confidence":
+      return "AI hanya menyimpan watch/research snapshot. Tidak ada paper order yang dieksekusi.";
+    case "blocked_market_closed":
+    case "blocked_market_break":
+      return "Market sedang tutup. AI hanya menyimpan snapshot analisis tanpa paper order.";
+    case "blocked_data_unavailable":
+      return "Harga fresh tidak tersedia, sehingga AI tidak dapat menghitung lot dan tidak mengeksekusi order.";
+    case "watch_snapshot":
+    case "research_snapshot":
+    case "premarket_snapshot":
+      return "Lot 0 karena kandidat hanya disimpan untuk dipantau — tidak ada paper order yang dieksekusi.";
+    default:
+      return "Lot 0 karena tidak ada paper order yang dieksekusi pada decision ini.";
+  }
+}
 
 function deriveExecutionStatusForCard(
   agent: any,
@@ -219,6 +274,33 @@ function deriveExecutionStatusForCard(
   const agentStatus = agent?.status ?? "stopped";
   const reasoning = String(d?.reasoning ?? "").toLowerCase();
   const dStatus = d?.decision_status as string | undefined;
+  const action = d?.action as string | undefined;
+
+  // 0. Executed paper orders — show success states.
+  if (isExecutedDecision(d)) {
+    if (action === "BUY")  return { status: "executed_buy",  primary: "Paper BUY executed",  detail: "Paper order BUY berhasil dieksekusi." };
+    if (action === "SELL") return { status: "executed_sell", primary: "Paper SELL executed", detail: "Paper order SELL berhasil dieksekusi." };
+    if (action === "EXIT") {
+      const cr = String(d?.close_reason ?? d?.risk_snapshot?.closeReason ?? "");
+      if (cr === "stop_loss_triggered")   return { status: "executed_stop_loss",   primary: "Stop loss triggered",   detail: "Posisi ditutup karena stop loss." };
+      if (cr === "take_profit_triggered") return { status: "executed_take_profit", primary: "Take profit triggered", detail: "Posisi ditutup karena take profit." };
+      return { status: "executed_exit", primary: "Paper EXIT executed", detail: "Posisi paper ditutup oleh agent." };
+    }
+  }
+
+  // 0b. Watch / research / pre-market snapshots — explicit no-trade states.
+  if (dStatus === "watch_only") {
+    return { status: "watch_snapshot", primary: "Watch snapshot",
+      detail: "Kandidat disimpan untuk dipantau. Tidak ada paper order yang dieksekusi." };
+  }
+  if (dStatus === "research_only") {
+    return { status: "research_snapshot", primary: "Research snapshot",
+      detail: "Kandidat disimpan untuk training/outcome tracking. Tidak ada paper order yang dieksekusi." };
+  }
+  if (dStatus === "premarket_plan") {
+    return { status: "premarket_snapshot", primary: "Pre-market plan",
+      detail: "Pre-market watchlist. Monitor saat market open — belum ada paper order." };
+  }
 
   if (agentStatus === "error") {
     return { status: "blocked_emergency", primary: "Emergency stop",
@@ -235,20 +317,20 @@ function deriveExecutionStatusForCard(
   if (session && !session.isOpen) {
     if (session.isBreak) {
       return { status: "blocked_market_break", primary: "Market break",
-        detail: "IDX sedang dalam sesi istirahat. Agent tidak dapat membuka order baru sampai market kembali dibuka.",
+        detail: "Market sedang tutup. AI hanya menyimpan snapshot analisis tanpa paper order.",
         secondary: "Signal & confidence tidak dievaluasi karena eksekusi diblokir oleh market session." };
     }
     return { status: "blocked_market_closed", primary: "Market closed",
-      detail: "Market IDX sedang tutup. Agent hanya menjalankan analisis pasif — tidak ada paper order yang dibuat.",
+      detail: "Market sedang tutup. AI hanya menyimpan snapshot analisis tanpa paper order.",
       secondary: "Confidence tidak dievaluasi karena eksekusi diblokir." };
   }
   if (/tidak fresh|stale/.test(reasoning)) {
     return { status: "blocked_data_stale", primary: "Data harga stale",
-      detail: "Data harga belum cukup fresh untuk keputusan eksekusi." };
+      detail: "Harga belum cukup fresh untuk keputusan eksekusi. AI menyimpan snapshot saja." };
   }
   if (/harga aktual tidak tersedia|quote unavailable|tidak tersedia/.test(reasoning)) {
-    return { status: "blocked_data_unavailable", primary: "Price data unavailable",
-      detail: "Data harga belum tersedia dari sumber. Menunggu refresh berikutnya." };
+    return { status: "blocked_data_unavailable", primary: "Price unavailable",
+      detail: "Harga fresh tidak tersedia, sehingga AI tidak dapat menghitung lot dan tidak mengeksekusi order." };
   }
   if (dStatus === "limit_reached" || /batas risiko|risk limit/.test(reasoning)) {
     return { status: "blocked_risk_limit", primary: "Batas risiko harian tercapai",
@@ -264,11 +346,11 @@ function deriveExecutionStatusForCard(
   }
   if (/confidence .* < threshold|confidence sinyal/.test(reasoning)) {
     return { status: "blocked_low_confidence", primary: "Confidence di bawah threshold",
-      detail: "Confidence sinyal masih di bawah threshold eksekusi yang dikonfigurasi." };
+      detail: "AI belum mengeksekusi order karena confidence masih di bawah threshold. Kandidat hanya disimpan sebagai watch/research snapshot." };
   }
-  if (d?.action === "HOLD") {
+  if (action === "HOLD") {
     return { status: "blocked_low_confidence", primary: "Belum ada setup eksekusi",
-      detail: "Tidak ada setup yang memenuhi syarat pada tick ini. Menunggu sinyal berikutnya." };
+      detail: "Belum ada setup valid. AI menunggu sinyal berikutnya. Tidak ada paper order dieksekusi." };
   }
   return { status: "allowed", primary: "Allowed", detail: "Setup valid untuk eksekusi paper order." };
 }
@@ -633,10 +715,12 @@ function AIAgentPanel() {
                 const isBuy = d.action === "BUY";
                 const isExit = d.action === "EXIT" || d.action === "SELL";
                 const isHold = d.action === "HOLD";
-                const entry = d.entry_price ? Number(d.entry_price) : null;
-                const sl = d.stop_loss ? Number(d.stop_loss) : null;
-                const tp = d.take_profit ? Number(d.take_profit) : null;
-                const rr = d.risk_reward_ratio ? Number(d.risk_reward_ratio) : null;
+                const executed = isExecutedDecision(d);
+                const entry = executed && d.entry_price != null ? Number(d.entry_price) : null;
+                const refPrice = referencePriceFor(d);
+                const sl = executed && d.stop_loss != null ? Number(d.stop_loss) : null;
+                const tp = executed && d.take_profit != null ? Number(d.take_profit) : null;
+                const rr = executed && d.risk_reward_ratio != null ? Number(d.risk_reward_ratio) : null;
                 const conf = confidenceCell(agent, session, d);
                 const exec = deriveExecutionStatusForCard(agent, session, d);
                 const snap: any = d.data_snapshot ?? {};
@@ -647,28 +731,31 @@ function AIAgentPanel() {
                 const dNews: DataStatus = Number(sent?.news?.latestNewsCount ?? 0) > 0 ? "fresh" : "unavailable";
                 const dSent: DataStatus = sent?.news ? "fresh" : "unavailable";
                 return (
-                  <div key={d.id} className={`panel p-3 space-y-2 border ${isBuy ? "border-bull/40" : isExit ? "border-bear/40" : "border-border"}`}>
+                  <div key={d.id} className={`panel p-3 space-y-2 border ${executed && isBuy ? "border-bull/40" : executed && isExit ? "border-bear/40" : "border-border"}`}>
                     <div className="flex items-center justify-between gap-2">
                       <div className="font-mono font-semibold">{d.symbol}</div>
-                      <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${isBuy ? "bg-bull/15 text-bull" : isExit ? "bg-bear/15 text-bear" : "bg-muted text-muted-foreground"}`} title={conf.tooltip}>
+                      <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${executed && isBuy ? "bg-bull/15 text-bull" : executed && isExit ? "bg-bear/15 text-bear" : "bg-muted text-muted-foreground"}`} title={conf.tooltip}>
                         {d.action} · {conf.label}
                       </span>
                     </div>
-                    {!isHold && (
+                    {executed && (
                       <div className="grid grid-cols-3 gap-1 text-[11px]">
-                        <div><div className="text-muted-foreground">Entry</div><div className="font-mono">{entry ? formatPrice(entry) : "—"}</div></div>
-                        <div><div className="text-muted-foreground">SL</div><div className="font-mono text-bear">{sl ? formatPrice(sl) : "—"}</div></div>
-                        <div><div className="text-muted-foreground">TP</div><div className="font-mono text-bull">{tp ? formatPrice(tp) : "—"}</div></div>
+                        <div><div className="text-muted-foreground">Entry</div><div className="font-mono">{entry != null ? formatPrice(entry) : "—"}</div></div>
+                        <div><div className="text-muted-foreground">SL</div><div className="font-mono text-bear">{sl != null ? formatPrice(sl) : "—"}</div></div>
+                        <div><div className="text-muted-foreground">TP</div><div className="font-mono text-bull">{tp != null ? formatPrice(tp) : "—"}</div></div>
                         <div><div className="text-muted-foreground">Lot</div><div className="font-mono">{d.suggested_lot ?? "—"}</div></div>
-                        <div><div className="text-muted-foreground">RR</div><div className="font-mono">{rr ? rr.toFixed(2) : "—"}</div></div>
-                        <div><div className="text-muted-foreground">Strategy</div><div className="text-[10px]">{d.strategy ?? "—"}</div></div>
+                        <div><div className="text-muted-foreground">Shares</div><div className="font-mono">{d.suggested_shares ?? "—"}</div></div>
+                        <div><div className="text-muted-foreground">RR</div><div className="font-mono">{rr != null ? rr.toFixed(2) : "—"}</div></div>
                       </div>
                     )}
-                    {isHold && (
+                    {!executed && (
                       <div className="text-[11px] bg-amber-500/10 text-amber-700 dark:text-amber-400 px-2 py-1.5 rounded space-y-1">
-                        <div className="font-semibold uppercase text-[9px] tracking-wide">No-Trade Reason</div>
+                        <div className="font-semibold uppercase text-[9px] tracking-wide">{isHold ? "Monitoring only · No paper order" : "No paper order executed"}</div>
                         <div className="font-semibold">{exec.primary}</div>
                         <div className="text-muted-foreground">{exec.detail}</div>
+                        {refPrice != null && (
+                          <div className="text-[10px] font-mono opacity-90">Ref price: {formatPrice(refPrice)}{dPrice === "stale" ? " · cached" : ""}</div>
+                        )}
                         {exec.secondary && <div className="text-[10px] opacity-80">↳ {exec.secondary}</div>}
                       </div>
                     )}
@@ -709,8 +796,36 @@ function AIAgentPanel() {
               const fresh = d.data_freshness_seconds;
               const inactive = !selectedSet.has(d.symbol);
               const exec = deriveExecutionStatusForCard(agent, session, d);
-              const reasoningPretty = d.action === "HOLD" ? `${exec.primary}. ${exec.detail}` : (d.reasoning ?? "—");
-              const sourceLabel = d.data_source ?? (d.action === "HOLD" ? "Price unavailable" : "Source belum tersedia");
+              const executed = isExecutedDecision(d);
+              const refPrice = referencePriceFor(d);
+              const lotNum = Number(d.suggested_lot ?? 0);
+
+              const snap: any = d.data_snapshot ?? {};
+              const priceFreshness: DataStatus = snap?.price ? classifyFreshness(fresh) : (refPrice != null ? "stale" : "unavailable");
+              const sourceLabel = priceFreshness === "unavailable"
+                ? "Price unavailable"
+                : priceFreshness === "stale"
+                ? (refPrice != null && !snap?.price ? "Reference price (cached)" : "Stale price")
+                : "Price fresh";
+
+              const isExecutedRow = ["executed_buy","executed_sell","executed_exit","executed_stop_loss","executed_take_profit"].includes(exec.status);
+              const isSnapshotRow = ["watch_snapshot","research_snapshot","premarket_snapshot"].includes(exec.status);
+              const badgeClass = isExecutedRow
+                ? "bg-bull/15 text-bull"
+                : isSnapshotRow
+                ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                : exec.status === "allowed"
+                ? "bg-bull/15 text-bull"
+                : "bg-bear/10 text-bear";
+
+              const reasoningPretty = executed
+                ? (d.reasoning ?? "—")
+                : `${exec.primary}. ${exec.detail}`;
+              const refLine = !executed && refPrice != null
+                ? `Ref price: ${formatPrice(refPrice)}${priceFreshness === "stale" ? " · cached" : ""}`
+                : null;
+              const lotNote = lotNum === 0 ? lotZeroExplanation(exec.status) : null;
+
               return (
                 <tr key={d.id} className="border-t border-border align-top">
                   <td className="p-2 text-xs text-muted-foreground whitespace-nowrap">{fmtWIBTime(d.created_at)}</td>
@@ -718,17 +833,21 @@ function AIAgentPanel() {
                     {d.symbol}
                     {inactive && <span className="ml-1 text-[9px] uppercase bg-muted text-muted-foreground px-1 py-0.5 rounded align-middle">previous session</span>}
                   </td>
-                  <td className={`p-2 text-xs font-semibold ${d.action === "BUY" ? "text-bull" : d.action === "EXIT" || d.action === "SELL" ? "text-bear" : ""}`}>{d.action}</td>
+                  <td className={`p-2 text-xs font-semibold ${executed && d.action === "BUY" ? "text-bull" : executed && (d.action === "EXIT" || d.action === "SELL") ? "text-bear" : "text-muted-foreground"}`}>{d.action}</td>
                   <td className={`p-2 text-right font-mono text-xs ${conf.muted ? "text-muted-foreground" : ""}`} title={conf.tooltip}>{conf.label}</td>
-                  <td className="p-2 text-right font-mono">{d.suggested_lot ?? "—"}</td>
-                  <td className="p-2 text-right font-mono">{d.entry_price ? formatPrice(d.entry_price) : "—"}</td>
-                  <td className="p-2 text-right font-mono">{d.stop_loss ? formatPrice(d.stop_loss) : "—"}</td>
-                  <td className="p-2 text-right font-mono">{d.take_profit ? formatPrice(d.take_profit) : "—"}</td>
-                  <td className="p-2 text-[11px] text-muted-foreground max-w-[180px] truncate" title={d.data_source ?? ""}>
-                    {sourceLabel}{fresh != null ? ` · ${fresh}s` : ""}
+                  <td className="p-2 text-right font-mono" title={lotNote ?? ""}>
+                    {executed ? (d.suggested_lot ?? "—") : "0"}
+                    {lotNote && <div className="text-[9px] font-sans text-muted-foreground italic max-w-[140px] whitespace-normal text-right">{lotNote}</div>}
+                  </td>
+                  <td className="p-2 text-right font-mono">{executed && d.entry_price != null ? formatPrice(d.entry_price) : "—"}</td>
+                  <td className="p-2 text-right font-mono">{executed && d.stop_loss != null ? formatPrice(d.stop_loss) : "—"}</td>
+                  <td className="p-2 text-right font-mono">{executed && d.take_profit != null ? formatPrice(d.take_profit) : "—"}</td>
+                  <td className="p-2 text-[11px] text-muted-foreground max-w-[200px]" title={d.data_source ?? ""}>
+                    <div className="truncate">{sourceLabel}{fresh != null ? ` · ${fresh}s` : ""}</div>
+                    {refLine && <div className="text-[10px] font-mono opacity-80">{refLine}</div>}
                   </td>
                   <td className="p-2 text-xs">
-                    <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${exec.status === "allowed" ? "bg-bull/15 text-bull" : "bg-bear/10 text-bear"}`}>
+                    <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${badgeClass}`}>
                       {EXEC_LABEL[exec.status]}
                     </span>
                   </td>

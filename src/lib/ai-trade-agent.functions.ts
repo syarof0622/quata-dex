@@ -666,10 +666,12 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
         calibration_reason: "Watch/research snapshot — no trade executed.",
         strategy: "monitoring", allocation_amount: 0,
         suggested_lot: 0, suggested_shares: 0,
-        entry_price: w.scanPrice, stop_loss: null, take_profit: null,
+        // entry_price MUST be null for watch/research snapshots — no paper order executed.
+        // Reference scan price is preserved in data_snapshot.scanPrice for the UI.
+        entry_price: null, stop_loss: null, take_profit: null,
         risk_reward_ratio: null,
         reasoning,
-        data_snapshot: { scanPrice: w.scanPrice } as any,
+        data_snapshot: { scanPrice: w.scanPrice, referencePrice: w.scanPrice, snapshotType: w.classification } as any,
         decision_status: status,
         selection_mode: "autonomous",
         autonomous_scan_id: autonomousScanId,
