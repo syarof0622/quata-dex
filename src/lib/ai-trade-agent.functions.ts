@@ -4,7 +4,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { evaluateSymbol, type AgentConfig, type AgentDecision, type Position } from "./ai-agent-decision-engine";
-import { isIDXSymbol, convertSharesToLot } from "./lot-sizing";
+import { isIDXSymbol, convertSharesToLot, sizeOrder } from "./lot-sizing";
 import { getQuote } from "./market.functions";
 import { canExecutePaperTrade, getIDXMarketSession } from "./idx-market-session";
 import { runAutonomousScan } from "./ai-autonomous-scanner.server";
