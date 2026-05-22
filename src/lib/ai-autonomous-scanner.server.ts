@@ -111,11 +111,33 @@ async function buildUniverse(
 
   if (mode === "bluechip") {
     for (const s of IDX_LQ45) if (BLUECHIP_PREFIXES.has(s.replace(/\.JK$/, ""))) push(s);
-  } else if (mode === "idx_liquid") {
+  } else if (mode === "idx_liquid" || mode === "lq45" || mode === "idx80") {
     for (const s of IDX_LQ45) push(s);
   } else if (mode === "all_supported") {
     for (const s of IDX_LQ45) push(s);
     for (const s of US_TOP.slice(0, 25)) push(s);
+  } else if (
+    mode === "top_gainers_today" ||
+    mode === "high_volume_movers" ||
+    mode === "momentum_breakout" ||
+    mode === "hybrid_liquid_momentum"
+  ) {
+    // Module 1: pull today's market movers (LQ45 + news tickers) ranked by
+    // |change%| * sqrt(RVOL). hybrid_liquid_momentum also seeds with LQ45 to
+    // guarantee a stable baseline universe.
+    if (mode === "hybrid_liquid_momentum") {
+      for (const s of IDX_LQ45.slice(0, 15)) push(s);
+    }
+    try {
+      const movers = await fetchMarketMovers(25);
+      for (const m of movers) {
+        if (mode === "top_gainers_today" && m.todayChangePercent < 1) continue;
+        if (mode === "high_volume_movers" && m.relativeVolume < 1.2) continue;
+        if (mode === "momentum_breakout" && m.breakoutScore < 65) continue;
+        push(m.symbol);
+      }
+    } catch { /* fallback to LQ45 */ }
+    if (seen.size === 0) for (const s of IDX_LQ45.slice(0, 15)) push(s);
   } else if (mode === "watchlist_plus") {
     for (const s of IDX_LQ45.slice(0, 20)) push(s);
     const { data: wl } = await supabaseAdmin
