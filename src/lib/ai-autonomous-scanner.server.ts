@@ -14,11 +14,16 @@ import { getTradeSetup } from "./signals.functions";
 import { IDX_LQ45, US_TOP } from "./symbols";
 import { isIDXSymbol } from "./lot-sizing";
 import { getIDXMarketSession } from "./idx-market-session";
+import { fetchMarketMovers } from "./momentum-hunter.server";
 
 export type UniverseKey =
   | "idx_liquid" | "watchlist_plus" | "bluechip" | "custom_universe" | "all_supported"
   | "undervalued_candidates" | "quality_undervalued" | "dividend_undervalued"
-  | "sector_discount" | "hybrid_trading_and_value";
+  | "sector_discount" | "hybrid_trading_and_value"
+  // Momentum Hunter universes (Module 1):
+  | "lq45" | "idx80"
+  | "top_gainers_today" | "high_volume_movers" | "momentum_breakout"
+  | "hybrid_liquid_momentum";
 
 export type RiskMode = "conservative" | "balanced" | "progressive" | "expert_research";
 
