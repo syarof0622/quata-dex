@@ -1033,7 +1033,7 @@ export const setSelectionMode = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({
     id: z.string().uuid(),
     mode: z.enum(["manual", "autonomous"]),
-    autonomousUniverse: z.enum(["idx_liquid", "watchlist_plus", "bluechip", "custom_universe", "all_supported", "undervalued_candidates", "quality_undervalued", "dividend_undervalued", "sector_discount", "hybrid_trading_and_value"]).optional(),
+    autonomousUniverse: z.enum(["idx_liquid", "watchlist_plus", "bluechip", "custom_universe", "all_supported", "undervalued_candidates", "quality_undervalued", "dividend_undervalued", "sector_discount", "hybrid_trading_and_value", "lq45", "idx80", "top_gainers_today", "high_volume_movers", "momentum_breakout", "hybrid_liquid_momentum"]).optional(),
     acknowledge: z.boolean().optional(),
   }).parse(d))
   .handler(async ({ data }) => {
