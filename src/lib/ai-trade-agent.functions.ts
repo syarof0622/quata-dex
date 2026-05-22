@@ -719,12 +719,19 @@ function getTradeResultFromReturn(returnPct: number): "win" | "loss" | "breakeve
 
 /** Is this training event a completed/closed trade (not HOLD, not open)? */
 function isCompletedTradeEvent(event: any): boolean {
+  // Prioritize the explicit event_type column (new) over heuristics.
+  const evType = String(event?.event_type ?? event?.final_outcome?.eventType ?? "").toLowerCase();
+  if (evType === "completed_trade") return true;
+  if (evType === "open_trade_snapshot" || evType === "passive_analysis"
+      || evType === "watch_snapshot" || evType === "research_snapshot"
+      || evType === "premarket_plan") return false;
+
   if (!event?.final_outcome) return false;
   const action = String(event?.ai_decision?.action ?? "").toUpperCase();
   if (action === "HOLD" || action === "" || action === "NO_TRADE") return false;
   if (!["BUY", "SELL", "EXIT"].includes(action)) return false;
-  // Reject explicit passive_analysis snapshots even if action mislabeled.
-  if (event?.final_outcome?.eventType === "passive_analysis") return false;
+  // BUY without explicit completed_trade label is an open snapshot — not a closed trade.
+  if (action === "BUY") return false;
   const exec = event?.paper_execution;
   const executed = exec?.executed === true || exec?.status === "filled";
   const hasRealizedPnl = Number.isFinite(Number(event?.paper_pnl_percent))
