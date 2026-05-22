@@ -543,21 +543,52 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
         if (await recentCooldownActive(agent.id, sym, action)) decisionStatus = "cooldown";
         else if (!cfg.tradingHoursOnly || !isIDXSymbol(sym) || canExecutePaperTrade().ok) {
           try {
-            const existing = await loadActivePosition(sym);
-            const side: "buy" | "sell" = action === "BUY" ? "buy" : "sell";
-            const shares = side === "sell" ? (existing?.qty ?? decision.suggestedShares) : decision.suggestedShares;
-            if (shares > 0 && decision.entryPrice) {
-              const res = await executePaperFill({
-                agentId: agent.id, paperAccountId: agent.paper_account_id,
-                symbol: sym, side, shares, price: decision.entryPrice,
-                existing, reason: decision.reasoning, decision,
-              });
-              orderId = res.order?.id ?? null;
-              decisionStatus = "executed";
-              tradesUsed += 1;
-              if (isNewEntry) newEntriesUsed += 1;
-              executed += 1;
-            } else decisionStatus = "rejected";
+            // Pre-execution idempotency: skip if an executed decision with the
+            // same 5-min bucket key already exists (covers cron double-fires).
+            const existingKey = idemKey(agent.id, sym, action);
+            const { count: dupCount } = await supabaseAdmin
+              .from("ai_agent_decisions")
+              .select("id", { count: "exact", head: true })
+              .eq("agent_id", agent.id).eq("idempotency_key", existingKey)
+              .eq("decision_status", "executed");
+            if ((dupCount ?? 0) > 0) { decisionStatus = "cooldown"; }
+            else {
+              const existing = await loadActivePosition(sym);
+              const side: "buy" | "sell" = action === "BUY" ? "buy" : "sell";
+
+              // Progressive / Expert Research micro-allocation: cap BUY size
+              // at a small % of account equity so exploration trades stay tiny.
+              let plannedShares = side === "sell"
+                ? (existing?.qty ?? decision.suggestedShares)
+                : decision.suggestedShares;
+              const meta0 = autonomousMeta.get(sym);
+              const riskMode = String(agent.autonomous_risk_mode ?? "balanced");
+              const isExploration = side === "buy" && !!meta0?.researchTradeAllowed
+                && (riskMode === "progressive" || riskMode === "expert_research");
+              if (isExploration && decision.entryPrice && decision.entryPrice > 0) {
+                const pctCap = riskMode === "expert_research"
+                  ? Number(agent.expert_research_max_allocation_pct ?? 0.02)
+                  : Number(agent.progressive_max_allocation_pct ?? 0.05);
+                const capAlloc = Math.max(0, mtmEquity * pctCap);
+                const sized = sizeOrder({ symbol: sym, allocationAmount: capAlloc, price: decision.entryPrice });
+                if (sized.shares > 0 && sized.shares < plannedShares) plannedShares = sized.shares;
+              }
+
+              if (plannedShares > 0 && decision.entryPrice) {
+                const res = await executePaperFill({
+                  agentId: agent.id, paperAccountId: agent.paper_account_id,
+                  symbol: sym, side, shares: plannedShares, price: decision.entryPrice,
+                  existing, reason: decision.reasoning, decision,
+                  explorationTrade: isExploration && riskMode === "progressive",
+                  researchTrade: isExploration && riskMode === "expert_research",
+                });
+                orderId = res.order?.id ?? null;
+                decisionStatus = "executed";
+                tradesUsed += 1;
+                if (isNewEntry) newEntriesUsed += 1;
+                executed += 1;
+              } else decisionStatus = "rejected";
+            }
           } catch (e: any) {
             decisionStatus = "rejected";
             await supabaseAdmin.from("ai_agent_risk_logs").insert({
