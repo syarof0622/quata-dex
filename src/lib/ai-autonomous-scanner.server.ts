@@ -14,11 +14,16 @@ import { getTradeSetup } from "./signals.functions";
 import { IDX_LQ45, US_TOP } from "./symbols";
 import { isIDXSymbol } from "./lot-sizing";
 import { getIDXMarketSession } from "./idx-market-session";
+import { fetchMarketMovers } from "./momentum-hunter.server";
 
 export type UniverseKey =
   | "idx_liquid" | "watchlist_plus" | "bluechip" | "custom_universe" | "all_supported"
   | "undervalued_candidates" | "quality_undervalued" | "dividend_undervalued"
-  | "sector_discount" | "hybrid_trading_and_value";
+  | "sector_discount" | "hybrid_trading_and_value"
+  // Momentum Hunter universes (Module 1):
+  | "lq45" | "idx80"
+  | "top_gainers_today" | "high_volume_movers" | "momentum_breakout"
+  | "hybrid_liquid_momentum";
 
 export type RiskMode = "conservative" | "balanced" | "progressive" | "expert_research";
 
@@ -106,11 +111,33 @@ async function buildUniverse(
 
   if (mode === "bluechip") {
     for (const s of IDX_LQ45) if (BLUECHIP_PREFIXES.has(s.replace(/\.JK$/, ""))) push(s);
-  } else if (mode === "idx_liquid") {
+  } else if (mode === "idx_liquid" || mode === "lq45" || mode === "idx80") {
     for (const s of IDX_LQ45) push(s);
   } else if (mode === "all_supported") {
     for (const s of IDX_LQ45) push(s);
     for (const s of US_TOP.slice(0, 25)) push(s);
+  } else if (
+    mode === "top_gainers_today" ||
+    mode === "high_volume_movers" ||
+    mode === "momentum_breakout" ||
+    mode === "hybrid_liquid_momentum"
+  ) {
+    // Module 1: pull today's market movers (LQ45 + news tickers) ranked by
+    // |change%| * sqrt(RVOL). hybrid_liquid_momentum also seeds with LQ45 to
+    // guarantee a stable baseline universe.
+    if (mode === "hybrid_liquid_momentum") {
+      for (const s of IDX_LQ45.slice(0, 15)) push(s);
+    }
+    try {
+      const movers = await fetchMarketMovers(25);
+      for (const m of movers) {
+        if (mode === "top_gainers_today" && m.todayChangePercent < 1) continue;
+        if (mode === "high_volume_movers" && m.relativeVolume < 1.2) continue;
+        if (mode === "momentum_breakout" && m.breakoutScore < 65) continue;
+        push(m.symbol);
+      }
+    } catch { /* fallback to LQ45 */ }
+    if (seen.size === 0) for (const s of IDX_LQ45.slice(0, 15)) push(s);
   } else if (mode === "watchlist_plus") {
     for (const s of IDX_LQ45.slice(0, 20)) push(s);
     const { data: wl } = await supabaseAdmin
@@ -191,6 +218,7 @@ async function scoreSymbol(symbol: string): Promise<ScanCandidate & { _priceAtSc
   let disclosure = 50, marketContext = 50, risk = 50, tradeSetup = 50;
   let priceOk = false, techOk = false, volume = 0;
   let priceAtScan: number | null = null;
+  let quoteSnapshot: any = null;
 
   // 1. Price + liquidity (single quote per symbol — keeps scanner cheap).
   try {
@@ -198,6 +226,7 @@ async function scoreSymbol(symbol: string): Promise<ScanCandidate & { _priceAtSc
     if (q?.price) {
       priceOk = true;
       priceAtScan = Number(q.price);
+      quoteSnapshot = q;
       const session = getIDXMarketSession();
       const fresh = session.isOpen && isIDXSymbol(symbol) ? 5 : 600;
       dataQuality = fresh < 30 ? 95 : fresh < 300 ? 80 : 60;
@@ -289,6 +318,21 @@ async function scoreSymbol(symbol: string): Promise<ScanCandidate & { _priceAtSc
     marketContext = clamp(50 + ch * 8);
   } catch { /* default */ }
 
+  // Module 8: momentum bonus — if today's quote shows real movement, add an
+  // additive boost so high-momentum names don't get auto-rejected by composite.
+  let momentumBoost = 0;
+  if (quoteSnapshot) {
+    try {
+      const { computeMomentum } = await import("./momentum-hunter.server");
+      const m = computeMomentum(quoteSnapshot);
+      // Map momentumScore (0..100) to a +0..+15 bonus, minus risk penalty share.
+      momentumBoost = clamp(m.momentumScore * 0.15 - m.riskPenalty * 0.05, 0, 15);
+      if (m.classification === "strong_momentum_candidate") momentumBoost += 5;
+      if (m.classification === "extended_momentum_risk") momentumBoost = Math.max(0, momentumBoost - 5);
+      if (m.classification === "failed_momentum") momentumBoost = -10;
+    } catch { /* tolerate */ }
+  }
+
   // Composite score: technical/setup heaviest, then data/liquidity gates.
   const composite =
     dataQuality * 0.15 +
@@ -298,7 +342,8 @@ async function scoreSymbol(symbol: string): Promise<ScanCandidate & { _priceAtSc
     disclosure  * 0.10 +
     marketContext * 0.05 +
     risk        * 0.10 +
-    tradeSetup  * 0.15;
+    tradeSetup  * 0.15 +
+    momentumBoost;
 
   const autonomousScore = +clamp(composite).toFixed(2);
 

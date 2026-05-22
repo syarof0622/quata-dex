@@ -40,7 +40,7 @@ const StartSchema = z.object({
   allowSell: z.boolean().default(true),
   // Autonomous mode (all optional with safe defaults).
   symbolSelectionMode: z.enum(["manual", "autonomous"]).default("manual"),
-  autonomousUniverse: z.enum(["idx_liquid", "watchlist_plus", "bluechip", "custom_universe", "all_supported", "undervalued_candidates", "quality_undervalued", "dividend_undervalued", "sector_discount", "hybrid_trading_and_value"]).default("idx_liquid"),
+  autonomousUniverse: z.enum(["idx_liquid", "watchlist_plus", "bluechip", "custom_universe", "all_supported", "undervalued_candidates", "quality_undervalued", "dividend_undervalued", "sector_discount", "hybrid_trading_and_value", "lq45", "idx80", "top_gainers_today", "high_volume_movers", "momentum_breakout", "hybrid_liquid_momentum"]).default("idx_liquid"),
   maxAutonomousSymbols: z.number().int().min(1).max(10).default(5),
   maxActivePositions: z.number().int().min(1).max(10).default(3),
   maxNewEntriesPerDay: z.number().int().min(0).max(20).default(3),
@@ -1033,7 +1033,7 @@ export const setSelectionMode = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({
     id: z.string().uuid(),
     mode: z.enum(["manual", "autonomous"]),
-    autonomousUniverse: z.enum(["idx_liquid", "watchlist_plus", "bluechip", "custom_universe", "all_supported", "undervalued_candidates", "quality_undervalued", "dividend_undervalued", "sector_discount", "hybrid_trading_and_value"]).optional(),
+    autonomousUniverse: z.enum(["idx_liquid", "watchlist_plus", "bluechip", "custom_universe", "all_supported", "undervalued_candidates", "quality_undervalued", "dividend_undervalued", "sector_discount", "hybrid_trading_and_value", "lq45", "idx80", "top_gainers_today", "high_volume_movers", "momentum_breakout", "hybrid_liquid_momentum"]).optional(),
     acknowledge: z.boolean().optional(),
   }).parse(d))
   .handler(async ({ data }) => {

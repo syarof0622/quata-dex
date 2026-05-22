@@ -745,6 +745,12 @@ export type Database = {
           min_undervalue_score: number
           min_watch_candidate_score: number
           mode: string
+          momentum_extended_allocation_pct: number
+          momentum_hunter_enabled: boolean
+          momentum_max_allocation_pct: number
+          momentum_min_change_pct: number
+          momentum_min_rvol: number
+          momentum_min_score: number
           name: string
           paper_account_id: string
           paper_trading_only: boolean
@@ -811,6 +817,12 @@ export type Database = {
           min_undervalue_score?: number
           min_watch_candidate_score?: number
           mode?: string
+          momentum_extended_allocation_pct?: number
+          momentum_hunter_enabled?: boolean
+          momentum_max_allocation_pct?: number
+          momentum_min_change_pct?: number
+          momentum_min_rvol?: number
+          momentum_min_score?: number
           name?: string
           paper_account_id: string
           paper_trading_only?: boolean
@@ -877,6 +889,12 @@ export type Database = {
           min_undervalue_score?: number
           min_watch_candidate_score?: number
           mode?: string
+          momentum_extended_allocation_pct?: number
+          momentum_hunter_enabled?: boolean
+          momentum_max_allocation_pct?: number
+          momentum_min_change_pct?: number
+          momentum_min_rvol?: number
+          momentum_min_score?: number
           name?: string
           paper_account_id?: string
           paper_trading_only?: boolean
