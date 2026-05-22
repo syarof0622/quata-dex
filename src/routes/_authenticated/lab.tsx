@@ -181,6 +181,14 @@ function Lab() {
 // ---- Helpers for AI Trade Agent UI presentation ----
 
 type ExecStatus =
+  | "executed_buy"
+  | "executed_sell"
+  | "executed_exit"
+  | "executed_stop_loss"
+  | "executed_take_profit"
+  | "watch_snapshot"
+  | "research_snapshot"
+  | "premarket_snapshot"
   | "allowed"
   | "blocked_emergency"
   | "blocked_paused"
@@ -196,6 +204,14 @@ type ExecStatus =
   | "blocked_rr_invalid";
 
 const EXEC_LABEL: Record<ExecStatus, string> = {
+  executed_buy: "Executed — Paper BUY",
+  executed_sell: "Executed — Paper SELL",
+  executed_exit: "Executed — Paper EXIT",
+  executed_stop_loss: "Executed — Stop Loss",
+  executed_take_profit: "Executed — Take Profit",
+  watch_snapshot: "Watch snapshot",
+  research_snapshot: "Research snapshot",
+  premarket_snapshot: "Pre-market plan",
   allowed: "Allowed",
   blocked_emergency: "Blocked — Emergency stop",
   blocked_paused: "Blocked — Agent paused",
@@ -203,13 +219,52 @@ const EXEC_LABEL: Record<ExecStatus, string> = {
   blocked_market_closed: "Blocked — Market closed",
   blocked_market_break: "Blocked — Market break",
   blocked_data_stale: "Blocked — Data stale",
-  blocked_data_unavailable: "Blocked — Data unavailable",
+  blocked_data_unavailable: "Blocked — Price unavailable",
   blocked_insufficient_balance: "Blocked — Insufficient paper balance",
   blocked_risk_limit: "Blocked — Risk limit reached",
   blocked_low_confidence: "Blocked — Confidence below threshold",
   blocked_duplicate_order: "Blocked — Duplicate order guard",
   blocked_rr_invalid: "Blocked — Risk/reward invalid",
 };
+
+// True only when AI actually placed a simulated paper order for this decision.
+function isExecutedDecision(d: any): boolean {
+  if (!d) return false;
+  if (d.action === "HOLD") return false;
+  if (d.decision_status !== "executed") return false;
+  if (!(Number(d.suggested_lot) > 0)) return false;
+  return d.entry_price != null;
+}
+
+// Reference / scan price (NOT entry). Pulled from data_snapshot saved by the
+// autonomous scanner, falling back to entry_price for legacy rows.
+function referencePriceFor(d: any): number | null {
+  const snap: any = d?.data_snapshot ?? {};
+  const ref = snap.scanPrice ?? snap.referencePrice ?? snap.price;
+  if (ref != null && !Number.isNaN(Number(ref))) return Number(ref);
+  if (d?.action === "HOLD" && d?.entry_price != null) return Number(d.entry_price);
+  return null;
+}
+
+function lotZeroExplanation(execStatus: ExecStatus): string {
+  switch (execStatus) {
+    case "blocked_insufficient_balance":
+      return "Saldo paper trading tidak cukup untuk minimal 1 lot.";
+    case "blocked_low_confidence":
+      return "AI hanya menyimpan watch/research snapshot. Tidak ada paper order yang dieksekusi.";
+    case "blocked_market_closed":
+    case "blocked_market_break":
+      return "Market sedang tutup. AI hanya menyimpan snapshot analisis tanpa paper order.";
+    case "blocked_data_unavailable":
+      return "Harga fresh tidak tersedia, sehingga AI tidak dapat menghitung lot dan tidak mengeksekusi order.";
+    case "watch_snapshot":
+    case "research_snapshot":
+    case "premarket_snapshot":
+      return "Lot 0 karena kandidat hanya disimpan untuk dipantau — tidak ada paper order yang dieksekusi.";
+    default:
+      return "Lot 0 karena tidak ada paper order yang dieksekusi pada decision ini.";
+  }
+}
 
 function deriveExecutionStatusForCard(
   agent: any,
