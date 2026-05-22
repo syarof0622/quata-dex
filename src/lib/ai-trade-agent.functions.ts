@@ -4,7 +4,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { evaluateSymbol, type AgentConfig, type AgentDecision, type Position } from "./ai-agent-decision-engine";
-import { isIDXSymbol, convertSharesToLot } from "./lot-sizing";
+import { isIDXSymbol, convertSharesToLot, sizeOrder } from "./lot-sizing";
 import { getQuote } from "./market.functions";
 import { canExecutePaperTrade, getIDXMarketSession } from "./idx-market-session";
 import { runAutonomousScan } from "./ai-autonomous-scanner.server";
@@ -441,7 +441,9 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
   if (isAutonomous) {
     const intervalMs = Number(agent.autonomous_rescan_interval_minutes ?? 15) * 60_000;
     const lastScanAt = agent.last_autonomous_scan_at ? new Date(agent.last_autonomous_scan_at).getTime() : 0;
-    const rescanDue = Date.now() - lastScanAt >= intervalMs;
+    // Force rescan on market session transition (e.g., pre_open → open_session_1)
+    // so the agent re-evaluates candidates against the new execution eligibility.
+    const rescanDue = (Date.now() - lastScanAt >= intervalMs) || !!sessionChanged;
 
     let scan = null as Awaited<ReturnType<typeof runAutonomousScan>> | null;
     if (rescanDue) {
@@ -541,21 +543,52 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
         if (await recentCooldownActive(agent.id, sym, action)) decisionStatus = "cooldown";
         else if (!cfg.tradingHoursOnly || !isIDXSymbol(sym) || canExecutePaperTrade().ok) {
           try {
-            const existing = await loadActivePosition(sym);
-            const side: "buy" | "sell" = action === "BUY" ? "buy" : "sell";
-            const shares = side === "sell" ? (existing?.qty ?? decision.suggestedShares) : decision.suggestedShares;
-            if (shares > 0 && decision.entryPrice) {
-              const res = await executePaperFill({
-                agentId: agent.id, paperAccountId: agent.paper_account_id,
-                symbol: sym, side, shares, price: decision.entryPrice,
-                existing, reason: decision.reasoning, decision,
-              });
-              orderId = res.order?.id ?? null;
-              decisionStatus = "executed";
-              tradesUsed += 1;
-              if (isNewEntry) newEntriesUsed += 1;
-              executed += 1;
-            } else decisionStatus = "rejected";
+            // Pre-execution idempotency: skip if an executed decision with the
+            // same 5-min bucket key already exists (covers cron double-fires).
+            const existingKey = idemKey(agent.id, sym, action);
+            const { count: dupCount } = await supabaseAdmin
+              .from("ai_agent_decisions")
+              .select("id", { count: "exact", head: true })
+              .eq("agent_id", agent.id).eq("idempotency_key", existingKey)
+              .eq("decision_status", "executed");
+            if ((dupCount ?? 0) > 0) { decisionStatus = "cooldown"; }
+            else {
+              const existing = await loadActivePosition(sym);
+              const side: "buy" | "sell" = action === "BUY" ? "buy" : "sell";
+
+              // Progressive / Expert Research micro-allocation: cap BUY size
+              // at a small % of account equity so exploration trades stay tiny.
+              let plannedShares = side === "sell"
+                ? (existing?.qty ?? decision.suggestedShares)
+                : decision.suggestedShares;
+              const meta0 = autonomousMeta.get(sym);
+              const riskMode = String(agent.autonomous_risk_mode ?? "balanced");
+              const isExploration = side === "buy" && !!meta0?.researchTradeAllowed
+                && (riskMode === "progressive" || riskMode === "expert_research");
+              if (isExploration && decision.entryPrice && decision.entryPrice > 0) {
+                const pctCap = riskMode === "expert_research"
+                  ? Number(agent.expert_research_max_allocation_pct ?? 0.02)
+                  : Number(agent.progressive_max_allocation_pct ?? 0.05);
+                const capAlloc = Math.max(0, mtmEquity * pctCap);
+                const sized = sizeOrder({ symbol: sym, allocationAmount: capAlloc, price: decision.entryPrice });
+                if (sized.shares > 0 && sized.shares < plannedShares) plannedShares = sized.shares;
+              }
+
+              if (plannedShares > 0 && decision.entryPrice) {
+                const res = await executePaperFill({
+                  agentId: agent.id, paperAccountId: agent.paper_account_id,
+                  symbol: sym, side, shares: plannedShares, price: decision.entryPrice,
+                  existing, reason: decision.reasoning, decision,
+                  explorationTrade: isExploration && riskMode === "progressive",
+                  researchTrade: isExploration && riskMode === "expert_research",
+                });
+                orderId = res.order?.id ?? null;
+                decisionStatus = "executed";
+                tradesUsed += 1;
+                if (isNewEntry) newEntriesUsed += 1;
+                executed += 1;
+              } else decisionStatus = "rejected";
+            }
           } catch (e: any) {
             decisionStatus = "rejected";
             await supabaseAdmin.from("ai_agent_risk_logs").insert({
@@ -654,8 +687,19 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
 
   // Stop-loss / take-profit guard on open positions (only when IDX market open)
   if (session.isOpen) {
+    const sinceGuard = new Date(Date.now() - 5 * 60_000).toISOString();
     for (const pos of posList) {
       try {
+        // 5-min duplicate guard: skip if a SL/TP event already fired recently
+        // for this symbol (prevents repeat exits from cron oscillation).
+        const { count: recentGuard } = await supabaseAdmin
+          .from("ai_agent_training_events")
+          .select("id", { count: "exact", head: true })
+          .eq("agent_id", agent.id).eq("symbol", pos.symbol)
+          .in("close_reason", ["stop_loss_triggered", "take_profit_triggered"])
+          .gte("created_at", sinceGuard);
+        if ((recentGuard ?? 0) > 0) continue;
+
         // find the most recent BUY decision for this symbol to know SL/TP
         const { data: lastBuy } = await supabaseAdmin.from("ai_agent_decisions")
           .select("stop_loss, take_profit").eq("agent_id", agent.id)
@@ -674,7 +718,7 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
         await executePaperFill({
           agentId: agent.id, paperAccountId: agent.paper_account_id,
           symbol: pos.symbol, side: "sell", shares: pos.qty, price: px,
-          existing: pos, reason: trigger,
+          existing: pos, reason: trigger, closeReason: trigger,
         });
         await supabaseAdmin.from("ai_agent_risk_logs").insert({
           agent_id: agent.id, symbol: pos.symbol, risk_type: trigger,
@@ -717,12 +761,19 @@ function getTradeResultFromReturn(returnPct: number): "win" | "loss" | "breakeve
 
 /** Is this training event a completed/closed trade (not HOLD, not open)? */
 function isCompletedTradeEvent(event: any): boolean {
+  // Prioritize the explicit event_type column (new) over heuristics.
+  const evType = String(event?.event_type ?? event?.final_outcome?.eventType ?? "").toLowerCase();
+  if (evType === "completed_trade") return true;
+  if (evType === "open_trade_snapshot" || evType === "passive_analysis"
+      || evType === "watch_snapshot" || evType === "research_snapshot"
+      || evType === "premarket_plan") return false;
+
   if (!event?.final_outcome) return false;
   const action = String(event?.ai_decision?.action ?? "").toUpperCase();
   if (action === "HOLD" || action === "" || action === "NO_TRADE") return false;
   if (!["BUY", "SELL", "EXIT"].includes(action)) return false;
-  // Reject explicit passive_analysis snapshots even if action mislabeled.
-  if (event?.final_outcome?.eventType === "passive_analysis") return false;
+  // BUY without explicit completed_trade label is an open snapshot — not a closed trade.
+  if (action === "BUY") return false;
   const exec = event?.paper_execution;
   const executed = exec?.executed === true || exec?.status === "filled";
   const hasRealizedPnl = Number.isFinite(Number(event?.paper_pnl_percent))
