@@ -274,6 +274,33 @@ function deriveExecutionStatusForCard(
   const agentStatus = agent?.status ?? "stopped";
   const reasoning = String(d?.reasoning ?? "").toLowerCase();
   const dStatus = d?.decision_status as string | undefined;
+  const action = d?.action as string | undefined;
+
+  // 0. Executed paper orders — show success states.
+  if (isExecutedDecision(d)) {
+    if (action === "BUY")  return { status: "executed_buy",  primary: "Paper BUY executed",  detail: "Paper order BUY berhasil dieksekusi." };
+    if (action === "SELL") return { status: "executed_sell", primary: "Paper SELL executed", detail: "Paper order SELL berhasil dieksekusi." };
+    if (action === "EXIT") {
+      const cr = String(d?.close_reason ?? d?.risk_snapshot?.closeReason ?? "");
+      if (cr === "stop_loss_triggered")   return { status: "executed_stop_loss",   primary: "Stop loss triggered",   detail: "Posisi ditutup karena stop loss." };
+      if (cr === "take_profit_triggered") return { status: "executed_take_profit", primary: "Take profit triggered", detail: "Posisi ditutup karena take profit." };
+      return { status: "executed_exit", primary: "Paper EXIT executed", detail: "Posisi paper ditutup oleh agent." };
+    }
+  }
+
+  // 0b. Watch / research / pre-market snapshots — explicit no-trade states.
+  if (dStatus === "watch_only") {
+    return { status: "watch_snapshot", primary: "Watch snapshot",
+      detail: "Kandidat disimpan untuk dipantau. Tidak ada paper order yang dieksekusi." };
+  }
+  if (dStatus === "research_only") {
+    return { status: "research_snapshot", primary: "Research snapshot",
+      detail: "Kandidat disimpan untuk training/outcome tracking. Tidak ada paper order yang dieksekusi." };
+  }
+  if (dStatus === "premarket_plan") {
+    return { status: "premarket_snapshot", primary: "Pre-market plan",
+      detail: "Pre-market watchlist. Monitor saat market open — belum ada paper order." };
+  }
 
   if (agentStatus === "error") {
     return { status: "blocked_emergency", primary: "Emergency stop",
@@ -290,20 +317,20 @@ function deriveExecutionStatusForCard(
   if (session && !session.isOpen) {
     if (session.isBreak) {
       return { status: "blocked_market_break", primary: "Market break",
-        detail: "IDX sedang dalam sesi istirahat. Agent tidak dapat membuka order baru sampai market kembali dibuka.",
+        detail: "Market sedang tutup. AI hanya menyimpan snapshot analisis tanpa paper order.",
         secondary: "Signal & confidence tidak dievaluasi karena eksekusi diblokir oleh market session." };
     }
     return { status: "blocked_market_closed", primary: "Market closed",
-      detail: "Market IDX sedang tutup. Agent hanya menjalankan analisis pasif — tidak ada paper order yang dibuat.",
+      detail: "Market sedang tutup. AI hanya menyimpan snapshot analisis tanpa paper order.",
       secondary: "Confidence tidak dievaluasi karena eksekusi diblokir." };
   }
   if (/tidak fresh|stale/.test(reasoning)) {
     return { status: "blocked_data_stale", primary: "Data harga stale",
-      detail: "Data harga belum cukup fresh untuk keputusan eksekusi." };
+      detail: "Harga belum cukup fresh untuk keputusan eksekusi. AI menyimpan snapshot saja." };
   }
   if (/harga aktual tidak tersedia|quote unavailable|tidak tersedia/.test(reasoning)) {
-    return { status: "blocked_data_unavailable", primary: "Price data unavailable",
-      detail: "Data harga belum tersedia dari sumber. Menunggu refresh berikutnya." };
+    return { status: "blocked_data_unavailable", primary: "Price unavailable",
+      detail: "Harga fresh tidak tersedia, sehingga AI tidak dapat menghitung lot dan tidak mengeksekusi order." };
   }
   if (dStatus === "limit_reached" || /batas risiko|risk limit/.test(reasoning)) {
     return { status: "blocked_risk_limit", primary: "Batas risiko harian tercapai",
@@ -319,11 +346,11 @@ function deriveExecutionStatusForCard(
   }
   if (/confidence .* < threshold|confidence sinyal/.test(reasoning)) {
     return { status: "blocked_low_confidence", primary: "Confidence di bawah threshold",
-      detail: "Confidence sinyal masih di bawah threshold eksekusi yang dikonfigurasi." };
+      detail: "AI belum mengeksekusi order karena confidence masih di bawah threshold. Kandidat hanya disimpan sebagai watch/research snapshot." };
   }
-  if (d?.action === "HOLD") {
+  if (action === "HOLD") {
     return { status: "blocked_low_confidence", primary: "Belum ada setup eksekusi",
-      detail: "Tidak ada setup yang memenuhi syarat pada tick ini. Menunggu sinyal berikutnya." };
+      detail: "Belum ada setup valid. AI menunggu sinyal berikutnya. Tidak ada paper order dieksekusi." };
   }
   return { status: "allowed", primary: "Allowed", detail: "Setup valid untuk eksekusi paper order." };
 }
