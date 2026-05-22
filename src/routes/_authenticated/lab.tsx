@@ -796,8 +796,36 @@ function AIAgentPanel() {
               const fresh = d.data_freshness_seconds;
               const inactive = !selectedSet.has(d.symbol);
               const exec = deriveExecutionStatusForCard(agent, session, d);
-              const reasoningPretty = d.action === "HOLD" ? `${exec.primary}. ${exec.detail}` : (d.reasoning ?? "—");
-              const sourceLabel = d.data_source ?? (d.action === "HOLD" ? "Price unavailable" : "Source belum tersedia");
+              const executed = isExecutedDecision(d);
+              const refPrice = referencePriceFor(d);
+              const lotNum = Number(d.suggested_lot ?? 0);
+
+              const snap: any = d.data_snapshot ?? {};
+              const priceFreshness: DataStatus = snap?.price ? classifyFreshness(fresh) : (refPrice != null ? "stale" : "unavailable");
+              const sourceLabel = priceFreshness === "unavailable"
+                ? "Price unavailable"
+                : priceFreshness === "stale"
+                ? (refPrice != null && !snap?.price ? "Reference price (cached)" : "Stale price")
+                : "Price fresh";
+
+              const isExecutedRow = ["executed_buy","executed_sell","executed_exit","executed_stop_loss","executed_take_profit"].includes(exec.status);
+              const isSnapshotRow = ["watch_snapshot","research_snapshot","premarket_snapshot"].includes(exec.status);
+              const badgeClass = isExecutedRow
+                ? "bg-bull/15 text-bull"
+                : isSnapshotRow
+                ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                : exec.status === "allowed"
+                ? "bg-bull/15 text-bull"
+                : "bg-bear/10 text-bear";
+
+              const reasoningPretty = executed
+                ? (d.reasoning ?? "—")
+                : `${exec.primary}. ${exec.detail}`;
+              const refLine = !executed && refPrice != null
+                ? `Ref price: ${formatPrice(refPrice)}${priceFreshness === "stale" ? " · cached" : ""}`
+                : null;
+              const lotNote = lotNum === 0 ? lotZeroExplanation(exec.status) : null;
+
               return (
                 <tr key={d.id} className="border-t border-border align-top">
                   <td className="p-2 text-xs text-muted-foreground whitespace-nowrap">{fmtWIBTime(d.created_at)}</td>
@@ -805,17 +833,21 @@ function AIAgentPanel() {
                     {d.symbol}
                     {inactive && <span className="ml-1 text-[9px] uppercase bg-muted text-muted-foreground px-1 py-0.5 rounded align-middle">previous session</span>}
                   </td>
-                  <td className={`p-2 text-xs font-semibold ${d.action === "BUY" ? "text-bull" : d.action === "EXIT" || d.action === "SELL" ? "text-bear" : ""}`}>{d.action}</td>
+                  <td className={`p-2 text-xs font-semibold ${executed && d.action === "BUY" ? "text-bull" : executed && (d.action === "EXIT" || d.action === "SELL") ? "text-bear" : "text-muted-foreground"}`}>{d.action}</td>
                   <td className={`p-2 text-right font-mono text-xs ${conf.muted ? "text-muted-foreground" : ""}`} title={conf.tooltip}>{conf.label}</td>
-                  <td className="p-2 text-right font-mono">{d.suggested_lot ?? "—"}</td>
-                  <td className="p-2 text-right font-mono">{d.entry_price ? formatPrice(d.entry_price) : "—"}</td>
-                  <td className="p-2 text-right font-mono">{d.stop_loss ? formatPrice(d.stop_loss) : "—"}</td>
-                  <td className="p-2 text-right font-mono">{d.take_profit ? formatPrice(d.take_profit) : "—"}</td>
-                  <td className="p-2 text-[11px] text-muted-foreground max-w-[180px] truncate" title={d.data_source ?? ""}>
-                    {sourceLabel}{fresh != null ? ` · ${fresh}s` : ""}
+                  <td className="p-2 text-right font-mono" title={lotNote ?? ""}>
+                    {executed ? (d.suggested_lot ?? "—") : "0"}
+                    {lotNote && <div className="text-[9px] font-sans text-muted-foreground italic max-w-[140px] whitespace-normal text-right">{lotNote}</div>}
+                  </td>
+                  <td className="p-2 text-right font-mono">{executed && d.entry_price != null ? formatPrice(d.entry_price) : "—"}</td>
+                  <td className="p-2 text-right font-mono">{executed && d.stop_loss != null ? formatPrice(d.stop_loss) : "—"}</td>
+                  <td className="p-2 text-right font-mono">{executed && d.take_profit != null ? formatPrice(d.take_profit) : "—"}</td>
+                  <td className="p-2 text-[11px] text-muted-foreground max-w-[200px]" title={d.data_source ?? ""}>
+                    <div className="truncate">{sourceLabel}{fresh != null ? ` · ${fresh}s` : ""}</div>
+                    {refLine && <div className="text-[10px] font-mono opacity-80">{refLine}</div>}
                   </td>
                   <td className="p-2 text-xs">
-                    <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${exec.status === "allowed" ? "bg-bull/15 text-bull" : "bg-bear/10 text-bear"}`}>
+                    <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${badgeClass}`}>
                       {EXEC_LABEL[exec.status]}
                     </span>
                   </td>
