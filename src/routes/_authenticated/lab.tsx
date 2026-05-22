@@ -715,10 +715,12 @@ function AIAgentPanel() {
                 const isBuy = d.action === "BUY";
                 const isExit = d.action === "EXIT" || d.action === "SELL";
                 const isHold = d.action === "HOLD";
-                const entry = d.entry_price ? Number(d.entry_price) : null;
-                const sl = d.stop_loss ? Number(d.stop_loss) : null;
-                const tp = d.take_profit ? Number(d.take_profit) : null;
-                const rr = d.risk_reward_ratio ? Number(d.risk_reward_ratio) : null;
+                const executed = isExecutedDecision(d);
+                const entry = executed && d.entry_price != null ? Number(d.entry_price) : null;
+                const refPrice = referencePriceFor(d);
+                const sl = executed && d.stop_loss != null ? Number(d.stop_loss) : null;
+                const tp = executed && d.take_profit != null ? Number(d.take_profit) : null;
+                const rr = executed && d.risk_reward_ratio != null ? Number(d.risk_reward_ratio) : null;
                 const conf = confidenceCell(agent, session, d);
                 const exec = deriveExecutionStatusForCard(agent, session, d);
                 const snap: any = d.data_snapshot ?? {};
@@ -729,28 +731,31 @@ function AIAgentPanel() {
                 const dNews: DataStatus = Number(sent?.news?.latestNewsCount ?? 0) > 0 ? "fresh" : "unavailable";
                 const dSent: DataStatus = sent?.news ? "fresh" : "unavailable";
                 return (
-                  <div key={d.id} className={`panel p-3 space-y-2 border ${isBuy ? "border-bull/40" : isExit ? "border-bear/40" : "border-border"}`}>
+                  <div key={d.id} className={`panel p-3 space-y-2 border ${executed && isBuy ? "border-bull/40" : executed && isExit ? "border-bear/40" : "border-border"}`}>
                     <div className="flex items-center justify-between gap-2">
                       <div className="font-mono font-semibold">{d.symbol}</div>
-                      <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${isBuy ? "bg-bull/15 text-bull" : isExit ? "bg-bear/15 text-bear" : "bg-muted text-muted-foreground"}`} title={conf.tooltip}>
+                      <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${executed && isBuy ? "bg-bull/15 text-bull" : executed && isExit ? "bg-bear/15 text-bear" : "bg-muted text-muted-foreground"}`} title={conf.tooltip}>
                         {d.action} · {conf.label}
                       </span>
                     </div>
-                    {!isHold && (
+                    {executed && (
                       <div className="grid grid-cols-3 gap-1 text-[11px]">
-                        <div><div className="text-muted-foreground">Entry</div><div className="font-mono">{entry ? formatPrice(entry) : "—"}</div></div>
-                        <div><div className="text-muted-foreground">SL</div><div className="font-mono text-bear">{sl ? formatPrice(sl) : "—"}</div></div>
-                        <div><div className="text-muted-foreground">TP</div><div className="font-mono text-bull">{tp ? formatPrice(tp) : "—"}</div></div>
+                        <div><div className="text-muted-foreground">Entry</div><div className="font-mono">{entry != null ? formatPrice(entry) : "—"}</div></div>
+                        <div><div className="text-muted-foreground">SL</div><div className="font-mono text-bear">{sl != null ? formatPrice(sl) : "—"}</div></div>
+                        <div><div className="text-muted-foreground">TP</div><div className="font-mono text-bull">{tp != null ? formatPrice(tp) : "—"}</div></div>
                         <div><div className="text-muted-foreground">Lot</div><div className="font-mono">{d.suggested_lot ?? "—"}</div></div>
-                        <div><div className="text-muted-foreground">RR</div><div className="font-mono">{rr ? rr.toFixed(2) : "—"}</div></div>
-                        <div><div className="text-muted-foreground">Strategy</div><div className="text-[10px]">{d.strategy ?? "—"}</div></div>
+                        <div><div className="text-muted-foreground">Shares</div><div className="font-mono">{d.suggested_shares ?? "—"}</div></div>
+                        <div><div className="text-muted-foreground">RR</div><div className="font-mono">{rr != null ? rr.toFixed(2) : "—"}</div></div>
                       </div>
                     )}
-                    {isHold && (
+                    {!executed && (
                       <div className="text-[11px] bg-amber-500/10 text-amber-700 dark:text-amber-400 px-2 py-1.5 rounded space-y-1">
-                        <div className="font-semibold uppercase text-[9px] tracking-wide">No-Trade Reason</div>
+                        <div className="font-semibold uppercase text-[9px] tracking-wide">{isHold ? "Monitoring only · No paper order" : "No paper order executed"}</div>
                         <div className="font-semibold">{exec.primary}</div>
                         <div className="text-muted-foreground">{exec.detail}</div>
+                        {refPrice != null && (
+                          <div className="text-[10px] font-mono opacity-90">Ref price: {formatPrice(refPrice)}{dPrice === "stale" ? " · cached" : ""}</div>
+                        )}
                         {exec.secondary && <div className="text-[10px] opacity-80">↳ {exec.secondary}</div>}
                       </div>
                     )}
