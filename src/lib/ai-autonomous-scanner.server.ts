@@ -218,6 +218,7 @@ async function scoreSymbol(symbol: string): Promise<ScanCandidate & { _priceAtSc
   let disclosure = 50, marketContext = 50, risk = 50, tradeSetup = 50;
   let priceOk = false, techOk = false, volume = 0;
   let priceAtScan: number | null = null;
+  let quoteSnapshot: any = null;
 
   // 1. Price + liquidity (single quote per symbol — keeps scanner cheap).
   try {
@@ -225,6 +226,7 @@ async function scoreSymbol(symbol: string): Promise<ScanCandidate & { _priceAtSc
     if (q?.price) {
       priceOk = true;
       priceAtScan = Number(q.price);
+      quoteSnapshot = q;
       const session = getIDXMarketSession();
       const fresh = session.isOpen && isIDXSymbol(symbol) ? 5 : 600;
       dataQuality = fresh < 30 ? 95 : fresh < 300 ? 80 : 60;
@@ -239,9 +241,6 @@ async function scoreSymbol(symbol: string): Promise<ScanCandidate & { _priceAtSc
       const absCh = Math.abs(ch);
       risk = absCh > 8 ? 30 : absCh > 4 ? 55 : 80;
       if (absCh > 8) warnings.push("Pergerakan harga ekstrim");
-      // Stash quote payload so the caller can compute momentum without a 2nd fetch.
-      (q as any).__quoteCache = q;
-      __lastQuote = q;
     } else {
       warnings.push("Harga tidak tersedia");
     }
