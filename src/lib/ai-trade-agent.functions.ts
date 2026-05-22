@@ -441,7 +441,9 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
   if (isAutonomous) {
     const intervalMs = Number(agent.autonomous_rescan_interval_minutes ?? 15) * 60_000;
     const lastScanAt = agent.last_autonomous_scan_at ? new Date(agent.last_autonomous_scan_at).getTime() : 0;
-    const rescanDue = Date.now() - lastScanAt >= intervalMs;
+    // Force rescan on market session transition (e.g., pre_open → open_session_1)
+    // so the agent re-evaluates candidates against the new execution eligibility.
+    const rescanDue = (Date.now() - lastScanAt >= intervalMs) || !!sessionChanged;
 
     let scan = null as Awaited<ReturnType<typeof runAutonomousScan>> | null;
     if (rescanDue) {
