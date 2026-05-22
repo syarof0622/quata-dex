@@ -239,6 +239,9 @@ async function scoreSymbol(symbol: string): Promise<ScanCandidate & { _priceAtSc
       const absCh = Math.abs(ch);
       risk = absCh > 8 ? 30 : absCh > 4 ? 55 : 80;
       if (absCh > 8) warnings.push("Pergerakan harga ekstrim");
+      // Stash quote payload so the caller can compute momentum without a 2nd fetch.
+      (q as any).__quoteCache = q;
+      __lastQuote = q;
     } else {
       warnings.push("Harga tidak tersedia");
     }
