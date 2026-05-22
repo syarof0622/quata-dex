@@ -687,8 +687,19 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
 
   // Stop-loss / take-profit guard on open positions (only when IDX market open)
   if (session.isOpen) {
+    const sinceGuard = new Date(Date.now() - 5 * 60_000).toISOString();
     for (const pos of posList) {
       try {
+        // 5-min duplicate guard: skip if a SL/TP event already fired recently
+        // for this symbol (prevents repeat exits from cron oscillation).
+        const { count: recentGuard } = await supabaseAdmin
+          .from("ai_agent_training_events")
+          .select("id", { count: "exact", head: true })
+          .eq("agent_id", agent.id).eq("symbol", pos.symbol)
+          .in("close_reason", ["stop_loss_triggered", "take_profit_triggered"])
+          .gte("created_at", sinceGuard);
+        if ((recentGuard ?? 0) > 0) continue;
+
         // find the most recent BUY decision for this symbol to know SL/TP
         const { data: lastBuy } = await supabaseAdmin.from("ai_agent_decisions")
           .select("stop_loss, take_profit").eq("agent_id", agent.id)
@@ -707,7 +718,7 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
         await executePaperFill({
           agentId: agent.id, paperAccountId: agent.paper_account_id,
           symbol: pos.symbol, side: "sell", shares: pos.qty, price: px,
-          existing: pos, reason: trigger,
+          existing: pos, reason: trigger, closeReason: trigger,
         });
         await supabaseAdmin.from("ai_agent_risk_logs").insert({
           agent_id: agent.id, symbol: pos.symbol, risk_type: trigger,
