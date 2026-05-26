@@ -392,13 +392,13 @@ export function AiInsightsPanel() {
                 <div className="font-semibold mb-1 text-rose-500">Hindari untuk regime ini</div>
                 <ul className="space-y-1">
                   {strategy.data.avoidForThisRegime.map((s: any) => (
-                    <li key={s.strategy} className="rounded-md border border-border/60 p-2">
+                    <li key={s.strategyName} className="rounded-md border border-border/60 p-2">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-mono">{s.strategy}</span>
+                        <span className="font-mono">{s.strategyName}</span>
                         <Badge variant="destructive" className="text-[10px]">{s.classification}</Badge>
                       </div>
                       <div className="text-muted-foreground mt-0.5">
-                        Score <span className="text-foreground font-mono">{s.score}</span> · Sample{" "}
+                        Score <span className="text-foreground font-mono">{s.strategyScore}</span> · Sample{" "}
                         <span className="font-mono">{s.sampleSize}</span> ({s.sampleQuality})
                       </div>
                       {s.warnings?.length > 0 && (
