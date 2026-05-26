@@ -199,10 +199,10 @@ function AlertsPage() {
                 <td className="p-2 font-mono text-xs">{describeRule(a.rule_json as AlertRule)}</td>
                 <td className="p-2 text-xs">
                   {a.triggered_at
-                    ? <span className="text-bull">✓ triggered {new Date(a.triggered_at).toLocaleString()}</span>
+                    ? <span className="text-bull">✓ triggered {formatDateTimeWIB(a.triggered_at)}</span>
                     : a.active ? <span className="text-muted-foreground">armed</span> : <span className="text-muted-foreground">paused</span>}
                 </td>
-                <td className="p-2 text-xs text-muted-foreground">{a.created_at ? new Date(a.created_at).toLocaleString() : ""}</td>
+                <td className="p-2 text-xs text-muted-foreground">{formatDateTimeWIB(a.created_at)}</td>
                 <td className="p-2 text-center">
                   <Switch checked={!!a.active} onCheckedChange={(v) => toggle.mutate({ id: a.id, active: v })} />
                 </td>
