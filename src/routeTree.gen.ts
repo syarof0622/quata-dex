@@ -20,6 +20,7 @@ import { Route as AuthenticatedPortfolioRouteImport } from './routes/_authentica
 import { Route as AuthenticatedNewsRouteImport } from './routes/_authenticated/news'
 import { Route as AuthenticatedMarketRouteImport } from './routes/_authenticated/market'
 import { Route as AuthenticatedLabRouteImport } from './routes/_authenticated/lab'
+import { Route as AuthenticatedHealthRouteImport } from './routes/_authenticated/health'
 import { Route as AuthenticatedExpertRouteImport } from './routes/_authenticated/expert'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedAlertsRouteImport } from './routes/_authenticated/alerts'
@@ -85,6 +86,11 @@ const AuthenticatedMarketRoute = AuthenticatedMarketRouteImport.update({
 const AuthenticatedLabRoute = AuthenticatedLabRouteImport.update({
   id: '/lab',
   path: '/lab',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedHealthRoute = AuthenticatedHealthRouteImport.update({
+  id: '/health',
+  path: '/health',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedExpertRoute = AuthenticatedExpertRouteImport.update({
@@ -158,6 +164,7 @@ export interface FileRoutesByFullPath {
   '/alerts': typeof AuthenticatedAlertsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/expert': typeof AuthenticatedExpertRoute
+  '/health': typeof AuthenticatedHealthRoute
   '/lab': typeof AuthenticatedLabRoute
   '/market': typeof AuthenticatedMarketRoute
   '/news': typeof AuthenticatedNewsRoute
@@ -182,6 +189,7 @@ export interface FileRoutesByTo {
   '/alerts': typeof AuthenticatedAlertsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/expert': typeof AuthenticatedExpertRoute
+  '/health': typeof AuthenticatedHealthRoute
   '/lab': typeof AuthenticatedLabRoute
   '/market': typeof AuthenticatedMarketRoute
   '/news': typeof AuthenticatedNewsRoute
@@ -208,6 +216,7 @@ export interface FileRoutesById {
   '/_authenticated/alerts': typeof AuthenticatedAlertsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/expert': typeof AuthenticatedExpertRoute
+  '/_authenticated/health': typeof AuthenticatedHealthRoute
   '/_authenticated/lab': typeof AuthenticatedLabRoute
   '/_authenticated/market': typeof AuthenticatedMarketRoute
   '/_authenticated/news': typeof AuthenticatedNewsRoute
@@ -234,6 +243,7 @@ export interface FileRouteTypes {
     | '/alerts'
     | '/dashboard'
     | '/expert'
+    | '/health'
     | '/lab'
     | '/market'
     | '/news'
@@ -258,6 +268,7 @@ export interface FileRouteTypes {
     | '/alerts'
     | '/dashboard'
     | '/expert'
+    | '/health'
     | '/lab'
     | '/market'
     | '/news'
@@ -283,6 +294,7 @@ export interface FileRouteTypes {
     | '/_authenticated/alerts'
     | '/_authenticated/dashboard'
     | '/_authenticated/expert'
+    | '/_authenticated/health'
     | '/_authenticated/lab'
     | '/_authenticated/market'
     | '/_authenticated/news'
@@ -394,6 +406,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLabRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/health': {
+      id: '/_authenticated/health'
+      path: '/health'
+      fullPath: '/health'
+      preLoaderRoute: typeof AuthenticatedHealthRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/expert': {
       id: '/_authenticated/expert'
       path: '/expert'
@@ -486,6 +505,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAlertsRoute: typeof AuthenticatedAlertsRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedExpertRoute: typeof AuthenticatedExpertRoute
+  AuthenticatedHealthRoute: typeof AuthenticatedHealthRoute
   AuthenticatedLabRoute: typeof AuthenticatedLabRoute
   AuthenticatedMarketRoute: typeof AuthenticatedMarketRoute
   AuthenticatedNewsRoute: typeof AuthenticatedNewsRoute
@@ -501,6 +521,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAlertsRoute: AuthenticatedAlertsRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedExpertRoute: AuthenticatedExpertRoute,
+  AuthenticatedHealthRoute: AuthenticatedHealthRoute,
   AuthenticatedLabRoute: AuthenticatedLabRoute,
   AuthenticatedMarketRoute: AuthenticatedMarketRoute,
   AuthenticatedNewsRoute: AuthenticatedNewsRoute,
