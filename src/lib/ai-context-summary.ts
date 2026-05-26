@@ -45,6 +45,10 @@ export interface SummaryInput {
   now?: Date;
 }
 
+export const ACTIVE_AGENT_STATUSES = new Set(["active_market_open", "active", "running"]);
+export const WORKER_STALE_MINUTES = 30;
+
+
 export function computeContextSummary(input: SummaryInput): AIContextSummary {
   const now = input.now ?? new Date();
 
