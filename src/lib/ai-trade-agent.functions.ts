@@ -770,6 +770,7 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
 
   // Stop-loss / take-profit guard on open positions (only when IDX market open)
   if (session.isOpen) {
+    metrics.openPositionsMonitored = posList.length;
     const sinceGuard = new Date(Date.now() - 5 * 60_000).toISOString();
     for (const pos of posList) {
       try {
