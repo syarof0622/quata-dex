@@ -535,6 +535,7 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
       decisions.push(decision);
 
       let decisionStatus: "executed" | "rejected" | "hold" | "cooldown" | "limit_reached" = "hold";
+      let limitReason: string | null = null;
       let orderId: string | null = null;
 
       const isTrade = decision.action === "BUY" || decision.action === "EXIT";
@@ -542,13 +543,16 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
 
       if (isTrade && tradesUsed >= dailyTradesLeft) {
         decisionStatus = "limit_reached";
+        limitReason = "max_daily_ai_trades_reached";
       } else if (isAutonomous && isNewEntry && slotsLeft - newEntriesUsed <= 0) {
         decisionStatus = "limit_reached";
+        limitReason = "max_active_positions_reached";
       } else if (isAutonomous && isNewEntry && newEntriesUsed >= maxNew) {
         decisionStatus = "limit_reached";
+        limitReason = "max_new_entries_per_day_reached";
       } else if (isTrade) {
         const action = decision.action;
-        if (await recentCooldownActive(agent.id, sym, action)) decisionStatus = "cooldown";
+        if (await recentCooldownActive(agent.id, sym, action)) { decisionStatus = "cooldown"; limitReason = "cooldown_active"; }
         else if (!cfg.tradingHoursOnly || !isIDXSymbol(sym) || canExecutePaperTrade().ok) {
           try {
             // Pre-execution idempotency: skip if an executed decision with the
@@ -559,7 +563,7 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
               .select("id", { count: "exact", head: true })
               .eq("agent_id", agent.id).eq("idempotency_key", existingKey)
               .eq("decision_status", "executed");
-            if ((dupCount ?? 0) > 0) { decisionStatus = "cooldown"; }
+            if ((dupCount ?? 0) > 0) { decisionStatus = "cooldown"; limitReason = "duplicate_order_guard"; }
             else {
               const existing = await loadActivePosition(sym);
               const side: "buy" | "sell" = action === "BUY" ? "buy" : "sell";
