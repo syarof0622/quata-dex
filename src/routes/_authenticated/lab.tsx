@@ -531,6 +531,9 @@ function AIAgentPanel() {
   const decisions = (status.data?.decisions ?? []) as any[];
   const risks = (status.data?.risks ?? []) as any[];
   const performance = status.data?.performance as any;
+  const agentPositions = ((status.data as any)?.paperPositions ?? []) as any[];
+  const agentOrders = ((status.data as any)?.agentOrders ?? []) as any[];
+  const orderCounts = ((status.data as any)?.orderCounts ?? { executed: 0, openPositions: 0, closedTrades: 0 }) as { executed: number; openPositions: number; closedTrades: number };
 
   const memory = useQuery({
     queryKey: ["ai-agent-memory", agent?.id],
