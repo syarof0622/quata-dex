@@ -341,7 +341,7 @@ function ChartPage() {
               </div>
               {quote.dataUpdatedAt > 0 && (
                 <div className="text-[10px] text-muted-foreground mt-0.5">
-                  Updated {new Date(quote.dataUpdatedAt).toLocaleTimeString()}
+                  Updated {formatTimeWIB(quote.dataUpdatedAt)}
                 </div>
               )}
             </div>
