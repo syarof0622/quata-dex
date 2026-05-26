@@ -276,11 +276,12 @@ async function executePaperFill(opts: {
     if (existing) {
       const newQty = Number(existing.qty) + shares;
       const newAvg = (Number(existing.avg_price) * Number(existing.qty) + fillPrice * shares) / newQty;
-      await supabaseAdmin.from("paper_positions").update({ qty: newQty, avg_price: newAvg })
+      await supabaseAdmin.from("paper_positions").update({ qty: newQty, avg_price: newAvg, opened_by_agent_id: agentId, source: "ai_agent" })
         .eq("user_id", USER_ID).eq("symbol", symbol);
     } else {
       await supabaseAdmin.from("paper_positions").insert({
         account_id: paperAccountId, user_id: USER_ID, symbol, qty: shares, avg_price: fillPrice,
+        opened_by_agent_id: agentId, source: "ai_agent",
       });
     }
     cashAfter = cashBefore - notional - fee;
