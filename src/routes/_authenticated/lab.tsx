@@ -604,6 +604,8 @@ function AIAgentPanel() {
           tidak terhubung ke broker, dan tidak ada order ke sekuritas.
         </p>
 
+        <AutomationStatusPanel agent={agent} session={session} />
+
         <AutonomousModeControls agent={agent} onChange={() => status.refetch()} />
 
         <div className="grid md:grid-cols-4 gap-2">
