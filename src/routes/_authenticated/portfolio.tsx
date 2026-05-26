@@ -6,6 +6,7 @@ import { formatLocalPrice, symbolMarket } from "@/lib/symbols";
 import { Link } from "@tanstack/react-router";
 import { Sparkline } from "@/routes/_authenticated/screener";
 import { ShieldAlert, TrendingUp, Layers, Activity, Target, Wallet, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { PortfolioAttributionPanel } from "@/components/PortfolioAttributionPanel";
 
 export const Route = createFileRoute("/_authenticated/portfolio")({
   head: () => ({ meta: [{ title: "Portfolio — Quanta Terminal" }] }),
