@@ -5,6 +5,21 @@ import {
 } from "./news-sources";
 import type { RawItem } from "./news-rss.server";
 
+export type RelevanceClass =
+  | "direct_ticker_news"
+  | "company_name_match"
+  | "sector_news"
+  | "macro_news"
+  | "global_context"
+  | "irrelevant_noise";
+
+export type ImpactCategory =
+  | "earnings" | "dividend" | "buyback" | "corporate_action"
+  | "rights_issue" | "merger_acquisition" | "debt_financing"
+  | "regulation" | "macro" | "sector_rotation" | "analyst_rating"
+  | "uma_suspension" | "governance_risk" | "litigation"
+  | "generic_market_news" | "noise";
+
 export type NormalizedArticle = {
   source: string;
   source_id: string;
@@ -27,7 +42,80 @@ export type NormalizedArticle = {
   title_hash: string;
   raw_payload: any;
   duplicate_sources?: string[];
+  // News intelligence quality upgrade
+  ticker_relevance_score: number;
+  relevance_class: RelevanceClass;
+  impact_category: ImpactCategory;
+  event_cluster_id: string;
+  duplicate_group_id: string;
+  source_reliability_weight: number;
+  is_noise: boolean;
+  primary_ticker: string | null;
 };
+
+// Source reliability weights (0..1). Higher = more trustworthy.
+const SOURCE_RELIABILITY: Record<string, number> = {
+  idx_disclosure: 1.00,
+  official_disclosure: 0.95,
+  kontan: 0.85, cnbc_market: 0.85, antara: 0.85, investor_id: 0.85,
+  serpapi_google_news: 0.72, serpapi_google_news_light: 0.70,
+  google_news: 0.65,
+};
+function sourceReliability(id: string): number {
+  return SOURCE_RELIABILITY[id] ?? 0.50;
+}
+
+function classifyImpactCategory(text: string): { category: ImpactCategory; hint: "high"|"medium"|"low" } {
+  const t = text.toLowerCase();
+  if (/\b(suspensi|uma|unusual market activity|delisting)\b/.test(t)) return { category: "uma_suspension", hint: "high" };
+  if (/\b(merger|akuisisi|takeover|caplok)\b/.test(t)) return { category: "merger_acquisition", hint: "high" };
+  if (/\b(right.?issue|rights.?issue)\b/.test(t)) return { category: "rights_issue", hint: "high" };
+  if (/\bbuyback\b/.test(t)) return { category: "buyback", hint: "medium" };
+  if (/\b(dividen|cum date|ex date)\b/.test(t)) return { category: "dividend", hint: "medium" };
+  if (/\b(laba bersih|laporan keuangan|kinerja|q[1-4]|earnings|pendapatan)\b/.test(t)) return { category: "earnings", hint: "high" };
+  if (/\b(obligasi|surat utang|debt|pinjaman|kredit sindikasi)\b/.test(t)) return { category: "debt_financing", hint: "medium" };
+  if (/\b(ojk|regulasi|aturan baru|peraturan)\b/.test(t)) return { category: "regulation", hint: "medium" };
+  if (/\b(bi rate|the fed|fomc|inflasi|gdp|cpi|suku bunga)\b/.test(t)) return { category: "macro", hint: "medium" };
+  if (/\b(rotasi sektor|sector rotation)\b/.test(t)) return { category: "sector_rotation", hint: "low" };
+  if (/\b(rekomendasi|target harga|upgrade|downgrade|analis)\b/.test(t)) return { category: "analyst_rating", hint: "low" };
+  if (/\b(ipo|stock split|spin off)\b/.test(t)) return { category: "corporate_action", hint: "medium" };
+  if (/\b(fraud|investigasi|kpk|denda|gugatan|pailit|gagal bayar|default)\b/.test(t)) return { category: "governance_risk", hint: "high" };
+  if (/\b(litigasi|tuntutan|class action)\b/.test(t)) return { category: "litigation", hint: "medium" };
+  return { category: "generic_market_news", hint: "low" };
+}
+
+function computeRelevance(title: string, summary: string, tickers: string[], sectors: string[]):
+  { score: number; cls: RelevanceClass; primary: string | null } {
+  const titleU = title.toUpperCase();
+  const sumU = (summary || "").toUpperCase();
+  let score = 0;
+  let primary: string | null = null;
+  for (const t of tickers) {
+    const bare = t.replace(/\.JK$/, "");
+    if (new RegExp(`\\b${bare}\\b`).test(titleU)) {
+      if (score < 50) { score = 50; primary = t; }
+    } else if (new RegExp(`\\b${bare}\\b`).test(sumU)) {
+      if (score < 30) { score = Math.max(score, 30); primary = primary ?? t; }
+    }
+  }
+  if (sectors.length > 0) score = Math.max(score, 10);
+  const blob = `${title} ${summary}`;
+  let cls: RelevanceClass;
+  if (score >= 50) cls = "direct_ticker_news";
+  else if (score >= 30) cls = "company_name_match";
+  else if (score >= 10) cls = "sector_news";
+  else if (/\b(ihsg|bei|bursa|pasar modal|emiten)\b/i.test(blob)) { cls = "macro_news"; score = Math.max(score, 8); }
+  else if (/\b(s&p|nasdaq|dow jones|fed|wall street|brent|wti)\b/i.test(blob)) { cls = "global_context"; score = Math.max(score, 5); }
+  else cls = "irrelevant_noise";
+  return { score, cls, primary };
+}
+
+function timeBucketHour(iso: string): string {
+  try {
+    const d = new Date(iso);
+    return `${d.getUTCFullYear()}${String(d.getUTCMonth()+1).padStart(2,"0")}${String(d.getUTCDate()).padStart(2,"0")}-${String(d.getUTCHours()).padStart(2,"0")}`;
+  } catch { return "0"; }
+}
 
 function canonical(url: string): string {
   try {
