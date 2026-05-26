@@ -53,19 +53,30 @@ export const WORKER_STALE_MINUTES = 30;
 export function computeContextSummary(input: SummaryInput): AIContextSummary {
   const now = input.now ?? new Date();
 
-  // IDX session (WIB)
-  const wibH = (now.getUTCHours() + 7) % 24;
-  const wibM = now.getUTCMinutes();
-  const t = wibH * 60 + wibM;
-  const dow = (now.getUTCDay() + (now.getUTCHours() + 7 >= 24 ? 1 : 0)) % 7;
-  const weekend = dow === 0 || dow === 6;
-  let idxSession: AIContextSummary["idxSession"] = { label: "Closed", tone: "slate" };
-  if (!weekend) {
-    if (t >= 9 * 60 && t < 11 * 60 + 30) idxSession = { label: "Session I", tone: "emerald" };
-    else if (t >= 11 * 60 + 30 && t < 13 * 60 + 30) idxSession = { label: "Break", tone: "amber" };
-    else if (t >= 13 * 60 + 30 && t < 15 * 60) idxSession = { label: "Session II", tone: "emerald" };
-    else if (t >= 15 * 60 && t < 15 * 60 + 30) idxSession = { label: "Closing Auction", tone: "teal" };
-  }
+  // IDX session (WIB) — single source of truth via getIDXMarketSession.
+  const sess = getIDXMarketSession(now);
+  const SESSION_TONE: Record<IDXSessionState, Tone> = {
+    open_session_1: "emerald",
+    open_session_2: "emerald",
+    lunch_break: "amber",
+    pre_open: "slate",
+    post_close: "slate",
+    weekend: "slate",
+    holiday: "slate",
+  };
+  const SESSION_LABEL: Record<IDXSessionState, string> = {
+    open_session_1: "Session I",
+    open_session_2: "Session II",
+    lunch_break: "Lunch break",
+    pre_open: "Pre-open",
+    post_close: "Closed",
+    weekend: "Weekend",
+    holiday: "Holiday",
+  };
+  const idxSession: AIContextSummary["idxSession"] = {
+    label: SESSION_LABEL[sess.state],
+    tone: SESSION_TONE[sess.state],
+  };
 
   // Bias
   const news = input.news ?? [];
