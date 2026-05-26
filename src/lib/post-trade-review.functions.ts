@@ -146,24 +146,24 @@ export const runPostTradeReview = createServerFn({ method: "POST" })
       }
 
       const review = {
-        agent_id: train?.agent_id ?? "00000000-0000-0000-0000-000000000000",
+        agent_id: (exitEvent as any)?.agent_id ?? "00000000-0000-0000-0000-000000000000",
         paper_account_id: o.account_id,
         symbol: o.symbol,
-        decision_id: train?.decision_id ?? null,
-        training_event_id: train?.id ?? null,
+        decision_id: (exitEvent as any)?.decision_id ?? null,
+        training_event_id: (exitEvent as any)?.id ?? null,
         entry_price: entryPrice,
         exit_price: exitPrice,
         qty,
-        pnl,
+        pnl: realizedPnl,
         pnl_pct: pnlPct,
         holding_minutes: holdingMinutes,
         outcome,
         lesson_label: lesson,
         what_went_right: wentRight,
         what_went_wrong: wentWrong,
-        ai_review: `Trade ${o.symbol} ditutup ${outcome} (${pnlPct.toFixed(2)}%) setelah ${holdingMinutes} menit. Pelajaran: ${lesson}.`,
-        entry_context: train?.real_market_context ?? train?.ai_decision ?? null,
-        exit_context: { exit_price: exitPrice, exit_time: o.filled_at },
+        ai_review: `Trade ${o.symbol} ditutup ${outcome} (${pnlPct.toFixed(2)}%, realized ${realizedPnl.toFixed(2)}) setelah ${holdingMinutes} menit. Pelajaran: ${lesson}.`,
+        entry_context: (exitEvent as any)?.real_market_context ?? (exitEvent as any)?.ai_decision ?? null,
+        exit_context: { exit_price: exitPrice, exit_time: o.filled_at, realized_pnl: realizedPnl, close_reason: (o as any).close_reason ?? null },
       };
       await supabaseAdmin.from("ai_trade_reviews").insert(review);
       count += 1;
