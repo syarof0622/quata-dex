@@ -916,8 +916,15 @@ function AIAgentPanel() {
         <Stat label="Closed trades" value={String(orderCounts.closedTrades)} />
         <Stat label="Executed orders" value={String(orderCounts.executed)} />
         <Stat label="Open positions" value={String(orderCounts.openPositions)} tone={orderCounts.openPositions > 0 ? "bull" : undefined} />
-        <Stat label="Win rate" value={Number(performance?.win_rate ?? 0).toFixed(1) + "%"} tone={Number(performance?.win_rate ?? 0) >= 50 ? "bull" : "bear"} />
-        <Stat label="Profit factor" value={Number(performance?.profit_factor ?? 0).toFixed(2)} />
+        <Stat
+          label="Win rate"
+          value={orderCounts.closedTrades === 0 ? "N/A" : Number(performance?.win_rate ?? 0).toFixed(1) + "%"}
+          tone={orderCounts.closedTrades === 0 ? undefined : Number(performance?.win_rate ?? 0) >= 50 ? "bull" : "bear"}
+        />
+        <Stat
+          label="Profit factor"
+          value={orderCounts.closedTrades === 0 ? "N/A" : Number(performance?.profit_factor ?? 0).toFixed(2)}
+        />
       </div>
       {orderCounts.closedTrades === 0 && (
         <div className="panel p-3 text-xs text-muted-foreground flex items-center justify-between flex-wrap gap-2">
