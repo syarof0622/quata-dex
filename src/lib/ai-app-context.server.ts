@@ -2,6 +2,7 @@
 // Read-only. Per-section try/catch so a single failing query never breaks the chat.
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getIDXMarketSession, canExecutePaperTrade } from "@/lib/idx-market-session";
+import { buildStrategyIntelligence } from "@/lib/strategy-intelligence.functions";
 
 const USER_ID = "00000000-0000-0000-0000-000000000001";
 
@@ -631,6 +632,35 @@ export async function getAIAppContext(userText: string) {
     aiAlerts = { status: "error", error: String(e?.message ?? e), items: [] };
   }
 
+  // ---------- STRATEGY INTELLIGENCE (Update 9) ----------
+  let strategyIntelligence: any = { status: "unavailable" as Status };
+  try {
+    const si = await buildStrategyIntelligence();
+    strategyIntelligence = {
+      status: "available" as Status,
+      marketRegime: si.marketRegime,
+      // Trim each score to the fields the AI Analyst actually uses, to keep
+      // the JSON payload small.
+      bestForThisRegime: si.bestForThisRegime.map(s => ({
+        strategy: s.strategyName, score: s.strategyScore, classification: s.classification,
+        sampleSize: s.sampleSize, sampleQuality: s.sampleQuality,
+        backtestWinRate: s.backtestWinRate, forwardWinRate: s.forwardWinRate,
+        avgReturn: s.avgReturn, profitFactor: s.profitFactor, maxDrawdown: s.maxDrawdown,
+      })),
+      avoidForThisRegime: si.avoidForThisRegime.map(s => ({
+        strategy: s.strategyName, score: s.strategyScore, classification: s.classification,
+        sampleSize: s.sampleSize, sampleQuality: s.sampleQuality,
+        warnings: s.warnings,
+      })),
+      proven: si.proven.map(s => s.strategyName),
+      promising: si.promising.map(s => s.strategyName),
+      insufficient: si.insufficient.map(s => s.strategyName),
+      generatedAt: si.generatedAt,
+    };
+  } catch (e: any) {
+    strategyIntelligence = { status: "error", error: String(e?.message ?? e) };
+  }
+
   return {
     intent,
     contextStatus,
@@ -649,6 +679,7 @@ export async function getAIAppContext(userText: string) {
     sourceHealth,
     aiInsights,
     aiAlerts,
+    strategyIntelligence,
     paperTradingOnly: true,
     generatedAt: new Date().toISOString(),
   };

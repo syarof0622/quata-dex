@@ -10,6 +10,7 @@ import { resetPaperAccount } from "@/lib/paper.functions";
 import { toast } from "sonner";
 
 import { runBacktest } from "@/lib/backtest.functions";
+import { listStrategyPerformance, type StrategyName } from "@/lib/strategy-intelligence.functions";
 import { generateStrategy } from "@/lib/strategy.functions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sparkles, X, Bot, Play, Pause, Square, AlertTriangle } from "lucide-react";
@@ -1284,8 +1285,20 @@ function Backtester() {
   const [symbol, setSymbol] = useState("AAPL");
   const [tf, setTf] = useState("1d");
   const [rule, setRule] = useState<"ema_cross" | "rsi_reversal" | "macd_cross">("ema_cross");
+  const [strategyName, setStrategyName] = useState<StrategyName | "">("");
+  const [sector, setSector] = useState("");
+  const [regime, setRegime] = useState("");
+  const [filterRegime, setFilterRegime] = useState("");
+  const [filterSector, setFilterSector] = useState("");
+
   const run = useMutation({
-    mutationFn: () => runBacktest({ data: { symbol: symbol.toUpperCase(), timeframe: tf, rule, persist: true } }),
+    mutationFn: () => runBacktest({ data: {
+      symbol: symbol.toUpperCase(), timeframe: tf, rule, persist: true,
+      strategyName: strategyName || undefined,
+      sector: sector || undefined,
+      marketRegime: regime || undefined,
+    } }),
+    onSuccess: () => { perf.refetch(); toast.success("Backtest tersimpan ke Strategy Intelligence"); },
     onError: (e: any) => toast.error(e?.message ?? "Backtest failed"),
   });
   const m = (run.data as any)?.metrics;
@@ -1295,6 +1308,31 @@ function Backtester() {
     onSuccess: (r: any) => { setRule(r.rule); toast.success(`AI picked: ${r.name}`); },
     onError: (e: any) => toast.error(e?.message ?? "AI failed"),
   });
+
+  const perf = useQuery({
+    queryKey: ["strategy_perf", filterRegime, filterSector],
+    queryFn: () => listStrategyPerformance({ data: {
+      regime: filterRegime || undefined,
+      sector: filterSector || undefined,
+    } }),
+    refetchInterval: 60_000,
+  });
+
+  const STRATEGIES: StrategyName[] = [
+    "momentum_breakout","pullback_to_support","trend_following","mean_reversion",
+    "sector_rotation","defensive_rotation","dividend_momentum","undervalue_reversal",
+    "news_catalyst","risk_off_cash_preservation",
+  ];
+  const SECTORS = ["Consumer","Financials","Healthcare","Telecom","Energy","Materials","Industrials","Tech","Real Estate","Utilities"];
+  const REGIMES = ["risk_on","risk_off","neutral","transition","bullish","high_volatility"];
+
+  const clsBadge = (c: string) =>
+    c === "proven" ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40" :
+    c === "promising" ? "bg-sky-500/20 text-sky-400 border-sky-500/40" :
+    c === "avoid" || c === "underperforming" ? "bg-rose-500/20 text-rose-400 border-rose-500/40" :
+    c === "unstable" ? "bg-amber-500/20 text-amber-400 border-amber-500/40" :
+    "bg-slate-500/20 text-slate-400 border-slate-500/40";
+
   return (
     <div className="space-y-3">
       <div className="panel p-4 space-y-2">
@@ -1306,7 +1344,7 @@ function Backtester() {
         {gen.data && <div className="text-xs text-muted-foreground"><span className="text-foreground font-semibold">{gen.data.name}</span> · {gen.data.description}</div>}
       </div>
 
-      <div className="panel p-4 grid md:grid-cols-5 gap-2 items-end">
+      <div className="panel p-4 grid md:grid-cols-6 gap-2 items-end">
         <div><label className="text-xs text-muted-foreground">Symbol</label><Input value={symbol} onChange={e => setSymbol(e.target.value)} /></div>
         <div>
           <label className="text-xs text-muted-foreground">Timeframe</label>
@@ -1317,18 +1355,51 @@ function Backtester() {
             </SelectContent>
           </Select>
         </div>
-        <div className="md:col-span-2">
-          <label className="text-xs text-muted-foreground">Strategy</label>
+        <div>
+          <label className="text-xs text-muted-foreground">Signal Rule</label>
           <Select value={rule} onValueChange={(v) => setRule(v as any)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="ema_cross">EMA(12) × EMA(26) cross</SelectItem>
-              <SelectItem value="rsi_reversal">RSI(14) reversal (30/70)</SelectItem>
-              <SelectItem value="macd_cross">MACD histogram zero-cross</SelectItem>
+              <SelectItem value="ema_cross">EMA(12) × EMA(26)</SelectItem>
+              <SelectItem value="rsi_reversal">RSI(14) reversal</SelectItem>
+              <SelectItem value="macd_cross">MACD zero-cross</SelectItem>
             </SelectContent>
           </Select>
         </div>
-        <Button onClick={() => run.mutate()} disabled={run.isPending}>{run.isPending ? "Running…" : "Run backtest"}</Button>
+        <div>
+          <label className="text-xs text-muted-foreground">Strategy label</label>
+          <Select value={strategyName || "__none"} onValueChange={(v) => setStrategyName(v === "__none" ? "" : v as StrategyName)}>
+            <SelectTrigger><SelectValue placeholder="(rule)" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none">(use rule name)</SelectItem>
+              {STRATEGIES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <label className="text-xs text-muted-foreground">Sector</label>
+          <Select value={sector || "__none"} onValueChange={(v) => setSector(v === "__none" ? "" : v)}>
+            <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none">—</SelectItem>
+              {SECTORS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <label className="text-xs text-muted-foreground">Market Regime</label>
+          <Select value={regime || "__none"} onValueChange={(v) => setRegime(v === "__none" ? "" : v)}>
+            <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none">—</SelectItem>
+              {REGIMES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="md:col-span-6">
+          <Button onClick={() => run.mutate()} disabled={run.isPending}>{run.isPending ? "Running…" : "Run backtest & persist"}</Button>
+          <span className="text-[11px] text-muted-foreground ml-2">Hasil dipakai AI Trade Agent untuk strategy scoring (paper trading only).</span>
+        </div>
       </div>
 
       {m && (
@@ -1343,14 +1414,14 @@ function Backtester() {
       )}
 
       {run.data && (
-        <div className="panel p-2 max-h-80 overflow-auto">
+        <div className="panel p-2 max-h-64 overflow-auto">
           <table className="w-full text-xs">
             <thead className="text-muted-foreground"><tr><th className="text-left p-2">Entry</th><th className="text-left p-2">Exit</th><th className="text-right p-2">Entry $</th><th className="text-right p-2">Exit $</th><th className="text-right p-2">PnL %</th></tr></thead>
             <tbody>
               {(run.data as any).trades.map((t: any, i: number) => (
                 <tr key={i} className="border-t border-border">
-                  <td className="p-2">{t.entryTime ? new Date(t.entryTime * 1000).toLocaleDateString() : "—"}</td>
-                  <td className="p-2">{t.exitTime ? new Date(t.exitTime * 1000).toLocaleDateString() : "—"}</td>
+                  <td className="p-2">{t.entryTime ? fmtWIBDate(t.entryTime * 1000) : "—"}</td>
+                  <td className="p-2">{t.exitTime ? fmtWIBDate(t.exitTime * 1000) : "—"}</td>
                   <td className="p-2 text-right font-mono">{Number(t.entry ?? 0).toFixed(2)}</td>
                   <td className="p-2 text-right font-mono">{Number(t.exit ?? 0).toFixed(2)}</td>
                   <td className={`p-2 text-right font-mono ${Number(t.pnlPct ?? 0) >= 0 ? "text-bull" : "text-bear"}`}>{Number(t.pnlPct ?? 0).toFixed(2)}%</td>
@@ -1361,6 +1432,101 @@ function Backtester() {
           </table>
         </div>
       )}
+
+      {/* Strategy Performance (Update 9) */}
+      <div className="panel p-4 space-y-3">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <div className="text-sm font-semibold">Strategy Performance</div>
+            <div className="text-[11px] text-muted-foreground">Backtest + forward (closed paper trades) aggregated per strategy.</div>
+          </div>
+          <div className="flex items-end gap-2">
+            <div>
+              <label className="text-[10px] text-muted-foreground">Filter regime</label>
+              <Select value={filterRegime || "__all"} onValueChange={(v) => setFilterRegime(v === "__all" ? "" : v)}>
+                <SelectTrigger className="w-40 h-8"><SelectValue placeholder="all" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all">all regimes</SelectItem>
+                  {REGIMES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-[10px] text-muted-foreground">Filter sector</label>
+              <Select value={filterSector || "__all"} onValueChange={(v) => setFilterSector(v === "__all" ? "" : v)}>
+                <SelectTrigger className="w-40 h-8"><SelectValue placeholder="all" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all">all sectors</SelectItem>
+                  {SECTORS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => perf.refetch()}>Refresh</Button>
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-2">
+          {(perf.data ?? []).slice(0, 6).map((s: any) => (
+            <div key={s.strategyName} className="rounded-md border border-border/60 p-3 text-xs space-y-1">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-mono text-foreground">{s.strategyName}</span>
+                <span className={`px-1.5 py-0.5 rounded border text-[10px] uppercase ${clsBadge(s.classification)}`}>{s.classification}</span>
+              </div>
+              <div className="text-muted-foreground">
+                Score <span className="text-foreground font-mono text-base">{s.strategyScore}</span> /100
+              </div>
+              <div className="text-muted-foreground">
+                Sample <span className="font-mono">{s.sampleSize}</span> ({s.sampleQuality}) ·{" "}
+                WR fwd {s.forwardWinRate != null ? `${Math.round(s.forwardWinRate)}%` : "—"} / bt {s.backtestWinRate != null ? `${Math.round(s.backtestWinRate)}%` : "—"}
+              </div>
+              <div className="text-muted-foreground">
+                PF {s.profitFactor != null ? Number(s.profitFactor).toFixed(2) : "—"} ·{" "}
+                Avg ret {s.avgReturn != null ? `${Number(s.avgReturn).toFixed(2)}%` : "—"} ·{" "}
+                DD {s.maxDrawdown != null ? `${Number(s.maxDrawdown).toFixed(1)}%` : "—"}
+              </div>
+              {s.warnings?.length > 0 && (
+                <div className="text-amber-400/80 text-[10px]">{s.warnings.join(" · ")}</div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="panel p-0 overflow-auto">
+          <table className="w-full text-xs">
+            <thead className="text-muted-foreground">
+              <tr>
+                <th className="text-left p-2">Strategy</th>
+                <th className="text-right p-2">Score</th>
+                <th className="text-right p-2">Class</th>
+                <th className="text-right p-2">Sample</th>
+                <th className="text-right p-2">WR fwd</th>
+                <th className="text-right p-2">WR bt</th>
+                <th className="text-right p-2">Avg ret</th>
+                <th className="text-right p-2">PF</th>
+                <th className="text-right p-2">Max DD</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(perf.data ?? []).map((s: any) => (
+                <tr key={s.strategyName} className="border-t border-border">
+                  <td className="p-2 font-mono">{s.strategyName}</td>
+                  <td className="p-2 text-right font-mono">{s.strategyScore}</td>
+                  <td className="p-2 text-right"><span className={`px-1.5 py-0.5 rounded border text-[10px] uppercase ${clsBadge(s.classification)}`}>{s.classification}</span></td>
+                  <td className="p-2 text-right font-mono">{s.sampleSize} <span className="text-muted-foreground text-[10px]">({s.sampleQuality})</span></td>
+                  <td className="p-2 text-right font-mono">{s.forwardWinRate != null ? `${Math.round(s.forwardWinRate)}%` : "—"}</td>
+                  <td className="p-2 text-right font-mono">{s.backtestWinRate != null ? `${Math.round(s.backtestWinRate)}%` : "—"}</td>
+                  <td className={`p-2 text-right font-mono ${s.avgReturn != null && s.avgReturn >= 0 ? "text-bull" : s.avgReturn != null ? "text-bear" : ""}`}>{s.avgReturn != null ? `${Number(s.avgReturn).toFixed(2)}%` : "—"}</td>
+                  <td className="p-2 text-right font-mono">{s.profitFactor != null ? Number(s.profitFactor).toFixed(2) : "—"}</td>
+                  <td className="p-2 text-right font-mono">{s.maxDrawdown != null ? `${Number(s.maxDrawdown).toFixed(1)}%` : "—"}</td>
+                </tr>
+              ))}
+              {(!perf.data || perf.data.length === 0) && (
+                <tr><td colSpan={9} className="p-6 text-center text-muted-foreground">Belum ada data strategy intelligence. Jalankan backtest dengan label strategy + sector + regime.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }

@@ -281,35 +281,39 @@ export const listStrategyPerformance = createServerFn({ method: "GET" })
     return out.sort((a, b) => b.strategyScore - a.strategyScore);
   });
 
+// Internal helper — used by getStrategyIntelligence and by ai-app-context
+// (which can't easily call a serverFn from inside another serverFn handler).
+export async function buildStrategyIntelligence() {
+  const { data: regimeRow } = await supabaseAdmin
+    .from("market_regime_snapshots")
+    .select("regime_classification, regime_volatility")
+    .order("created_at", { ascending: false }).limit(1).maybeSingle();
+  const regime = (regimeRow as any)?.regime_classification ?? "unknown";
+
+  const all: StrategyScore[] = [];
+  for (const s of STRATEGY_REGISTRY) {
+    const bt = await aggregateBacktest(s.name, { regime });
+    const ft = await aggregateForward(s.name, { regime });
+    all.push(computeStrategyScore({
+      strategyName: s.name, backtest: bt ?? undefined, forward: ft ?? undefined,
+      regime,
+    }));
+  }
+  const ranked = [...all].sort((a, b) => b.strategyScore - a.strategyScore);
+  const proven      = ranked.filter(s => s.classification === "proven");
+  const promising   = ranked.filter(s => s.classification === "promising");
+  const insufficient = ranked.filter(s => s.classification === "insufficient_sample");
+  const avoid       = ranked.filter(s => s.classification === "avoid" || s.classification === "underperforming");
+
+  return {
+    marketRegime: regime,
+    bestForThisRegime: ranked.slice(0, 3),
+    avoidForThisRegime: avoid.slice(0, 3),
+    proven, promising, insufficient,
+    generatedAt: new Date().toISOString(),
+  };
+}
+
 export const getStrategyIntelligence = createServerFn({ method: "GET" })
-  .handler(async () => {
-    // Pick latest regime to drive "best/avoid for this regime".
-    const { data: regimeRow } = await supabaseAdmin
-      .from("market_regime_snapshots")
-      .select("regime_classification, regime_volatility")
-      .order("created_at", { ascending: false }).limit(1).maybeSingle();
-    const regime = (regimeRow as any)?.regime_classification ?? "unknown";
+  .handler(async () => buildStrategyIntelligence());
 
-    const all: StrategyScore[] = [];
-    for (const s of STRATEGY_REGISTRY) {
-      const bt = await aggregateBacktest(s.name, { regime });
-      const ft = await aggregateForward(s.name, { regime });
-      all.push(computeStrategyScore({
-        strategyName: s.name, backtest: bt ?? undefined, forward: ft ?? undefined,
-        regime,
-      }));
-    }
-    const ranked = [...all].sort((a, b) => b.strategyScore - a.strategyScore);
-    const proven      = ranked.filter(s => s.classification === "proven");
-    const promising   = ranked.filter(s => s.classification === "promising");
-    const insufficient = ranked.filter(s => s.classification === "insufficient_sample");
-    const avoid       = ranked.filter(s => s.classification === "avoid" || s.classification === "underperforming");
-
-    return {
-      marketRegime: regime,
-      bestForThisRegime: ranked.slice(0, 3),
-      avoidForThisRegime: avoid.slice(0, 3),
-      proven, promising, insufficient,
-      generatedAt: new Date().toISOString(),
-    };
-  });
