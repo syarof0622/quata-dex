@@ -109,18 +109,21 @@ export const computePortfolioRisk = createServerFn({ method: "GET" }).handler(
       0,
     );
 
-    // Drawdown from REAL equity history (last 60 snapshots).
-    const { data: hist } = await supabaseAdmin
-      .from("portfolio_risk_snapshots")
-      .select("equity_snapshot, created_at")
+    // Drawdown — unified with Portfolio Analytics: use portfolio_equity_snapshots
+    // anchored to initial_balance so peak survives across sessions.
+    const { data: eqHist } = await supabaseAdmin
+      .from("portfolio_equity_snapshots")
+      .select("equity, created_at")
       .eq("paper_account_id", account.id)
-      .order("created_at", { ascending: false })
-      .limit(60);
-    let peakEquity = equity;
-    for (const h of hist ?? []) {
-      const e = Number((h as any).equity_snapshot ?? 0);
+      .order("created_at", { ascending: true })
+      .limit(500);
+    const initialBalance = Number((account as any).initial_balance ?? 0) || equity;
+    let peakEquity = initialBalance > 0 ? initialBalance : equity;
+    for (const h of eqHist ?? []) {
+      const e = Number((h as any).equity ?? 0);
       if (Number.isFinite(e) && e > peakEquity) peakEquity = e;
     }
+    if (equity > peakEquity) peakEquity = equity;
     const drawdown = peakEquity > 0 ? ((equity - peakEquity) / peakEquity) * 100 : 0;
 
     const warnings: string[] = [];

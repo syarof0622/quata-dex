@@ -37,12 +37,21 @@ function deriveLesson(pnlPct: number, holdingMinutes: number, ctx: any): LessonL
   return "neutral";
 }
 
+const VALID_REVIEW_EVENT_TYPES = new Set([
+  "closed_trade",
+  "stop_loss_exit",
+  "take_profit_exit",
+  "risk_exit",
+  "manual_sell",
+]);
+
 export const runPostTradeReview = createServerFn({ method: "POST" })
   .inputValidator((input: { limit?: number }) => ({
     limit: Math.min(Math.max(input?.limit ?? 25, 1), 100),
   }))
   .handler(async ({ data }) => {
-    // Find SELL orders not yet reviewed.
+    // Closed paper trades = filled SELL orders. These ARE the source of truth
+    // for realized P/L — never default to breakeven when realized_pnl is set.
     const { data: orders } = await supabaseAdmin
       .from("paper_orders")
       .select("*")
@@ -54,15 +63,10 @@ export const runPostTradeReview = createServerFn({ method: "POST" })
 
     const { data: existing } = await supabaseAdmin
       .from("ai_trade_reviews")
-      .select("decision_id, symbol, exit_price")
-      .in(
-        "symbol",
-        Array.from(new Set(orders.map((o: any) => o.symbol))),
-      );
+      .select("symbol, exit_price")
+      .in("symbol", Array.from(new Set(orders.map((o: any) => o.symbol))));
     const reviewedKey = new Set(
-      (existing ?? []).map(
-        (r: any) => `${r.symbol}_${r.exit_price}`,
-      ),
+      (existing ?? []).map((r: any) => `${r.symbol}_${r.exit_price}`),
     );
 
     let count = 0;
@@ -70,32 +74,52 @@ export const runPostTradeReview = createServerFn({ method: "POST" })
       const key = `${o.symbol}_${o.filled_price}`;
       if (reviewedKey.has(key)) continue;
 
-      // Try to pair with the most recent matching BUY decision in training events
+      // Pair with most-recent matching training event of an exit-class event type.
       const { data: train } = await supabaseAdmin
         .from("ai_agent_training_events")
         .select("*")
         .eq("symbol", o.symbol)
         .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(5);
+      const exitEvent = (train ?? []).find(
+        (t: any) => !t.event_type || VALID_REVIEW_EVENT_TYPES.has(t.event_type),
+      ) ?? (train ?? [])[0] ?? null;
 
-      const aiDec = (train?.ai_decision ?? {}) as any;
-      const entryPrice = Number(aiDec?.entry_price ?? o.filled_price);
       const exitPrice = Number(o.filled_price ?? o.price ?? 0);
       const qty = Number(o.qty ?? 0);
-      const pnl = (exitPrice - entryPrice) * qty;
-      const pnlPct = entryPrice > 0 ? ((exitPrice - entryPrice) / entryPrice) * 100 : 0;
-      const holdingMinutes = train?.created_at
+      // SOURCE OF TRUTH: realized_pnl on the SELL order.
+      const realizedPnl = Number(o.realized_pnl ?? 0);
+      // Reverse-derive entry price from realized P/L when possible; otherwise
+      // fall back to the AI decision's recorded entry.
+      const aiDec = (exitEvent?.ai_decision ?? {}) as any;
+      const aiEntry = Number(aiDec?.entry_price ?? 0);
+      const entryPrice =
+        qty > 0 && Number.isFinite(realizedPnl) && realizedPnl !== 0
+          ? exitPrice - realizedPnl / qty
+          : aiEntry > 0
+            ? aiEntry
+            : exitPrice;
+      const pnlPct =
+        entryPrice > 0 ? ((exitPrice - entryPrice) / entryPrice) * 100 : 0;
+      const holdingMinutes = exitEvent?.created_at
         ? Math.round(
             (new Date(o.filled_at ?? o.created_at).getTime() -
-              new Date(train.created_at).getTime()) /
+              new Date(exitEvent.created_at).getTime()) /
               60000,
           )
         : 0;
 
-      const lesson = deriveLesson(pnlPct, holdingMinutes, train ?? {});
-      const outcome =
-        pnlPct > 0.2 ? "win" : pnlPct < -0.2 ? "loss" : "breakeven";
+      // Outcome strictly from realized P/L sign — never default to breakeven
+      // when realized_pnl is non-zero.
+      const outcome: "win" | "loss" | "breakeven" =
+        realizedPnl > 0 ? "win" : realizedPnl < 0 ? "loss" : "breakeven";
+
+      // Re-evaluate lesson with the corrected pnlPct so labels match outcome.
+      const lesson =
+        outcome === "breakeven" && realizedPnl === 0
+          ? "neutral"
+          : deriveLesson(pnlPct, holdingMinutes, exitEvent ?? {});
+
 
       let wentRight: string | null = null;
       let wentWrong: string | null = null;
@@ -122,24 +146,24 @@ export const runPostTradeReview = createServerFn({ method: "POST" })
       }
 
       const review = {
-        agent_id: train?.agent_id ?? "00000000-0000-0000-0000-000000000000",
+        agent_id: (exitEvent as any)?.agent_id ?? "00000000-0000-0000-0000-000000000000",
         paper_account_id: o.account_id,
         symbol: o.symbol,
-        decision_id: train?.decision_id ?? null,
-        training_event_id: train?.id ?? null,
+        decision_id: (exitEvent as any)?.decision_id ?? null,
+        training_event_id: (exitEvent as any)?.id ?? null,
         entry_price: entryPrice,
         exit_price: exitPrice,
         qty,
-        pnl,
+        pnl: realizedPnl,
         pnl_pct: pnlPct,
         holding_minutes: holdingMinutes,
         outcome,
         lesson_label: lesson,
         what_went_right: wentRight,
         what_went_wrong: wentWrong,
-        ai_review: `Trade ${o.symbol} ditutup ${outcome} (${pnlPct.toFixed(2)}%) setelah ${holdingMinutes} menit. Pelajaran: ${lesson}.`,
-        entry_context: train?.real_market_context ?? train?.ai_decision ?? null,
-        exit_context: { exit_price: exitPrice, exit_time: o.filled_at },
+        ai_review: `Trade ${o.symbol} ditutup ${outcome} (${pnlPct.toFixed(2)}%, realized ${realizedPnl.toFixed(2)}) setelah ${holdingMinutes} menit. Pelajaran: ${lesson}.`,
+        entry_context: (exitEvent as any)?.real_market_context ?? (exitEvent as any)?.ai_decision ?? null,
+        exit_context: { exit_price: exitPrice, exit_time: o.filled_at, realized_pnl: realizedPnl, close_reason: (o as any).close_reason ?? null },
       };
       await supabaseAdmin.from("ai_trade_reviews").insert(review);
       count += 1;

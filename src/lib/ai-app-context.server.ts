@@ -408,6 +408,124 @@ export async function getAIAppContext(userText: string) {
     })),
   } : { error: shRes.error };
 
+  // ---------- AI INSIGHTS (aggregated intelligence layer) ----------
+  const insightsRes = await safe("aiInsights", async () => {
+    const [
+      { data: regime },
+      { data: sectors },
+      { data: risk },
+      { data: reviews },
+      { data: lessons },
+    ] = await Promise.all([
+      supabaseAdmin.from("market_regime_snapshots").select("*").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      supabaseAdmin.from("sector_strength_snapshots").select("sector, classification, relative_strength, breadth_score, top_symbols, created_at").order("created_at", { ascending: false }).limit(40),
+      supabaseAdmin.from("portfolio_risk_snapshots").select("*").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      supabaseAdmin.from("ai_trade_reviews").select("symbol, outcome, pnl, pnl_pct, lesson_label, what_went_right, what_went_wrong, created_at, exit_context").order("created_at", { ascending: false }).limit(10),
+      supabaseAdmin.from("ai_trade_reviews").select("lesson_label, outcome").order("created_at", { ascending: false }).limit(200),
+    ]);
+    // One row per sector (latest only)
+    const seen = new Set<string>();
+    const latestSectors: any[] = [];
+    for (const s of sectors ?? []) {
+      if (seen.has((s as any).sector)) continue;
+      seen.add((s as any).sector);
+      latestSectors.push(s);
+    }
+    return { regime, sectors: latestSectors, risk, reviews: reviews ?? [], lessons: lessons ?? [] };
+  });
+
+  let aiInsights: any = { status: "unavailable" as Status };
+  if (insightsRes.ok) {
+    const { regime, sectors, risk, reviews, lessons } = insightsRes.data;
+    const lessonCounts: Record<string, { total: number; wins: number }> = {};
+    for (const l of lessons) {
+      const k = (l as any).lesson_label ?? "neutral";
+      lessonCounts[k] ??= { total: 0, wins: 0 };
+      lessonCounts[k].total += 1;
+      if ((l as any).outcome === "win") lessonCounts[k].wins += 1;
+    }
+    aiInsights = {
+      marketRegime: regime ? {
+        classification: regime.regime_classification,
+        trend: regime.regime_trend,
+        volatility: regime.regime_volatility,
+        breadth: regime.regime_breadth,
+        ihsgLevel: regime.idx_level,
+        ihsgChangePct: regime.idx_change_pct,
+        reasoning: regime.reasoning,
+      } : null,
+      sectorRotation: sectors.map((s: any) => ({
+        sector: s.sector,
+        classification: s.classification,
+        relativeStrength: s.relative_strength,
+        breadthScore: s.breadth_score,
+        topSymbols: s.top_symbols,
+      })),
+      rotatingInSectors: sectors.filter((s: any) => s.classification === "rotating_in" || s.classification === "leading").map((s: any) => s.sector),
+      rotatingOutSectors: sectors.filter((s: any) => s.classification === "rotating_out" || s.classification === "lagging").map((s: any) => s.sector),
+      portfolioRisk: risk ? {
+        level: risk.risk_level,
+        cashPct: risk.cash_pct,
+        maxPositionWeight: risk.max_position_weight,
+        currentDrawdown: risk.current_drawdown,
+        dailyPnlPct: risk.daily_pnl_pct,
+        warnings: risk.warnings,
+        explanation: `Market risk (${regime?.regime_classification ?? "n/a"}) dan portfolio risk (${risk.risk_level}) adalah dua dimensi berbeda. Portfolio Anda ${risk.risk_level} karena cash ratio ${Number(risk.cash_pct).toFixed(0)}% dan posisi terbesar ${Number(risk.max_position_weight).toFixed(1)}%.`,
+      } : null,
+      postTradeReviews: reviews.map((r: any) => ({
+        symbol: r.symbol,
+        outcome: r.outcome,
+        realizedPnl: Number(r.pnl ?? 0),
+        pnlPct: Number(r.pnl_pct ?? 0),
+        lesson: r.lesson_label,
+        wentRight: r.what_went_right,
+        wentWrong: r.what_went_wrong,
+        closeReason: (r.exit_context as any)?.close_reason ?? null,
+        createdAt: r.created_at,
+      })),
+      lessonsLearned: Object.entries(lessonCounts).map(([lesson, v]) => ({
+        lesson, total: v.total, winRate: v.total ? Math.round((v.wins / v.total) * 100) : 0,
+      })).sort((a, b) => b.total - a.total).slice(0, 8),
+      status: regime || risk || reviews.length ? "available" : "insufficient_data",
+    };
+  }
+
+  // ---------- AI ALERTS (evaluated, actionable) ----------
+  let aiAlerts: any = { status: "unavailable" as Status, items: [] };
+  try {
+    const [u, rg, rk, sec] = await Promise.all([
+      supabaseAdmin.from("ai_undervalue_scores").select("symbol, value_trap_risk_score, final_undervalue_score").order("updated_at", { ascending: false }).limit(20),
+      supabaseAdmin.from("market_regime_snapshots").select("regime_classification, created_at").order("created_at", { ascending: false }).limit(2),
+      supabaseAdmin.from("portfolio_risk_snapshots").select("current_drawdown, max_position_weight").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      supabaseAdmin.from("sector_strength_snapshots").select("sector, classification, relative_strength, created_at").order("created_at", { ascending: false }).limit(40),
+    ]);
+    const items: any[] = [];
+    for (const s of u.data ?? []) {
+      if ((s as any).value_trap_risk_score >= 60) items.push({ type: "value_trap_warning", severity: "warning", title: `Value Trap: ${(s as any).symbol}`, action: "Hindari entry baru; perketat stop loss jika sudah punya posisi.", affectedSymbols: [(s as any).symbol] });
+      if ((s as any).final_undervalue_score >= 75) items.push({ type: "undervalue_signal", severity: "info", title: `Undervalue Signal: ${(s as any).symbol}`, action: "Tambahkan ke watchlist; validasi teknikal sebelum entry.", affectedSymbols: [(s as any).symbol] });
+    }
+    if (rg.data && rg.data.length >= 2 && (rg.data[0] as any).regime_classification !== (rg.data[1] as any).regime_classification) {
+      items.push({ type: "regime_shift", severity: "warning", title: `Regime Shift → ${(rg.data[0] as any).regime_classification}`, action: "Turunkan ukuran posisi baru sampai regime stabil." });
+    }
+    if (rk.data) {
+      if (Number((rk.data as any).current_drawdown) <= -5) items.push({ type: "drawdown_limit", severity: "critical", title: `Drawdown ${(rk.data as any).current_drawdown}%`, action: "Kurangi exposure, jangan tambah posisi baru." });
+      if (Number((rk.data as any).max_position_weight) > 25) items.push({ type: "concentration_risk", severity: "warning", title: `Concentration ${(rk.data as any).max_position_weight}%`, action: "Diversifikasi: kurangi posisi terbesar." });
+    }
+    const seenSec = new Set<string>();
+    for (const row of sec.data ?? []) {
+      const sname = (row as any).sector;
+      if (seenSec.has(sname)) continue;
+      seenSec.add(sname);
+      if ((row as any).classification === "rotating_in" || (row as any).classification === "leading")
+        items.push({ type: "sector_rotation_in", severity: "info", title: `Sector Rotating In — ${sname}`, action: "Prioritaskan kandidat dari sektor ini.", affectedSectors: [sname] });
+      else if ((row as any).classification === "rotating_out" || (row as any).classification === "lagging")
+        items.push({ type: "sector_rotation_out", severity: "warning", title: `Sector Rotating Out — ${sname}`, action: "Hindari entry agresif; perketat stop pada posisi existing.", affectedSectors: [sname] });
+    }
+    aiAlerts = { status: items.length ? "available" : "empty", items };
+  } catch (e: any) {
+    aiAlerts = { status: "error", error: String(e?.message ?? e), items: [] };
+  }
+
   return {
     intent,
     contextStatus,
@@ -424,6 +542,8 @@ export async function getAIAppContext(userText: string) {
     journal,
     dataQuality,
     sourceHealth,
+    aiInsights,
+    aiAlerts,
     paperTradingOnly: true,
     generatedAt: new Date().toISOString(),
   };
