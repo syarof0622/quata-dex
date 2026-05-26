@@ -54,17 +54,23 @@ function AIAnalystPage() {
         <ContextCard title="Source Health" value={ctx?.sourceHealthLabel ?? "Unknown"} tone={ctx?.sourceHealthTone ?? "slate"} subtext={ctx?.sourceHealthSubtext} />
       </div>
 
-      {/* App Context status — tells user what the AI can read */}
+      {/* App Context status — reflects ACTUAL data status, not always green */}
       <div className="rounded-xl border border-border/60 bg-card/40 px-3 py-2">
         <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">AI App Context (read-only)</div>
         <div className="flex flex-wrap gap-1.5">
-          {["Portfolio","Paper Trading","AI Trade Agent","Autonomous Scanner","Watchlist","News & Sentiment","Undervalue","Alerts","Backtest","Journal","Market Regime","Data Quality","Source Health"].map(label => (
-            <span key={label} className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-[10px] px-2 py-0.5">
-              <span className="h-1 w-1 rounded-full bg-emerald-400" />{label}
-            </span>
-          ))}
+          {(ctx?.badges ?? []).map(b => {
+            const cls = TONE_BADGE[b.tone] ?? TONE_BADGE.slate;
+            const dot = TONE_DOT[b.tone] ?? TONE_DOT.slate;
+            return (
+              <span key={b.label} className={cn("inline-flex items-center gap-1 rounded-full border text-[10px] px-2 py-0.5", cls)} title={b.status}>
+                <span className={cn("h-1 w-1 rounded-full", dot)} />
+                {b.label}: <span className="font-semibold">{b.status}</span>
+              </span>
+            );
+          })}
         </div>
       </div>
+
 
       <ChatPanel />
     </div>
