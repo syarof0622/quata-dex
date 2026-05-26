@@ -225,6 +225,11 @@ const EXEC_LABEL: Record<ExecStatus, string> = {
   blocked_low_confidence: "Blocked — Confidence below threshold",
   blocked_duplicate_order: "Blocked — Duplicate order guard",
   blocked_rr_invalid: "Blocked — Risk/reward invalid",
+  blocked_max_daily_trades: "Blocked — Max daily AI trades reached",
+  blocked_max_active_positions: "Blocked — Max active positions reached",
+  blocked_max_new_entries: "Blocked — Max new entries today reached",
+  blocked_cooldown: "Blocked — Cooldown active",
+  hold_position: "Holding position",
 };
 
 // True only when AI actually placed a simulated paper order for this decision.
