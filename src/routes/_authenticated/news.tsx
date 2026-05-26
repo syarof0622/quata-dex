@@ -259,7 +259,7 @@ function NewsHub() {
             </div>
             {n.summary && <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{n.summary}</div>}
             <div className="text-[10px] text-muted-foreground mt-2">
-              {n.source} · {new Date(n.published_at).toLocaleString()}
+              {n.source} · {formatDateTimeWIB(n.published_at)}
             </div>
             <div className="mt-2 flex items-center flex-wrap gap-1.5">
               <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
