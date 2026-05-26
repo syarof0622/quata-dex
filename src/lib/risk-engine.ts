@@ -359,10 +359,12 @@ export async function evaluateCircuitBreaker(agentId: string): Promise<
 
   if (!reason) return { paused: false };
 
-  const until = new Date();
-  // Pause until end of trading day (UTC midnight is safe + simple).
-  until.setUTCHours(23, 59, 59, 999);
+  // Pause until end of CURRENT IDX trading day in WIB. If market is already
+  // post-close / weekend / holiday, getEndOfCurrentIDXTradingDayWIB returns
+  // the NEXT trading day's 09:00 WIB. Stored as ISO UTC; UI must render WIB.
+  const until = getEndOfCurrentIDXTradingDayWIB(new Date());
   const untilISO = until.toISOString();
+  const untilLabelWIB = formatWIB(until);
 
   await supabaseAdmin
     .from("ai_trade_agents")
@@ -375,7 +377,7 @@ export async function evaluateCircuitBreaker(agentId: string): Promise<
 
   await supabaseAdmin.from("ai_agent_risk_logs").insert({
     agent_id: agentId, risk_type: "circuit_breaker", risk_level: "critical",
-    message: `Risk pause until ${untilISO}: ${reason}`, action_taken: "block_new_buys",
+    message: `Risk pause until ${untilLabelWIB}: ${reason}`, action_taken: "block_new_buys",
   });
 
   return { paused: true, reason, untilISO };
