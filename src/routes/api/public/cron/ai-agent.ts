@@ -12,7 +12,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { runAgentOnce } from "@/lib/ai-trade-agent.functions";
-import { getIDXMarketSession } from "@/lib/market-session";
+import { getIDXMarketSession } from "@/lib/idx-market-session";
 
 type AgentResult = {
   id: string;
@@ -84,7 +84,7 @@ async function handler(request: Request) {
       const lastBlockedReason = reasons[0] ?? null;
 
       const nowIso = new Date().toISOString();
-      const patch: Record<string, any> = {
+      const patch: any = {
         last_worker_run_at: nowIso,
         last_worker_status: "success",
         last_worker_message: `decisions=${decisions.length} executed=${executedCount} blocked=${blocked.length} session=${session.state}`,
