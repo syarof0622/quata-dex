@@ -66,27 +66,55 @@ export async function getAIAppContext(userText: string) {
     const { account, positions, orders, risk } = paperRes.data;
     const filledOrders = orders.filter((o: any) => o.status === "filled");
     const pendingOrders = orders.filter((o: any) => o.status !== "filled" && o.status !== "cancelled");
-    const closedTrades = filledOrders.filter((o: any) => o.side === "sell" && Number(o.realized_pnl ?? 0) !== 0);
+    // Closed trade = sell order with realized_pnl recorded (can be negative, zero, or positive).
+    const closedTrades = filledOrders.filter((o: any) => o.side === "sell" && o.realized_pnl !== null && o.realized_pnl !== undefined);
     const wins = closedTrades.filter((o: any) => Number(o.realized_pnl) > 0).length;
-    openPositions = positions.map((p: any) => ({
-      symbol: p.symbol,
-      qty: Number(p.qty),
-      lot: Math.round(Number(p.qty) / 100),
-      avgEntry: Number(p.avg_price),
-      marketValue: Number(p.qty) * Number(p.avg_price),
-      openedAt: p.opened_at,
-    }));
-    const holdingsValue = openPositions.reduce((s, p) => s + (p.marketValue || 0), 0);
+    const losses = closedTrades.filter((o: any) => Number(o.realized_pnl) < 0).length;
+    const grossWin = closedTrades.filter((o: any) => Number(o.realized_pnl) > 0).reduce((s: number, o: any) => s + Number(o.realized_pnl), 0);
+    const grossLoss = Math.abs(closedTrades.filter((o: any) => Number(o.realized_pnl) < 0).reduce((s: number, o: any) => s + Number(o.realized_pnl), 0));
+    const realizedPnlTotal = closedTrades.reduce((s: number, o: any) => s + Number(o.realized_pnl ?? 0), 0);
+
+    // AI-agent-only slices (ownership = paper_orders.agent_id present)
+    const agentFilledOrders = filledOrders.filter((o: any) => o.agent_id);
+    const agentClosedTrades = agentFilledOrders.filter((o: any) => o.side === "sell" && o.realized_pnl !== null && o.realized_pnl !== undefined);
+    const agentWins = agentClosedTrades.filter((o: any) => Number(o.realized_pnl) > 0).length;
+    const agentGrossWin = agentClosedTrades.filter((o: any) => Number(o.realized_pnl) > 0).reduce((s: number, o: any) => s + Number(o.realized_pnl), 0);
+    const agentGrossLoss = Math.abs(agentClosedTrades.filter((o: any) => Number(o.realized_pnl) < 0).reduce((s: number, o: any) => s + Number(o.realized_pnl), 0));
+    const agentRealizedPnl = agentClosedTrades.reduce((s: number, o: any) => s + Number(o.realized_pnl ?? 0), 0);
+    // Map open positions to AI agent if the latest buy for that symbol had agent_id.
+    const latestBuyBySymbol: Record<string, any> = {};
+    for (const o of filledOrders) {
+      if (o.side === "buy" && !latestBuyBySymbol[o.symbol]) latestBuyBySymbol[o.symbol] = o;
+    }
+
+    openPositions = positions.map((p: any) => {
+      const lastBuy = latestBuyBySymbol[p.symbol];
+      return {
+        symbol: p.symbol,
+        qty: Number(p.qty),
+        lot: Math.round(Number(p.qty) / 100),
+        avgEntry: Number(p.avg_price),
+        // NOTE: marketValueAtCost = qty × avg_entry, NOT current market value (no live price here).
+        marketValueAtCost: Number(p.qty) * Number(p.avg_price),
+        openedAt: p.opened_at,
+        ownershipSource: lastBuy?.agent_id ? "ai_agent" : (lastBuy ? "manual_or_unknown" : "unknown"),
+        openedByAgentId: lastBuy?.agent_id ?? null,
+      };
+    });
+    const agentOpenPositionsCount = openPositions.filter((p) => p.ownershipSource === "ai_agent").length;
+    const holdingsValueAtCost = openPositions.reduce((s, p) => s + (p.marketValueAtCost || 0), 0);
+
     portfolio = {
       currency: account.currency,
       cash: Number(account.cash),
       equity: Number(account.equity),
-      holdingsValue,
+      holdingsValueAtCost,
       unrealizedPnl: risk?.unrealized_pnl_snapshot ?? null,
-      realizedPnl: risk?.realized_pnl_snapshot ?? null,
+      realizedPnl: risk?.realized_pnl_snapshot ?? realizedPnlTotal,
       openPositionsCount: openPositions.length,
       closedTradesCount: closedTrades.length,
       executedOrdersCount: filledOrders.length,
+      // Account-wide win rate is null when there are no closed trades — UI must render "N/A".
       winRate: closedTrades.length ? Math.round((wins / closedTrades.length) * 100) : null,
       riskLevel: risk?.risk_level ?? "unknown",
       maxPositionWeight: risk?.max_position_weight ?? null,
@@ -94,7 +122,34 @@ export async function getAIAppContext(userText: string) {
       warnings: risk?.warnings ?? [],
       lastUpdated: risk?.created_at ?? null,
       openPositions,
+      ownershipNote: "marketValueAtCost = qty × avg_entry. Last price not joined here; do NOT label this as 'market value at last price'.",
     };
+
+    // Separate account-wide vs AI-agent-only performance scopes.
+    const accountPerformance = {
+      source: "paper_account_all",
+      executedOrders: filledOrders.length,
+      openPositions: openPositions.length,
+      closedTrades: closedTrades.length,
+      wins, losses,
+      realizedPnl: realizedPnlTotal,
+      unrealizedPnl: risk?.unrealized_pnl_snapshot ?? null,
+      winRate: closedTrades.length ? Math.round((wins / closedTrades.length) * 100) : null,
+      profitFactor: closedTrades.length && grossLoss > 0 ? Math.round((grossWin / grossLoss) * 100) / 100 : null,
+      winRateLabel: closedTrades.length ? `${Math.round((wins / closedTrades.length) * 100)}% (account-wide)` : "N/A",
+    };
+    const agentPerformance = {
+      source: "ai_agent_only",
+      aiExecutedOrders: agentFilledOrders.length,
+      aiOpenPositions: agentOpenPositionsCount,
+      aiClosedTrades: agentClosedTrades.length,
+      aiRealizedPnl: agentRealizedPnl,
+      aiWinRate: agentClosedTrades.length ? Math.round((agentWins / agentClosedTrades.length) * 100) : null,
+      aiProfitFactor: agentClosedTrades.length && agentGrossLoss > 0 ? Math.round((agentGrossWin / agentGrossLoss) * 100) / 100 : null,
+      ownershipNote: "Slice based on paper_orders.agent_id presence. Orders without agent_id are NOT attributed to the AI Agent.",
+      sampleValidity: agentClosedTrades.length >= 20 ? "valid" : agentClosedTrades.length > 0 ? "small_sample" : "no_closed_trades",
+    };
+
     paperTrading = {
       accountCurrency: account.currency,
       availableCash: Number(account.cash),
@@ -103,19 +158,30 @@ export async function getAIAppContext(userText: string) {
       filledOrdersCount: filledOrders.length,
       openPositionsCount: openPositions.length,
       closedTradesCount: closedTrades.length,
+      accountPerformance,
+      agentPerformance,
       recentOrders: orders.slice(0, 10).map((o: any) => ({
         symbol: o.symbol, side: o.side, status: o.status,
         qty: Number(o.qty), lot: Math.round(Number(o.qty) / 100),
         price: o.price, filledPrice: o.filled_price,
-        realizedPnl: Number(o.realized_pnl ?? 0),
+        realizedPnl: o.realized_pnl !== null && o.realized_pnl !== undefined ? Number(o.realized_pnl) : null,
+        agentId: o.agent_id ?? null,
+        source: o.agent_id ? "ai_agent" : "manual_or_unknown",
         createdAt: o.created_at, filledAt: o.filled_at,
       })),
       recentExecutedOrders: filledOrders.slice(0, 10).map((o: any) => ({
         symbol: o.symbol, side: o.side, qty: Number(o.qty), filledPrice: o.filled_price, filledAt: o.filled_at,
+        source: o.agent_id ? "ai_agent" : "manual_or_unknown",
       })),
-      recentClosedTrades: closedTrades.slice(0, 5).map((o: any) => ({
-        symbol: o.symbol, qty: Number(o.qty), realizedPnl: Number(o.realized_pnl), filledAt: o.filled_at,
-      })),
+      recentClosedTrades: closedTrades.slice(0, 8).map((o: any) => {
+        const pnl = Number(o.realized_pnl);
+        const result = pnl > 0 ? "WIN" : pnl < 0 ? "LOSS" : "BREAKEVEN";
+        return {
+          symbol: o.symbol, qty: Number(o.qty), realizedPnl: pnl, result,
+          filledAt: o.filled_at,
+          source: o.agent_id ? "ai_agent" : "manual_or_unknown",
+        };
+      }),
     };
     contextStatus.portfolio = openPositions.length || filledOrders.length ? "connected" : "empty";
   } else {
