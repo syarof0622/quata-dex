@@ -111,13 +111,7 @@ export function computeContextSummary(input: SummaryInput): AIContextSummary {
     else sentiment = { label: "Neutral", tone: "slate" };
   }
 
-  // Data Quality (by news freshness count over last 24h)
-  const newsCount = news.length;
-  let dataQuality: AIContextSummary["dataQuality"] = { label: "Stale", tone: "rose" };
-  if (newsCount > 30) dataQuality = { label: "Fresh", tone: "emerald" };
-  else if (newsCount > 5) dataQuality = { label: "Partial", tone: "amber" };
-
-  // Source Health
+  // Source Health (computed first so Data Quality can incorporate it).
   const shRaw = summarizeSourceHealth(input.sources as any);
   const sourceHealth: AIContextSummary["sourceHealth"] = {
     label: overallStatusLabel(shRaw.overallStatus),
@@ -126,9 +120,30 @@ export function computeContextSummary(input: SummaryInput): AIContextSummary {
     raw: shRaw,
   };
 
+  // Data Quality — aggregate of news freshness, regime freshness, and source
+  // health usability. Do NOT mark stale solely because news count is low or
+  // fundamental data is insufficient; core market signals (price/news/regime)
+  // dominate. Fundamental/undervalue gaps only affect their own badges.
+  const newsCount = news.length;
+  const latestNewsAt = news[0]?.published_at ? new Date(news[0].published_at).getTime() : 0;
+  const newsRecent = newsCount > 0 && Date.now() - latestNewsAt < 6 * 3600_000;
+  const newsFresh = newsCount > 20 && newsRecent;
+  const regimeRecent = !!(reg?.created_at && Date.now() - new Date(reg.created_at).getTime() < 6 * 3600_000);
+  const sourcesUsable = shRaw.totalUsable > 0;
+  const freshSignals = [newsFresh, regimeRecent, sourcesUsable].filter(Boolean).length;
+  const anySignal = newsRecent || regimeRecent || sourcesUsable || newsCount > 0;
+
+  let dataQuality: AIContextSummary["dataQuality"];
+  if (freshSignals >= 3) dataQuality = { label: "Fresh", tone: "emerald" };
+  else if (freshSignals >= 1 || anySignal) dataQuality = { label: "Partial", tone: "amber" };
+  else dataQuality = { label: "Stale", tone: "rose" };
+
   // AI Agent (worker liveness) — mirrors src/lib/ai-app-context.server.ts so
-  // the header badge and the AI Chat see the SAME status.
+  // the header badge and the AI Chat see the SAME status. If the agent row
+  // reads inactive but `recentAgentDecisionCount > 0`, surface a Sync Warning
+  // rather than falsely claiming the agent is off.
   const agent = input.agent;
+  const recentDecisions = Number(input.recentAgentDecisionCount ?? 0);
   let aiAgent: AIContextSummary["aiAgent"] = { label: "Inactive", tone: "slate" };
   if (agent) {
     const lastRun = agent.last_worker_run_at ? new Date(agent.last_worker_run_at).getTime() : 0;
@@ -144,6 +159,12 @@ export function computeContextSummary(input: SummaryInput): AIContextSummary {
     else if (agent.automation_enabled && !lastRun) aiAgent = { label: "Worker Not Started", tone: "amber" };
     else if (agent.automation_enabled === false && statusActive) aiAgent = { label: "Manual Only", tone: "slate" };
     else aiAgent = { label: "Inactive", tone: "slate" };
+  }
+
+  // Sync warning override: recent decisions exist but the agent row reads as
+  // non-running. Don't lie to the user — show that something IS happening.
+  if (recentDecisions > 0 && aiAgent.tone !== "emerald") {
+    aiAgent = { label: "Sync Warning", tone: "amber" };
   }
 
 
