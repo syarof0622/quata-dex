@@ -10,6 +10,7 @@ import { resetPaperAccount } from "@/lib/paper.functions";
 import { toast } from "sonner";
 
 import { runBacktest } from "@/lib/backtest.functions";
+import { listStrategyPerformance, type StrategyName } from "@/lib/strategy-intelligence.functions";
 import { generateStrategy } from "@/lib/strategy.functions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sparkles, X, Bot, Play, Pause, Square, AlertTriangle } from "lucide-react";
