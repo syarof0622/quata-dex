@@ -40,6 +40,19 @@ function WL() {
   });
   const rankedRows: any[] = Array.isArray(ranked.data) ? ranked.data : [];
 
+  // Undervalue / fundamental overlay for watchlist symbols.
+  const uv = useQuery({
+    queryKey: ["wl-undervalue"],
+    queryFn: () => getLatestUndervalueScores({ data: { limit: 100 } }),
+    refetchInterval: 5 * 60_000,
+  });
+  const uvBySymbol = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const r of (uv.data ?? []) as any[]) map.set(String(r.symbol).toUpperCase(), r);
+    return map;
+  }, [uv.data]);
+  const getUv = (sym: string) => uvBySymbol.get(String(sym).toUpperCase());
+
   const addPreset = async (preset: string[]) => {
     const toAdd = preset.filter(s => !symbols.includes(s));
     if (!toAdd.length) { toast.info("Semua sudah ada di watchlist"); return; }
