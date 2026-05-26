@@ -129,15 +129,13 @@ type CtxData = {
 
 async function fetchMarketContext(): Promise<CtxData> {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const [{ data: news }, { data: regime }, { data: sources }, { data: agents }, { data: positions }, { data: orders }, { data: scans }, { data: under }] = await Promise.all([
+  const [{ data: news }, { data: regime }, { data: sources }, { data: agents }, { data: positions }, { data: orders }] = await Promise.all([
     supabase.from("news_articles").select("sentiment, sentiment_score, published_at").gte("published_at", since).eq("is_duplicate", false).limit(500),
     supabase.from("market_regime_snapshots").select("regime_classification, idx_change_pct, created_at").order("created_at", { ascending: false }).limit(1),
     supabase.from("news_sources").select("id, name, status, enabled, last_success_at, last_failed_at, last_error, fail_count"),
     supabase.from("ai_trade_agents").select("automation_enabled, last_worker_run_at, last_worker_status, worker_error_count, status").order("created_at", { ascending: false }).limit(1),
     supabase.from("paper_positions").select("id").limit(50),
     supabase.from("paper_orders").select("id, status").eq("status", "filled").limit(200),
-    supabase.from("autonomous_scan_results").select("scan_time").order("scan_time", { ascending: false }).limit(1),
-    supabase.from("undervalue_snapshots").select("id").limit(20),
   ]);
 
   const sum = computeContextSummary({
@@ -150,8 +148,6 @@ async function fetchMarketContext(): Promise<CtxData> {
       openPositions: positions?.length ?? 0,
       closedTrades: (orders ?? []).filter((o: any) => o.status === "filled").length,
     },
-    autonomousScan: { lastRunAt: (scans ?? [])[0]?.scan_time ?? null, candidates: (scans ?? []).length },
-    undervalue: { ranked: under?.length ?? 0 },
   });
 
   const now = new Date();
