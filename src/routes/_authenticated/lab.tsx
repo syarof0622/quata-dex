@@ -348,9 +348,21 @@ function deriveExecutionStatusForCard(
     return { status: "blocked_low_confidence", primary: "Confidence di bawah threshold",
       detail: "AI belum mengeksekusi order karena confidence masih di bawah threshold. Kandidat hanya disimpan sebagai watch/research snapshot." };
   }
+  if (action === "WATCH") {
+    return { status: "watch_snapshot", primary: "Watch (autonomous)",
+      detail: "AI memantau kandidat ini. Belum ada paper order — menunggu setup atau perbaikan signal." };
+  }
+  if (action === "NO_TRADE") {
+    return { status: "blocked_low_confidence", primary: "No trade",
+      detail: "Tidak ada setup valid pada simbol ini. AI menunggu sinyal berikutnya." };
+  }
+  if (action === "BLOCKED") {
+    return { status: "blocked_low_confidence", primary: "Blocked",
+      detail: d?.reasoning || "Decision diblokir oleh guard eksekusi. Lihat alasan untuk detail." };
+  }
   if (action === "HOLD") {
-    return { status: "blocked_low_confidence", primary: "Belum ada setup eksekusi",
-      detail: "Belum ada setup valid. AI menunggu sinyal berikutnya. Tidak ada paper order dieksekusi." };
+    return { status: "blocked_low_confidence", primary: "Hold posisi",
+      detail: "AI menahan posisi existing. Tidak ada paper order baru pada tick ini." };
   }
   return { status: "allowed", primary: "Allowed", detail: "Setup valid untuk eksekusi paper order." };
 }

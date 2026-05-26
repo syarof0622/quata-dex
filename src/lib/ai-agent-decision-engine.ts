@@ -61,6 +61,25 @@ export type AgentConfig = {
   // Undervalued strategy gating (only enforced when strategyMode contains "undervalued")
   minUndervalueScore?: number;
   maxValueTrapRisk?: number;
+  // Autonomous risk mode — relaxes confidence threshold for scanner-selected trade candidates.
+  autonomousRiskMode?: "conservative" | "balanced" | "progressive" | "expert_research" | string;
+};
+
+export type AutonomousContext = {
+  score: number;
+  classification: string;
+  eligibility?: string;
+  researchTradeAllowed?: boolean;
+};
+
+// Per risk-mode autonomous BUY gating (used only when AutonomousContext provided
+// and classification looks like a trade candidate). Scanner already filtered DQ
+// + liquidity, so we accept a lower confidence floor than manual mode.
+const AUTO_GATES: Record<string, { minScore: number; minConfidence: number; minRR: number }> = {
+  conservative:    { minScore: 75, minConfidence: 0.55, minRR: 1.8 },
+  balanced:        { minScore: 70, minConfidence: 0.45, minRR: 1.5 },
+  progressive:     { minScore: 60, minConfidence: 0.35, minRR: 1.2 },
+  expert_research: { minScore: 55, minConfidence: 0.30, minRR: 1.0 },
 };
 
 export type Position = { symbol: string; qty: number; avg_price: number };
@@ -229,6 +248,7 @@ export async function evaluateSymbol(
   symbol: string,
   account: AccountSnap,
   positions: Position[],
+  autonomousContext?: AutonomousContext,
 ): Promise<AgentDecision> {
   const sym = symbol.trim().toUpperCase();
 
@@ -355,9 +375,18 @@ export async function evaluateSymbol(
                   + disclosureBoost + macroBoost;
   let rawConfidence = Math.min(0.99, Math.abs(composite));
 
-  // Penalize raw confidence by data-quality shortfall
-  const dqPenalty = (100 - dataQuality.overallDataQualityScore) / 200; // up to -0.5
+  // Autonomous scanner already gated DQ + liquidity. For trade-classified
+  // candidates we soften the DQ penalty and apply a confidence floor derived
+  // from the scanner score so high-score picks aren't blocked by sample=0.
+  const autoIsTradeCandidate = !!autonomousContext
+    && /trade/i.test(String(autonomousContext.classification ?? ""));
+  const dqShortfall = (100 - dataQuality.overallDataQualityScore) / 200; // up to -0.5
+  const dqPenalty = autoIsTradeCandidate ? dqShortfall * 0.3 : dqShortfall;
   rawConfidence = Math.max(0, rawConfidence - dqPenalty);
+  if (autoIsTradeCandidate) {
+    const floor = Math.min(0.85, Number(autonomousContext!.score) / 120);
+    if (floor > rawConfidence) rawConfidence = floor;
+  }
 
   // 9. Calibrate using historic outcomes
   const calib = await calibrateConfidence(agent.id, sym, rawConfidence, agent.strategyMode);
@@ -393,8 +422,14 @@ export async function evaluateSymbol(
     };
   }
 
-  // BUY logic
-  if (!pos && agent.allowBuy && composite > 0 && techLabel !== "SELL") {
+  // BUY logic — allow when composite is positive OR scanner pre-classified as trade candidate.
+  const autoGate = autoIsTradeCandidate
+    ? (AUTO_GATES[String(agent.autonomousRiskMode ?? "balanced")] ?? AUTO_GATES.balanced)
+    : null;
+  const autoBuyAllowed = !!autoGate
+    && Number(autonomousContext!.score) >= autoGate.minScore
+    && techLabel !== "SELL";
+  if (!pos && agent.allowBuy && techLabel !== "SELL" && (composite > 0 || autoBuyAllowed)) {
     // Undervalue gate: only when strategyMode signals an undervalued strategy.
     const isUndervaluedStrategy = /undervalu/i.test(agent.strategyMode);
     if (isUndervaluedStrategy) {
@@ -437,25 +472,32 @@ export async function evaluateSymbol(
       // (rawConfidence already calibrated below; we adjust calib floor instead.)
     }
 
-    if (confidence < agent.minConfidenceToTrade) {
-      return emptySnap(sym, `Confidence ${(confidence * 100).toFixed(0)}% < threshold ${(agent.minConfidenceToTrade*100).toFixed(0)}%. ${calib.reason}`, {
+    const effectiveMinConfidence = autoGate
+      ? Math.min(agent.minConfidenceToTrade, autoGate.minConfidence)
+      : agent.minConfidenceToTrade;
+    if (confidence < effectiveMinConfidence) {
+      return emptySnap(sym, `Confidence ${(confidence * 100).toFixed(0)}% < threshold ${(effectiveMinConfidence*100).toFixed(0)}%. ${calib.reason}`, {
         confidence, rawConfidence, calibrationReason: calib.reason,
         realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
         portfolioSnapshot, dataFreshnessSeconds: freshness,
         dataSource: "Yahoo Finance + public news feed",
+        blockedReason: "confidence_below_threshold",
       });
     }
     if (symbolExposure >= agent.maxPositionPerSymbol) {
       return emptySnap(sym, `Eksposur ${(symbolExposure*100).toFixed(1)}% melebihi limit per simbol.`, {
         riskSnapshot: { exposure: symbolExposure, cap: agent.maxPositionPerSymbol },
+        blockedReason: "exposure_cap_reached",
       });
     }
     const sized = sizeOrder({ symbol: sym, allocationAmount: agent.allocationAmount, price });
     if (!sized.minLotOk.ok) return emptySnap(sym, sized.minLotOk.reason ?? "Saldo tidak cukup.", {
       riskSnapshot: { needed: sized.estimatedCost, cash: account.cash },
+      blockedReason: "lot_below_minimum",
     });
     if (sized.estimatedCost > account.cash) return emptySnap(sym, "Saldo cash tidak cukup untuk order ini.", {
       riskSnapshot: { needed: sized.estimatedCost, cash: account.cash },
+      blockedReason: "insufficient_balance",
     });
 
     if (!executionAllowed) {
@@ -463,7 +505,7 @@ export async function evaluateSymbol(
         confidence, rawConfidence, calibrationReason: calib.reason,
         realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
         portfolioSnapshot, dataFreshnessSeconds: freshness, dataQuality,
-        blockedReason: executionBlockedReason,
+        blockedReason: "market_closed",
       });
     }
     const preset = RISK_PRESETS[agent.riskLevel] ?? RISK_PRESETS.balanced;
@@ -471,19 +513,41 @@ export async function evaluateSymbol(
     const takeProfit = agent.autoTakeProfit ? +(price * (1 + preset.tpPct)).toFixed(2) : null;
     const rr = stopLoss && takeProfit ? (takeProfit - price) / (price - stopLoss) : null;
 
+    // Risk/reward gate for autonomous trade candidates.
+    if (autoGate && rr != null && rr < autoGate.minRR) {
+      return emptySnap(sym, `Risk/reward ${rr.toFixed(2)} < required ${autoGate.minRR} untuk mode ${agent.autonomousRiskMode}.`, {
+        confidence, rawConfidence, calibrationReason: calib.reason,
+        realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
+        portfolioSnapshot, dataFreshnessSeconds: freshness, dataQuality,
+        riskSnapshot: { slPct: preset.slPct, tpPct: preset.tpPct, rr },
+        blockedReason: "risk_reward_invalid",
+      });
+    }
+
+    const autoReasonTag = autoGate
+      ? ` [autonomous:${agent.autonomousRiskMode} score=${autonomousContext!.score.toFixed(0)}]`
+      : "";
     return {
       symbol: sym, action: "BUY", confidence, rawConfidence,
       calibrationReason: calib.reason,
-      strategy: agent.strategyMode,
+      strategy: autoGate
+        ? (agent.autonomousRiskMode === "expert_research" ? "expert_research_micro_entry"
+          : agent.autonomousRiskMode === "progressive" ? "progressive_small_entry"
+          : "autonomous_entry")
+        : agent.strategyMode,
       allocationAmount: agent.allocationAmount,
       suggestedLot: sized.lot, suggestedShares: sized.shares,
       entryPrice: price, stopLoss, takeProfit, riskRewardRatio: rr,
-      reasoning: `Teknikal ${techLabel} (${techScore.toFixed(0)}), sentimen ${sentScore.toFixed(2)}, news +${realNewsData.positiveNewsCount}/-${realNewsData.negativeNewsCount} (high ${realNewsData.highImpactNewsCount}), IHSG ${realMarketContext.ihsgBias}. Composite ${(composite*100).toFixed(0)}%. ${calib.reason} Allocate ${sized.lot} lot @ ${price}.`,
+      reasoning: `Teknikal ${techLabel} (${techScore.toFixed(0)}), sentimen ${sentScore.toFixed(2)}, news +${realNewsData.positiveNewsCount}/-${realNewsData.negativeNewsCount} (high ${realNewsData.highImpactNewsCount}), IHSG ${realMarketContext.ihsgBias}. Composite ${(composite*100).toFixed(0)}%.${autoReasonTag} ${calib.reason} Allocate ${sized.lot} lot @ ${price}.`,
       dataFreshnessSeconds: freshness, dataSource: "Yahoo Finance + Google News RSS + IDX disclosure",
       executionAllowed: true, analysisOnly: false,
       realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
       portfolioSnapshot,
-      riskSnapshot: { slPct: preset.slPct, tpPct: preset.tpPct, rr }, dataQuality, warnings,
+      riskSnapshot: { slPct: preset.slPct, tpPct: preset.tpPct, rr,
+        autonomousScore: autonomousContext?.score ?? null,
+        autonomousRiskMode: agent.autonomousRiskMode ?? null,
+      },
+      dataQuality, warnings,
     };
   }
 

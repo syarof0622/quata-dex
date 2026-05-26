@@ -425,6 +425,7 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
     tradingHoursOnly: !!agent.trading_hours_only, requireFreshData: !!agent.require_fresh_data,
     minUndervalueScore: Number(agent.min_undervalue_score ?? 65),
     maxValueTrapRisk: Number(agent.max_value_trap_risk ?? 40),
+    autonomousRiskMode: String(agent.autonomous_risk_mode ?? "balanced"),
   };
 
   const decisions: AgentDecision[] = [];
@@ -523,7 +524,14 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
 
   for (const sym of symbolsToEvaluate) {
     try {
-      const decision = await evaluateSymbol(cfg, sym, account, posList);
+      const metaPre = autonomousMeta.get(sym);
+      const autoCtx = isAutonomous && metaPre ? {
+        score: metaPre.score,
+        classification: metaPre.classification ?? "trade_candidate",
+        eligibility: metaPre.eligibility,
+        researchTradeAllowed: metaPre.researchTradeAllowed,
+      } : undefined;
+      const decision = await evaluateSymbol(cfg, sym, account, posList, autoCtx);
       decisions.push(decision);
 
       let decisionStatus: "executed" | "rejected" | "hold" | "cooldown" | "limit_reached" = "hold";
@@ -603,9 +611,15 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
       const isExplorationTrade = !!meta?.researchTradeAllowed
         && (decision.action === "BUY" || decision.action === "EXIT")
         && decisionStatus === "executed";
+      // Action semantics: HOLD only valid when an open position exists.
+      // Otherwise relabel to WATCH / NO_TRADE / BLOCKED so the UI is honest.
+      const hasOpenPos = openSymbols.has(sym);
+      const persistedAction = decision.action === "HOLD" && !hasOpenPos
+        ? (decision.blockedReason ? "BLOCKED" : (isAutonomous ? "WATCH" : "NO_TRADE"))
+        : decision.action;
       await supabaseAdmin.from("ai_agent_decisions").insert({
         agent_id: agent.id, paper_account_id: agent.paper_account_id,
-        symbol: sym, action: decision.action, confidence: decision.confidence,
+        symbol: sym, action: persistedAction, confidence: decision.confidence,
         raw_confidence: decision.rawConfidence,
         calibrated_confidence: decision.confidence,
         calibration_reason: decision.calibrationReason,
@@ -615,7 +629,7 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
         suggested_lot: decision.suggestedLot, suggested_shares: decision.suggestedShares,
         entry_price: decision.entryPrice, stop_loss: decision.stopLoss, take_profit: decision.takeProfit,
         risk_reward_ratio: decision.riskRewardRatio, reasoning: decision.reasoning,
-        data_snapshot: decision.realMarketData as any,
+        data_snapshot: { ...(decision.realMarketData as any), blockReason: decision.blockedReason ?? null } as any,
         technical_snapshot: decision.realTechnicalData as any,
         sentiment_snapshot: { news: decision.realNewsData, disclosure: decision.realDisclosureData } as any,
         portfolio_snapshot: decision.portfolioSnapshot as any,
@@ -661,7 +675,7 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
         : `Research candidate: score ${w.score.toFixed(0)} disimpan untuk training/outcome tracking.`;
       return {
         agent_id: agent.id, paper_account_id: agent.paper_account_id,
-        symbol: w.symbol, action: "HOLD", confidence: 0,
+        symbol: w.symbol, action: "WATCH", confidence: 0,
         raw_confidence: 0, calibrated_confidence: 0,
         calibration_reason: "Watch/research snapshot — no trade executed.",
         strategy: "monitoring", allocation_amount: 0,
