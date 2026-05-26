@@ -368,13 +368,13 @@ export function AiInsightsPanel() {
                 <div className="font-semibold mb-1 text-emerald-500">Terbaik untuk regime ini</div>
                 <ul className="space-y-1">
                   {strategy.data.bestForThisRegime.map((s: any) => (
-                    <li key={s.strategy} className="rounded-md border border-border/60 p-2">
+                    <li key={s.strategyName} className="rounded-md border border-border/60 p-2">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-mono">{s.strategy}</span>
+                        <span className="font-mono">{s.strategyName}</span>
                         <Badge variant="default" className="text-[10px]">{s.classification}</Badge>
                       </div>
                       <div className="text-muted-foreground mt-0.5">
-                        Score <span className="text-foreground font-mono">{s.score}</span> ·{" "}
+                        Score <span className="text-foreground font-mono">{s.strategyScore}</span> ·{" "}
                         Sample <span className="font-mono">{s.sampleSize}</span> ({s.sampleQuality}) ·{" "}
                         WR {s.forwardWinRate != null ? `${Math.round(s.forwardWinRate)}%` : "—"} fwd /{" "}
                         {s.backtestWinRate != null ? `${Math.round(s.backtestWinRate)}%` : "—"} bt ·{" "}
