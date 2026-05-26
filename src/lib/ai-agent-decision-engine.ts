@@ -437,6 +437,25 @@ export async function evaluateSymbol(
     }
   } catch { /* tolerate */ }
 
+  // 7b. Official disclosure context (IDX/BEI) — supersedes news-derived disclosure when present.
+  let officialDisclosure: any = null;
+  let disclosureRiskFlags: string[] = [];
+  try {
+    const { getLatestDisclosureFor, deriveRiskFlags } = await import("./disclosures.functions");
+    const od = await getLatestDisclosureFor(sym, 24 * 7);
+    if (od) {
+      disclosureRiskFlags = deriveRiskFlags(od);
+      officialDisclosure = {
+        type: od.disclosure_type, title: od.title, source: od.source,
+        publishedAt: od.published_at, impact: od.impact_level,
+        sentiment: od.sentiment, url: od.url, riskFlags: disclosureRiskFlags,
+      };
+    }
+  } catch { /* tolerate */ }
+  fundamentalContext = { ...fundamentalContext, latestDisclosure: officialDisclosure, disclosureRiskFlags };
+
+
+
 
   // 8.5 Strategy intelligence — fetch latest regime + score for this strategy.
   let marketRegimeLabel: string = "unknown";
