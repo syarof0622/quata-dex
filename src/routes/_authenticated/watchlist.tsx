@@ -1,12 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { addToWatchlist, getWatchlist, removeFromWatchlist } from "@/lib/watchlist.functions";
 import { rankWatchlist } from "@/lib/screener.functions";
+import { getLatestUndervalueScores } from "@/lib/undervalue.functions";
+import { UndervalueBadge } from "@/components/UndervalueBadge";
 import { Button } from "@/components/ui/button";
 import { formatPct, colorForChange } from "@/lib/format";
 import { formatLocalPrice, IDX_LQ45, US_TOP } from "@/lib/symbols";
-import { X, Plus, Sparkles } from "lucide-react";
+import { X, Plus, Sparkles, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { Sparkline } from "./screener";
 
