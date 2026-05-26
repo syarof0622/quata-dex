@@ -600,6 +600,8 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
 
       const isTrade = decision.action === "BUY" || decision.action === "EXIT";
       const isNewEntry = decision.action === "BUY" && !openSymbols.has(sym);
+      if (decision.action === "BUY") metrics.buyEvaluations += 1;
+
 
       if (isTrade && tradesUsed >= dailyTradesLeft) {
         decisionStatus = "limit_reached";
