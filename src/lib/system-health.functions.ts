@@ -214,18 +214,24 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
       },
     });
 
-    // 5) Portfolio Sync (latest equity snapshot vs computed equity)
+    // 5) Portfolio Sync — scoped to the active paper account for USER_ID.
+    const USER_ID = "00000000-0000-0000-0000-000000000001";
     const { data: acc } = await supabaseAdmin
       .from("paper_accounts")
       .select("id, cash, equity")
-      .limit(1)
-      .maybeSingle();
-    const { data: snap } = await supabaseAdmin
-      .from("portfolio_equity_snapshots")
-      .select("created_at, equity, cash, holdings_value")
+      .eq("user_id", USER_ID)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
+    const { data: snap } = acc?.id
+      ? await supabaseAdmin
+          .from("portfolio_equity_snapshots")
+          .select("created_at, equity, cash, holdings_value")
+          .eq("paper_account_id", acc.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      : { data: null as any };
     const snapMins = minutesAgo(snap?.created_at ?? null);
     let portfolioStatus: HealthStatus = "unknown";
     if (snap && acc) {
