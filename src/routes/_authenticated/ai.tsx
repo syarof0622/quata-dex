@@ -51,7 +51,7 @@ function AIAnalystPage() {
         <ContextCard title="IHSG Bias" value={ctx?.biasLabel ?? "PARTIAL DATA"} tone={ctx?.biasTone ?? "slate"} />
         <ContextCard title="Sentiment" value={ctx?.sentimentLabel ?? "PARTIAL DATA"} tone={ctx?.sentimentTone ?? "slate"} />
         <ContextCard title="Data Quality" value={ctx?.dataQualityLabel ?? "PARTIAL"} tone={ctx?.dataQualityTone ?? "amber"} />
-        <ContextCard title="Source Health" value={ctx?.sourceHealthLabel ?? "—"} tone={ctx?.sourceHealthTone ?? "slate"} />
+        <ContextCard title="Source Health" value={ctx?.sourceHealthLabel ?? "Unknown"} tone={ctx?.sourceHealthTone ?? "slate"} subtext={ctx?.sourceHealthSubtext} />
       </div>
 
       {/* App Context status — tells user what the AI can read */}
