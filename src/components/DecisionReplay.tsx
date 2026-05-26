@@ -268,7 +268,7 @@ export function DecisionReplayPanel({ defaultOpen = false, compactCount = 5 }: {
             </SheetTitle>
             <p className="text-xs text-muted-foreground">
               {selected && fmtWIB(selected.created_at)}
-              {selected?.decision_status && <> · reason: {selected.decision_status}</>}
+              {selected?.decision_status && <> · {friendlyReason(selected.decision_status)} <span className="opacity-60">({selected.decision_status})</span></>}
               {selected?.confidence != null && <> · conf {Math.round(selected.confidence * 100)}%</>}
             </p>
           </SheetHeader>
