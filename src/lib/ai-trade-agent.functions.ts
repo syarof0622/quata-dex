@@ -161,15 +161,43 @@ export const emergencyStop = createServerFn({ method: "POST" })
 export const getAgentStatus = createServerFn({ method: "GET" }).handler(async () => {
   const { data: agent } = await supabaseAdmin.from("ai_trade_agents")
     .select("*").eq("user_id", USER_ID).order("created_at", { ascending: false }).limit(1).maybeSingle();
-  if (!agent) return { agent: null, session: getIDXMarketSession(), decisions: [], risks: [], performance: null };
-  const [{ data: decisions }, { data: risks }, { data: performance }] = await Promise.all([
+  if (!agent) return { agent: null, session: getIDXMarketSession(), decisions: [], risks: [], performance: null, paperPositions: [], agentOrders: [], orderCounts: { executed: 0, openPositions: 0, closedTrades: 0 } };
+  const [{ data: decisions }, { data: risks }, { data: performance }, { data: paperPositions }, { data: agentOrders }] = await Promise.all([
     supabaseAdmin.from("ai_agent_decisions").select("*").eq("agent_id", agent.id).order("created_at", { ascending: false }).limit(50),
     supabaseAdmin.from("ai_agent_risk_logs").select("*").eq("agent_id", agent.id).order("created_at", { ascending: false }).limit(20),
     supabaseAdmin.from("ai_agent_performance").select("*").eq("agent_id", agent.id).maybeSingle(),
+    supabaseAdmin.from("paper_positions").select("*").eq("user_id", USER_ID),
+    supabaseAdmin.from("paper_orders").select("*").eq("agent_id", agent.id).eq("status", "filled")
+      .order("filled_at", { ascending: false }).limit(100),
   ]);
+  const orders = (agentOrders ?? []) as any[];
+  const sells = orders.filter(o => o.side === "sell").length;
+  // Enrich positions with mark/PnL using current quotes
+  let positionsWithMark: any[] = paperPositions ?? [];
+  const syms = Array.from(new Set(positionsWithMark.map((p: any) => p.symbol)));
+  if (syms.length > 0) {
+    try {
+      const { getQuotes } = await import("./market.functions");
+      const quotes = await getQuotes({ data: { symbols: syms } });
+      const qMap = new Map(quotes.map((q: any) => [q.symbol, q.price]));
+      positionsWithMark = positionsWithMark.map((p: any) => {
+        const mark = qMap.get(p.symbol) ?? Number(p.avg_price);
+        const pnl = (Number(mark) - Number(p.avg_price)) * Number(p.qty);
+        const pnlPct = ((Number(mark) / Number(p.avg_price)) - 1) * 100;
+        return { ...p, mark, pnl, pnlPct };
+      });
+    } catch { /* ignore */ }
+  }
   return {
     agent, session: getIDXMarketSession(),
     decisions: decisions ?? [], risks: risks ?? [], performance: performance ?? null,
+    paperPositions: positionsWithMark,
+    agentOrders: orders,
+    orderCounts: {
+      executed: orders.length,
+      openPositions: positionsWithMark.length,
+      closedTrades: sells, // each SELL closes some/all of a position
+    },
   };
 });
 
