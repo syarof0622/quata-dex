@@ -102,6 +102,7 @@ async function handler(request: Request) {
       if (executedCount > 0) patch.last_auto_execution_at = nowIso;
       await supabaseAdmin.from("ai_trade_agents").update(patch).eq("id", agentId);
 
+      const m = (r as any).metrics ?? {};
       results.push({
         id: agentId,
         decisionsCreated: decisions.length,
@@ -109,6 +110,12 @@ async function handler(request: Request) {
         blockedDecisions: blocked.length,
         topBlockedReasons,
         lastBlockedReason,
+        candidatesScanned: Number(m.candidatesScanned ?? 0),
+        candidatesSelected: Number(m.candidatesSelected ?? 0),
+        buyEvaluations: Number(m.buyEvaluations ?? 0),
+        openPositionsMonitored: Number(m.openPositionsMonitored ?? 0),
+        stopLossTriggered: Number(m.stopLossTriggered ?? 0),
+        takeProfitTriggered: Number(m.takeProfitTriggered ?? 0),
       });
     } catch (e: any) {
       const msg = e?.message ?? "unknown error";
