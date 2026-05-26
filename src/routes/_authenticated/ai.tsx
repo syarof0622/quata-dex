@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ChatPanel } from "@/components/ChatPanel";
 import { RiskEnginePanel } from "@/components/RiskEnginePanel";
+import { DecisionReplayPanel } from "@/components/DecisionReplay";
 import { supabase } from "@/integrations/supabase/client";
 import { Activity, Database, Newspaper, BarChart3, ShieldCheck, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -74,6 +75,7 @@ function AIAnalystPage() {
 
 
       <RiskEnginePanel />
+      <DecisionReplayPanel />
       <ChatPanel />
     </div>
   );
