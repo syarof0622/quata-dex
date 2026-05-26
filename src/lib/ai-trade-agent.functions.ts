@@ -503,7 +503,15 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
     minUndervalueScore: Number(agent.min_undervalue_score ?? 65),
     maxValueTrapRisk: Number(agent.max_value_trap_risk ?? 40),
     autonomousRiskMode: String(agent.autonomous_risk_mode ?? "balanced"),
+    agentRow: agent as any,
   };
+
+  // Risk pause check (BUY-only). SL/TP exits still run below.
+  const riskPausedUntil = agent.risk_paused_until ? new Date(agent.risk_paused_until).getTime() : 0;
+  const riskPauseActive = riskPausedUntil > Date.now();
+  if (riskPauseActive) {
+    cfg.allowBuy = false;
+  }
 
   const decisions: AgentDecision[] = [];
   let executed = 0;
@@ -853,6 +861,21 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
     if (r) reasonSet.add(String(r));
   }
   metrics.blockedReasons = Array.from(reasonSet).slice(0, 8);
+
+  // Circuit breaker: trip risk pause if daily-loss / drawdown / loss-streak hit.
+  try {
+    const { evaluateCircuitBreaker } = await import("./risk-engine");
+    const cb = await evaluateCircuitBreaker(agent.id);
+    if (cb.paused) (metrics as any).riskPause = { reason: cb.reason, until: cb.untilISO };
+  } catch { /* tolerate */ }
+
+  // Persist last blocked reason (latest from this run, if any).
+  if (metrics.blockedReasons.length > 0) {
+    await supabaseAdmin.from("ai_trade_agents")
+      .update({ last_blocked_reason: metrics.blockedReasons[0] })
+      .eq("id", agent.id);
+  }
+
   return { decisions, executed, metrics };
 }
 
@@ -1423,3 +1446,88 @@ export const repairAITrainingEventLabels = createServerFn({ method: "POST" })
     }
     return { scanned: rows.length, repaired };
   });
+
+/** UI server fn: returns current risk engine snapshot for the agent + portfolio. */
+export const getRiskEngineSnapshot = createServerFn({ method: "GET" }).handler(async () => {
+  const { data: agent } = await supabaseAdmin
+    .from("ai_trade_agents").select("*").eq("user_id", USER_ID).maybeSingle();
+  if (!agent) return null;
+
+  const { data: positions } = await supabaseAdmin
+    .from("paper_positions").select("symbol, qty, avg_price").eq("user_id", USER_ID);
+  const { data: acct } = await supabaseAdmin
+    .from("paper_accounts").select("cash, equity").eq("id", agent.paper_account_id).maybeSingle();
+  const { data: latestRisk } = await supabaseAdmin
+    .from("portfolio_risk_snapshots").select("*")
+    .eq("paper_account_id", agent.paper_account_id)
+    .order("created_at", { ascending: false }).limit(1).maybeSingle();
+
+  const cash = Number(acct?.cash ?? 0);
+  const equity = Math.max(1, Number(acct?.equity ?? 0));
+  const { sectorOf } = await import("./sectors");
+  const valueBySector: Record<string, number> = {};
+  let holdings = 0;
+  for (const p of (positions ?? []) as any[]) {
+    const v = Number(p.qty) * Number(p.avg_price);
+    holdings += v;
+    const s = sectorOf(p.symbol) ?? "Unknown";
+    valueBySector[s] = (valueBySector[s] ?? 0) + v;
+  }
+  const sectorPct: Record<string, number> = {};
+  for (const [s, v] of Object.entries(valueBySector)) sectorPct[s] = +((v / equity) * 100).toFixed(2);
+  const topSector = Object.entries(sectorPct).sort((a, b) => b[1] - a[1])[0] ?? null;
+
+  const pausedUntil = agent.risk_paused_until ? new Date(agent.risk_paused_until).getTime() : 0;
+  const riskPauseActive = pausedUntil > Date.now();
+
+  return {
+    agent: {
+      id: agent.id,
+      mode: agent.autonomous_risk_mode ?? "balanced",
+      strategyMode: agent.strategy_mode,
+      automationEnabled: !!agent.automation_enabled,
+      status: agent.status,
+    },
+    config: {
+      riskPerTradePct: Number(agent.risk_per_trade_pct ?? 0.01),
+      maxDailyLossPct: Number(agent.max_daily_loss ?? 0.02),
+      maxDrawdownPct: Number(agent.max_drawdown ?? 0.05),
+      maxActivePositions: Number(agent.max_active_positions ?? 3),
+      maxPositionWeightPct: Number(agent.max_position_weight_pct ?? agent.max_position_per_symbol ?? 0.25),
+      maxSectorExposurePct: Number(agent.max_sector_exposure_pct ?? 0.40),
+      minCashBufferPct: Number(agent.min_cash_buffer_pct ?? 0.05),
+      maxTradesPerDay: Number(agent.max_daily_trades ?? 5),
+      maxLossesPerDay: Number(agent.max_losses_per_day ?? 3),
+      atrStopEnabled: agent.atr_stop_enabled !== false,
+      atrStopMultiplier: Number(agent.atr_stop_multiplier ?? 1.5),
+      volatilitySizingEnabled: agent.volatility_sizing_enabled !== false,
+      correlationRiskEnabled: agent.correlation_risk_enabled !== false,
+      liquidityRiskEnabled: agent.liquidity_risk_enabled !== false,
+      newsShockRiskEnabled: agent.news_shock_risk_enabled !== false,
+      circuitBreakerEnabled: agent.circuit_breaker_enabled !== false,
+    },
+    state: {
+      activePositions: (positions ?? []).length,
+      cash, equity, holdings: +holdings.toFixed(2),
+      cashPct: equity > 0 ? +((cash / equity) * 100).toFixed(2) : 0,
+      sectorConcentration: sectorPct,
+      topSector: topSector ? { sector: topSector[0], pct: topSector[1] } : null,
+      dailyPnl: Number(latestRisk?.daily_pnl ?? 0),
+      dailyPnlPct: Number(latestRisk?.daily_pnl_pct ?? 0),
+      drawdownPct: Number(latestRisk?.current_drawdown ?? 0),
+      consecutiveLosses: Number(agent.consecutive_losses ?? 0),
+      riskPauseActive,
+      riskPauseUntil: agent.risk_paused_until ?? null,
+      riskPauseReason: agent.risk_pause_reason ?? null,
+      lastBlockedReason: agent.last_blocked_reason ?? null,
+    },
+  };
+});
+
+/** Manual risk-pause clear (UI button). */
+export const clearRiskPause = createServerFn({ method: "POST" }).handler(async () => {
+  await supabaseAdmin.from("ai_trade_agents")
+    .update({ risk_paused_until: null, risk_pause_reason: null, consecutive_losses: 0 })
+    .eq("user_id", USER_ID);
+  return { ok: true };
+});

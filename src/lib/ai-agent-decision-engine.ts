@@ -11,6 +11,7 @@ import { canExecutePaperTrade, getIDXMarketSession } from "./idx-market-session"
 import { computeDataQuality, type DataQualityReport } from "./data-quality";
 import { sectorOf } from "./sectors";
 import { getStrategyContextFor } from "./strategy-intelligence.functions";
+import { finalRiskGuard } from "./risk-engine";
 
 export type AgentAction = "BUY" | "SELL" | "HOLD" | "EXIT";
 
@@ -71,6 +72,8 @@ export type AgentConfig = {
   maxValueTrapRisk?: number;
   // Autonomous risk mode — relaxes confidence threshold for scanner-selected trade candidates.
   autonomousRiskMode?: "conservative" | "balanced" | "progressive" | "expert_research" | string;
+  // Raw agent row — required by the advanced risk engine.
+  agentRow?: Record<string, unknown> | null;
 };
 
 export type AutonomousContext = {
@@ -582,15 +585,46 @@ export async function evaluateSymbol(
         blockedReason: "exposure_cap_reached",
       });
     }
-    const sized = sizeOrder({ symbol: sym, allocationAmount: agent.allocationAmount, price });
-    if (!sized.minLotOk.ok) return emptySnap(sym, sized.minLotOk.reason ?? "Saldo tidak cukup.", {
-      riskSnapshot: { needed: sized.estimatedCost, cash: account.cash },
-      blockedReason: "lot_below_minimum",
+    // ===== Advanced Risk Engine =====
+    // Compute structural stop distance, ATR-equivalent volatility label, news
+    // shock, sector exposure, cash buffer, RR — single canonical guard.
+    const volLabel = (setup?.signal?.riskLabel ?? "").toLowerCase().includes("high")
+      ? "high"
+      : (setup?.signal?.riskLabel ?? "").toLowerCase().includes("medium") ? "medium" : "low";
+    const structuralStopPct = typeof setup?.setup?.stopDistancePct === "number"
+      ? setup.setup.stopDistancePct : null;
+    // Approx ATR % from structural stop distance when available (signals already factors ATR).
+    const atrPct = structuralStopPct ?? null;
+    const negativeDisclosure = !!(realDisclosureData?.hasRecentDisclosure
+      && realDisclosureData?.disclosureSentiment === "negative");
+
+    const guard = await finalRiskGuard({
+      agent: { ...(agent.agentRow ?? {}), ...agent },
+      symbol: sym,
+      entryPrice: price,
+      atrPct,
+      structuralStopPct,
+      volatilityLabel: volLabel as any,
+      valueTradedIDR: quote?.volume && quote?.price ? Number(quote.volume) * Number(quote.price) : null,
+      newsSnapshot: {
+        negativeNewsCount: Number(realNewsData.negativeNewsCount ?? 0),
+        highImpactNewsCount: Number(realNewsData.highImpactNewsCount ?? 0),
+        hasNegativeDisclosure: negativeDisclosure,
+        disclosureTitle: realDisclosureData?.title ?? null,
+      },
+      marketRegime: marketRegimeLabel,
     });
-    if (sized.estimatedCost > account.cash) return emptySnap(sym, "Saldo cash tidak cukup untuk order ini.", {
-      riskSnapshot: { needed: sized.estimatedCost, cash: account.cash },
-      blockedReason: "insufficient_balance",
-    });
+
+    if (!guard.allowed) {
+      return emptySnap(sym, `Risk guard blocked: ${guard.blockedReason}. ${guard.warnings.join(" ")}`, {
+        confidence, rawConfidence, calibrationReason: calib.reason,
+        realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
+        portfolioSnapshot, dataFreshnessSeconds: freshness, dataQuality,
+        riskSnapshot: { riskGuard: guard, marketContext: realMarketContext } as any,
+        blockedReason: guard.blockedReason ?? "risk_guard_blocked",
+        warnings: [...warnings, ...guard.warnings],
+      });
+    }
 
     if (!executionAllowed) {
       return emptySnap(sym, executionBlockedReason ?? "Market closed — passive analysis only.", {
@@ -600,21 +634,10 @@ export async function evaluateSymbol(
         blockedReason: "market_closed",
       });
     }
-    const preset = RISK_PRESETS[agent.riskLevel] ?? RISK_PRESETS.balanced;
-    const stopLoss = agent.autoStopLoss ? +(price * (1 - preset.slPct)).toFixed(2) : null;
-    const takeProfit = agent.autoTakeProfit ? +(price * (1 + preset.tpPct)).toFixed(2) : null;
-    const rr = stopLoss && takeProfit ? (takeProfit - price) / (price - stopLoss) : null;
 
-    // Risk/reward gate for autonomous trade candidates.
-    if (autoGate && rr != null && rr < autoGate.minRR) {
-      return emptySnap(sym, `Risk/reward ${rr.toFixed(2)} < required ${autoGate.minRR} untuk mode ${agent.autonomousRiskMode}.`, {
-        confidence, rawConfidence, calibrationReason: calib.reason,
-        realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
-        portfolioSnapshot, dataFreshnessSeconds: freshness, dataQuality,
-        riskSnapshot: { slPct: preset.slPct, tpPct: preset.tpPct, rr },
-        blockedReason: "risk_reward_invalid",
-      });
-    }
+    const stopLoss = agent.autoStopLoss ? guard.stopLoss : null;
+    const takeProfit = agent.autoTakeProfit ? guard.takeProfit : null;
+    const rr = guard.riskRewardRatio;
 
     const autoReasonTag = autoGate
       ? ` [autonomous:${agent.autonomousRiskMode} score=${autonomousContext!.score.toFixed(0)}]`
@@ -627,20 +650,16 @@ export async function evaluateSymbol(
           : agent.autonomousRiskMode === "progressive" ? "progressive_small_entry"
           : "autonomous_entry")
         : agent.strategyMode,
-      allocationAmount: agent.allocationAmount,
-      suggestedLot: sized.lot, suggestedShares: sized.shares,
+      allocationAmount: guard.positionSize,
+      suggestedLot: guard.lot, suggestedShares: guard.shares,
       entryPrice: price, stopLoss, takeProfit, riskRewardRatio: rr,
-      reasoning: `Teknikal ${techLabel} (${techScore.toFixed(0)}), sentimen ${sentScore.toFixed(2)}, news +${realNewsData.positiveNewsCount}/-${realNewsData.negativeNewsCount} (high ${realNewsData.highImpactNewsCount}), IHSG ${realMarketContext.ihsgBias}, sektor ${sectorRotationLabel}, fundamental ${fundamentalContext.classification} (trap ${fundamentalContext.valueTrapRisk ?? "n/a"}), strategi ${strategyName} (${strategyContext?.classification ?? "n/a"}, score ${strategyContext?.strategyScore ?? "n/a"}, regime ${marketRegimeLabel} compat ${((strategyContext?.regimeCompatibility ?? 0)*100).toFixed(0)}%). Composite ${(composite*100).toFixed(0)}%.${autoReasonTag} ${calib.reason} Allocate ${sized.lot} lot @ ${price}.`,
+      reasoning: `Teknikal ${techLabel} (${techScore.toFixed(0)}), sentimen ${sentScore.toFixed(2)}, news +${realNewsData.positiveNewsCount}/-${realNewsData.negativeNewsCount} (high ${realNewsData.highImpactNewsCount}), IHSG ${realMarketContext.ihsgBias}, sektor ${sectorRotationLabel}, fundamental ${fundamentalContext.classification}, strategi ${strategyName} (regime ${marketRegimeLabel}). Risk engine: stop ${guard.stopMode} ${guard.stopDistancePct}%, RR ${rr}, size ${guard.lot} lot (risk ${guard.riskAmount.toLocaleString()} IDR). ${calib.reason}${autoReasonTag}`,
       dataFreshnessSeconds: freshness, dataSource: "Yahoo Finance + Google News RSS + IDX disclosure",
       executionAllowed: true, analysisOnly: false,
       realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
       portfolioSnapshot,
-      riskSnapshot: { slPct: preset.slPct, tpPct: preset.tpPct, rr,
-        autonomousScore: autonomousContext?.score ?? null,
-        autonomousRiskMode: agent.autonomousRiskMode ?? null,
-        fundamentalContext, strategyContext,
-      },
-      dataQuality, warnings,
+      riskSnapshot: { riskGuard: guard, fundamentalContext, strategyContext } as any,
+      dataQuality, warnings: [...warnings, ...guard.warnings],
       strategyName, setupType: strategyName, marketRegime: marketRegimeLabel,
       signalSource: autoGate ? "autonomous_scanner" : "manual_strategy_mode",
       strategyContext,
