@@ -61,6 +61,25 @@ export type AgentConfig = {
   // Undervalued strategy gating (only enforced when strategyMode contains "undervalued")
   minUndervalueScore?: number;
   maxValueTrapRisk?: number;
+  // Autonomous risk mode — relaxes confidence threshold for scanner-selected trade candidates.
+  autonomousRiskMode?: "conservative" | "balanced" | "progressive" | "expert_research" | string;
+};
+
+export type AutonomousContext = {
+  score: number;
+  classification: string;
+  eligibility?: string;
+  researchTradeAllowed?: boolean;
+};
+
+// Per risk-mode autonomous BUY gating (used only when AutonomousContext provided
+// and classification looks like a trade candidate). Scanner already filtered DQ
+// + liquidity, so we accept a lower confidence floor than manual mode.
+const AUTO_GATES: Record<string, { minScore: number; minConfidence: number; minRR: number }> = {
+  conservative:    { minScore: 75, minConfidence: 0.55, minRR: 1.8 },
+  balanced:        { minScore: 70, minConfidence: 0.45, minRR: 1.5 },
+  progressive:     { minScore: 60, minConfidence: 0.35, minRR: 1.2 },
+  expert_research: { minScore: 55, minConfidence: 0.30, minRR: 1.0 },
 };
 
 export type Position = { symbol: string; qty: number; avg_price: number };
