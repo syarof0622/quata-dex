@@ -104,7 +104,7 @@ export function ChatMarkdown({ content }: { content: string }) {
           ),
         }}
       >
-        {content}
+        {cleaned}
       </ReactMarkdown>
     </div>
   );
