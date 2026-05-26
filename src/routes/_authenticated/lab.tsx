@@ -749,12 +749,12 @@ function AIAgentPanel() {
         </div>
       </div>
 
-      {/* Data Readiness Card */}
-      <div className="panel p-3 space-y-2">
+      {/* Data Readiness Card — aggregated across active candidates + open positions */}
+      <div className="panel p-3 space-y-2" title="Aggregated from active candidates and open positions.">
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="text-xs font-semibold uppercase tracking-wide">Data Readiness</div>
+          <div className="text-xs font-semibold uppercase tracking-wide">Data Readiness <span className="text-[10px] normal-case text-muted-foreground font-normal">· aggregated</span></div>
           <div className="text-[10px] text-muted-foreground">
-            Last update: {newestDecision ? fmtWIBTime(newestDecision.created_at) : "—"}
+            Last update: {newestDecision ? fmtWIBTime(newestDecision.created_at) : "—"} · {activeDecisions.length} active
           </div>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 text-[11px]">
@@ -765,9 +765,9 @@ function AIAgentPanel() {
             { k: "Sentiment",   v: sentStatus },
             { k: "Disclosure",  v: discStatus },
           ].map(item => (
-            <div key={item.k} className="flex items-center justify-between gap-2 px-2 py-1 rounded bg-muted/30">
+            <div key={item.k} className="flex items-center justify-between gap-2 px-2 py-1 rounded bg-muted/30" title="Aggregated from active candidates and open positions.">
               <span className="text-muted-foreground">{item.k}</span>
-              <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${statusBadgeClass(item.v)}`}>{item.v}</span>
+              <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${statusBadgeClass(item.v)}`}>{item.v === "stale" && perSymStatus.some(s => (s as any)[item.k.toLowerCase()] === "fresh") ? "partial" : item.v}</span>
             </div>
           ))}
           <div className="flex items-center justify-between gap-2 px-2 py-1 rounded bg-muted/30">
@@ -785,18 +785,71 @@ function AIAgentPanel() {
         </div>
       </div>
 
-      {/* Performance — show with empty state if no executed trades yet */}
+      {/* Open Positions panel — source of truth: paper_positions */}
+      <div className="panel p-2 overflow-x-auto">
+        <div className="px-2 py-1 text-xs text-muted-foreground flex items-center justify-between flex-wrap gap-2">
+          <span className="flex items-center gap-2">
+            <span className="font-semibold uppercase tracking-wide text-foreground">Open Positions</span>
+            <span className="text-[10px] uppercase bg-bull/15 text-bull px-1.5 py-0.5 rounded">{agentPositions.length} open</span>
+          </span>
+          <span className="text-[10px] text-muted-foreground">source: paper_positions</span>
+        </div>
+        {agentPositions.length === 0 ? (
+          <div className="p-3 text-xs text-muted-foreground">Belum ada open position. AI belum mengeksekusi paper BUY.</div>
+        ) : (
+          <table className="w-full text-sm min-w-[720px]">
+            <thead className="text-xs text-muted-foreground">
+              <tr>
+                <th className="text-left p-2">Symbol</th>
+                <th className="text-right p-2">Lot</th>
+                <th className="text-right p-2">Shares</th>
+                <th className="text-right p-2">Avg Entry</th>
+                <th className="text-right p-2">Last Price</th>
+                <th className="text-right p-2">Market Value</th>
+                <th className="text-right p-2">Unrealized P/L</th>
+                <th className="text-right p-2">Opened</th>
+              </tr>
+            </thead>
+            <tbody>
+              {agentPositions.map((p: any) => {
+                const qty = Number(p.qty);
+                const lot = Math.floor(qty / 100);
+                const mark = Number(p.mark ?? p.avg_price);
+                const mv = mark * qty;
+                return (
+                  <tr key={p.id} className="border-t border-border">
+                    <td className="p-2 font-mono">{p.symbol}</td>
+                    <td className="p-2 text-right font-mono">{lot}</td>
+                    <td className="p-2 text-right font-mono">{qty}</td>
+                    <td className="p-2 text-right font-mono">{formatPrice(p.avg_price)}</td>
+                    <td className="p-2 text-right font-mono">{formatPrice(mark)}</td>
+                    <td className="p-2 text-right font-mono">{formatIDRCompact(mv)}</td>
+                    <td className={`p-2 text-right font-mono ${colorForChange(p.pnl ?? 0)}`}>{p.pnl != null ? formatIDRCompact(p.pnl) : "—"}{p.pnlPct != null ? ` (${Number(p.pnlPct).toFixed(2)}%)` : ""}</td>
+                    <td className="p-2 text-right text-xs text-muted-foreground">{fmtWIBDateTime(p.opened_at)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Performance */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-        <Stat label="Total trades" value={String(performance?.total_trades ?? 0)} />
+        <Stat label="Closed trades" value={String(orderCounts.closedTrades)} />
+        <Stat label="Executed orders" value={String(orderCounts.executed)} />
+        <Stat label="Open positions" value={String(orderCounts.openPositions)} tone={orderCounts.openPositions > 0 ? "bull" : undefined} />
         <Stat label="Win rate" value={Number(performance?.win_rate ?? 0).toFixed(1) + "%"} tone={Number(performance?.win_rate ?? 0) >= 50 ? "bull" : "bear"} />
         <Stat label="Profit factor" value={Number(performance?.profit_factor ?? 0).toFixed(2)} />
-        <Stat label="Total return" value={formatIDRCompact(Number(performance?.total_return ?? 0))} tone={Number(performance?.total_return ?? 0) >= 0 ? "bull" : "bear"} />
-        <Stat label="Best / Worst" value={`${formatIDRCompact(Number(performance?.best_trade ?? 0))} / ${formatIDRCompact(Number(performance?.worst_trade ?? 0))}`} />
       </div>
-      {(!performance || Number(performance.total_trades ?? 0) === 0) && (
+      {orderCounts.closedTrades === 0 && (
         <div className="panel p-3 text-xs text-muted-foreground flex items-center justify-between flex-wrap gap-2">
-          <span>Belum ada trade tereksekusi. Performa agent akan dihitung setelah paper order pertama berhasil filled.</span>
-          <span className="text-[10px] uppercase bg-muted px-1.5 py-0.5 rounded">Waiting for first executed trade</span>
+          <span>
+            {orderCounts.executed > 0
+              ? `Sudah ada ${orderCounts.executed} paper order tereksekusi dan ${orderCounts.openPositions} open position. Belum ada closed trade — win rate dan profit factor akan dihitung setelah posisi pertama ditutup.`
+              : "Belum ada closed trade. Win rate dan profit factor akan dihitung setelah posisi pertama ditutup."}
+          </span>
+          <span className="text-[10px] uppercase bg-muted px-1.5 py-0.5 rounded">{orderCounts.executed > 0 ? "Waiting for first close" : "Waiting for first executed trade"}</span>
         </div>
       )}
 
