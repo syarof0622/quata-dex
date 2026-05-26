@@ -248,6 +248,7 @@ export async function evaluateSymbol(
   symbol: string,
   account: AccountSnap,
   positions: Position[],
+  autonomousContext?: AutonomousContext,
 ): Promise<AgentDecision> {
   const sym = symbol.trim().toUpperCase();
 
