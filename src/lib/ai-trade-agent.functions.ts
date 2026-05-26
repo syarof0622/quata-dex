@@ -675,7 +675,7 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
         : `Research candidate: score ${w.score.toFixed(0)} disimpan untuk training/outcome tracking.`;
       return {
         agent_id: agent.id, paper_account_id: agent.paper_account_id,
-        symbol: w.symbol, action: "HOLD", confidence: 0,
+        symbol: w.symbol, action: "WATCH", confidence: 0,
         raw_confidence: 0, calibrated_confidence: 0,
         calibration_reason: "Watch/research snapshot — no trade executed.",
         strategy: "monitoring", allocation_amount: 0,
