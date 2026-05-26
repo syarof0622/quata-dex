@@ -503,7 +503,15 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
     minUndervalueScore: Number(agent.min_undervalue_score ?? 65),
     maxValueTrapRisk: Number(agent.max_value_trap_risk ?? 40),
     autonomousRiskMode: String(agent.autonomous_risk_mode ?? "balanced"),
+    agentRow: agent as any,
   };
+
+  // Risk pause check (BUY-only). SL/TP exits still run below.
+  const riskPausedUntil = agent.risk_paused_until ? new Date(agent.risk_paused_until).getTime() : 0;
+  const riskPauseActive = riskPausedUntil > Date.now();
+  if (riskPauseActive) {
+    cfg.allowBuy = false;
+  }
 
   const decisions: AgentDecision[] = [];
   let executed = 0;
