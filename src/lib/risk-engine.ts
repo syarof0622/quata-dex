@@ -8,6 +8,7 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sectorOf } from "./sectors";
 import { isIDXSymbol, calculateEstimatedCost, LOT_SIZE_IDX } from "./lot-sizing";
+import { getEndOfCurrentIDXTradingDayWIB, formatWIB } from "./idx-market-session";
 
 export type RiskMode = "conservative" | "balanced" | "progressive" | "expert_research";
 
