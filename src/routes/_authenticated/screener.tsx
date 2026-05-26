@@ -259,6 +259,19 @@ function UndervaluedPanel() {
     queryFn: () => getLatestUndervalueScores({ data: { limit: 50 } }),
     refetchInterval: 60_000,
   });
+  const disclosures = useQuery({
+    queryKey: ["official-disclosures-recent"],
+    queryFn: () => listOfficialDisclosures({ data: { limit: 100 } }),
+    refetchInterval: 120_000,
+  });
+  const disclosureBySymbol = useMemo(() => {
+    const map: Record<string, any> = {};
+    for (const d of (disclosures.data ?? [])) {
+      const base = d.symbol.replace(/\.JK$/i, "");
+      if (!map[base]) map[base] = d;
+    }
+    return map;
+  }, [disclosures.data]);
   const scan = useMutation({
     mutationFn: () => scanUndervalueUniverse({ data: { universe, limit } }),
     onSuccess: (r: any) => { toast.success(`Scan selesai: ${r.scanned} dianalisis, ${r.candidates.length} kandidat`); latest.refetch(); },
