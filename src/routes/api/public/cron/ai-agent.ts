@@ -21,6 +21,12 @@ type AgentResult = {
   blockedDecisions: number;
   topBlockedReasons: string[];
   lastBlockedReason: string | null;
+  candidatesScanned: number;
+  candidatesSelected: number;
+  buyEvaluations: number;
+  openPositionsMonitored: number;
+  stopLossTriggered: number;
+  takeProfitTriggered: number;
   error?: string;
 };
 
@@ -96,6 +102,7 @@ async function handler(request: Request) {
       if (executedCount > 0) patch.last_auto_execution_at = nowIso;
       await supabaseAdmin.from("ai_trade_agents").update(patch).eq("id", agentId);
 
+      const m = (r as any).metrics ?? {};
       results.push({
         id: agentId,
         decisionsCreated: decisions.length,
@@ -103,6 +110,12 @@ async function handler(request: Request) {
         blockedDecisions: blocked.length,
         topBlockedReasons,
         lastBlockedReason,
+        candidatesScanned: Number(m.candidatesScanned ?? 0),
+        candidatesSelected: Number(m.candidatesSelected ?? 0),
+        buyEvaluations: Number(m.buyEvaluations ?? 0),
+        openPositionsMonitored: Number(m.openPositionsMonitored ?? 0),
+        stopLossTriggered: Number(m.stopLossTriggered ?? 0),
+        takeProfitTriggered: Number(m.takeProfitTriggered ?? 0),
       });
     } catch (e: any) {
       const msg = e?.message ?? "unknown error";
@@ -122,7 +135,10 @@ async function handler(request: Request) {
         .eq("id", agentId);
       results.push({
         id: agentId, decisionsCreated: 0, paperBuysExecuted: 0,
-        blockedDecisions: 0, topBlockedReasons: [], lastBlockedReason: null, error: msg,
+        blockedDecisions: 0, topBlockedReasons: [], lastBlockedReason: null,
+        candidatesScanned: 0, candidatesSelected: 0, buyEvaluations: 0,
+        openPositionsMonitored: 0, stopLossTriggered: 0, takeProfitTriggered: 0,
+        error: msg,
       });
     }
   }
@@ -132,7 +148,18 @@ async function handler(request: Request) {
     decisionsCreated: acc.decisionsCreated + r.decisionsCreated,
     paperBuysExecuted: acc.paperBuysExecuted + r.paperBuysExecuted,
     blockedDecisions: acc.blockedDecisions + r.blockedDecisions,
-  }), { decisionsCreated: 0, paperBuysExecuted: 0, blockedDecisions: 0 });
+    candidatesScanned: acc.candidatesScanned + r.candidatesScanned,
+    candidatesSelected: acc.candidatesSelected + r.candidatesSelected,
+    buyEvaluations: acc.buyEvaluations + r.buyEvaluations,
+    openPositionsMonitored: acc.openPositionsMonitored + r.openPositionsMonitored,
+    stopLossTriggered: acc.stopLossTriggered + r.stopLossTriggered,
+    takeProfitTriggered: acc.takeProfitTriggered + r.takeProfitTriggered,
+  }), { decisionsCreated: 0, paperBuysExecuted: 0, blockedDecisions: 0,
+        candidatesScanned: 0, candidatesSelected: 0, buyEvaluations: 0,
+        openPositionsMonitored: 0, stopLossTriggered: 0, takeProfitTriggered: 0 });
+  const allReasons = results.flatMap(r => r.topBlockedReasons);
+  const topBlockedReasons = Array.from(new Set(allReasons)).slice(0, 5);
+  const mode = !session.isOpen ? "passive_analysis_only" : "full_cycle";
 
   return Response.json({
     ok: true,
@@ -141,9 +168,11 @@ async function handler(request: Request) {
     durationMs: finishedAt.getTime() - startedAt.getTime(),
     marketSession: session.state,
     marketOpen: session.isOpen,
+    mode,
     agentsChecked: agents?.length ?? 0,
     agentsActive: activeAgents.length,
     ...totals,
+    topBlockedReasons,
     results,
     errors,
   });

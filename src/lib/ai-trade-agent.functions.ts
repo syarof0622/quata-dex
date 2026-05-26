@@ -125,6 +125,19 @@ export const pauseAgent = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const setAutomationEnabled = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({
+    id: z.string().uuid(),
+    enabled: z.boolean(),
+  }).parse(d))
+  .handler(async ({ data }) => {
+    const { error } = await supabaseAdmin.from("ai_trade_agents")
+      .update({ automation_enabled: data.enabled })
+      .eq("id", data.id).eq("user_id", USER_ID);
+    if (error) throw new Error(error.message);
+    return { ok: true, enabled: data.enabled };
+  });
+
 export const stopAgent = createServerFn({ method: "POST" })
   .inputValidator((d: { id: string; closeAll?: boolean }) =>
     z.object({ id: z.string().uuid(), closeAll: z.boolean().optional() }).parse(d))
@@ -382,10 +395,27 @@ async function loadActivePosition(symbol: string): Promise<Position | undefined>
  * Runs one decision cycle for one agent. Used by the cron route and by manual triggers.
  * Returns the list of decisions taken (executed or held) this tick.
  */
-export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentDecision[]; executed: number }> {
+export type RunAgentMetrics = {
+  candidatesScanned: number;
+  candidatesSelected: number;
+  buyEvaluations: number;
+  paperBuysExecuted: number;
+  blockedBuys: number;
+  openPositionsMonitored: number;
+  stopLossTriggered: number;
+  takeProfitTriggered: number;
+  blockedReasons: string[];
+};
+export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentDecision[]; executed: number; metrics: RunAgentMetrics }> {
+  const metrics: RunAgentMetrics = {
+    candidatesScanned: 0, candidatesSelected: 0, buyEvaluations: 0,
+    paperBuysExecuted: 0, blockedBuys: 0, openPositionsMonitored: 0,
+    stopLossTriggered: 0, takeProfitTriggered: 0, blockedReasons: [],
+  };
+  const earlyReturn = () => ({ decisions: [] as AgentDecision[], executed: 0, metrics });
   const { data: agent } = await supabaseAdmin.from("ai_trade_agents").select("*").eq("id", agentId).maybeSingle();
   if (!agent) throw new Error("agent not found");
-  if (agent.status === "stopped" || agent.status === "error") return { decisions: [], executed: 0 };
+  if (agent.status === "stopped" || agent.status === "error") return earlyReturn();
 
   // Reflect market session into agent.status — autonomous mode follows IDX session
   // even when selected_symbols is empty (avoids false "active_market_open").
@@ -413,7 +443,7 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
     last_market_session_state: session.state,
   }).eq("id", agentId);
 
-  if (agent.status === "paused") return { decisions: [], executed: 0 };
+  if (agent.status === "paused") return earlyReturn();
 
   // Daily trades cap — per-agent only (not all user orders).
   const sinceDay = new Date(Date.now() - 24 * 3600_000).toISOString();
@@ -550,6 +580,8 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
   let newEntriesUsed = 0;
   const maxNew = Number(agent.max_new_entries_per_day ?? 3);
 
+  metrics.candidatesScanned = symbolsToEvaluate.length;
+  metrics.candidatesSelected = symbolsToEvaluate.length;
   for (const sym of symbolsToEvaluate) {
     try {
       const metaPre = autonomousMeta.get(sym);
@@ -568,6 +600,8 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
 
       const isTrade = decision.action === "BUY" || decision.action === "EXIT";
       const isNewEntry = decision.action === "BUY" && !openSymbols.has(sym);
+      if (decision.action === "BUY") metrics.buyEvaluations += 1;
+
 
       if (isTrade && tradesUsed >= dailyTradesLeft) {
         decisionStatus = "limit_reached";
@@ -627,6 +661,7 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
                 tradesUsed += 1;
                 if (isNewEntry) newEntriesUsed += 1;
                 executed += 1;
+                if (side === "buy") metrics.paperBuysExecuted += 1;
               } else decisionStatus = "rejected";
             }
           } catch (e: any) {
@@ -735,6 +770,7 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
 
   // Stop-loss / take-profit guard on open positions (only when IDX market open)
   if (session.isOpen) {
+    metrics.openPositionsMonitored = posList.length;
     const sinceGuard = new Date(Date.now() - 5 * 60_000).toISOString();
     for (const pos of posList) {
       try {
@@ -773,6 +809,8 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
           risk_level: "info", message: `Triggered at ${px}`, action_taken: "close_position",
         });
         executed += 1;
+        if (trigger === "stop_loss_triggered") metrics.stopLossTriggered += 1;
+        else metrics.takeProfitTriggered += 1;
       } catch { /* tolerate */ }
     }
   }
@@ -784,7 +822,14 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
   await recomputePerformance(agent.id, agent.paper_account_id);
   await recomputeTradeMemory(agent.id);
 
-  return { decisions, executed };
+  metrics.blockedBuys = Math.max(0, metrics.buyEvaluations - metrics.paperBuysExecuted);
+  const reasonSet = new Set<string>();
+  for (const d of decisions) {
+    const r = (d as any)?.blockedReason ?? (d as any)?.blocked_reason ?? null;
+    if (r) reasonSet.add(String(r));
+  }
+  metrics.blockedReasons = Array.from(reasonSet).slice(0, 8);
+  return { decisions, executed, metrics };
 }
 
 /** Extract realized return % from a finalized training event. Prefers paper_pnl_percent. */
