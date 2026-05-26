@@ -3,6 +3,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { recordForwardTestFromClosedTrade } from "./strategy-intelligence.functions";
+import { sectorOf } from "./sectors";
 
 type LessonLabel =
   | "good_entry_good_exit"
