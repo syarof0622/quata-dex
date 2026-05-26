@@ -249,10 +249,25 @@ export async function getAIAppContext(userText: string) {
     else if (agent.automation_enabled === false && activeStatuses.has(agent.status)) statusLabel = "Manual Only";
     else statusLabel = "Inactive";
 
+    // Human-readable worker warning the AI must echo verbatim when relevant.
+    let workerWarningMessage: string;
+    if (isAutoRunning) {
+      workerWarningMessage = "Worker active — autonomous decisions run automatically.";
+    } else if (agent.automation_enabled && !lwrTs) {
+      workerWarningMessage = "Worker has not run yet. Configure scheduler to call /api/public/cron/ai-agent every 1 minute.";
+    } else if (agent.automation_enabled && !workerFresh) {
+      workerWarningMessage = `Worker stale — scheduler may not be calling /api/public/cron/ai-agent. Last run ${Math.round(workerFreshMins)} min ago.`;
+    } else if (agent.automation_enabled && agent.last_worker_status === "error") {
+      workerWarningMessage = `Worker error — ${agent.last_worker_message ?? "unknown error"}.`;
+    } else {
+      workerWarningMessage = "Automation disabled — AI Agent will not act autonomously.";
+    }
+
     aiTradeAgent = {
       status: agent.status,
       statusLabel,
       isAutoRunning,
+      workerWarningMessage,
       automationEnabled: agent.automation_enabled,
       workerFreshMinutesAgo: Number.isFinite(workerFreshMins) ? Math.round(workerFreshMins) : null,
       symbolSelectionMode: agent.symbol_selection_mode,
@@ -265,6 +280,7 @@ export async function getAIAppContext(userText: string) {
       lastBlockedReason: agent.last_blocked_reason,
       workerStatus: agent.last_worker_status,
       workerMessage: agent.last_worker_message,
+
       recentDecisions: decisions.map((d: any) => ({
         time: d.created_at, symbol: d.symbol, action: d.action,
         decisionStatus: d.decision_status, confidence: d.confidence,
