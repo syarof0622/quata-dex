@@ -3,6 +3,7 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getIDXMarketSession, canExecutePaperTrade } from "@/lib/idx-market-session";
 import { buildStrategyIntelligence } from "@/lib/strategy-intelligence.functions";
+import { summarizeSourceHealth } from "@/lib/source-health";
 
 const USER_ID = "00000000-0000-0000-0000-000000000001";
 
@@ -498,21 +499,25 @@ export async function getAIAppContext(userText: string) {
 
   const shRes = await safe("sourceHealth", async () => {
     const { data } = await supabaseAdmin
-      .from("news_sources").select("id, name, status, enabled, last_success_at, last_failed_at, last_error, fail_count")
-      .eq("enabled", true);
+      .from("news_sources").select("id, name, status, enabled, last_success_at, last_failed_at, last_error, fail_count");
     return data ?? [];
   });
-  const sourceHealth: any = shRes.ok ? {
-    overallStatus: (() => {
-      const total = shRes.data.length;
-      const ok = shRes.data.filter((s: any) => s.status === "ok" || s.status === "idle" || s.status === "success").length;
-      return total === 0 ? "unknown" : ok === total ? "healthy" : ok >= total * 0.6 ? "degraded" : "unhealthy";
-    })(),
-    sources: shRes.data.slice(0, 12).map((s: any) => ({
-      name: s.name, status: s.status, lastSuccessAt: s.last_success_at, lastErrorAt: s.last_failed_at,
-      message: s.last_error,
-    })),
-  } : { error: shRes.error };
+  const sourceHealth: any = shRes.ok
+    ? (() => {
+        const sum = summarizeSourceHealth(shRes.data as any);
+        return {
+          overallStatus: sum.overallStatus,
+          activeCount: sum.activeCount,
+          fallbackCount: sum.fallbackCount,
+          quotaProtectedCount: sum.quotaProtectedCount,
+          degradedCount: sum.degradedCount,
+          failedCount: sum.failedCount,
+          disabledCount: sum.disabledCount,
+          lastUpdated: sum.lastUpdated,
+          sources: sum.sources.slice(0, 12),
+        };
+      })()
+    : { overallStatus: "unknown", sources: [], error: shRes.error };
 
   // ---------- AI INSIGHTS (aggregated intelligence layer) ----------
   const insightsRes = await safe("aiInsights", async () => {

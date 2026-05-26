@@ -4,6 +4,7 @@ import { ChatPanel } from "@/components/ChatPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { Activity, Database, Newspaper, BarChart3, ShieldCheck, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { summarizeSourceHealth, overallStatusLabel, overallStatusTone, summarySubtext } from "@/lib/source-health";
 
 export const Route = createFileRoute("/_authenticated/ai")({
   head: () => ({ meta: [{ title: "AI Trading Analyst — Quanta Terminal" }] }),
@@ -50,7 +51,7 @@ function AIAnalystPage() {
         <ContextCard title="IHSG Bias" value={ctx?.biasLabel ?? "PARTIAL DATA"} tone={ctx?.biasTone ?? "slate"} />
         <ContextCard title="Sentiment" value={ctx?.sentimentLabel ?? "PARTIAL DATA"} tone={ctx?.sentimentTone ?? "slate"} />
         <ContextCard title="Data Quality" value={ctx?.dataQualityLabel ?? "PARTIAL"} tone={ctx?.dataQualityTone ?? "amber"} />
-        <ContextCard title="Source Health" value={ctx?.sourceHealthLabel ?? "—"} tone={ctx?.sourceHealthTone ?? "slate"} />
+        <ContextCard title="Source Health" value={ctx?.sourceHealthLabel ?? "Unknown"} tone={ctx?.sourceHealthTone ?? "slate"} subtext={ctx?.sourceHealthSubtext} />
       </div>
 
       {/* App Context status — tells user what the AI can read */}
@@ -97,14 +98,15 @@ const TONE_DOT: Record<string, string> = {
   slate:   "bg-slate-400",
 };
 
-function ContextCard({ title, value, tone }: { title: string; value: string; tone: string }) {
+function ContextCard({ title, value, tone, subtext }: { title: string; value: string; tone: string; subtext?: string }) {
   return (
-    <div className="rounded-xl border border-border/60 bg-card/50 px-3 py-2.5 hover:border-primary/30 transition-colors">
+    <div className="rounded-xl border border-border/60 bg-card/50 px-3 py-2.5 hover:border-primary/30 transition-colors" title={subtext}>
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
         <span className={cn("h-1.5 w-1.5 rounded-full", TONE_DOT[tone] ?? "bg-slate-400")} />
         {title}
       </div>
       <div className="mt-1 text-sm font-semibold truncate">{value}</div>
+      {subtext && <div className="mt-0.5 text-[10px] text-muted-foreground truncate">{subtext}</div>}
     </div>
   );
 }
@@ -114,16 +116,17 @@ type CtxData = {
   biasLabel: string; biasTone: string;
   sentimentLabel: string; sentimentTone: string;
   dataQualityLabel: string; dataQualityTone: string;
-  sourceHealthLabel: string; sourceHealthTone: string;
+  sourceHealthLabel: string; sourceHealthTone: string; sourceHealthSubtext: string;
   lastUpdateLabel: string;
 };
+
 
 async function fetchMarketContext(): Promise<CtxData> {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const [{ data: news }, { data: regime }, { data: sources }] = await Promise.all([
     supabase.from("news_articles").select("sentiment, sentiment_score, published_at").gte("published_at", since).eq("is_duplicate", false).limit(500),
     supabase.from("market_regime_snapshots").select("regime_classification, idx_change_pct, created_at").order("created_at", { ascending: false }).limit(1),
-    supabase.from("news_sources").select("status, enabled"),
+    supabase.from("news_sources").select("id, name, status, enabled, last_success_at, last_failed_at, last_error, fail_count"),
   ]);
 
   // Session
@@ -175,14 +178,13 @@ async function fetchMarketContext(): Promise<CtxData> {
   if (newsCount > 30) { dataQualityLabel = "Fresh"; dataQualityTone = "emerald"; }
   else if (newsCount > 5) { dataQualityLabel = "Partial"; dataQualityTone = "amber"; }
 
-  // Source health
-  const enabled = (sources ?? []).filter((s: any) => s.enabled);
-  const active = enabled.filter((s: any) => s.status === "ok" || s.status === "idle" || s.status === "success").length;
-  const total = enabled.length;
-  let sourceHealthLabel = total === 0 ? "—" : `${active}/${total} active`;
-  let sourceHealthTone = total === 0 ? "slate" : active === total ? "emerald" : active >= total * 0.6 ? "amber" : "rose";
+  // Source health (sync with News page; treats fallback/quota as PARTIAL, not failed)
+  const shSummary = summarizeSourceHealth((sources ?? []) as any);
+  const sourceHealthLabel = overallStatusLabel(shSummary.overallStatus);
+  const sourceHealthTone = overallStatusTone(shSummary.overallStatus);
+  const sourceHealthSubtext = summarySubtext(shSummary);
 
   const lastUpdateLabel = now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Asia/Jakarta" }) + " WIB";
 
-  return { sessionLabel, sessionTone, biasLabel, biasTone, sentimentLabel, sentimentTone, dataQualityLabel, dataQualityTone, sourceHealthLabel, sourceHealthTone, lastUpdateLabel };
+  return { sessionLabel, sessionTone, biasLabel, biasTone, sentimentLabel, sentimentTone, dataQualityLabel, dataQualityTone, sourceHealthLabel, sourceHealthTone, sourceHealthSubtext, lastUpdateLabel };
 }
