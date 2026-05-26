@@ -131,46 +131,78 @@ async function buildNewsSnapshot(symbol: string) {
   const since = new Date(Date.now() - 24 * 3600_000).toISOString();
   const { data: arts } = await supabaseAdmin
     .from("news_articles")
-    .select("title, source, published_at, url, sentiment, impact_score, impact_level, category, tickers")
+    .select("title, source, published_at, url, sentiment, sentiment_score, impact_score, impact_level, category, tickers, ticker_relevance_score, relevance_class, impact_category, event_cluster_id, source_reliability_weight, is_noise")
     .or(`tickers.cs.{${base}},tickers.cs.{${symbol}}`)
     .eq("is_duplicate", false)
     .gte("published_at", since)
     .order("published_at", { ascending: false })
-    .limit(20);
+    .limit(30);
 
-  const list = arts ?? [];
-  const positive = list.filter(a => a.sentiment === "positive").length;
-  const negative = list.filter(a => a.sentiment === "negative").length;
-  const neutral  = list.filter(a => a.sentiment === "neutral").length;
-  const high     = list.filter(a => a.impact_level === "high").length;
-  const sources  = Array.from(new Set(list.map(a => a.source))).slice(0, 8);
-  const topNews  = list.slice(0, 5).map(a => ({
+  const all = (arts ?? []) as any[];
+  // Strip noise + irrelevant; require at least sector-level relevance for agent decisions.
+  const list = all.filter((a) =>
+    !a.is_noise &&
+    a.relevance_class !== "irrelevant_noise" &&
+    a.relevance_class !== "global_context"
+  );
+  // Dedupe by event cluster so the same event from 5 sources doesn't multiply the signal.
+  const byCluster = new Map<string, any>();
+  for (const a of list) {
+    const key = a.event_cluster_id ?? `${a.source}-${a.title}`;
+    const prev = byCluster.get(key);
+    // Prefer the article with higher source reliability inside the same cluster.
+    if (!prev || Number(a.source_reliability_weight ?? 0) > Number(prev.source_reliability_weight ?? 0)) {
+      byCluster.set(key, a);
+    }
+  }
+  const uniqueEvents = [...byCluster.values()];
+
+  const positive = uniqueEvents.filter((a) => a.sentiment === "positive").length;
+  const negative = uniqueEvents.filter((a) => a.sentiment === "negative").length;
+  const neutral  = uniqueEvents.filter((a) => a.sentiment === "neutral").length;
+  const high     = uniqueEvents.filter((a) => a.impact_level === "high").length;
+  const sources  = Array.from(new Set(uniqueEvents.map((a) => a.source))).slice(0, 8);
+  const topNews  = uniqueEvents.slice(0, 5).map((a) => ({
     title: a.title, source: a.source, publishedAt: a.published_at,
-    sentiment: a.sentiment, impactScore: Number(a.impact_score ?? 0), url: a.url,
+    sentiment: a.sentiment, impactScore: Number(a.impact_score ?? 0),
+    impactCategory: a.impact_category, relevanceClass: a.relevance_class,
+    sourceReliability: Number(a.source_reliability_weight ?? 0.65), url: a.url,
   }));
 
-  // Disclosure detection: IDX/Bursa Efek/keterbukaan/disclosure category or source.
+  // Reliability-weighted sentiment bias (positive minus negative, weighted).
+  let weightedBias = 0;
+  for (const a of uniqueEvents) {
+    const w = Number(a.source_reliability_weight ?? 0.65);
+    const s = a.sentiment === "positive" ? 1 : a.sentiment === "negative" ? -1 : 0;
+    const impactBoost = a.impact_level === "high" ? 1.5 : 1.0;
+    weightedBias += s * w * impactBoost;
+  }
+
+  // Disclosure detection: prefer impact_category or IDX/disclosure markers.
   const isDisclosure = (a: any) => {
+    if (a.impact_category && /uma_suspension|merger_acquisition|rights_issue|buyback|dividend|corporate_action|governance_risk/.test(a.impact_category)) return true;
     const hay = `${a.source ?? ""} ${a.category ?? ""} ${a.title ?? ""}`.toLowerCase();
     return /idx|bursa|keterbukaan|disclosure|rups|dividen|buyback|right.?issue|suspen|stock.?split|akuisisi|merger|ipo|uma/.test(hay);
   };
-  const disc = list.find(isDisclosure) ?? null;
+  const disc = uniqueEvents.find(isDisclosure) ?? null;
 
   return {
     news: {
-      latestNewsCount: list.length,
+      latestNewsCount: uniqueEvents.length,
+      rawArticleCount: all.length,
+      noiseFilteredOut: all.length - uniqueEvents.length,
       positiveNewsCount: positive, neutralNewsCount: neutral, negativeNewsCount: negative,
       highImpactNewsCount: high, sources, topNews,
     },
     disclosure: {
       hasRecentDisclosure: !!disc,
-      latestDisclosureType: disc?.category ?? disc?.source ?? null,
+      latestDisclosureType: disc?.impact_category ?? disc?.category ?? disc?.source ?? null,
       disclosureImpact: disc?.impact_level ?? null,
       disclosureSentiment: disc?.sentiment ?? null,
       title: disc?.title ?? null,
       url: disc?.url ?? null,
     },
-    newsBias: positive - negative + high * 0.5, // raw positive bias
+    newsBias: weightedBias, // reliability + impact-weighted bias
   };
 }
 
