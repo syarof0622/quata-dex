@@ -168,12 +168,15 @@ async function handler(request: Request) {
     durationMs: finishedAt.getTime() - startedAt.getTime(),
     marketSession: session.state,
     marketOpen: session.isOpen,
+    mode,
     agentsChecked: agents?.length ?? 0,
     agentsActive: activeAgents.length,
     ...totals,
+    topBlockedReasons,
     results,
     errors,
   });
+}
 }
 
 export const Route = createFileRoute("/api/public/cron/ai-agent")({
