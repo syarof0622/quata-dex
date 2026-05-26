@@ -524,7 +524,14 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
 
   for (const sym of symbolsToEvaluate) {
     try {
-      const decision = await evaluateSymbol(cfg, sym, account, posList);
+      const metaPre = autonomousMeta.get(sym);
+      const autoCtx = isAutonomous && metaPre ? {
+        score: metaPre.score,
+        classification: metaPre.classification ?? "trade_candidate",
+        eligibility: metaPre.eligibility,
+        researchTradeAllowed: metaPre.researchTradeAllowed,
+      } : undefined;
+      const decision = await evaluateSymbol(cfg, sym, account, posList, autoCtx);
       decisions.push(decision);
 
       let decisionStatus: "executed" | "rejected" | "hold" | "cooldown" | "limit_reached" = "hold";
