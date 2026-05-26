@@ -71,6 +71,8 @@ export type AgentConfig = {
   maxValueTrapRisk?: number;
   // Autonomous risk mode — relaxes confidence threshold for scanner-selected trade candidates.
   autonomousRiskMode?: "conservative" | "balanced" | "progressive" | "expert_research" | string;
+  // Raw agent row — required by the advanced risk engine.
+  agentRow?: Record<string, unknown> | null;
 };
 
 export type AutonomousContext = {
