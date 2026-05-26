@@ -443,7 +443,7 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
     last_market_session_state: session.state,
   }).eq("id", agentId);
 
-  if (agent.status === "paused") return { decisions: [], executed: 0 };
+  if (agent.status === "paused") return earlyReturn();
 
   // Daily trades cap — per-agent only (not all user orders).
   const sinceDay = new Date(Date.now() - 24 * 3600_000).toISOString();
