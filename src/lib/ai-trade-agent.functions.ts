@@ -415,7 +415,7 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
   const earlyReturn = () => ({ decisions: [] as AgentDecision[], executed: 0, metrics });
   const { data: agent } = await supabaseAdmin.from("ai_trade_agents").select("*").eq("id", agentId).maybeSingle();
   if (!agent) throw new Error("agent not found");
-  if (agent.status === "stopped" || agent.status === "error") return { decisions: [], executed: 0 };
+  if (agent.status === "stopped" || agent.status === "error") return earlyReturn();
 
   // Reflect market session into agent.status — autonomous mode follows IDX session
   // even when selected_symbols is empty (avoids false "active_market_open").
