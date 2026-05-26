@@ -135,7 +135,10 @@ async function handler(request: Request) {
         .eq("id", agentId);
       results.push({
         id: agentId, decisionsCreated: 0, paperBuysExecuted: 0,
-        blockedDecisions: 0, topBlockedReasons: [], lastBlockedReason: null, error: msg,
+        blockedDecisions: 0, topBlockedReasons: [], lastBlockedReason: null,
+        candidatesScanned: 0, candidatesSelected: 0, buyEvaluations: 0,
+        openPositionsMonitored: 0, stopLossTriggered: 0, takeProfitTriggered: 0,
+        error: msg,
       });
     }
   }
