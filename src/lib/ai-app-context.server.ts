@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getIDXMarketSession, canExecutePaperTrade } from "@/lib/idx-market-session";
 import { buildStrategyIntelligence } from "@/lib/strategy-intelligence.functions";
 import { summarizeSourceHealth } from "@/lib/source-health";
+import { getPortfolioAnalytics } from "@/lib/analytics.functions";
 
 const USER_ID = "00000000-0000-0000-0000-000000000001";
 
