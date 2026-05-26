@@ -363,7 +363,7 @@ export async function evaluateSymbol(
   const totalEquity = Math.max(1, account.equity);
   const symbolExposure = pos ? (pos.qty * price) / totalEquity : 0;
 
-  // 8. Composite signal (tech + sentiment + news + disclosure + macro bias)
+  // 8. Composite signal (tech + sentiment + news + disclosure + macro + sector rotation)
   const techNorm = Math.max(-1, Math.min(1, techScore / 100));
   const newsBiasNorm = Math.max(-1, Math.min(1, newsSnap.newsBias / 5));
   const disclosureBoost = realDisclosureData.hasRecentDisclosure
@@ -372,8 +372,31 @@ export async function evaluateSymbol(
     : 0;
   const macroBoost = (realMarketContext.ihsgBias === "bullish" ? 0.05
                      : realMarketContext.ihsgBias === "bearish" ? -0.05 : 0);
-  const composite = techNorm * 0.50 + sentScore * 0.20 + newsBiasNorm * 0.20
-                  + disclosureBoost + macroBoost;
+
+  // Sector rotation input — bonus for rotating_in / leading, penalty for rotating_out / lagging.
+  let sectorRotationBoost = 0;
+  let sectorRotationLabel: string = "neutral";
+  let sectorRotationScore = 0;
+  try {
+    const sec = sectorOf(sym);
+    const { data: secRow } = await supabaseAdmin
+      .from("sector_strength_snapshots")
+      .select("classification, relative_strength")
+      .eq("sector", sec)
+      .order("created_at", { ascending: false })
+      .limit(1).maybeSingle();
+    if (secRow) {
+      sectorRotationLabel = String((secRow as any).classification ?? "neutral");
+      sectorRotationScore = Number((secRow as any).relative_strength ?? 0);
+      if (sectorRotationLabel === "leading") sectorRotationBoost = 0.12;
+      else if (sectorRotationLabel === "rotating_in") sectorRotationBoost = 0.08;
+      else if (sectorRotationLabel === "rotating_out") sectorRotationBoost = -0.10;
+      else if (sectorRotationLabel === "lagging") sectorRotationBoost = -0.07;
+    }
+  } catch { /* tolerate */ }
+
+  const composite = techNorm * 0.45 + sentScore * 0.18 + newsBiasNorm * 0.18
+                  + disclosureBoost + macroBoost + sectorRotationBoost;
   let rawConfidence = Math.min(0.99, Math.abs(composite));
 
   // Autonomous scanner already gated DQ + liquidity. For trade-classified
