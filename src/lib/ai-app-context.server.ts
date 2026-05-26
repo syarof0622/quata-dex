@@ -2,6 +2,7 @@
 // Read-only. Per-section try/catch so a single failing query never breaks the chat.
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getIDXMarketSession, canExecutePaperTrade } from "@/lib/idx-market-session";
+import { buildStrategyIntelligence } from "@/lib/strategy-intelligence.functions";
 
 const USER_ID = "00000000-0000-0000-0000-000000000001";
 
