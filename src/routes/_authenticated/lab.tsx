@@ -619,6 +619,11 @@ function AIAgentPanel() {
   const [alloc, setAlloc] = useState("1000000");
   const [risk, setRisk] = useState<"conservative" | "balanced" | "aggressive">("balanced");
   const [conf, setConf] = useState("0.70");
+  const [feedFilter, setFeedFilter] = useState<FeedFilter>("active");
+
+  // Set of symbols with an actual open position (paper_positions). Used to
+  // enforce HOLD semantics in the UI even if a legacy decision row says HOLD.
+  const openPositionSymbols = new Set<string>(agentPositions.map((p: any) => String(p.symbol)));
 
   // Sync local symbols from active agent on load
   useEffect(() => {
