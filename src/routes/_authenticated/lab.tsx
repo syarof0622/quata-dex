@@ -683,6 +683,11 @@ function AIAgentPanel() {
     onSuccess: (r: any) => { toast.success(`Tick: ${r.count} decisions, ${r.executed} executed`); status.refetch(); },
     onError: (e: any) => toast.error(e?.message ?? "Tick failed"),
   });
+  const repairLabels = useMutation({
+    mutationFn: () => repairAITrainingEventLabels({ data: { limit: 1000 } }),
+    onSuccess: (r: any) => { toast.success(`Repair: scanned ${r.scanned}, repaired ${r.repaired}`); status.refetch(); },
+    onError: (e: any) => toast.error(e?.message ?? "Repair failed"),
+  });
 
   const isActive = agent && agent.status !== "stopped" && agent.status !== "error";
   const runCopy = runButtonCopy(agent, session);
