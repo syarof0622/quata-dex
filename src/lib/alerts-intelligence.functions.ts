@@ -17,8 +17,14 @@ export const listAlertDefinitions = createServerFn({ method: "GET" }).handler(
 type EvaluatedAlert = {
   alert_type: string;
   name: string;
+  title: string;
   severity: string;
   message: string;
+  description: string;
+  action_suggestion: string;
+  risk_impact: string;
+  affected_symbols: string[];
+  affected_sectors: string[];
   payload: any;
   triggered_at: string;
 };
