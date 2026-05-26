@@ -1017,11 +1017,6 @@ function AIAgentPanel() {
                         {cardKind.label}{da.intent && !executed && exec.status !== "hold_position" ? ` · intent ${da.intent}` : ""} · {conf.label}
                       </span>
                     </div>
-                      <div className="font-mono font-semibold">{d.symbol}</div>
-                      <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${executed && isBuy ? "bg-bull/15 text-bull" : executed && isExit ? "bg-bear/15 text-bear" : "bg-muted text-muted-foreground"}`} title={conf.tooltip}>
-                        {d.action} · {conf.label}
-                      </span>
-                    </div>
                     {executed && (
                       <div className="grid grid-cols-3 gap-1 text-[11px]">
                         <div><div className="text-muted-foreground">Entry</div><div className="font-mono">{entry != null ? formatPrice(entry) : "—"}</div></div>
