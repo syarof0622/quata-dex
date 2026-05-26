@@ -33,6 +33,7 @@ export type Database = {
           data_quality_snapshot: Json | null
           data_snapshot: Json | null
           data_source: string | null
+          decision_replay_snapshot: Json | null
           decision_status: string | null
           entry_price: number | null
           exploration_trade: boolean
@@ -80,6 +81,7 @@ export type Database = {
           data_quality_snapshot?: Json | null
           data_snapshot?: Json | null
           data_source?: string | null
+          decision_replay_snapshot?: Json | null
           decision_status?: string | null
           entry_price?: number | null
           exploration_trade?: boolean
@@ -127,6 +129,7 @@ export type Database = {
           data_quality_snapshot?: Json | null
           data_snapshot?: Json | null
           data_source?: string | null
+          decision_replay_snapshot?: Json | null
           decision_status?: string | null
           entry_price?: number | null
           exploration_trade?: boolean
@@ -2444,6 +2447,42 @@ export type Database = {
           strategy_name?: string
           symbol?: string
           training_event_id?: string | null
+        }
+        Relationships: []
+      }
+      system_audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          message: string | null
+          metadata: Json
+          module: string
+          status: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          message?: string | null
+          metadata?: Json
+          module: string
+          status?: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          message?: string | null
+          metadata?: Json
+          module?: string
+          status?: string
         }
         Relationships: []
       }
