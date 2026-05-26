@@ -30,7 +30,20 @@ function isNumericCell(text: string) {
   return /^[\s\-+]?(?:Rp\s?)?[\d.,]+%?\s*(?:-\s*(?:Rp\s?)?[\d.,]+%?)?$/.test(text.trim());
 }
 
+// Cleanup AI-generated markdown before render: collapse duplicate heading markers,
+// fix known disclaimer typos, and normalise spacing. Pure formatting — no semantic changes.
+function cleanMarkdownText(input: string): string {
+  let s = input ?? "";
+  // Collapse "## ## " / "### ### " / "#### #### " duplicates (and triples) at line start.
+  s = s.replace(/^(#{1,6})\s+(#{1,6})\s+/gm, "$1 ");
+  s = s.replace(/^(#{1,6})\s+(#{1,6})\s+/gm, "$1 "); // run twice for triples
+  // Disclaimer typo cleanup.
+  s = s.replace(/wires\s+uang\s+asli/gi, "transaksi uang asli");
+  return s;
+}
+
 export function ChatMarkdown({ content }: { content: string }) {
+  const cleaned = cleanMarkdownText(content);
   return (
     <div className="text-[13.5px] leading-relaxed text-foreground/95 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
       <ReactMarkdown
