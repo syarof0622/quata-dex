@@ -1528,6 +1528,54 @@ export type Database = {
         }
         Relationships: []
       }
+      official_disclosures: {
+        Row: {
+          created_at: string
+          disclosure_type: string
+          extracted_summary: string | null
+          id: string
+          impact_level: string
+          published_at: string
+          raw_payload: Json | null
+          risk_flag: string | null
+          sentiment: string
+          source: string
+          symbol: string
+          title: string
+          url: string | null
+        }
+        Insert: {
+          created_at?: string
+          disclosure_type: string
+          extracted_summary?: string | null
+          id?: string
+          impact_level?: string
+          published_at?: string
+          raw_payload?: Json | null
+          risk_flag?: string | null
+          sentiment?: string
+          source: string
+          symbol: string
+          title: string
+          url?: string | null
+        }
+        Update: {
+          created_at?: string
+          disclosure_type?: string
+          extracted_summary?: string | null
+          id?: string
+          impact_level?: string
+          published_at?: string
+          raw_payload?: Json | null
+          risk_flag?: string | null
+          sentiment?: string
+          source?: string
+          symbol?: string
+          title?: string
+          url?: string | null
+        }
+        Relationships: []
+      }
       paper_accounts: {
         Row: {
           cash: number
@@ -1868,6 +1916,51 @@ export type Database = {
         }
         Relationships: []
       }
+      sector_fundamental_benchmarks: {
+        Row: {
+          benchmark_confidence: string
+          id: string
+          median_der: number | null
+          median_dividend_yield: number | null
+          median_pbv: number | null
+          median_per: number | null
+          median_profit_growth: number | null
+          median_revenue_growth: number | null
+          median_roe: number | null
+          sample_size: number
+          sector: string
+          updated_at: string
+        }
+        Insert: {
+          benchmark_confidence?: string
+          id?: string
+          median_der?: number | null
+          median_dividend_yield?: number | null
+          median_pbv?: number | null
+          median_per?: number | null
+          median_profit_growth?: number | null
+          median_revenue_growth?: number | null
+          median_roe?: number | null
+          sample_size?: number
+          sector: string
+          updated_at?: string
+        }
+        Update: {
+          benchmark_confidence?: string
+          id?: string
+          median_der?: number | null
+          median_dividend_yield?: number | null
+          median_pbv?: number | null
+          median_per?: number | null
+          median_profit_growth?: number | null
+          median_revenue_growth?: number | null
+          median_roe?: number | null
+          sample_size?: number
+          sector?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sector_strength_snapshots: {
         Row: {
           breadth_score: number
@@ -2012,8 +2105,10 @@ export type Database = {
           data_source: string | null
           der: number | null
           dividend_payout_ratio: number | null
+          dividend_per_share: number | null
           dividend_yield: number | null
           eps: number | null
+          eps_growth_yoy: number | null
           financial_report_date: string | null
           free_cash_flow: number | null
           gross_margin: number | null
@@ -2028,6 +2123,7 @@ export type Database = {
           operating_cash_flow: number | null
           pbv: number | null
           per: number | null
+          price: number | null
           raw_payload: Json | null
           revenue: number | null
           revenue_growth_yoy: number | null
@@ -2037,7 +2133,12 @@ export type Database = {
           sector_pbv_avg: number | null
           sector_per_avg: number | null
           sector_roe_avg: number | null
+          shares_outstanding: number | null
+          status: string
           symbol: string
+          total_assets: number | null
+          total_debt: number | null
+          total_equity: number | null
           updated_at: string
         }
         Insert: {
@@ -2048,8 +2149,10 @@ export type Database = {
           data_source?: string | null
           der?: number | null
           dividend_payout_ratio?: number | null
+          dividend_per_share?: number | null
           dividend_yield?: number | null
           eps?: number | null
+          eps_growth_yoy?: number | null
           financial_report_date?: string | null
           free_cash_flow?: number | null
           gross_margin?: number | null
@@ -2064,6 +2167,7 @@ export type Database = {
           operating_cash_flow?: number | null
           pbv?: number | null
           per?: number | null
+          price?: number | null
           raw_payload?: Json | null
           revenue?: number | null
           revenue_growth_yoy?: number | null
@@ -2073,7 +2177,12 @@ export type Database = {
           sector_pbv_avg?: number | null
           sector_per_avg?: number | null
           sector_roe_avg?: number | null
+          shares_outstanding?: number | null
+          status?: string
           symbol: string
+          total_assets?: number | null
+          total_debt?: number | null
+          total_equity?: number | null
           updated_at?: string
         }
         Update: {
@@ -2084,8 +2193,10 @@ export type Database = {
           data_source?: string | null
           der?: number | null
           dividend_payout_ratio?: number | null
+          dividend_per_share?: number | null
           dividend_yield?: number | null
           eps?: number | null
+          eps_growth_yoy?: number | null
           financial_report_date?: string | null
           free_cash_flow?: number | null
           gross_margin?: number | null
@@ -2100,6 +2211,7 @@ export type Database = {
           operating_cash_flow?: number | null
           pbv?: number | null
           per?: number | null
+          price?: number | null
           raw_payload?: Json | null
           revenue?: number | null
           revenue_growth_yoy?: number | null
@@ -2109,7 +2221,12 @@ export type Database = {
           sector_pbv_avg?: number | null
           sector_per_avg?: number | null
           sector_roe_avg?: number | null
+          shares_outstanding?: number | null
+          status?: string
           symbol?: string
+          total_assets?: number | null
+          total_debt?: number | null
+          total_equity?: number | null
           updated_at?: string
         }
         Relationships: []
