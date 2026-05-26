@@ -378,6 +378,7 @@ function UndervaluedPanel() {
               <th className="text-right p-2" title="Sector relative">Sector</th>
               <th className="text-right p-2" title="Technical timing">Timing</th>
               <th className="text-right p-2" title="Value-trap risk (lower=better)">Trap</th>
+              <th className="text-left p-2" title="Latest official IDX/BEI disclosure">Disclosure</th>
               <th className="text-left p-2">Reasoning</th>
             </tr>
           </thead>
