@@ -125,6 +125,19 @@ export const pauseAgent = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const setAutomationEnabled = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({
+    id: z.string().uuid(),
+    enabled: z.boolean(),
+  }).parse(d))
+  .handler(async ({ data }) => {
+    const { error } = await supabaseAdmin.from("ai_trade_agents")
+      .update({ automation_enabled: data.enabled })
+      .eq("id", data.id).eq("user_id", USER_ID);
+    if (error) throw new Error(error.message);
+    return { ok: true, enabled: data.enabled };
+  });
+
 export const stopAgent = createServerFn({ method: "POST" })
   .inputValidator((d: { id: string; closeAll?: boolean }) =>
     z.object({ id: z.string().uuid(), closeAll: z.boolean().optional() }).parse(d))
