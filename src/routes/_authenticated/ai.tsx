@@ -73,6 +73,7 @@ function AIAnalystPage() {
       </div>
 
 
+      <RiskEnginePanel />
       <ChatPanel />
     </div>
   );
