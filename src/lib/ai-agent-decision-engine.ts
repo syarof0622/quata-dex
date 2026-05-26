@@ -11,6 +11,7 @@ import { canExecutePaperTrade, getIDXMarketSession } from "./idx-market-session"
 import { computeDataQuality, type DataQualityReport } from "./data-quality";
 import { sectorOf } from "./sectors";
 import { getStrategyContextFor } from "./strategy-intelligence.functions";
+import { finalRiskGuard } from "./risk-engine";
 
 export type AgentAction = "BUY" | "SELL" | "HOLD" | "EXIT";
 
