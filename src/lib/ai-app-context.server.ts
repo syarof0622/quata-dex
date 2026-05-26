@@ -354,33 +354,54 @@ export async function getAIAppContext(userText: string) {
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { data: news } = await supabaseAdmin
       .from("news_articles")
-      .select("title, source, sentiment, sentiment_score, impact_level, impact_score, published_at, tickers")
+      .select("title, source, sentiment, sentiment_score, impact_level, impact_score, published_at, tickers, ticker_relevance_score, relevance_class, impact_category, event_cluster_id, source_reliability_weight, is_noise, primary_ticker")
       .gte("published_at", since).eq("is_duplicate", false)
-      .order("published_at", { ascending: false }).limit(50);
+      .order("published_at", { ascending: false }).limit(80);
     return news ?? [];
   });
   let newsSentiment: any = { status: "unavailable" as Status };
   if (newsRes.ok) {
-    const news = newsRes.data;
-    let pos = 0, neg = 0, neu = 0, high = 0, sumScore = 0;
-    for (const n of news as any[]) {
+    const rawNews = newsRes.data as any[];
+    // Filter noise out of sentiment math; weight by source reliability; dedupe by event cluster.
+    const signalNews = rawNews.filter((n) => !n.is_noise && n.relevance_class !== "irrelevant_noise");
+    const clusters = new Map<string, { score: number; weight: number; sentiment: string; sample: any }>();
+    let pos = 0, neg = 0, neu = 0, high = 0;
+    for (const n of signalNews) {
       if (n.sentiment === "positive") pos++; else if (n.sentiment === "negative") neg++; else neu++;
       if (n.impact_level === "high") high++;
-      sumScore += Number(n.sentiment_score ?? 0);
+      const w = Number(n.source_reliability_weight ?? 0.65);
+      const key = n.event_cluster_id ?? `${n.source}-${n.title}`;
+      const cur = clusters.get(key) ?? { score: 0, weight: 0, sentiment: n.sentiment, sample: n };
+      cur.score += Number(n.sentiment_score ?? 0) * w;
+      cur.weight += w;
+      clusters.set(key, cur);
     }
-    const avg = news.length ? sumScore / news.length : 0;
+    let sumW = 0, wtot = 0;
+    for (const c of clusters.values()) { sumW += c.score; wtot += c.weight; }
+    const avg = wtot > 0 ? sumW / wtot : 0;
+    const directTickerCount = signalNews.filter((n) => n.relevance_class === "direct_ticker_news").length;
+    const sectorCount = signalNews.filter((n) => n.relevance_class === "sector_news").length;
+    const macroCount = signalNews.filter((n) => n.relevance_class === "macro_news").length;
+    const noiseCount = rawNews.length - signalNews.length;
     newsSentiment = {
       marketSentiment: avg > 0.15 ? "Positive" : avg < -0.15 ? "Negative" : "Neutral",
       avgSentimentScore: Math.round(avg * 100) / 100,
       positiveCount: pos, negativeCount: neg, neutralCount: neu,
       highImpactNewsCount: high,
-      latestHeadlines: news.slice(0, 8).map((n: any) => ({
+      uniqueEventClusters: clusters.size,
+      classBreakdown: { directTicker: directTickerCount, sector: sectorCount, macro: macroCount, noise: noiseCount },
+      latestHeadlines: signalNews.slice(0, 10).map((n: any) => ({
         title: String(n.title).slice(0, 160), source: n.source, publishedAt: n.published_at,
         sentiment: n.sentiment, impactLevel: n.impact_level, impactScore: n.impact_score,
+        relevanceClass: n.relevance_class, impactCategory: n.impact_category,
+        sourceReliability: Number(n.source_reliability_weight ?? 0.65),
+        primaryTicker: n.primary_ticker ?? null,
+        eventClusterId: n.event_cluster_id ?? null,
         relatedTickers: (n.tickers ?? []).slice(0, 5),
       })),
+      noiseFilteredOut: noiseCount,
     };
-    contextStatus.news = news.length > 30 ? "fresh" : news.length > 5 ? "partial" : "stale";
+    contextStatus.news = signalNews.length > 20 ? "fresh" : signalNews.length > 5 ? "partial" : "stale";
   } else {
     contextStatus.news = "unavailable";
     newsSentiment.error = newsRes.error;

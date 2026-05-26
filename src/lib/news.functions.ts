@@ -12,6 +12,12 @@ const FilterSchema = z.object({
   search: z.string().max(100).regex(/^[\p{L}\p{N}\s.\-_'"&]+$/u, "Invalid characters in search").optional(),
   fromDate: z.string().optional(),
   toDate: z.string().optional(),
+  relevanceClass: z.enum([
+    "direct_ticker_news","company_name_match","sector_news","macro_news","global_context","irrelevant_noise",
+  ]).optional(),
+  impactCategory: z.string().max(40).optional(),
+  hideNoise: z.boolean().optional(),
+  hideDuplicates: z.boolean().optional(),
 });
 
 export const listNews = createServerFn({ method: "POST" })
@@ -22,21 +28,21 @@ export const listNews = createServerFn({ method: "POST" })
     let q = supabaseAdmin
       .from("news_articles")
       .select(
-        "id, source, title, summary, url, image_url, published_at, sentiment, sentiment_score, impact_level, impact_score, tickers, sectors",
+        "id, source, title, summary, url, image_url, published_at, sentiment, sentiment_score, impact_level, impact_score, tickers, sectors, ticker_relevance_score, relevance_class, impact_category, event_cluster_id, source_reliability_weight, is_noise, primary_ticker",
         { count: "exact" },
       )
-      .eq("is_duplicate", false)
       .order("published_at", { ascending: false })
       .range(from, to);
 
+    if (data.hideDuplicates !== false) q = q.eq("is_duplicate", false);
+    if (data.hideNoise) q = q.eq("is_noise", false);
     if (data.source) q = q.eq("source", data.source);
     if (data.sentiment) q = q.eq("sentiment", data.sentiment);
     if (data.impactLevel) q = q.eq("impact_level", data.impactLevel);
+    if (data.relevanceClass) q = q.eq("relevance_class", data.relevanceClass);
+    if (data.impactCategory) q = q.eq("impact_category", data.impactCategory);
     if (data.ticker) q = q.contains("tickers", [data.ticker.toUpperCase()]);
     if (data.search) {
-      // Strip PostgREST filter metacharacters and SQL LIKE wildcards to prevent
-      // OR-filter injection. Schema regex already restricts the charset; this is
-      // defense-in-depth before interpolation into a raw .or() string.
       const safe = data.search.trim()
         .replace(/[,()%_*\\]/g, " ")
         .replace(/\s+/g, " ")
@@ -290,4 +296,60 @@ export const ingestTickerSerpApi = createServerFn({ method: "POST" })
     }
 
     return { ok: errors.length === 0, inserted, alignmentOk, errors, symbol: sqlSym };
+  });
+
+/** Per-ticker news freshness summary used by AI Agent + Analyst. */
+export const getTickerNewsFreshness = createServerFn({ method: "POST" })
+  .inputValidator((d) => z.object({ symbol: z.string().min(1).max(20) }).parse(d))
+  .handler(async ({ data }) => {
+    const sym = data.symbol.toUpperCase().endsWith(".JK")
+      ? data.symbol.toUpperCase()
+      : `${data.symbol.toUpperCase()}.JK`;
+    const since = new Date(Date.now() - 24 * 3600_000).toISOString();
+    const { data: rows } = await supabaseAdmin
+      .from("news_articles")
+      .select("title, source, published_at, sentiment, sentiment_score, impact_level, impact_category, relevance_class, ticker_relevance_score, source_reliability_weight, is_noise, event_cluster_id")
+      .or(`tickers.cs.{${sym}},tickers.cs.{${sym.replace(/\.JK$/i, "")}}`)
+      .gte("published_at", since)
+      .eq("is_duplicate", false)
+      .order("published_at", { ascending: false })
+      .limit(40);
+    const list = (rows ?? []) as any[];
+    const fresh = list.filter((r) => !r.is_noise && r.relevance_class !== "irrelevant_noise");
+    const highImpact = fresh.filter((r) => r.impact_level === "high");
+    // Dedup sentiment by event cluster (one vote per cluster, weighted by source reliability)
+    const clusters = new Map<string, { sum: number; weight: number; src: string }>();
+    for (const r of fresh) {
+      const key = r.event_cluster_id ?? `${r.source}-${r.title}`;
+      const w = Number(r.source_reliability_weight ?? 0.65);
+      const cur = clusters.get(key) ?? { sum: 0, weight: 0, src: r.source };
+      cur.sum += Number(r.sentiment_score ?? 0) * w;
+      cur.weight += w;
+      clusters.set(key, cur);
+    }
+    let sumW = 0, wtot = 0;
+    for (const c of clusters.values()) { sumW += c.sum; wtot += c.weight; }
+    const sentimentScore24h = wtot > 0 ? Math.round((sumW / wtot) * 100) / 100 : 0;
+    const reliabilities = fresh.map((r) => Number(r.source_reliability_weight ?? 0.65));
+    const reliabilityAvg = reliabilities.length
+      ? Math.round((reliabilities.reduce((a, b) => a + b, 0) / reliabilities.length) * 100) / 100
+      : 0;
+    const latest = fresh[0]?.published_at ?? null;
+    const ageMin = latest ? Math.round((Date.now() - new Date(latest).getTime()) / 60000) : null;
+    const dataFreshness =
+      ageMin == null ? "stale" :
+      ageMin < 60 ? "fresh" :
+      ageMin < 6 * 60 ? "recent" :
+      ageMin < 24 * 60 ? "aging" : "stale";
+    return {
+      symbol: sym,
+      latestNewsAt: latest,
+      freshNewsCount24h: fresh.length,
+      highImpactNewsCount24h: highImpact.length,
+      eventClusterCount: clusters.size,
+      sentimentScore24h,
+      sourceReliabilityAvg: reliabilityAvg,
+      dataFreshness,
+      topClusters: [...clusters.entries()].slice(0, 5).map(([id, v]) => ({ id, weight: Math.round(v.weight * 100) / 100 })),
+    };
   });

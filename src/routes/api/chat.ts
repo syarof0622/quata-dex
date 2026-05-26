@@ -161,6 +161,15 @@ NEWS SPECIFICITY GUARD (HARD RULE):
 - If you do not have all three (headline, source, timestamp), DO NOT state the claim as fact. Use: "terdeteksi dari news context, tetapi headline/source perlu divalidasi ulang." Or: "news context belum cukup spesifik untuk menyimpulkan katalis berita."
 - Never fabricate headlines, source names, or rupiah figures.
 
+NEWS INTELLIGENCE CLASSIFICATION (HARD RULE):
+- Every headline in newsSentiment.latestHeadlines carries relevanceClass (direct_ticker_news, company_name_match, sector_news, macro_news, global_context), impactCategory (earnings/dividend/buyback/rights_issue/merger_acquisition/uma_suspension/governance_risk/regulation/macro/...), and sourceReliability (0..1).
+- ALWAYS distinguish: direct ticker catalyst vs sector context vs macro context vs noise. Never treat sector or macro news as a ticker-specific catalyst.
+- Weight conclusions by sourceReliability: IDX/official disclosure (≥0.95) > Kontan/CNBC/ANTARA/Investor.id (~0.85) > Google News aggregator (≤0.72). Reliability < 0.65 must be labelled "perlu validasi sumber".
+- newsSentiment.classBreakdown shows how many items are directTicker vs sector vs macro vs noise; use this to qualify "berita sangat banyak" claims (most volume may be sector/macro/noise, not direct).
+- newsSentiment.uniqueEventClusters is the count after duplicate-cluster dedup. Use it — do NOT count raw articles when describing event volume.
+- If a negative high-impact disclosure exists (impactCategory in {uma_suspension, governance_risk, rights_issue with negative sentiment}, sourceReliability ≥ 0.90), treat it as a hard caution and say so explicitly.
+- Items with relevanceClass = irrelevant_noise or impactCategory = noise are already filtered from newsSentiment; if you still see them, ignore them.
+
 RISK WORDING CALIBRATION:
 - Reserve "risiko sangat tinggi" / "very high risk" for cases with ≥2 of: sector rotating_out, technical breakdown, high-impact negative news, volume selloff, extreme drawdown, liquidity risk, negative disclosure. Otherwise prefer "risiko meningkat / elevated / kurang ideal / perlu dihindari sementara".
 

@@ -1323,28 +1323,37 @@ export type Database = {
       }
       news_articles: {
         Row: {
+          canonical_article_id: string | null
           canonical_url: string | null
           category: string | null
           confidence: number
           created_at: string
+          duplicate_group_id: string | null
           duplicate_of: string | null
           duplicate_sources: string[]
+          event_cluster_id: string | null
           fetched_at: string
           id: string
           image_url: string | null
+          impact_category: string
           impact_level: string
           impact_score: number
           is_duplicate: boolean
+          is_noise: boolean
           keywords: string[]
+          primary_ticker: string | null
           published_at: string
           raw_payload: Json | null
           related_symbols: string[]
+          relevance_class: string
           sectors: string[]
           sentiment: string
           sentiment_score: number
           source: string
           source_id: string
+          source_reliability_weight: number
           summary: string | null
+          ticker_relevance_score: number
           tickers: string[]
           title: string
           title_hash: string | null
@@ -1352,28 +1361,37 @@ export type Database = {
           url: string
         }
         Insert: {
+          canonical_article_id?: string | null
           canonical_url?: string | null
           category?: string | null
           confidence?: number
           created_at?: string
+          duplicate_group_id?: string | null
           duplicate_of?: string | null
           duplicate_sources?: string[]
+          event_cluster_id?: string | null
           fetched_at?: string
           id?: string
           image_url?: string | null
+          impact_category?: string
           impact_level?: string
           impact_score?: number
           is_duplicate?: boolean
+          is_noise?: boolean
           keywords?: string[]
+          primary_ticker?: string | null
           published_at?: string
           raw_payload?: Json | null
           related_symbols?: string[]
+          relevance_class?: string
           sectors?: string[]
           sentiment?: string
           sentiment_score?: number
           source: string
           source_id: string
+          source_reliability_weight?: number
           summary?: string | null
+          ticker_relevance_score?: number
           tickers?: string[]
           title: string
           title_hash?: string | null
@@ -1381,28 +1399,37 @@ export type Database = {
           url: string
         }
         Update: {
+          canonical_article_id?: string | null
           canonical_url?: string | null
           category?: string | null
           confidence?: number
           created_at?: string
+          duplicate_group_id?: string | null
           duplicate_of?: string | null
           duplicate_sources?: string[]
+          event_cluster_id?: string | null
           fetched_at?: string
           id?: string
           image_url?: string | null
+          impact_category?: string
           impact_level?: string
           impact_score?: number
           is_duplicate?: boolean
+          is_noise?: boolean
           keywords?: string[]
+          primary_ticker?: string | null
           published_at?: string
           raw_payload?: Json | null
           related_symbols?: string[]
+          relevance_class?: string
           sectors?: string[]
           sentiment?: string
           sentiment_score?: number
           source?: string
           source_id?: string
+          source_reliability_weight?: number
           summary?: string | null
+          ticker_relevance_score?: number
           tickers?: string[]
           title?: string
           title_hash?: string | null
@@ -1444,33 +1471,75 @@ export type Database = {
       news_price_alignment: {
         Row: {
           alignment: string
+          classification: string | null
           computed_at: string
           confidence: number
+          event_cluster_id: string | null
           id: string
+          impact_category: string | null
+          news_article_id: string | null
           news_sentiment: string
+          price_after_15m: number | null
+          price_after_1h: number | null
+          price_at_eod: number | null
+          price_at_publish: number | null
           price_direction: string
+          price_next_day: number | null
           reasoning: string | null
+          return_15m: number | null
+          return_1h: number | null
+          return_eod: number | null
+          return_next_day: number | null
           symbol: string
+          volume_reaction: number | null
         }
         Insert: {
           alignment: string
+          classification?: string | null
           computed_at?: string
           confidence?: number
+          event_cluster_id?: string | null
           id?: string
+          impact_category?: string | null
+          news_article_id?: string | null
           news_sentiment: string
+          price_after_15m?: number | null
+          price_after_1h?: number | null
+          price_at_eod?: number | null
+          price_at_publish?: number | null
           price_direction: string
+          price_next_day?: number | null
           reasoning?: string | null
+          return_15m?: number | null
+          return_1h?: number | null
+          return_eod?: number | null
+          return_next_day?: number | null
           symbol: string
+          volume_reaction?: number | null
         }
         Update: {
           alignment?: string
+          classification?: string | null
           computed_at?: string
           confidence?: number
+          event_cluster_id?: string | null
           id?: string
+          impact_category?: string | null
+          news_article_id?: string | null
           news_sentiment?: string
+          price_after_15m?: number | null
+          price_after_1h?: number | null
+          price_at_eod?: number | null
+          price_at_publish?: number | null
           price_direction?: string
+          price_next_day?: number | null
           reasoning?: string | null
+          return_15m?: number | null
+          return_1h?: number | null
+          return_eod?: number | null
+          return_next_day?: number | null
           symbol?: string
+          volume_reaction?: number | null
         }
         Relationships: []
       }

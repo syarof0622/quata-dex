@@ -44,6 +44,10 @@ function NewsHub() {
   const [source, setSource] = useState("");
   const [sentiment, setSentiment] = useState<"" | "positive" | "neutral" | "negative">("");
   const [impact, setImpact] = useState<"" | "low" | "medium" | "high">("");
+  const [relevanceClass, setRelevanceClass] = useState<string>("");
+  const [impactCategory, setImpactCategory] = useState<string>("");
+  const [hideNoise, setHideNoise] = useState(true);
+  const [hideDuplicates, setHideDuplicates] = useState(true);
   const [ticker, setTicker] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
@@ -51,8 +55,7 @@ function NewsHub() {
   const dSearch = useDebounced(search.trim(), 350);
   const dTicker = useDebounced(ticker.trim(), 350);
 
-  // Reset to first page when filters change
-  useEffect(() => { setPage(0); }, [source, sentiment, impact, dTicker, dSearch]);
+  useEffect(() => { setPage(0); }, [source, sentiment, impact, relevanceClass, impactCategory, hideNoise, hideDuplicates, dTicker, dSearch]);
 
   const filterArgs = {
     limit: PAGE_SIZE,
@@ -60,6 +63,10 @@ function NewsHub() {
     source: source || undefined,
     sentiment: (sentiment || undefined) as any,
     impactLevel: (impact || undefined) as any,
+    relevanceClass: (relevanceClass || undefined) as any,
+    impactCategory: impactCategory || undefined,
+    hideNoise,
+    hideDuplicates,
     ticker: dTicker || undefined,
     search: dSearch || undefined,
   };
@@ -213,6 +220,28 @@ function NewsHub() {
         <select value={source} onChange={e => setSource(e.target.value)} className="text-xs bg-background border border-border rounded px-2 py-1.5">
           {SOURCES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
         </select>
+        <select value={relevanceClass} onChange={e => setRelevanceClass(e.target.value)} className="text-xs bg-background border border-border rounded px-2 py-1.5" title="Relevance">
+          <option value="">All relevance</option>
+          <option value="direct_ticker_news">Direct ticker</option>
+          <option value="company_name_match">Company match</option>
+          <option value="sector_news">Sector news</option>
+          <option value="macro_news">Macro</option>
+          <option value="global_context">Global context</option>
+        </select>
+        <select value={impactCategory} onChange={e => setImpactCategory(e.target.value)} className="text-xs bg-background border border-border rounded px-2 py-1.5" title="Impact category">
+          <option value="">All categories</option>
+          <option value="earnings">Earnings</option>
+          <option value="dividend">Dividend</option>
+          <option value="buyback">Buyback</option>
+          <option value="rights_issue">Rights issue</option>
+          <option value="merger_acquisition">M&amp;A</option>
+          <option value="corporate_action">Corporate action</option>
+          <option value="uma_suspension">UMA / Suspension</option>
+          <option value="governance_risk">Governance risk</option>
+          <option value="regulation">Regulation</option>
+          <option value="macro">Macro</option>
+          <option value="analyst_rating">Analyst rating</option>
+        </select>
         <select value={sentiment} onChange={e => setSentiment(e.target.value as any)} className="text-xs bg-background border border-border rounded px-2 py-1.5">
           <option value="">All sentiment</option>
           <option value="positive">Positive</option>
@@ -225,10 +254,18 @@ function NewsHub() {
           <option value="medium">Medium</option>
           <option value="low">Low</option>
         </select>
+        <label className="text-xs flex items-center gap-1 px-2 py-1.5 border border-border rounded cursor-pointer">
+          <input type="checkbox" checked={hideNoise} onChange={e => setHideNoise(e.target.checked)} />
+          Hide noise
+        </label>
+        <label className="text-xs flex items-center gap-1 px-2 py-1.5 border border-border rounded cursor-pointer">
+          <input type="checkbox" checked={hideDuplicates} onChange={e => setHideDuplicates(e.target.checked)} />
+          Hide duplicates
+        </label>
         <Input value={ticker} onChange={e => setTicker(e.target.value)} placeholder="Ticker e.g. BBCA.JK" className="w-44 h-8 text-xs" />
         <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search title…" className="flex-1 min-w-[180px] h-8 text-xs" />
-        {(source || sentiment || impact || ticker || search) && (
-          <Button size="sm" variant="ghost" onClick={() => { setSource(""); setSentiment(""); setImpact(""); setTicker(""); setSearch(""); }}>
+        {(source || sentiment || impact || relevanceClass || impactCategory || ticker || search) && (
+          <Button size="sm" variant="ghost" onClick={() => { setSource(""); setSentiment(""); setImpact(""); setRelevanceClass(""); setImpactCategory(""); setTicker(""); setSearch(""); }}>
             Clear
           </Button>
         )}
@@ -258,10 +295,26 @@ function NewsHub() {
               }`}>{n.sentiment.toUpperCase()}</span>
             </div>
             {n.summary && <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{n.summary}</div>}
-            <div className="text-[10px] text-muted-foreground mt-2">
-              {n.source} · {formatDateTimeWIB(n.published_at)}
+            <div className="text-[10px] text-muted-foreground mt-2 flex items-center gap-2">
+              <span>{n.source} · {formatDateTimeWIB(n.published_at)}</span>
+              {typeof n.source_reliability_weight === "number" && (
+                <span title="Source reliability" className="font-mono">rel {Math.round(n.source_reliability_weight * 100)}%</span>
+              )}
             </div>
             <div className="mt-2 flex items-center flex-wrap gap-1.5">
+              {n.relevance_class && n.relevance_class !== "irrelevant_noise" && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium" title={`Relevance score ${Math.round(n.ticker_relevance_score ?? 0)}`}>
+                  {n.relevance_class.replace(/_/g, " ")}
+                </span>
+              )}
+              {n.impact_category && n.impact_category !== "generic_market_news" && n.impact_category !== "noise" && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/40 text-foreground">
+                  {n.impact_category.replace(/_/g, " ")}
+                </span>
+              )}
+              {n.is_noise && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">noise</span>
+              )}
               <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
                 n.impact_level === "high" ? "bg-primary/15 text-primary" :
                 n.impact_level === "medium" ? "bg-accent/40 text-foreground" :
