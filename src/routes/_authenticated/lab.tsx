@@ -993,9 +993,30 @@ function AIAgentPanel() {
                 const dTech: DataStatus = tech?.label || tech?.score != null ? "fresh" : "unavailable";
                 const dNews: DataStatus = Number(sent?.news?.latestNewsCount ?? 0) > 0 ? "fresh" : "unavailable";
                 const dSent: DataStatus = sent?.news ? "fresh" : "unavailable";
+                const da = displayActionFor(d, exec.status);
+                const cardKind = executed && isBuy
+                  ? { label: "OPEN POSITION", cls: "bg-bull/15 text-bull" }
+                  : executed && isExit
+                  ? { label: "EXIT", cls: "bg-bear/15 text-bear" }
+                  : exec.status === "hold_position"
+                  ? { label: "OPEN POSITION", cls: "bg-bull/10 text-bull" }
+                  : exec.status === "watch_snapshot"
+                  ? { label: "WATCH", cls: "bg-amber-500/15 text-amber-600 dark:text-amber-400" }
+                  : exec.status === "research_snapshot"
+                  ? { label: "RESEARCH", cls: "bg-amber-500/10 text-amber-600 dark:text-amber-400" }
+                  : exec.status === "premarket_snapshot"
+                  ? { label: "PRE-MARKET", cls: "bg-primary/10 text-primary" }
+                  : exec.status.startsWith("blocked_")
+                  ? { label: "BLOCKED", cls: "bg-bear/10 text-bear" }
+                  : { label: da.label, cls: TONE_BADGE[da.tone] };
                 return (
                   <div key={d.id} className={`panel p-3 space-y-2 border ${executed && isBuy ? "border-bull/40" : executed && isExit ? "border-bear/40" : "border-border"}`}>
                     <div className="flex items-center justify-between gap-2">
+                      <div className="font-mono font-semibold">{d.symbol}</div>
+                      <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${cardKind.cls}`} title={conf.tooltip}>
+                        {cardKind.label}{da.intent && !executed && exec.status !== "hold_position" ? ` · intent ${da.intent}` : ""} · {conf.label}
+                      </span>
+                    </div>
                       <div className="font-mono font-semibold">{d.symbol}</div>
                       <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${executed && isBuy ? "bg-bull/15 text-bull" : executed && isExit ? "bg-bear/15 text-bear" : "bg-muted text-muted-foreground"}`} title={conf.tooltip}>
                         {d.action} · {conf.label}
