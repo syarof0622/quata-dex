@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { screenStocks } from "@/lib/screener.functions";
 import { scanUndervalueUniverse, getLatestUndervalueScores } from "@/lib/undervalue.functions";
+import { listOfficialDisclosures } from "@/lib/disclosures.functions";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
