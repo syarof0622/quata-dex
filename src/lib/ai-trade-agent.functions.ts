@@ -1461,9 +1461,22 @@ export const repairAITrainingEventLabels = createServerFn({ method: "POST" })
 
 /** UI server fn: returns current risk engine snapshot for the agent + portfolio. */
 export const getRiskEngineSnapshot = createServerFn({ method: "GET" }).handler(async () => {
-  const { data: agent } = await supabaseAdmin
-    .from("ai_trade_agents").select("*").eq("user_id", USER_ID).maybeSingle();
-  if (!agent) return null;
+  // Use the single-source-of-truth active agent resolver so this panel and
+  // the AI Analyst header / AI Chat all agree on which agent is "active".
+  const { getActiveAIAgent, getRecentAgentDecisionCount } = await import("./ai-context-summary.server");
+  const agent = await getActiveAIAgent();
+  const recentDecisionCount = await getRecentAgentDecisionCount(agent?.id ?? null, 5);
+
+  if (!agent) {
+    // No agent row at all. Still surface sync warning if decisions are firing.
+    return {
+      agent: null,
+      recentDecisionCount,
+      syncWarning: recentDecisionCount > 0
+        ? "Agent sync warning — recent AI decisions detected but no active agent row found."
+        : null,
+    } as any;
+  }
 
   const { data: positions } = await supabaseAdmin
     .from("paper_positions").select("symbol, qty, avg_price").eq("user_id", USER_ID);
@@ -1492,6 +1505,14 @@ export const getRiskEngineSnapshot = createServerFn({ method: "GET" }).handler(a
   const pausedUntil = agent.risk_paused_until ? new Date(agent.risk_paused_until).getTime() : 0;
   const riskPauseActive = pausedUntil > Date.now();
 
+  // Sync warning if recent decisions exist but the resolved agent is not
+  // currently running (status not active or automation disabled).
+  const ACTIVE = new Set(["active_market_open", "active", "running"]);
+  const looksActive = !!agent.automation_enabled && ACTIVE.has(String(agent.status ?? ""));
+  const syncWarning = !looksActive && recentDecisionCount > 0
+    ? "Agent sync warning — recent AI decisions detected but agent row not flagged active."
+    : null;
+
   return {
     agent: {
       id: agent.id,
@@ -1500,6 +1521,8 @@ export const getRiskEngineSnapshot = createServerFn({ method: "GET" }).handler(a
       automationEnabled: !!agent.automation_enabled,
       status: agent.status,
     },
+    recentDecisionCount,
+    syncWarning,
     config: {
       riskPerTradePct: Number(agent.risk_per_trade_pct ?? 0.01),
       maxDailyLossPct: Number(agent.max_daily_loss ?? 0.02),
