@@ -938,7 +938,12 @@ function AIAgentPanel() {
               ? `Sudah ada ${orderCounts.executed} paper order tereksekusi dan ${orderCounts.openPositions} open position. Belum ada closed trade — win rate dan profit factor akan dihitung setelah posisi pertama ditutup.`
               : "Belum ada closed trade. Win rate dan profit factor akan dihitung setelah posisi pertama ditutup."}
           </span>
-          <span className="text-[10px] uppercase bg-muted px-1.5 py-0.5 rounded">{orderCounts.executed > 0 ? "Waiting for first close" : "Waiting for first executed trade"}</span>
+          <span className="flex items-center gap-2">
+            <Button size="sm" variant="outline" disabled={repairLabels.isPending} onClick={() => repairLabels.mutate()}>
+              {repairLabels.isPending ? "Repairing…" : "Repair AI Learning Labels"}
+            </Button>
+            <span className="text-[10px] uppercase bg-muted px-1.5 py-0.5 rounded">{orderCounts.executed > 0 ? "Waiting for first close" : "Waiting for first executed trade"}</span>
+          </span>
         </div>
       )}
 
