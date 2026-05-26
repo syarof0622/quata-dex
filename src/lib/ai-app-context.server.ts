@@ -728,6 +728,7 @@ export async function getAIAppContext(userText: string) {
     market,
     newsSentiment,
     undervalue,
+    officialDisclosures,
     alerts,
     backtest,
     journal,
