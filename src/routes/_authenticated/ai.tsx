@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { ChatPanel } from "@/components/ChatPanel";
 import { RiskEnginePanel } from "@/components/RiskEnginePanel";
 import { DecisionReplayPanel } from "@/components/DecisionReplay";
-import { supabase } from "@/integrations/supabase/client";
+import { getAIContextSummaryServer } from "@/lib/ai-context-summary.server";
 import { Activity, Database, Newspaper, BarChart3, ShieldCheck, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { computeContextSummary, type BadgeStatus, type Tone } from "@/lib/ai-context-summary";
 
 export const Route = createFileRoute("/_authenticated/ai")({
   head: () => ({ meta: [{ title: "AI Trading Analyst — Quanta Terminal" }] }),
@@ -14,9 +14,10 @@ export const Route = createFileRoute("/_authenticated/ai")({
 });
 
 function AIAnalystPage() {
+  const fetchSummary = useServerFn(getAIContextSummaryServer);
   const { data: ctx } = useQuery({
-    queryKey: ["ai-analyst-context"],
-    queryFn: fetchMarketContext,
+    queryKey: ["ai-context-summary"],
+    queryFn: () => fetchSummary(),
     refetchInterval: 60_000,
     staleTime: 30_000,
   });
@@ -49,11 +50,11 @@ function AIAnalystPage() {
 
       {/* Market context bar */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-        <ContextCard title="IDX Session" value={ctx?.sessionLabel ?? "—"} tone={ctx?.sessionTone ?? "slate"} />
-        <ContextCard title="IHSG Bias" value={ctx?.biasLabel ?? "PARTIAL DATA"} tone={ctx?.biasTone ?? "slate"} />
-        <ContextCard title="Sentiment" value={ctx?.sentimentLabel ?? "PARTIAL DATA"} tone={ctx?.sentimentTone ?? "slate"} />
-        <ContextCard title="Data Quality" value={ctx?.dataQualityLabel ?? "PARTIAL"} tone={ctx?.dataQualityTone ?? "amber"} />
-        <ContextCard title="Source Health" value={ctx?.sourceHealthLabel ?? "Unknown"} tone={ctx?.sourceHealthTone ?? "slate"} subtext={ctx?.sourceHealthSubtext} />
+        <ContextCard title="IDX Session" value={ctx?.idxSession.label ?? "—"} tone={ctx?.idxSession.tone ?? "slate"} />
+        <ContextCard title="IHSG Bias" value={ctx?.ihsgBias.label ?? "PARTIAL DATA"} tone={ctx?.ihsgBias.tone ?? "slate"} />
+        <ContextCard title="Sentiment" value={ctx?.sentiment.label ?? "PARTIAL DATA"} tone={ctx?.sentiment.tone ?? "slate"} />
+        <ContextCard title="Data Quality" value={ctx?.dataQuality.label ?? "PARTIAL"} tone={ctx?.dataQuality.tone ?? "amber"} />
+        <ContextCard title="Source Health" value={ctx?.sourceHealth.label ?? "Unknown"} tone={ctx?.sourceHealth.tone ?? "slate"} subtext={ctx?.sourceHealth.subtext} />
       </div>
 
       {/* App Context status — reflects ACTUAL data status, not always green */}
@@ -121,86 +122,4 @@ function ContextCard({ title, value, tone, subtext }: { title: string; value: st
       {subtext && <div className="mt-0.5 text-[10px] text-muted-foreground truncate">{subtext}</div>}
     </div>
   );
-}
-
-type CtxData = {
-  sessionLabel: string; sessionTone: Tone;
-  biasLabel: string; biasTone: Tone;
-  sentimentLabel: string; sentimentTone: Tone;
-  dataQualityLabel: string; dataQualityTone: Tone;
-  sourceHealthLabel: string; sourceHealthTone: Tone; sourceHealthSubtext: string;
-  lastUpdateLabel: string;
-  badges: BadgeStatus[];
-};
-
-async function fetchMarketContext(): Promise<CtxData> {
-  const USER_ID = "00000000-0000-0000-0000-000000000001";
-  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-
-  // Resolve active paper account FIRST so positions/orders are scoped correctly.
-  const { data: account } = await supabase
-    .from("paper_accounts")
-    .select("id")
-    .eq("user_id", USER_ID)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  const accountId = (account as any)?.id ?? null;
-
-  const positionsQ = accountId
-    ? supabase.from("paper_positions").select("id").eq("account_id", accountId).limit(50)
-    : Promise.resolve({ data: [] as any[] });
-  const ordersQ = accountId
-    ? supabase
-        .from("paper_orders")
-        .select("id, status, side, realized_pnl, account_id, user_id")
-        .eq("account_id", accountId)
-        .eq("status", "filled")
-        .limit(500)
-    : Promise.resolve({ data: [] as any[] });
-
-  const [{ data: news }, { data: regime }, { data: sources }, { data: agents }, { data: positions }, { data: orders }] = await Promise.all([
-    supabase.from("news_articles").select("sentiment, sentiment_score, published_at").gte("published_at", since).eq("is_duplicate", false).limit(500),
-    supabase.from("market_regime_snapshots").select("regime_classification, idx_change_pct, created_at").order("created_at", { ascending: false }).limit(1),
-    supabase.from("news_sources").select("id, name, status, enabled, last_success_at, last_failed_at, last_error, fail_count"),
-    supabase.from("ai_trade_agents").select("automation_enabled, last_worker_run_at, last_worker_status, worker_error_count, status").order("created_at", { ascending: false }).limit(1),
-    positionsQ as any,
-    ordersQ as any,
-  ]);
-
-  // Closed trade = filled SELL with realized_pnl recorded. Filled BUYs are not
-  // closed trades. This must match ai-app-context.server.ts semantics.
-  const closedTrades = (orders ?? []).filter(
-    (o: any) =>
-      o.status === "filled" &&
-      o.side === "sell" &&
-      o.realized_pnl !== null &&
-      o.realized_pnl !== undefined,
-  ).length;
-
-  const sum = computeContextSummary({
-    news: (news ?? []) as any,
-    regime: (regime ?? []) as any,
-    sources: sources ?? [],
-    agent: (agents ?? [])[0] as any,
-    portfolio: { openPositions: positions?.length ?? 0 },
-    paperTrading: {
-      openPositions: positions?.length ?? 0,
-      closedTrades,
-    },
-  });
-
-  const now = new Date();
-  const lastUpdateLabel = now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Asia/Jakarta" }) + " WIB";
-
-  return {
-    sessionLabel: sum.idxSession.label, sessionTone: sum.idxSession.tone,
-    biasLabel: sum.ihsgBias.label, biasTone: sum.ihsgBias.tone,
-    sentimentLabel: sum.sentiment.label, sentimentTone: sum.sentiment.tone,
-    dataQualityLabel: sum.dataQuality.label, dataQualityTone: sum.dataQuality.tone,
-    sourceHealthLabel: sum.sourceHealth.label, sourceHealthTone: sum.sourceHealth.tone,
-    sourceHealthSubtext: sum.sourceHealth.subtext,
-    lastUpdateLabel,
-    badges: sum.badges,
-  };
 }
