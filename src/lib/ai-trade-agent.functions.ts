@@ -809,6 +809,8 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
           risk_level: "info", message: `Triggered at ${px}`, action_taken: "close_position",
         });
         executed += 1;
+        if (trigger === "stop_loss_triggered") metrics.stopLossTriggered += 1;
+        else metrics.takeProfitTriggered += 1;
       } catch { /* tolerate */ }
     }
   }
