@@ -283,14 +283,17 @@ export async function getAIAppContext(userText: string) {
       whyNoBuySummary: executedBuys.length === 0
         ? (agent.last_blocked_reason ?? blocked[0]?.calibration_reason ?? "No executed paper buys recently. Check market session, candidate scores, risk limits, and data freshness.")
         : null,
-      performanceSummary: perf ? {
-        totalTrades: perf.total_trades,
-        winRate: perf.total_trades > 0 ? perf.win_rate : null,
-        profitFactor: perf.total_trades > 0 ? perf.profit_factor : null,
-        totalReturn: perf.total_return,
-        maxDrawdown: perf.max_drawdown,
-        note: !perf.total_trades ? "No closed AI trades yet — win rate / profit factor must be rendered as N/A." : null,
-      } : null,
+      performanceSummary: perf ? (() => {
+        const tt = Number(perf.total_trades ?? 0);
+        return {
+          totalTrades: tt,
+          winRate: tt > 0 ? perf.win_rate : null,
+          profitFactor: tt > 0 ? perf.profit_factor : null,
+          totalReturn: perf.total_return,
+          maxDrawdown: perf.max_drawdown,
+          note: tt === 0 ? "No closed AI trades yet — win rate / profit factor must be rendered as N/A." : null,
+        };
+      })() : null,
     };
     contextStatus.aiTradeAgent = isAutoRunning ? "connected" : (agent.automation_enabled ? "partial" : "inactive");
 
