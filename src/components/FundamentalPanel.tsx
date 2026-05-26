@@ -27,12 +27,7 @@ function ratio(n: number | null | undefined, digits = 2): string {
   return n.toFixed(digits);
 }
 function fmtDate(s: string | null | undefined): string {
-  if (!s) return "—";
-  try {
-    return new Date(s).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-  } catch {
-    return s;
-  }
+  return formatDateWIB(s);
 }
 
 function Stat({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: "bull" | "bear" | "muted" }) {
