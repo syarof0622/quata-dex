@@ -98,14 +98,15 @@ const TONE_DOT: Record<string, string> = {
   slate:   "bg-slate-400",
 };
 
-function ContextCard({ title, value, tone }: { title: string; value: string; tone: string }) {
+function ContextCard({ title, value, tone, subtext }: { title: string; value: string; tone: string; subtext?: string }) {
   return (
-    <div className="rounded-xl border border-border/60 bg-card/50 px-3 py-2.5 hover:border-primary/30 transition-colors">
+    <div className="rounded-xl border border-border/60 bg-card/50 px-3 py-2.5 hover:border-primary/30 transition-colors" title={subtext}>
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
         <span className={cn("h-1.5 w-1.5 rounded-full", TONE_DOT[tone] ?? "bg-slate-400")} />
         {title}
       </div>
       <div className="mt-1 text-sm font-semibold truncate">{value}</div>
+      {subtext && <div className="mt-0.5 text-[10px] text-muted-foreground truncate">{subtext}</div>}
     </div>
   );
 }
@@ -115,9 +116,10 @@ type CtxData = {
   biasLabel: string; biasTone: string;
   sentimentLabel: string; sentimentTone: string;
   dataQualityLabel: string; dataQualityTone: string;
-  sourceHealthLabel: string; sourceHealthTone: string;
+  sourceHealthLabel: string; sourceHealthTone: string; sourceHealthSubtext: string;
   lastUpdateLabel: string;
 };
+
 
 async function fetchMarketContext(): Promise<CtxData> {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
