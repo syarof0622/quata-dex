@@ -4,7 +4,7 @@ import { ChatPanel } from "@/components/ChatPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { Activity, Database, Newspaper, BarChart3, ShieldCheck, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { summarizeSourceHealth, overallStatusLabel, overallStatusTone, summarySubtext } from "@/lib/source-health";
+import { computeContextSummary, type BadgeStatus, type Tone } from "@/lib/ai-context-summary";
 
 export const Route = createFileRoute("/_authenticated/ai")({
   head: () => ({ meta: [{ title: "AI Trading Analyst — Quanta Terminal" }] }),
