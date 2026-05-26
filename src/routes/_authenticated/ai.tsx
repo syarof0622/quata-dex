@@ -178,14 +178,13 @@ async function fetchMarketContext(): Promise<CtxData> {
   if (newsCount > 30) { dataQualityLabel = "Fresh"; dataQualityTone = "emerald"; }
   else if (newsCount > 5) { dataQualityLabel = "Partial"; dataQualityTone = "amber"; }
 
-  // Source health
-  const enabled = (sources ?? []).filter((s: any) => s.enabled);
-  const active = enabled.filter((s: any) => s.status === "ok" || s.status === "idle" || s.status === "success").length;
-  const total = enabled.length;
-  let sourceHealthLabel = total === 0 ? "—" : `${active}/${total} active`;
-  let sourceHealthTone = total === 0 ? "slate" : active === total ? "emerald" : active >= total * 0.6 ? "amber" : "rose";
+  // Source health (sync with News page; treats fallback/quota as PARTIAL, not failed)
+  const shSummary = summarizeSourceHealth((sources ?? []) as any);
+  const sourceHealthLabel = overallStatusLabel(shSummary.overallStatus);
+  const sourceHealthTone = overallStatusTone(shSummary.overallStatus);
+  const sourceHealthSubtext = summarySubtext(shSummary);
 
   const lastUpdateLabel = now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Asia/Jakarta" }) + " WIB";
 
-  return { sessionLabel, sessionTone, biasLabel, biasTone, sentimentLabel, sentimentTone, dataQualityLabel, dataQualityTone, sourceHealthLabel, sourceHealthTone, lastUpdateLabel };
+  return { sessionLabel, sessionTone, biasLabel, biasTone, sentimentLabel, sentimentTone, dataQualityLabel, dataQualityTone, sourceHealthLabel, sourceHealthTone, sourceHealthSubtext, lastUpdateLabel };
 }
