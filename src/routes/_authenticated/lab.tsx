@@ -1405,11 +1405,11 @@ function Backtester() {
       {m && (
         <div className="grid md:grid-cols-6 gap-2">
           <Stat label="Trades" value={m.trades.toString()} />
-          <Stat label="Win rate" value={m.winRate.toFixed(1) + "%"} tone={m.winRate >= 50 ? "bull" : "bear"} />
-          <Stat label="Total return" value={m.totalReturnPct.toFixed(2) + "%"} tone={m.totalReturnPct >= 0 ? "bull" : "bear"} />
-          <Stat label="Max DD" value={"-" + m.maxDrawdownPct.toFixed(2) + "%"} tone="bear" />
-          <Stat label="Sharpe" value={m.sharpe.toFixed(2)} />
-          <Stat label="Profit factor" value={isFinite(m.profitFactor) ? m.profitFactor.toFixed(2) : "∞"} />
+          <Stat label="Win rate" value={m.trades === 0 ? "N/A" : m.winRate.toFixed(1) + "%"} tone={m.trades === 0 ? undefined : m.winRate >= 50 ? "bull" : "bear"} />
+          <Stat label="Total return" value={m.trades === 0 ? "0.00% (No trades)" : m.totalReturnPct.toFixed(2) + "%"} tone={m.trades === 0 ? undefined : m.totalReturnPct >= 0 ? "bull" : "bear"} />
+          <Stat label="Max DD" value={m.trades === 0 ? "N/A" : "-" + m.maxDrawdownPct.toFixed(2) + "%"} tone={m.trades === 0 ? undefined : "bear"} />
+          <Stat label="Sharpe" value={m.trades === 0 ? "N/A" : m.sharpe.toFixed(2)} />
+          <Stat label="Profit factor" value={m.trades === 0 ? "N/A" : isFinite(m.profitFactor) ? m.profitFactor.toFixed(2) : "∞"} />
         </div>
       )}
 

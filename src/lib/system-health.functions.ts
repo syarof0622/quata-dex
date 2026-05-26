@@ -2,6 +2,8 @@
 // and consistency signals into a single payload for the Health Dashboard.
 import { createServerFn } from "@tanstack/react-start";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { summarizeSourceHealth, overallStatusLabel, type OverallStatus } from "./source-health";
+import { formatWIB } from "./idx-market-session";
 
 export type HealthStatus = "healthy" | "partial" | "degraded" | "failed" | "unknown";
 
@@ -87,7 +89,49 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
         errorCount: agent?.worker_error_count ?? 0,
         automationEnabled: agent?.automation_enabled ? "yes" : "no",
         lastMessage: agent?.last_worker_message ?? null,
+        lastRunWIB: formatWIB(agent?.last_worker_run_at ?? null),
       },
+    });
+
+    // 1b) Next expected worker run / last auto decision / last auto execution
+    const nextRunMins = minutesAgo((agent as any)?.next_expected_worker_run_at ?? null);
+    cards.push({
+      key: "next_worker_run",
+      label: "Next Expected Worker Run",
+      status: (agent as any)?.next_expected_worker_run_at
+        ? (nextRunMins != null && nextRunMins > 0 ? "partial" : "healthy")
+        : "unknown",
+      detail: (agent as any)?.next_expected_worker_run_at
+        ? `Dijadwalkan: ${formatWIB((agent as any).next_expected_worker_run_at)}`
+        : "Jadwal next run belum tercatat.",
+      lastUpdatedAt: (agent as any)?.next_expected_worker_run_at ?? null,
+    });
+
+    const { data: agentTimes } = await supabaseAdmin
+      .from("ai_trade_agents")
+      .select("last_auto_decision_at, last_auto_execution_at")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const decMinsAuto = minutesAgo(agentTimes?.last_auto_decision_at ?? null);
+    cards.push({
+      key: "last_auto_decision",
+      label: "Last Auto Decision",
+      status: agentTimes?.last_auto_decision_at ? freshnessStatus(decMinsAuto, 60, 240) : "unknown",
+      detail: agentTimes?.last_auto_decision_at
+        ? `${formatWIB(agentTimes.last_auto_decision_at)} (${decMinsAuto} menit lalu)`
+        : "Belum ada keputusan otomatis.",
+      lastUpdatedAt: agentTimes?.last_auto_decision_at ?? null,
+    });
+    const exMinsAuto = minutesAgo(agentTimes?.last_auto_execution_at ?? null);
+    cards.push({
+      key: "last_auto_execution",
+      label: "Last Auto Execution",
+      status: agentTimes?.last_auto_execution_at ? freshnessStatus(exMinsAuto, 240, 1440) : "unknown",
+      detail: agentTimes?.last_auto_execution_at
+        ? `${formatWIB(agentTimes.last_auto_execution_at)} (${exMinsAuto} menit lalu)`
+        : "Belum ada eksekusi otomatis.",
+      lastUpdatedAt: agentTimes?.last_auto_execution_at ?? null,
     });
 
     // 2) News Pipeline (latest article fetch)
@@ -131,42 +175,63 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
       lastUpdatedAt: dq?.created_at ?? null,
     });
 
-    // 4) Source Health
+    // 4) Source Health — normalized via summarizeSourceHealth so the Health
+    // Dashboard matches the AI Analyst header (fallback / quota-protected
+    // are partial, not failed total).
     const { data: sources } = await supabaseAdmin
       .from("news_sources")
-      .select("id, status, fail_count, enabled, last_success_at, last_failed_at");
-    const enabled = (sources ?? []).filter((s: any) => s.enabled);
-    const failing = enabled.filter((s: any) => s.status === "error" || (s.fail_count ?? 0) >= 3);
-    const srcStatus: HealthStatus = enabled.length === 0
-      ? "unknown"
-      : failing.length === 0
-      ? "healthy"
-      : failing.length / enabled.length < 0.4
-      ? "partial"
-      : "degraded";
+      .select("id, name, status, enabled, fail_count, last_success_at, last_failed_at, last_error");
+    const summary = summarizeSourceHealth((sources ?? []) as any);
+    const overallMap: Record<OverallStatus, HealthStatus> = {
+      active: "healthy",
+      partial: "partial",
+      degraded: "degraded",
+      failed: "failed",
+      unknown: "unknown",
+    };
+    const detailParts: string[] = [];
+    if (summary.activeCount) detailParts.push(`${summary.activeCount} active`);
+    if (summary.fallbackCount) detailParts.push(`${summary.fallbackCount} fallback`);
+    if (summary.quotaProtectedCount) detailParts.push(`${summary.quotaProtectedCount} quota protected`);
+    if (summary.degradedCount) detailParts.push(`${summary.degradedCount} degraded`);
+    if (summary.failedCount) detailParts.push(`${summary.failedCount} failed`);
+    if (summary.disabledCount) detailParts.push(`${summary.disabledCount} disabled`);
     cards.push({
       key: "source_health",
       label: "Source Health",
-      status: srcStatus,
-      detail: enabled.length === 0
-        ? "Tidak ada source aktif."
-        : `${failing.length}/${enabled.length} source bermasalah.`,
-      lastUpdatedAt: null,
-      metrics: { enabled: enabled.length, failing: failing.length },
+      status: overallMap[summary.overallStatus],
+      detail: summary.sources.length === 0
+        ? "Tidak ada data source."
+        : `${overallStatusLabel(summary.overallStatus)} · ${detailParts.join(" · ") || "no signal"}`,
+      lastUpdatedAt: summary.lastUpdated,
+      metrics: {
+        active: summary.activeCount,
+        fallback: summary.fallbackCount,
+        quotaProtected: summary.quotaProtectedCount,
+        degraded: summary.degradedCount,
+        failed: summary.failedCount,
+        disabled: summary.disabledCount,
+      },
     });
 
-    // 5) Portfolio Sync (latest equity snapshot vs computed equity)
+    // 5) Portfolio Sync — scoped to the active paper account for USER_ID.
+    const USER_ID = "00000000-0000-0000-0000-000000000001";
     const { data: acc } = await supabaseAdmin
       .from("paper_accounts")
       .select("id, cash, equity")
-      .limit(1)
-      .maybeSingle();
-    const { data: snap } = await supabaseAdmin
-      .from("portfolio_equity_snapshots")
-      .select("created_at, equity, cash, holdings_value")
+      .eq("user_id", USER_ID)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
+    const { data: snap } = acc?.id
+      ? await supabaseAdmin
+          .from("portfolio_equity_snapshots")
+          .select("created_at, equity, cash, holdings_value")
+          .eq("paper_account_id", acc.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      : { data: null as any };
     const snapMins = minutesAgo(snap?.created_at ?? null);
     let portfolioStatus: HealthStatus = "unknown";
     if (snap && acc) {
@@ -226,10 +291,11 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
       lastUpdatedAt: cronAudit?.created_at ?? null,
     });
 
-    // 8) Database Consistency (basic checks)
-    const { data: positions } = await supabaseAdmin
-      .from("paper_positions")
-      .select("id, qty, avg_price");
+    // 8) Database Consistency — scoped to active account.
+    const positionsQ = acc?.id
+      ? supabaseAdmin.from("paper_positions").select("id, qty, avg_price").eq("account_id", acc.id)
+      : supabaseAdmin.from("paper_positions").select("id, qty, avg_price").eq("user_id", USER_ID);
+    const { data: positions } = await positionsQ;
     let invalidPos = 0;
     for (const p of (positions ?? []) as any[]) {
       if (!Number.isFinite(Number(p.qty)) || !Number.isFinite(Number(p.avg_price))) invalidPos++;
@@ -237,10 +303,10 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
     }
     if (invalidPos > 0) warnings.push(`${invalidPos} posisi paper tidak valid (qty/avg_price NaN atau ≤0).`);
 
-    const { data: orphanOrders } = await supabaseAdmin
-      .from("paper_orders")
-      .select("id, price, qty, status")
-      .eq("status", "filled");
+    const ordersQ = acc?.id
+      ? supabaseAdmin.from("paper_orders").select("id, price, qty, status").eq("account_id", acc.id).eq("status", "filled")
+      : supabaseAdmin.from("paper_orders").select("id, price, qty, status").eq("user_id", USER_ID).eq("status", "filled");
+    const { data: orphanOrders } = await ordersQ;
     let invalidOrders = 0;
     for (const o of (orphanOrders ?? []) as any[]) {
       const px = Number(o.price);
