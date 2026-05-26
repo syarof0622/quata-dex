@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getIDXMarketSession, canExecutePaperTrade } from "@/lib/idx-market-session";
 import { buildStrategyIntelligence } from "@/lib/strategy-intelligence.functions";
 import { summarizeSourceHealth } from "@/lib/source-health";
+import { getPortfolioAnalytics } from "@/lib/analytics.functions";
 
 const USER_ID = "00000000-0000-0000-0000-000000000001";
 
@@ -738,11 +739,43 @@ export async function getAIAppContext(userText: string) {
     strategyIntelligence = { status: "error", error: String(e?.message ?? e) };
   }
 
+  // ---------- PORTFOLIO ATTRIBUTION (best-effort; reuses analytics serverFn) ----------
+  let portfolioAttribution: any = { status: "empty" as Status };
+  try {
+    const a: any = await getPortfolioAnalytics();
+    if (a?.attribution) {
+      portfolioAttribution = {
+        status: "connected" as Status,
+        baselineForContribution: a.attribution.baselineForContribution,
+        topContributor: a.attribution.topContributor,
+        worstContributor: a.attribution.worstContributor,
+        betaCoverage: a.attribution.betaCoverage,
+        positions: (a.attribution.positions ?? []).map((p: any) => ({
+          symbol: p.symbol,
+          sector: p.sector,
+          weight: Number(p.weight?.toFixed?.(2) ?? p.weight),
+          unrealizedPnl: p.unrealizedPnl,
+          contributionToReturn: Number(p.contributionToReturn?.toFixed?.(2) ?? p.contributionToReturn),
+          contributionToRisk: Number(p.contributionToRisk?.toFixed?.(2) ?? p.contributionToRisk),
+          beta: p.beta,
+          betaSource: p.betaSource,
+          volatility: p.volatility,
+        })),
+        sectors: a.attribution.sectors,
+        cashDrag: a.cashDrag,
+        scenarios: a.scenarios,
+      };
+    }
+  } catch (e: any) {
+    portfolioAttribution = { status: "error" as Status, error: String(e?.message ?? e).slice(0, 200) };
+  }
+
   return {
     intent,
     contextStatus,
     portfolio,
     paperTrading,
+    portfolioAttribution,
     aiTradeAgent,
     autonomousScanner,
     watchlist,
