@@ -74,9 +74,11 @@ function AIAnalystPage() {
       </div>
 
 
-      <RiskEnginePanel />
-      <DecisionReplayPanel />
+      {/* Chat is the primary surface — render before audit / risk panels so the
+          composer is visible without scrolling past Decision Replay. */}
       <ChatPanel />
+      <DecisionReplayPanel defaultOpen={false} />
+      <RiskEnginePanel />
     </div>
   );
 }
