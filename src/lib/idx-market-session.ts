@@ -72,10 +72,53 @@ export function canExecutePaperTrade(d: Date = new Date()): { ok: boolean; reaso
 }
 
 export function getNextIDXSession(_d: Date = new Date()): string {
-  // Lightweight label only; full calendar reasoning can be added later.
   const s = getIDXMarketSession(_d);
   if (s.state === "pre_open") return "Sesi I 09:00 WIB";
   if (s.state === "lunch_break") return "Sesi II";
   if (s.state === "open_session_1" || s.state === "open_session_2") return "Sedang berlangsung";
   return "Hari trading berikutnya 09:00 WIB";
+}
+
+/**
+ * End of the current IDX trading day in WIB, or the next trading day's
+ * 09:00 WIB if today is post-close / weekend / holiday. Returned as a UTC
+ * Date so it can be persisted as ISO; UI must render via formatWIB.
+ */
+export function getEndOfCurrentIDXTradingDayWIB(d: Date = new Date()): Date {
+  const s = getIDXMarketSession(d);
+  const { isoDate } = jakartaParts(d);
+  const [y, m, day] = isoDate.split("-").map(Number);
+  const wibToUtc = (year: number, mon: number, dayOfMonth: number, h: number, min: number) =>
+    new Date(Date.UTC(year, mon - 1, dayOfMonth, h - 7, min, 0, 0));
+
+  if (
+    s.state === "open_session_1" || s.state === "open_session_2" ||
+    s.state === "lunch_break" || s.state === "pre_open"
+  ) {
+    return wibToUtc(y, m, day, 15, 49);
+  }
+  let probe = new Date(d.getTime());
+  for (let i = 0; i < 10; i++) {
+    probe = new Date(probe.getTime() + 24 * 60 * 60 * 1000);
+    if (isIDXTradingDay(probe)) {
+      const p = jakartaParts(probe);
+      const [ny, nm, nd] = p.isoDate.split("-").map(Number);
+      return wibToUtc(ny, nm, nd, 9, 0);
+    }
+  }
+  return wibToUtc(y, m, day + 1, 9, 0);
+}
+
+/** Human label in WIB. Renders "26 Mei 2026, 15:49 WIB" — never UTC/Z. */
+export function formatWIB(d: Date | string | null | undefined): string {
+  if (!d) return "—";
+  const date = typeof d === "string" ? new Date(d) : d;
+  if (!(date instanceof Date) || isNaN(date.getTime())) return "—";
+  try {
+    return date.toLocaleString("id-ID", {
+      timeZone: "Asia/Jakarta",
+      day: "2-digit", month: "short", year: "numeric",
+      hour: "2-digit", minute: "2-digit",
+    }) + " WIB";
+  } catch { return "—"; }
 }
