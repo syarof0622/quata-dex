@@ -864,28 +864,53 @@ function getTradeResultFromReturn(returnPct: number): "win" | "loss" | "breakeve
   return "breakeven";
 }
 
-/** Is this training event a completed/closed trade (not HOLD, not open)? */
-function isCompletedTradeEvent(event: any): boolean {
-  // Prioritize the explicit event_type column (new) over heuristics.
-  const evType = String(event?.event_type ?? event?.final_outcome?.eventType ?? "").toLowerCase();
-  if (evType === "completed_trade") return true;
-  if (evType === "open_trade_snapshot" || evType === "passive_analysis"
-      || evType === "watch_snapshot" || evType === "research_snapshot"
-      || evType === "premarket_plan") return false;
+/** Closed-trade event taxonomy — the ONLY event types that count toward win
+ *  rate / profit factor / trade memory result. Includes legacy
+ *  "completed_trade" label for backward compatibility. */
+const CLOSED_TRADE_EVENT_TYPES = new Set([
+  "closed_trade",
+  "stop_loss_exit",
+  "take_profit_exit",
+  "risk_exit",
+  "completed_trade", // legacy
+]);
 
+const NON_TRADE_EVENT_TYPES = new Set([
+  "open_trade_snapshot",
+  "open_position_hold",
+  "blocked_decision",
+  "watch_snapshot",
+  "research_snapshot",
+  "no_trade_snapshot",
+  "passive_analysis",
+  "premarket_plan",
+  "premarket_snapshot",
+]);
+
+/** Is this training event a closed trade with realized P/L (the only kind that
+ *  is allowed to contribute to win rate, profit factor, or trade memory)? */
+function isCompletedTradeEvent(event: any): boolean {
+  const evType = String(event?.event_type ?? event?.final_outcome?.eventType ?? "").toLowerCase();
+  if (NON_TRADE_EVENT_TYPES.has(evType)) return false;
+  if (CLOSED_TRADE_EVENT_TYPES.has(evType)) {
+    // Must have realized pnl available; otherwise it's pending review data.
+    const hasRealized =
+      Number.isFinite(Number(event?.pnl)) ||
+      Number.isFinite(Number(event?.paper_pnl_percent)) ||
+      Number.isFinite(Number(event?.final_outcome?.paperPnLPercent));
+    return hasRealized;
+  }
+
+  // Legacy / unlabeled rows — fall back to heuristics, never count BUY/HOLD.
   if (!event?.final_outcome) return false;
   const action = String(event?.ai_decision?.action ?? "").toUpperCase();
-  if (action === "HOLD" || action === "" || action === "NO_TRADE") return false;
-  if (!["BUY", "SELL", "EXIT"].includes(action)) return false;
-  // BUY without explicit completed_trade label is an open snapshot — not a closed trade.
-  if (action === "BUY") return false;
+  if (!["SELL", "EXIT"].includes(action)) return false;
   const exec = event?.paper_execution;
   const executed = exec?.executed === true || exec?.status === "filled";
   const hasRealizedPnl = Number.isFinite(Number(event?.paper_pnl_percent))
     || Number.isFinite(Number(event?.final_outcome?.paperPnLPercent))
-    || Number.isFinite(Number(event?.final_outcome?.paper_pnl_percent))
     || (Number.isFinite(Number(event?.pnl)) && Number(event?.pnl) !== 0);
-  return executed || hasRealizedPnl;
+  return executed && hasRealizedPnl;
 }
 
 /** Aggregate finalized training events per symbol into ai_agent_trade_memory.
