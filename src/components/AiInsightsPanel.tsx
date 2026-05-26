@@ -28,6 +28,8 @@ import {
   evaluateAiAlerts,
   listAlertDefinitions,
 } from "@/lib/alerts-intelligence.functions";
+import { getStrategyIntelligence } from "@/lib/strategy-intelligence.functions";
+import { formatDateTimeWIB } from "@/lib/format";
 
 const sevColor: Record<string, string> = {
   info: "secondary",
