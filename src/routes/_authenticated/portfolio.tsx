@@ -370,7 +370,7 @@ function Portfolio() {
                   <td className={`p-2 text-right font-mono ${colorForChange(t.realized)}`}>{money(t.realized)}</td>
                   <td className={`p-2 text-right font-mono text-xs ${colorForChange(t.returnPct)}`}>{formatPct(t.returnPct)}</td>
                   <td className="p-2 text-xs text-muted-foreground">{t.closeReason}</td>
-                  <td className="p-2 text-right text-[10px] text-muted-foreground">{new Date(t.closedAt).toLocaleString()}</td>
+                  <td className="p-2 text-right text-[10px] text-muted-foreground">{formatDateTimeWIB(t.closedAt)}</td>
                 </tr>
               ))}
               {recentClosed.length === 0 && (
