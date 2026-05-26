@@ -375,9 +375,18 @@ export async function evaluateSymbol(
                   + disclosureBoost + macroBoost;
   let rawConfidence = Math.min(0.99, Math.abs(composite));
 
-  // Penalize raw confidence by data-quality shortfall
-  const dqPenalty = (100 - dataQuality.overallDataQualityScore) / 200; // up to -0.5
+  // Autonomous scanner already gated DQ + liquidity. For trade-classified
+  // candidates we soften the DQ penalty and apply a confidence floor derived
+  // from the scanner score so high-score picks aren't blocked by sample=0.
+  const autoIsTradeCandidate = !!autonomousContext
+    && /trade/i.test(String(autonomousContext.classification ?? ""));
+  const dqShortfall = (100 - dataQuality.overallDataQualityScore) / 200; // up to -0.5
+  const dqPenalty = autoIsTradeCandidate ? dqShortfall * 0.3 : dqShortfall;
   rawConfidence = Math.max(0, rawConfidence - dqPenalty);
+  if (autoIsTradeCandidate) {
+    const floor = Math.min(0.85, Number(autonomousContext!.score) / 120);
+    if (floor > rawConfidence) rawConfidence = floor;
+  }
 
   // 9. Calibrate using historic outcomes
   const calib = await calibrateConfidence(agent.id, sym, rawConfidence, agent.strategyMode);
