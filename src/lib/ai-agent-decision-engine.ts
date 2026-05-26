@@ -630,7 +630,7 @@ export async function evaluateSymbol(
       allocationAmount: agent.allocationAmount,
       suggestedLot: sized.lot, suggestedShares: sized.shares,
       entryPrice: price, stopLoss, takeProfit, riskRewardRatio: rr,
-      reasoning: `Teknikal ${techLabel} (${techScore.toFixed(0)}), sentimen ${sentScore.toFixed(2)}, news +${realNewsData.positiveNewsCount}/-${realNewsData.negativeNewsCount} (high ${realNewsData.highImpactNewsCount}), IHSG ${realMarketContext.ihsgBias}, sektor ${sectorRotationLabel}, fundamental ${fundamentalContext.classification} (trap ${fundamentalContext.valueTrapRisk ?? "n/a"}). Composite ${(composite*100).toFixed(0)}%.${autoReasonTag} ${calib.reason} Allocate ${sized.lot} lot @ ${price}.`,
+      reasoning: `Teknikal ${techLabel} (${techScore.toFixed(0)}), sentimen ${sentScore.toFixed(2)}, news +${realNewsData.positiveNewsCount}/-${realNewsData.negativeNewsCount} (high ${realNewsData.highImpactNewsCount}), IHSG ${realMarketContext.ihsgBias}, sektor ${sectorRotationLabel}, fundamental ${fundamentalContext.classification} (trap ${fundamentalContext.valueTrapRisk ?? "n/a"}), strategi ${strategyName} (${strategyContext?.classification ?? "n/a"}, score ${strategyContext?.strategyScore ?? "n/a"}, regime ${marketRegimeLabel} compat ${((strategyContext?.regimeCompatibility ?? 0)*100).toFixed(0)}%). Composite ${(composite*100).toFixed(0)}%.${autoReasonTag} ${calib.reason} Allocate ${sized.lot} lot @ ${price}.`,
       dataFreshnessSeconds: freshness, dataSource: "Yahoo Finance + Google News RSS + IDX disclosure",
       executionAllowed: true, analysisOnly: false,
       realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
@@ -638,9 +638,12 @@ export async function evaluateSymbol(
       riskSnapshot: { slPct: preset.slPct, tpPct: preset.tpPct, rr,
         autonomousScore: autonomousContext?.score ?? null,
         autonomousRiskMode: agent.autonomousRiskMode ?? null,
-        fundamentalContext,
+        fundamentalContext, strategyContext,
       },
       dataQuality, warnings,
+      strategyName, setupType: strategyName, marketRegime: marketRegimeLabel,
+      signalSource: autoGate ? "autonomous_scanner" : "manual_strategy_mode",
+      strategyContext,
     };
   }
 
@@ -650,5 +653,6 @@ export async function evaluateSymbol(
     portfolioSnapshot, dataFreshnessSeconds: freshness,
     dataSource: "Yahoo Finance + public news feed",
     dataQuality,
+    strategyName, marketRegime: marketRegimeLabel, strategyContext,
   });
 }
