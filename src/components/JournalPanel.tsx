@@ -62,7 +62,7 @@ export function JournalPanel() {
           <tbody>
             {(list.data ?? []).map((r: any) => (
               <tr key={r.id} className="border-t border-border align-top">
-                <td className="p-2 text-xs text-muted-foreground">{new Date(r.created_at).toLocaleString()}</td>
+                <td className="p-2 text-xs text-muted-foreground">{formatDateTimeWIB(r.created_at)}</td>
                 <td className="p-2 font-medium">{r.symbol}</td>
                 <td className={`p-2 uppercase text-xs ${r.side === "buy" ? "text-bull" : "text-bear"}`}>{r.side}</td>
                 <td className="p-2 text-right font-mono text-xs">{r.qty} @ {formatPrice(r.price)}</td>
