@@ -126,7 +126,7 @@ async function fetchMarketContext(): Promise<CtxData> {
   const [{ data: news }, { data: regime }, { data: sources }] = await Promise.all([
     supabase.from("news_articles").select("sentiment, sentiment_score, published_at").gte("published_at", since).eq("is_duplicate", false).limit(500),
     supabase.from("market_regime_snapshots").select("regime_classification, idx_change_pct, created_at").order("created_at", { ascending: false }).limit(1),
-    supabase.from("news_sources").select("status, enabled"),
+    supabase.from("news_sources").select("id, name, status, enabled, last_success_at, last_failed_at, last_error, fail_count"),
   ]);
 
   // Session
