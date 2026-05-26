@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getFundamentals, type FundamentalDTO } from "@/lib/fundamentals.functions";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Building2, ExternalLink, Globe, Users, TrendingUp, ShieldCheck, Coins, CalendarClock, BarChart3 } from "lucide-react";
+import { formatDateWIB, formatTimeWIB } from "@/lib/format";
 
 function compactNumber(n: number | null | undefined, currency?: string | null): string {
   if (n == null || !isFinite(n)) return "—";
