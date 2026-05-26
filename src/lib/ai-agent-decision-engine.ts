@@ -422,8 +422,14 @@ export async function evaluateSymbol(
     };
   }
 
-  // BUY logic
-  if (!pos && agent.allowBuy && composite > 0 && techLabel !== "SELL") {
+  // BUY logic — allow when composite is positive OR scanner pre-classified as trade candidate.
+  const autoGate = autoIsTradeCandidate
+    ? (AUTO_GATES[String(agent.autonomousRiskMode ?? "balanced")] ?? AUTO_GATES.balanced)
+    : null;
+  const autoBuyAllowed = !!autoGate
+    && Number(autonomousContext!.score) >= autoGate.minScore
+    && techLabel !== "SELL";
+  if (!pos && agent.allowBuy && techLabel !== "SELL" && (composite > 0 || autoBuyAllowed)) {
     // Undervalue gate: only when strategyMode signals an undervalued strategy.
     const isUndervaluedStrategy = /undervalu/i.test(agent.strategyMode);
     if (isUndervaluedStrategy) {
