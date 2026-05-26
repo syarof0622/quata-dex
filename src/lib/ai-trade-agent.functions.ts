@@ -312,9 +312,19 @@ async function executePaperFill(opts: {
     side, shares,
   };
 
-  // Distinguish open-trade BUY snapshots from completed-trade SELL/EXIT events.
+  // Distinguish open-trade BUY snapshots from closed-trade SELL/EXIT events.
+  // Closed trade variants follow the standardized taxonomy.
   const isOpenTrade = side === "buy";
-  const eventType = isOpenTrade ? "open_trade_snapshot" : "completed_trade";
+  const eventType: string = isOpenTrade
+    ? "open_trade_snapshot"
+    : closeReason === "stop_loss_triggered"
+      ? "stop_loss_exit"
+      : closeReason === "take_profit_triggered"
+        ? "take_profit_exit"
+        : closeReason
+          ? "risk_exit"
+          : "closed_trade";
+  const tradeLifecycle = isOpenTrade ? "open" : "closed";
 
   // Synthetic decision wrapper for risk exits without an upstream AgentDecision.
   const decisionPayload: any = decision ? {
