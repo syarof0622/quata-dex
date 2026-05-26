@@ -40,7 +40,7 @@ export const journalStats = createServerFn({ method: "GET" }).handler(async () =
   const wins = closed.filter(r => Number(r.pnl) > 0);
   const losses = closed.filter(r => Number(r.pnl) <= 0);
   const totalPnl = closed.reduce((a, r) => a + Number(r.pnl ?? 0), 0);
-  const winRate = closed.length ? (wins.length / closed.length) * 100 : 0;
+  const winRate: number | null = closed.length ? (wins.length / closed.length) * 100 : null;
   const avgWin = wins.length ? wins.reduce((a, r) => a + Number(r.pnl), 0) / wins.length : 0;
   const avgLoss = losses.length ? losses.reduce((a, r) => a + Number(r.pnl), 0) / losses.length : 0;
   const expectancy = closed.length ? totalPnl / closed.length : 0;

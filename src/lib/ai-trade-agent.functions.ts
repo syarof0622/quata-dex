@@ -276,11 +276,12 @@ async function executePaperFill(opts: {
     if (existing) {
       const newQty = Number(existing.qty) + shares;
       const newAvg = (Number(existing.avg_price) * Number(existing.qty) + fillPrice * shares) / newQty;
-      await supabaseAdmin.from("paper_positions").update({ qty: newQty, avg_price: newAvg })
+      await supabaseAdmin.from("paper_positions").update({ qty: newQty, avg_price: newAvg, opened_by_agent_id: agentId, source: "ai_agent" })
         .eq("user_id", USER_ID).eq("symbol", symbol);
     } else {
       await supabaseAdmin.from("paper_positions").insert({
         account_id: paperAccountId, user_id: USER_ID, symbol, qty: shares, avg_price: fillPrice,
+        opened_by_agent_id: agentId, source: "ai_agent",
       });
     }
     cashAfter = cashBefore - notional - fee;
@@ -297,11 +298,17 @@ async function executePaperFill(opts: {
   }
 
   const { data: order } = await supabaseAdmin.from("paper_orders").insert({
-    account_id: paperAccountId, user_id: USER_ID, agent_id: agentId,
+    account_id: paperAccountId, user_id: USER_ID, agent_id: agentId, source: "ai_agent",
     symbol, side, type: "market", qty: shares,
     price, filled_price: fillPrice, status: "filled", filled_at: new Date().toISOString(),
     realized_pnl: realizedPnl, slippage_pct: slipPct, fee,
   }).select("*").single();
+
+  // Backlink decision → order so AI-owned trades can be unambiguously aggregated.
+  if (order?.id && decisionId) {
+    await supabaseAdmin.from("ai_agent_decisions")
+      .update({ paper_order_id: order.id }).eq("id", decisionId);
+  }
 
   const paperExecution = {
     executed: true, orderId: order?.id ?? null,

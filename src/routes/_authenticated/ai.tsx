@@ -4,7 +4,7 @@ import { ChatPanel } from "@/components/ChatPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { Activity, Database, Newspaper, BarChart3, ShieldCheck, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { summarizeSourceHealth, overallStatusLabel, overallStatusTone, summarySubtext } from "@/lib/source-health";
+import { computeContextSummary, type BadgeStatus, type Tone } from "@/lib/ai-context-summary";
 
 export const Route = createFileRoute("/_authenticated/ai")({
   head: () => ({ meta: [{ title: "AI Trading Analyst — Quanta Terminal" }] }),
@@ -54,17 +54,23 @@ function AIAnalystPage() {
         <ContextCard title="Source Health" value={ctx?.sourceHealthLabel ?? "Unknown"} tone={ctx?.sourceHealthTone ?? "slate"} subtext={ctx?.sourceHealthSubtext} />
       </div>
 
-      {/* App Context status — tells user what the AI can read */}
+      {/* App Context status — reflects ACTUAL data status, not always green */}
       <div className="rounded-xl border border-border/60 bg-card/40 px-3 py-2">
         <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">AI App Context (read-only)</div>
         <div className="flex flex-wrap gap-1.5">
-          {["Portfolio","Paper Trading","AI Trade Agent","Autonomous Scanner","Watchlist","News & Sentiment","Undervalue","Alerts","Backtest","Journal","Market Regime","Data Quality","Source Health"].map(label => (
-            <span key={label} className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-[10px] px-2 py-0.5">
-              <span className="h-1 w-1 rounded-full bg-emerald-400" />{label}
-            </span>
-          ))}
+          {(ctx?.badges ?? []).map(b => {
+            const cls = TONE_BADGE[b.tone] ?? TONE_BADGE.slate;
+            const dot = TONE_DOT[b.tone] ?? TONE_DOT.slate;
+            return (
+              <span key={b.label} className={cn("inline-flex items-center gap-1 rounded-full border text-[10px] px-2 py-0.5", cls)} title={b.status}>
+                <span className={cn("h-1 w-1 rounded-full", dot)} />
+                {b.label}: <span className="font-semibold">{b.status}</span>
+              </span>
+            );
+          })}
         </div>
       </div>
+
 
       <ChatPanel />
     </div>
@@ -112,79 +118,49 @@ function ContextCard({ title, value, tone, subtext }: { title: string; value: st
 }
 
 type CtxData = {
-  sessionLabel: string; sessionTone: string;
-  biasLabel: string; biasTone: string;
-  sentimentLabel: string; sentimentTone: string;
-  dataQualityLabel: string; dataQualityTone: string;
-  sourceHealthLabel: string; sourceHealthTone: string; sourceHealthSubtext: string;
+  sessionLabel: string; sessionTone: Tone;
+  biasLabel: string; biasTone: Tone;
+  sentimentLabel: string; sentimentTone: Tone;
+  dataQualityLabel: string; dataQualityTone: Tone;
+  sourceHealthLabel: string; sourceHealthTone: Tone; sourceHealthSubtext: string;
   lastUpdateLabel: string;
+  badges: BadgeStatus[];
 };
-
 
 async function fetchMarketContext(): Promise<CtxData> {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const [{ data: news }, { data: regime }, { data: sources }] = await Promise.all([
+  const [{ data: news }, { data: regime }, { data: sources }, { data: agents }, { data: positions }, { data: orders }] = await Promise.all([
     supabase.from("news_articles").select("sentiment, sentiment_score, published_at").gte("published_at", since).eq("is_duplicate", false).limit(500),
     supabase.from("market_regime_snapshots").select("regime_classification, idx_change_pct, created_at").order("created_at", { ascending: false }).limit(1),
     supabase.from("news_sources").select("id, name, status, enabled, last_success_at, last_failed_at, last_error, fail_count"),
+    supabase.from("ai_trade_agents").select("automation_enabled, last_worker_run_at, last_worker_status, worker_error_count, status").order("created_at", { ascending: false }).limit(1),
+    supabase.from("paper_positions").select("id").limit(50),
+    supabase.from("paper_orders").select("id, status").eq("status", "filled").limit(200),
   ]);
 
-  // Session
+  const sum = computeContextSummary({
+    news: (news ?? []) as any,
+    regime: (regime ?? []) as any,
+    sources: sources ?? [],
+    agent: (agents ?? [])[0] as any,
+    portfolio: { openPositions: positions?.length ?? 0 },
+    paperTrading: {
+      openPositions: positions?.length ?? 0,
+      closedTrades: (orders ?? []).filter((o: any) => o.status === "filled").length,
+    },
+  });
+
   const now = new Date();
-  const wibH = (now.getUTCHours() + 7) % 24;
-  const wibM = now.getUTCMinutes();
-  const t = wibH * 60 + wibM;
-  const dow = (now.getUTCDay() + (now.getUTCHours() + 7 >= 24 ? 1 : 0)) % 7;
-  const weekend = dow === 0 || dow === 6;
-  let sessionLabel = "Closed", sessionTone = "slate";
-  if (!weekend) {
-    if (t >= 9 * 60 && t < 11 * 60 + 30) { sessionLabel = "Session I"; sessionTone = "emerald"; }
-    else if (t >= 11 * 60 + 30 && t < 13 * 60 + 30) { sessionLabel = "Break"; sessionTone = "amber"; }
-    else if (t >= 13 * 60 + 30 && t < 15 * 60) { sessionLabel = "Session II"; sessionTone = "emerald"; }
-    else if (t >= 15 * 60 && t < 15 * 60 + 30) { sessionLabel = "Closing Auction"; sessionTone = "teal"; }
-  }
-
-  // Bias from regime + news
-  const reg = (regime ?? [])[0];
-  let biasLabel = "Neutral", biasTone = "slate";
-  if (reg?.regime_classification) {
-    const r = String(reg.regime_classification).toLowerCase();
-    if (r.includes("bull")) { biasLabel = "Bullish"; biasTone = "emerald"; }
-    else if (r.includes("bear")) { biasLabel = "Bearish"; biasTone = "rose"; }
-    else if (r.includes("neutral")) { biasLabel = "Neutral"; biasTone = "slate"; }
-  } else if (news && news.length > 0) {
-    let pos = 0, neg = 0;
-    for (const n of news as any[]) { if (n.sentiment === "positive") pos++; else if (n.sentiment === "negative") neg++; }
-    if (pos > neg * 1.4) { biasLabel = "Mildly Bullish"; biasTone = "emerald"; }
-    else if (neg > pos * 1.4) { biasLabel = "Mildly Bearish"; biasTone = "rose"; }
-  } else {
-    biasLabel = "PARTIAL DATA"; biasTone = "amber";
-  }
-
-  // Sentiment
-  let sentimentLabel = "PARTIAL DATA", sentimentTone = "amber";
-  if (news && news.length > 0) {
-    let sum = 0, n = 0;
-    for (const r of news as any[]) { sum += Number(r.sentiment_score ?? 0); n++; }
-    const avg = n ? sum / n : 0;
-    if (avg > 0.15) { sentimentLabel = "Positive"; sentimentTone = "emerald"; }
-    else if (avg < -0.15) { sentimentLabel = "Negative"; sentimentTone = "rose"; }
-    else { sentimentLabel = "Neutral"; sentimentTone = "slate"; }
-  }
-
-  // Data quality
-  const newsCount = news?.length ?? 0;
-  let dataQualityLabel = "Stale", dataQualityTone = "rose";
-  if (newsCount > 30) { dataQualityLabel = "Fresh"; dataQualityTone = "emerald"; }
-  else if (newsCount > 5) { dataQualityLabel = "Partial"; dataQualityTone = "amber"; }
-
-  // Source health (sync with News page; treats fallback/quota as PARTIAL, not failed)
-  const shSummary = summarizeSourceHealth((sources ?? []) as any);
-  const sourceHealthLabel = overallStatusLabel(shSummary.overallStatus);
-  const sourceHealthTone = overallStatusTone(shSummary.overallStatus);
-  const sourceHealthSubtext = summarySubtext(shSummary);
-
   const lastUpdateLabel = now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Asia/Jakarta" }) + " WIB";
 
-  return { sessionLabel, sessionTone, biasLabel, biasTone, sentimentLabel, sentimentTone, dataQualityLabel, dataQualityTone, sourceHealthLabel, sourceHealthTone, sourceHealthSubtext, lastUpdateLabel };
+  return {
+    sessionLabel: sum.idxSession.label, sessionTone: sum.idxSession.tone,
+    biasLabel: sum.ihsgBias.label, biasTone: sum.ihsgBias.tone,
+    sentimentLabel: sum.sentiment.label, sentimentTone: sum.sentiment.tone,
+    dataQualityLabel: sum.dataQuality.label, dataQualityTone: sum.dataQuality.tone,
+    sourceHealthLabel: sum.sourceHealth.label, sourceHealthTone: sum.sourceHealth.tone,
+    sourceHealthSubtext: sum.sourceHealth.subtext,
+    lastUpdateLabel,
+    badges: sum.badges,
+  };
 }

@@ -40,6 +40,7 @@ export type Database = {
           idempotency_key: string | null
           market_regime: string | null
           paper_account_id: string
+          paper_order_id: string | null
           portfolio_snapshot: Json | null
           raw_confidence: number | null
           reasoning: string | null
@@ -86,6 +87,7 @@ export type Database = {
           idempotency_key?: string | null
           market_regime?: string | null
           paper_account_id: string
+          paper_order_id?: string | null
           portfolio_snapshot?: Json | null
           raw_confidence?: number | null
           reasoning?: string | null
@@ -132,6 +134,7 @@ export type Database = {
           idempotency_key?: string | null
           market_regime?: string | null
           paper_account_id?: string
+          paper_order_id?: string | null
           portfolio_snapshot?: Json | null
           raw_confidence?: number | null
           reasoning?: string | null
@@ -1525,6 +1528,7 @@ export type Database = {
           realized_pnl: number
           side: string
           slippage_pct: number | null
+          source: string | null
           status: string
           stop_loss: number | null
           stop_price: number | null
@@ -1549,6 +1553,7 @@ export type Database = {
           realized_pnl?: number
           side: string
           slippage_pct?: number | null
+          source?: string | null
           status?: string
           stop_loss?: number | null
           stop_price?: number | null
@@ -1573,6 +1578,7 @@ export type Database = {
           realized_pnl?: number
           side?: string
           slippage_pct?: number | null
+          source?: string | null
           status?: string
           stop_loss?: number | null
           stop_price?: number | null
@@ -1599,7 +1605,9 @@ export type Database = {
           avg_price: number
           id: string
           opened_at: string
+          opened_by_agent_id: string | null
           qty: number
+          source: string | null
           symbol: string
           user_id: string
         }
@@ -1608,7 +1616,9 @@ export type Database = {
           avg_price: number
           id?: string
           opened_at?: string
+          opened_by_agent_id?: string | null
           qty: number
+          source?: string | null
           symbol: string
           user_id: string
         }
@@ -1617,7 +1627,9 @@ export type Database = {
           avg_price?: number
           id?: string
           opened_at?: string
+          opened_by_agent_id?: string | null
           qty?: number
+          source?: string | null
           symbol?: string
           user_id?: string
         }

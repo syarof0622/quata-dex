@@ -52,18 +52,39 @@ export interface SourceHealthSummary {
   sources: NormalizedSource[];
 }
 
-function normalizeStatus(row: RawSourceRow): NormalizedStatus {
+function normalizeStatus(row: RawSourceRow & { message?: string | null }): NormalizedStatus {
   const raw = (row.status ?? "").toString().toLowerCase().trim();
   const enabled = row.enabled !== false;
   const err = (row.last_error ?? "").toLowerCase();
+  const msg = ((row as any).message ?? "").toString().toLowerCase();
+  const name = (row.name ?? "").toString().toLowerCase();
+  const blob = `${raw} ${err} ${msg} ${name}`;
+
+  // Explicit known states first
+  if (raw === "active" || raw === "ok" || raw === "success" || raw === "idle" || raw === "healthy") return "active";
+
+  // Fallback (Kontan/Investor via Google etc.)
+  if (
+    blob.includes("fallback")
+    || blob.includes("using google")
+    || blob.includes("direct source unavailable")
+    || blob.includes("via google")
+  ) return "fallback_active";
+
+  // SerpApi quota protection
+  if (
+    blob.includes("quota protection")
+    || blob.includes("monthly quota protection")
+    || blob.includes("quota protected")
+    || blob.includes("quota_protected")
+    || (blob.includes("quota") && (blob.includes("protect") || blob.includes("limit")))
+  ) return "quota_protected";
 
   if (!enabled) {
-    if (raw.includes("quota")) return "quota_protected";
+    if (blob.includes("no-api") || blob.includes("disabled")) return "disabled_by_config";
     return "disabled_by_config";
   }
-  if (raw === "active" || raw === "ok" || raw === "success" || raw === "idle" || raw === "healthy") return "active";
-  if (raw.includes("fallback")) return "fallback_active";
-  if (raw.includes("quota") || err.includes("quota")) return "quota_protected";
+
   if (raw === "degraded" || raw === "partial" || raw === "warning") return "degraded";
   if (raw === "failed" || raw === "error" || raw === "unhealthy" || raw === "down") return "failed";
   if (!raw) return "unknown";

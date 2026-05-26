@@ -185,8 +185,12 @@ export const getPortfolioAnalytics = createServerFn({ method: "GET" })
     allClosed.sort((a, b) => new Date(b.closedAt).getTime() - new Date(a.closedAt).getTime());
     const recentClosedTrades = allClosed.slice(0, 10);
 
-    const winRate = closedCount ? (totalWins / closedCount) * 100 : 0;
-    const profitFactor = grossLoss < 0 ? grossProfit / Math.abs(grossLoss) : (grossProfit > 0 ? Infinity : 0);
+    // Win rate / profit factor are UNDEFINED until there is at least one closed trade.
+    // Returning 0 here would lie ("0% win rate" implies all-loss). UI shows N/A on null.
+    const winRate: number | null = closedCount > 0 ? (totalWins / closedCount) * 100 : null;
+    const profitFactor: number | null = closedCount === 0
+      ? null
+      : (grossLoss < 0 ? grossProfit / Math.abs(grossLoss) : (grossProfit > 0 ? Infinity : 0));
 
     const executedOrdersCount = (orders ?? []).length;
     const openPositionsCount = enriched.length;
@@ -301,7 +305,7 @@ export const getPortfolioAnalytics = createServerFn({ method: "GET" })
       beta, betaSamples,
       winRate, totalTrades: closedCount,
       executedOrdersCount, openPositionsCount, closedTradesCount: closedCount,
-      profitFactor: Number.isFinite(profitFactor) ? profitFactor : null,
+      profitFactor: profitFactor != null && Number.isFinite(profitFactor) ? profitFactor : (profitFactor === Infinity ? null : profitFactor),
       bestTrade, worstTrade,
       riskLevel, warnings,
       positions: enriched, sectorBreakdown, perSymbol,
