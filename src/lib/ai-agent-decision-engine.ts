@@ -487,14 +487,17 @@ export async function evaluateSymbol(
     if (symbolExposure >= agent.maxPositionPerSymbol) {
       return emptySnap(sym, `Eksposur ${(symbolExposure*100).toFixed(1)}% melebihi limit per simbol.`, {
         riskSnapshot: { exposure: symbolExposure, cap: agent.maxPositionPerSymbol },
+        blockedReason: "exposure_cap_reached",
       });
     }
     const sized = sizeOrder({ symbol: sym, allocationAmount: agent.allocationAmount, price });
     if (!sized.minLotOk.ok) return emptySnap(sym, sized.minLotOk.reason ?? "Saldo tidak cukup.", {
       riskSnapshot: { needed: sized.estimatedCost, cash: account.cash },
+      blockedReason: "lot_below_minimum",
     });
     if (sized.estimatedCost > account.cash) return emptySnap(sym, "Saldo cash tidak cukup untuk order ini.", {
       riskSnapshot: { needed: sized.estimatedCost, cash: account.cash },
+      blockedReason: "insufficient_balance",
     });
 
     if (!executionAllowed) {
@@ -502,7 +505,7 @@ export async function evaluateSymbol(
         confidence, rawConfidence, calibrationReason: calib.reason,
         realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
         portfolioSnapshot, dataFreshnessSeconds: freshness, dataQuality,
-        blockedReason: executionBlockedReason,
+        blockedReason: "market_closed",
       });
     }
     const preset = RISK_PRESETS[agent.riskLevel] ?? RISK_PRESETS.balanced;
@@ -510,19 +513,41 @@ export async function evaluateSymbol(
     const takeProfit = agent.autoTakeProfit ? +(price * (1 + preset.tpPct)).toFixed(2) : null;
     const rr = stopLoss && takeProfit ? (takeProfit - price) / (price - stopLoss) : null;
 
+    // Risk/reward gate for autonomous trade candidates.
+    if (autoGate && rr != null && rr < autoGate.minRR) {
+      return emptySnap(sym, `Risk/reward ${rr.toFixed(2)} < required ${autoGate.minRR} untuk mode ${agent.autonomousRiskMode}.`, {
+        confidence, rawConfidence, calibrationReason: calib.reason,
+        realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
+        portfolioSnapshot, dataFreshnessSeconds: freshness, dataQuality,
+        riskSnapshot: { slPct: preset.slPct, tpPct: preset.tpPct, rr },
+        blockedReason: "risk_reward_invalid",
+      });
+    }
+
+    const autoReasonTag = autoGate
+      ? ` [autonomous:${agent.autonomousRiskMode} score=${autonomousContext!.score.toFixed(0)}]`
+      : "";
     return {
       symbol: sym, action: "BUY", confidence, rawConfidence,
       calibrationReason: calib.reason,
-      strategy: agent.strategyMode,
+      strategy: autoGate
+        ? (agent.autonomousRiskMode === "expert_research" ? "expert_research_micro_entry"
+          : agent.autonomousRiskMode === "progressive" ? "progressive_small_entry"
+          : "autonomous_entry")
+        : agent.strategyMode,
       allocationAmount: agent.allocationAmount,
       suggestedLot: sized.lot, suggestedShares: sized.shares,
       entryPrice: price, stopLoss, takeProfit, riskRewardRatio: rr,
-      reasoning: `Teknikal ${techLabel} (${techScore.toFixed(0)}), sentimen ${sentScore.toFixed(2)}, news +${realNewsData.positiveNewsCount}/-${realNewsData.negativeNewsCount} (high ${realNewsData.highImpactNewsCount}), IHSG ${realMarketContext.ihsgBias}. Composite ${(composite*100).toFixed(0)}%. ${calib.reason} Allocate ${sized.lot} lot @ ${price}.`,
+      reasoning: `Teknikal ${techLabel} (${techScore.toFixed(0)}), sentimen ${sentScore.toFixed(2)}, news +${realNewsData.positiveNewsCount}/-${realNewsData.negativeNewsCount} (high ${realNewsData.highImpactNewsCount}), IHSG ${realMarketContext.ihsgBias}. Composite ${(composite*100).toFixed(0)}%.${autoReasonTag} ${calib.reason} Allocate ${sized.lot} lot @ ${price}.`,
       dataFreshnessSeconds: freshness, dataSource: "Yahoo Finance + Google News RSS + IDX disclosure",
       executionAllowed: true, analysisOnly: false,
       realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
       portfolioSnapshot,
-      riskSnapshot: { slPct: preset.slPct, tpPct: preset.tpPct, rr }, dataQuality, warnings,
+      riskSnapshot: { slPct: preset.slPct, tpPct: preset.tpPct, rr,
+        autonomousScore: autonomousContext?.score ?? null,
+        autonomousRiskMode: agent.autonomousRiskMode ?? null,
+      },
+      dataQuality, warnings,
     };
   }
 
