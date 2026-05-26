@@ -72,6 +72,7 @@ export function AiInsightsPanel() {
   const lessons = useQuery({ queryKey: ["ai_lessons"], queryFn: () => fetchLessons() });
   const alerts = useQuery({ queryKey: ["ai_alerts_eval"], queryFn: () => fetchAlerts() });
   const defs = useQuery({ queryKey: ["ai_alerts_def"], queryFn: () => fetchDefs() });
+  const strategy = useQuery({ queryKey: ["ai_strategy_intel"], queryFn: () => fetchStrategy(), refetchInterval: 60_000 });
 
   async function refresh(kind: string) {
     setBusy(kind);
