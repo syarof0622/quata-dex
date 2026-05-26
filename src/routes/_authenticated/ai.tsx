@@ -53,6 +53,18 @@ function AIAnalystPage() {
         <ContextCard title="Source Health" value={ctx?.sourceHealthLabel ?? "—"} tone={ctx?.sourceHealthTone ?? "slate"} />
       </div>
 
+      {/* App Context status — tells user what the AI can read */}
+      <div className="rounded-xl border border-border/60 bg-card/40 px-3 py-2">
+        <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">AI App Context (read-only)</div>
+        <div className="flex flex-wrap gap-1.5">
+          {["Portfolio","Paper Trading","AI Trade Agent","Autonomous Scanner","Watchlist","News & Sentiment","Undervalue","Alerts","Backtest","Journal","Market Regime","Data Quality","Source Health"].map(label => (
+            <span key={label} className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-[10px] px-2 py-0.5">
+              <span className="h-1 w-1 rounded-full bg-emerald-400" />{label}
+            </span>
+          ))}
+        </div>
+      </div>
+
       <ChatPanel />
     </div>
   );

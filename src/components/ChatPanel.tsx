@@ -8,12 +8,15 @@ import { cn } from "@/lib/utils";
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
 const PROMPT_CHIPS = [
-  { icon: TrendingUp, label: "Saham apa yang layak dibeli sekarang?" },
-  { icon: Search, label: "Analisis BBCA.JK" },
-  { icon: Sparkles, label: "Cari saham undervalued" },
-  { icon: TrendingUp, label: "Top momentum hari ini" },
-  { icon: ShieldAlert, label: "Risiko portfolio saya" },
+  { icon: ShieldAlert, label: "Cek portfolio saya" },
+  { icon: User, label: "Jelaskan open position" },
   { icon: Bot, label: "Kenapa AI Agent tidak buy?" },
+  { icon: Bot, label: "Evaluasi performa AI Agent" },
+  { icon: TrendingUp, label: "Top momentum hari ini" },
+  { icon: Sparkles, label: "Saham undervalue" },
+  { icon: Search, label: "Saham dari screener terbaik" },
+  { icon: ShieldAlert, label: "Cek alert aktif" },
+  { icon: Search, label: "Cek data source" },
 ];
 
 const WELCOME_CARDS = [
