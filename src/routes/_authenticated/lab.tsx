@@ -276,6 +276,48 @@ function lotZeroExplanation(execStatus: ExecStatus): string {
   }
 }
 
+// Derived "display action" so the Action column does not show "BUY" when no
+// paper order was actually executed. HOLD is reserved for live open positions.
+function displayActionFor(d: any, execStatus: ExecStatus): {
+  label: string;
+  intent: string | null;
+  tone: "bull" | "bear" | "muted" | "warn";
+} {
+  const action = String(d?.action ?? "").toUpperCase();
+  const executed = isExecutedDecision(d);
+  if (executed) {
+    if (action === "BUY")  return { label: "BUY",  intent: null, tone: "bull" };
+    if (action === "SELL") return { label: "SELL", intent: null, tone: "bear" };
+    if (action === "EXIT") return { label: "EXIT", intent: null, tone: "bear" };
+  }
+  if (execStatus === "hold_position") {
+    return { label: "HOLD", intent: null, tone: "muted" };
+  }
+  if (execStatus === "watch_snapshot")     return { label: "WATCH",    intent: action || null, tone: "warn" };
+  if (execStatus === "research_snapshot")  return { label: "RESEARCH", intent: action || null, tone: "warn" };
+  if (execStatus === "premarket_snapshot") return { label: "PRE-MKT",  intent: action || null, tone: "warn" };
+  if (execStatus.startsWith("blocked_")) {
+    return { label: "BLOCKED", intent: action || null, tone: "bear" };
+  }
+  if (execStatus === "allowed" && action) {
+    return { label: action, intent: null, tone: action === "BUY" ? "bull" : action === "SELL" || action === "EXIT" ? "bear" : "muted" };
+  }
+  return { label: action || "—", intent: null, tone: "muted" };
+}
+
+const TONE_TEXT: Record<"bull"|"bear"|"muted"|"warn", string> = {
+  bull: "text-bull",
+  bear: "text-bear",
+  muted: "text-muted-foreground",
+  warn: "text-amber-600 dark:text-amber-400",
+};
+const TONE_BADGE: Record<"bull"|"bear"|"muted"|"warn", string> = {
+  bull: "bg-bull/15 text-bull",
+  bear: "bg-bear/15 text-bear",
+  muted: "bg-muted text-muted-foreground",
+  warn: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+};
+
 function deriveExecutionStatusForCard(
   agent: any,
   session: any,
