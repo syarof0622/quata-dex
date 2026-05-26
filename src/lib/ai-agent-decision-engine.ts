@@ -434,8 +434,37 @@ export async function evaluateSymbol(
     }
   } catch { /* tolerate */ }
 
+
+  // 8.5 Strategy intelligence — fetch latest regime + score for this strategy.
+  let marketRegimeLabel: string = "unknown";
+  try {
+    const { data: regRow } = await supabaseAdmin
+      .from("market_regime_snapshots")
+      .select("regime_classification")
+      .order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (regRow) marketRegimeLabel = String((regRow as any).regime_classification ?? "unknown");
+  } catch { /* tolerate */ }
+  const symbolSector = sectorOf(sym) ?? "Unknown";
+  const strategyName: string = String(agent.strategyMode || "trend_following");
+  let strategyContext: any = null;
+  let strategyBoost = 0;
+  try {
+    strategyContext = await getStrategyContextFor({
+      strategyName, sector: symbolSector, regime: marketRegimeLabel,
+    });
+    const cls = strategyContext.classification;
+    const compat = Number(strategyContext.regimeCompatibility ?? 0.5);
+    if (cls === "proven" && compat >= 0.7) strategyBoost = 0.10;
+    else if (cls === "promising" && compat >= 0.6) strategyBoost = 0.05;
+    else if (cls === "underperforming") strategyBoost = -0.10;
+    else if (cls === "unstable") strategyBoost = -0.07;
+    else if (cls === "avoid") strategyBoost = -0.12;
+    // Regime mismatch — hard reduce.
+    if (compat < 0.35) strategyBoost -= 0.08;
+  } catch { /* tolerate */ }
+
   const composite = techNorm * 0.45 + sentScore * 0.18 + newsBiasNorm * 0.18
-                  + disclosureBoost + macroBoost + sectorRotationBoost + fundamentalBoost;
+                  + disclosureBoost + macroBoost + sectorRotationBoost + fundamentalBoost + strategyBoost;
   let rawConfidence = Math.min(0.99, Math.abs(composite));
 
   // Autonomous scanner already gated DQ + liquidity. For trade-classified
