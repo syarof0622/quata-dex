@@ -31,14 +31,24 @@ function isNumericCell(text: string) {
 }
 
 // Cleanup AI-generated markdown before render: collapse duplicate heading markers,
-// fix known disclaimer typos, and normalise spacing. Pure formatting — no semantic changes.
+// fix typos, ensure headings render (blank line before), strip stray "##" markers
+// that leak into paragraphs / list items / table cells, and soften unsafe wording.
 function cleanMarkdownText(input: string): string {
   let s = input ?? "";
-  // Collapse "## ## " / "### ### " / "#### #### " duplicates (and triples) at line start.
+  // Collapse "## ## " / "### ### " duplicates at line start (twice for triples).
   s = s.replace(/^(#{1,6})\s+(#{1,6})\s+/gm, "$1 ");
-  s = s.replace(/^(#{1,6})\s+(#{1,6})\s+/gm, "$1 "); // run twice for triples
+  s = s.replace(/^(#{1,6})\s+(#{1,6})\s+/gm, "$1 ");
+  // Ensure a blank line precedes a heading so ReactMarkdown renders it as one
+  // (prevents literal "##" leaking into a paragraph above).
+  s = s.replace(/([^\n])\n(#{1,6}\s+\S)/g, "$1\n\n$2");
+  // Strip stray heading markers inside table cells: "| ## Foo" -> "| Foo".
+  s = s.replace(/\|\s*#{1,6}\s+/g, "| ");
+  // Strip stray heading markers at start of list items: "- ## Foo" -> "- Foo".
+  s = s.replace(/^(\s*[-*+]\s+)#{1,6}\s+/gm, "$1");
   // Disclaimer typo cleanup.
   s = s.replace(/wires\s+uang\s+asli/gi, "transaksi uang asli");
+  // Safety: soften forbidden "paling aman" wording if AI slips through.
+  s = s.replace(/paling aman/gi, "relatif lebih defensif");
   return s;
 }
 
