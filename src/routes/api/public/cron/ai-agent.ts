@@ -21,6 +21,12 @@ type AgentResult = {
   blockedDecisions: number;
   topBlockedReasons: string[];
   lastBlockedReason: string | null;
+  candidatesScanned: number;
+  candidatesSelected: number;
+  buyEvaluations: number;
+  openPositionsMonitored: number;
+  stopLossTriggered: number;
+  takeProfitTriggered: number;
   error?: string;
 };
 
