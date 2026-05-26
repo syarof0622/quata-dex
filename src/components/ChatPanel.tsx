@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { ChatMarkdown } from "@/components/ChatMarkdown";
+import { AIReportRenderer } from "@/components/AIReportRenderer";
 import { Send, Loader2, Copy, RotateCcw, Sparkles, TrendingUp, ShieldAlert, Search, Bot, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -199,19 +199,19 @@ function MessageRow({ message, onCopy, onRegenerate, streaming }: { message: Cha
           <Bot className="h-4 w-4 text-primary" />
         </div>
       )}
-      <div className={cn("group flex flex-col", isUser ? "items-end max-w-[80%] sm:max-w-[60%]" : "max-w-[90%] sm:max-w-[80%]")}>
+      <div className={cn("group flex flex-col", isUser ? "items-end max-w-[80%] sm:max-w-[60%]" : "max-w-[95%] sm:max-w-[85%] flex-1")}>
         <div
           className={cn(
-            "rounded-2xl px-4 py-3 shadow-sm",
+            "shadow-sm",
             isUser
-              ? "bg-gradient-to-br from-primary to-primary/80 text-primary-foreground rounded-br-md"
-              : "bg-card/80 border border-border/60 rounded-bl-md"
+              ? "rounded-2xl rounded-br-md px-4 py-3 bg-gradient-to-br from-primary to-primary/80 text-primary-foreground"
+              : "rounded-2xl rounded-bl-md border border-border/60 bg-gradient-to-b from-card/90 to-card/60 px-3.5 py-3 sm:px-4 sm:py-3.5"
           )}
         >
           {isUser ? (
             <div className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</div>
           ) : message.content ? (
-            <ChatMarkdown content={message.content} />
+            <AIReportRenderer content={message.content} />
           ) : (
             <div className="text-sm text-muted-foreground italic">…</div>
           )}
