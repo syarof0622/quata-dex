@@ -200,7 +200,7 @@ function NewsHub() {
                   {ok ? `${s.articles_today ?? 0} hari ini` : (s.last_error?.slice(0, 40) ?? "no data")}
                 </div>
                 <div className="text-[10px] text-muted-foreground mt-0.5">
-                  {s.last_success_at ? `Last: ${new Date(s.last_success_at).toLocaleTimeString()}` : "—"}
+                  {s.last_success_at ? `Last: ${formatTimeWIB(s.last_success_at)}` : "—"}
                 </div>
               </div>
             );
