@@ -196,6 +196,30 @@ export const runPostTradeReview = createServerFn({ method: "POST" })
         },
       };
       await supabaseAdmin.from("ai_trade_reviews").insert(review);
+
+      // Forward-test ingestion: ONLY closed trades feed the strategy
+      // forward-test table. Pull strategy attribution from the matched
+      // training event's ai_decision blob (or fall back to "unspecified").
+      try {
+        if (!realizedMissing) {
+          const aiDecAny = aiDec as any;
+          await recordForwardTestFromClosedTrade({
+            paperOrderId: o.id,
+            trainingEventId: (exitEvent as any)?.id ?? null,
+            symbol: o.symbol,
+            sector: sectorOf(o.symbol) ?? null,
+            strategyName: aiDecAny?.strategy_name ?? aiDecAny?.strategy ?? null,
+            marketRegime: aiDecAny?.market_regime ?? null,
+            realizedPnl,
+            realizedPnlPct: pnlPct,
+            holdingMinutes,
+            closeReason: (o as any).close_reason ?? null,
+          });
+        }
+      } catch (e) {
+        console.error("[post-trade] forward-test ingest failed", e);
+      }
+
       count += 1;
     }
     return { reviewed: count };
