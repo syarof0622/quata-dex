@@ -1,12 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { addToWatchlist, getWatchlist, removeFromWatchlist } from "@/lib/watchlist.functions";
 import { rankWatchlist } from "@/lib/screener.functions";
+import { getLatestUndervalueScores } from "@/lib/undervalue.functions";
+import { UndervalueBadge } from "@/components/UndervalueBadge";
 import { Button } from "@/components/ui/button";
 import { formatPct, colorForChange } from "@/lib/format";
 import { formatLocalPrice, IDX_LQ45, US_TOP } from "@/lib/symbols";
-import { X, Plus, Sparkles } from "lucide-react";
+import { X, Plus, Sparkles, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { Sparkline } from "./screener";
 
@@ -37,6 +39,19 @@ function WL() {
     refetchInterval: 60_000,
   });
   const rankedRows: any[] = Array.isArray(ranked.data) ? ranked.data : [];
+
+  // Undervalue / fundamental overlay for watchlist symbols.
+  const uv = useQuery({
+    queryKey: ["wl-undervalue"],
+    queryFn: () => getLatestUndervalueScores({ data: { limit: 100 } }),
+    refetchInterval: 5 * 60_000,
+  });
+  const uvBySymbol = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const r of (uv.data ?? []) as any[]) map.set(String(r.symbol).toUpperCase(), r);
+    return map;
+  }, [uv.data]);
+  const getUv = (sym: string) => uvBySymbol.get(String(sym).toUpperCase());
 
   const addPreset = async (preset: string[]) => {
     const toAdd = preset.filter(s => !symbols.includes(s));
@@ -127,6 +142,26 @@ function WL() {
                 <Mini label="ADX" value={r.trendStrength ?? "—"} highlight={(r.trendStrength ?? 0) > 40} />
                 <Mini label="Vol×" value={`${(r.volRel ?? 1).toFixed(1)}×`} highlight={(r.volRel ?? 1) > 1.5} />
               </div>
+              {(() => {
+                const u = getUv(r.symbol);
+                if (!u) return null;
+                const trap = Number(u.value_trap_risk_score ?? 0);
+                const score = Number(u.final_undervalue_score ?? 0);
+                return (
+                  <div className="mt-2 flex items-center justify-between gap-2 flex-wrap text-[10px]">
+                    <UndervalueBadge classification={u.classification} />
+                    <span className="text-muted-foreground">
+                      Score <span className={`font-mono ${score >= 65 ? "text-bull" : score < 50 ? "text-bear" : "text-foreground"}`}>{score.toFixed(0)}</span>
+                      {" · "}Trap <span className={`font-mono ${trap >= 60 ? "text-bear" : trap >= 30 ? "text-yellow-500" : "text-bull"}`}>{trap.toFixed(0)}</span>
+                    </span>
+                    {trap >= 60 && (
+                      <span className="inline-flex items-center gap-1 text-bear">
+                        <AlertTriangle className="size-3" /> value trap
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
             </Link>
           ))}
         </div>
@@ -139,16 +174,26 @@ function WL() {
                 <th className="text-left p-2">Name</th>
                 <th className="text-right p-2">Price</th>
                 <th className="text-right p-2">Change</th>
+                <th className="text-left p-2">Fundamental</th>
+                <th className="text-right p-2" title="Final undervalue score">Score</th>
+                <th className="text-right p-2" title="Value-trap risk (lower=better)">Trap</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {rankedRows.map(r => (
+              {rankedRows.map(r => {
+                const u = getUv(r.symbol);
+                const trap = u ? Number(u.value_trap_risk_score ?? 0) : null;
+                const score = u ? Number(u.final_undervalue_score ?? 0) : null;
+                return (
                 <tr key={r.symbol} className="border-t border-border hover:bg-accent/30">
                   <td className="p-2 font-medium"><Link to="/chart/$symbol" params={{ symbol: r.symbol }}>{r.symbol}</Link></td>
                   <td className="p-2 text-muted-foreground truncate max-w-[28ch]">{r.shortName}</td>
                   <td className="p-2 text-right font-mono">{formatLocalPrice(r.symbol, r.price)}</td>
                   <td className={`p-2 text-right font-mono ${colorForChange(r.changePct)}`}>{formatPct(r.changePct)}</td>
+                  <td className="p-2">{u ? <UndervalueBadge classification={u.classification} /> : <span className="text-[10px] text-muted-foreground">—</span>}</td>
+                  <td className={`p-2 text-right font-mono ${score == null ? "text-muted-foreground" : score >= 65 ? "text-bull" : score < 50 ? "text-bear" : ""}`}>{score == null ? "—" : score.toFixed(0)}</td>
+                  <td className={`p-2 text-right font-mono ${trap == null ? "text-muted-foreground" : trap >= 60 ? "text-bear" : trap >= 30 ? "text-yellow-500" : "text-bull"}`}>{trap == null ? "—" : trap.toFixed(0)}</td>
                   <td className="p-2 text-right">
                     <Button size="icon" variant="ghost" onClick={async () => {
                       await removeFromWatchlist({ data: { symbol: r.symbol } });
@@ -158,7 +203,8 @@ function WL() {
                     </Button>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
