@@ -281,7 +281,7 @@ export function FundamentalPanel({ symbol }: { symbol: string }) {
       </Section>
 
       <div className="text-[10px] text-muted-foreground text-right">
-        Data: Yahoo Finance · diperbarui {new Date(f.asOf).toLocaleTimeString()}
+        Data: Yahoo Finance · diperbarui {formatTimeWIB(f.asOf)}
       </div>
     </div>
   );
