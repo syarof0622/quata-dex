@@ -437,6 +437,25 @@ export async function evaluateSymbol(
     }
   } catch { /* tolerate */ }
 
+  // 7b. Official disclosure context (IDX/BEI) — supersedes news-derived disclosure when present.
+  let officialDisclosure: any = null;
+  let disclosureRiskFlags: string[] = [];
+  try {
+    const { getLatestDisclosureFor, deriveRiskFlags } = await import("./disclosures.functions");
+    const od = await getLatestDisclosureFor(sym, 24 * 7);
+    if (od) {
+      disclosureRiskFlags = deriveRiskFlags(od);
+      officialDisclosure = {
+        type: od.disclosure_type, title: od.title, source: od.source,
+        publishedAt: od.published_at, impact: od.impact_level,
+        sentiment: od.sentiment, url: od.url, riskFlags: disclosureRiskFlags,
+      };
+    }
+  } catch { /* tolerate */ }
+  fundamentalContext = { ...fundamentalContext, latestDisclosure: officialDisclosure, disclosureRiskFlags };
+
+
+
 
   // 8.5 Strategy intelligence — fetch latest regime + score for this strategy.
   let marketRegimeLabel: string = "unknown";
@@ -597,6 +616,25 @@ export async function evaluateSymbol(
     const atrPct = structuralStopPct ?? null;
     const negativeDisclosure = !!(realDisclosureData?.hasRecentDisclosure
       && realDisclosureData?.disclosureSentiment === "negative");
+
+    // 9b. Hard-block on official high-impact negative disclosure or suspension/UMA.
+    if (officialDisclosure) {
+      const hardBlock =
+        (officialDisclosure.sentiment === "negative" && officialDisclosure.impact === "high")
+        || officialDisclosure.type === "suspension"
+        || officialDisclosure.type === "uma";
+      if (hardBlock) {
+        return emptySnap(sym, `Disclosure block: ${officialDisclosure.type} (${officialDisclosure.impact}/${officialDisclosure.sentiment}) — "${officialDisclosure.title}".`, {
+          confidence, rawConfidence, calibrationReason: calib.reason,
+          realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
+          portfolioSnapshot, dataFreshnessSeconds: freshness, dataQuality,
+          riskSnapshot: { fundamentalContext } as any,
+          blockedReason: `disclosure_${officialDisclosure.type}`,
+          warnings: [...warnings, ...disclosureRiskFlags.map(f => `disclosure:${f}`)],
+        });
+      }
+    }
+
 
     const guard = await finalRiskGuard({
       agent: { ...(agent.agentRow ?? {}), ...agent },

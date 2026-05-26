@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { screenStocks } from "@/lib/screener.functions";
 import { scanUndervalueUniverse, getLatestUndervalueScores } from "@/lib/undervalue.functions";
+import { listOfficialDisclosures } from "@/lib/disclosures.functions";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -258,6 +259,19 @@ function UndervaluedPanel() {
     queryFn: () => getLatestUndervalueScores({ data: { limit: 50 } }),
     refetchInterval: 60_000,
   });
+  const disclosures = useQuery({
+    queryKey: ["official-disclosures-recent"],
+    queryFn: () => listOfficialDisclosures({ data: { limit: 100 } }),
+    refetchInterval: 120_000,
+  });
+  const disclosureBySymbol = useMemo(() => {
+    const map: Record<string, any> = {};
+    for (const d of (disclosures.data ?? [])) {
+      const base = d.symbol.replace(/\.JK$/i, "");
+      if (!map[base]) map[base] = d;
+    }
+    return map;
+  }, [disclosures.data]);
   const scan = useMutation({
     mutationFn: () => scanUndervalueUniverse({ data: { universe, limit } }),
     onSuccess: (r: any) => { toast.success(`Scan selesai: ${r.scanned} dianalisis, ${r.candidates.length} kandidat`); latest.refetch(); },
@@ -364,6 +378,7 @@ function UndervaluedPanel() {
               <th className="text-right p-2" title="Sector relative">Sector</th>
               <th className="text-right p-2" title="Technical timing">Timing</th>
               <th className="text-right p-2" title="Value-trap risk (lower=better)">Trap</th>
+              <th className="text-left p-2" title="Latest official IDX/BEI disclosure">Disclosure</th>
               <th className="text-left p-2">Reasoning</th>
             </tr>
           </thead>
@@ -383,11 +398,26 @@ function UndervaluedPanel() {
                 <td className="p-2 text-right font-mono">{Number(r.sectorRelativeScore ?? 0).toFixed(0)}</td>
                 <td className="p-2 text-right font-mono">{Number(r.technicalTimingScore ?? 0).toFixed(0)}</td>
                 <td className={`p-2 text-right font-mono ${Number(r.valueTrapRiskScore ?? 0) >= 60 ? "text-bear" : ""}`}>{Number(r.valueTrapRiskScore ?? 0).toFixed(0)}</td>
+                <td className="p-2 text-xs">
+                  {(() => {
+                    const base = String(r.symbol ?? "").replace(/\.JK$/i, "");
+                    const d = disclosureBySymbol[base];
+                    if (!d) return <span className="text-muted-foreground">—</span>;
+                    const tone = d.impact_level === "high" && d.sentiment === "negative" ? "text-bear"
+                      : d.disclosure_type === "suspension" || d.disclosure_type === "uma" ? "text-bear"
+                      : d.sentiment === "positive" ? "text-bull" : "text-muted-foreground";
+                    return (
+                      <span className={tone} title={`${d.disclosure_type} · ${d.impact_level}/${d.sentiment} · ${new Date(d.published_at).toLocaleString("id-ID")}`}>
+                        {d.disclosure_type}
+                      </span>
+                    );
+                  })()}
+                </td>
                 <td className="p-2 text-xs text-muted-foreground max-w-[420px]">{r.reasoning ?? "—"}</td>
               </tr>
             ))}
             {rows.length === 0 && !scan.isPending && (
-              <tr><td colSpan={12} className="p-8 text-center text-muted-foreground">Belum ada skor undervalued. Klik <em>Run Fundamental Scan</em> untuk memulai.</td></tr>
+              <tr><td colSpan={13} className="p-8 text-center text-muted-foreground">Belum ada skor undervalued. Klik <em>Run Fundamental Scan</em> untuk memulai.</td></tr>
             )}
           </tbody>
         </table>

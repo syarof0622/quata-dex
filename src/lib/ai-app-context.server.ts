@@ -416,6 +416,41 @@ export async function getAIAppContext(userText: string) {
     status: undervalueRes.data.top.length ? "available" : "insufficient_data",
   } : { status: "insufficient_data" as Status, error: undervalueRes.error };
 
+  // ---------- OFFICIAL DISCLOSURES (IDX/BEI) ----------
+  const disclosureRes = await safe("officialDisclosures", async () => {
+    const symbolsOfInterest = Array.from(new Set<string>([
+      ...intent.tickers.flatMap(t => [t, t.replace(/\.JK$/i, "")]),
+      ...openPositions.flatMap(p => [p.symbol, p.symbol.replace(/\.JK$/i, "")]),
+      ...(watchlist.symbols ?? []).flatMap((s: string) => [s, s.replace(/\.JK$/i, "")]),
+    ]));
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 3600_000).toISOString();
+    const { data: recent } = await supabaseAdmin
+      .from("official_disclosures")
+      .select("symbol, source, disclosure_type, title, url, published_at, impact_level, sentiment, risk_flag, extracted_summary")
+      .gte("published_at", sevenDaysAgo)
+      .order("published_at", { ascending: false })
+      .limit(30);
+    let focused: any[] = [];
+    if (symbolsOfInterest.length) {
+      const { data: f } = await supabaseAdmin
+        .from("official_disclosures")
+        .select("symbol, source, disclosure_type, title, url, published_at, impact_level, sentiment, risk_flag, extracted_summary")
+        .in("symbol", symbolsOfInterest)
+        .order("published_at", { ascending: false })
+        .limit(20);
+      focused = f ?? [];
+    }
+    return { recent: recent ?? [], focused };
+  });
+  const officialDisclosures: any = disclosureRes.ok ? {
+    status: (disclosureRes.data.recent.length || disclosureRes.data.focused.length) ? "available" : "empty",
+    recent: disclosureRes.data.recent.slice(0, 15),
+    focusedSymbols: disclosureRes.data.focused,
+    highImpactNegativeCount: disclosureRes.data.recent.filter((d: any) => d.impact_level === "high" && d.sentiment === "negative").length,
+    suspensionOrUmaCount: disclosureRes.data.recent.filter((d: any) => d.disclosure_type === "suspension" || d.disclosure_type === "uma").length,
+  } : { status: "error" as Status, error: disclosureRes.error };
+
+
   // ---------- ALERTS ----------
   const alertsRes = await safe("alerts", async () => {
     const { data } = await supabaseAdmin
@@ -693,6 +728,7 @@ export async function getAIAppContext(userText: string) {
     market,
     newsSentiment,
     undervalue,
+    officialDisclosures,
     alerts,
     backtest,
     journal,
