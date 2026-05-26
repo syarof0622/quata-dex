@@ -192,13 +192,23 @@ export function AiInsightsPanel() {
                         : "secondary"
                   }
                 >
-                  Risk: {k.risk_level}
+                  Portfolio Risk: {k.risk_level}
                 </Badge>
                 <Badge variant="outline">Cash: {Number(k.cash_pct).toFixed(0)}%</Badge>
                 <Badge variant="outline">Max pos: {Number(k.max_position_weight).toFixed(1)}%</Badge>
                 <Badge variant="outline">DD: {Number(k.current_drawdown).toFixed(2)}%</Badge>
                 <Badge variant="outline">Today: {Number(k.daily_pnl_pct).toFixed(2)}%</Badge>
               </div>
+              {r && (
+                <div className="rounded-md border border-border/60 bg-muted/30 p-2 text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground">Market vs Portfolio:</span>{" "}
+                  Market risk ({r.regime_classification}, vol {r.regime_volatility}, breadth {r.regime_breadth})
+                  {" "}≠ portfolio risk. Portfolio Anda saat ini {k.risk_level} karena cash ratio{" "}
+                  {Number(k.cash_pct).toFixed(0)}% dan posisi terbesar hanya{" "}
+                  {Number(k.max_position_weight).toFixed(1)}%. Drawdown {Number(k.current_drawdown).toFixed(2)}%
+                  {" "}(sinkron dengan Portfolio Analytics).
+                </div>
+              )}
               {Array.isArray(k.warnings) && k.warnings.length > 0 && (
                 <ul className="list-disc pl-5 text-amber-500 text-xs">
                   {k.warnings.map((w: string, i: number) => (
@@ -224,26 +234,30 @@ export function AiInsightsPanel() {
         <CardContent>
           <ScrollArea className="h-48">
             <ul className="space-y-2 text-xs">
-              {(reviews.data ?? []).map((r: any) => (
-                <li key={r.id} className="border-b border-border/50 pb-2">
-                  <div className="flex justify-between">
-                    <span className="font-medium">{r.symbol}</span>
-                    <Badge
-                      variant={r.outcome === "win" ? "default" : r.outcome === "loss" ? "destructive" : "secondary"}
-                      className="text-[10px]"
-                    >
-                      {r.outcome} · {Number(r.pnl_pct).toFixed(2)}%
-                    </Badge>
-                  </div>
-                  <div className="text-muted-foreground">Lesson: {r.lesson_label}</div>
-                  {r.what_went_wrong && (
-                    <div className="text-amber-500">✗ {r.what_went_wrong}</div>
-                  )}
-                  {r.what_went_right && (
-                    <div className="text-emerald-500">✓ {r.what_went_right}</div>
-                  )}
-                </li>
-              ))}
+              {(reviews.data ?? []).map((r: any) => {
+                const pnl = Number(r.pnl ?? 0);
+                const pct = Number(r.pnl_pct ?? 0);
+                return (
+                  <li key={r.id} className="border-b border-border/50 pb-2">
+                    <div className="flex justify-between">
+                      <span className="font-medium">{r.symbol}</span>
+                      <Badge
+                        variant={r.outcome === "win" ? "default" : r.outcome === "loss" ? "destructive" : "secondary"}
+                        className="text-[10px]"
+                      >
+                        {r.outcome} · {pct.toFixed(2)}% · {pnl >= 0 ? "+" : ""}{pnl.toFixed(2)}
+                      </Badge>
+                    </div>
+                    <div className="text-muted-foreground">Lesson: {r.lesson_label}</div>
+                    {r.what_went_wrong && (
+                      <div className="text-amber-500">✗ {r.what_went_wrong}</div>
+                    )}
+                    {r.what_went_right && (
+                      <div className="text-emerald-500">✓ {r.what_went_right}</div>
+                    )}
+                  </li>
+                );
+              })}
               {(!reviews.data || reviews.data.length === 0) && (
                 <li className="text-muted-foreground">Belum ada review.</li>
               )}
@@ -267,22 +281,42 @@ export function AiInsightsPanel() {
       {/* AI Alerts */}
       <Card className="md:col-span-2">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">AI Alerts (Evaluated)</CardTitle>
+          <CardTitle className="text-base">AI Alerts — Actionable</CardTitle>
           <Button size="sm" variant="outline" onClick={() => alerts.refetch()}>
             Re-evaluate
           </Button>
         </CardHeader>
         <CardContent>
-          <ScrollArea className="h-48">
-            <ul className="space-y-1 text-xs">
+          <ScrollArea className="h-64">
+            <ul className="space-y-2 text-xs">
               {(alerts.data ?? []).map((a: any, i: number) => (
-                <li key={i} className="flex items-start gap-2 border-b border-border/50 pb-1">
-                  <Badge variant={(sevColor[a.severity] as any) ?? "secondary"} className="text-[10px]">
-                    {a.severity}
-                  </Badge>
-                  <div>
-                    <div className="font-medium">{a.name}</div>
-                    <div className="text-muted-foreground">{a.message}</div>
+                <li key={i} className="rounded-md border border-border/60 p-2">
+                  <div className="flex items-start gap-2">
+                    <Badge variant={(sevColor[a.severity] as any) ?? "secondary"} className="text-[10px] uppercase">
+                      {a.severity}
+                    </Badge>
+                    <div className="flex-1">
+                      <div className="font-medium text-foreground">{a.title ?? a.name}</div>
+                      <div className="text-muted-foreground">{a.description ?? a.message}</div>
+                      {(a.affected_symbols?.length || a.affected_sectors?.length) && (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {(a.affected_symbols ?? []).map((s: string) => (
+                            <Badge key={s} variant="outline" className="text-[10px]">{s}</Badge>
+                          ))}
+                          {(a.affected_sectors ?? []).map((s: string) => (
+                            <Badge key={s} variant="outline" className="text-[10px]">{s}</Badge>
+                          ))}
+                        </div>
+                      )}
+                      {a.action_suggestion && (
+                        <div className="mt-1 text-emerald-500">
+                          → {a.action_suggestion}
+                        </div>
+                      )}
+                      {a.risk_impact && (
+                        <div className="text-muted-foreground italic">Impact: {a.risk_impact}</div>
+                      )}
+                    </div>
                   </div>
                 </li>
               ))}
