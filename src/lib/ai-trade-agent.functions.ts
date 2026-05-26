@@ -395,7 +395,24 @@ async function loadActivePosition(symbol: string): Promise<Position | undefined>
  * Runs one decision cycle for one agent. Used by the cron route and by manual triggers.
  * Returns the list of decisions taken (executed or held) this tick.
  */
-export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentDecision[]; executed: number }> {
+export type RunAgentMetrics = {
+  candidatesScanned: number;
+  candidatesSelected: number;
+  buyEvaluations: number;
+  paperBuysExecuted: number;
+  blockedBuys: number;
+  openPositionsMonitored: number;
+  stopLossTriggered: number;
+  takeProfitTriggered: number;
+  blockedReasons: string[];
+};
+export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentDecision[]; executed: number; metrics: RunAgentMetrics }> {
+  const metrics: RunAgentMetrics = {
+    candidatesScanned: 0, candidatesSelected: 0, buyEvaluations: 0,
+    paperBuysExecuted: 0, blockedBuys: 0, openPositionsMonitored: 0,
+    stopLossTriggered: 0, takeProfitTriggered: 0, blockedReasons: [],
+  };
+  const earlyReturn = () => ({ decisions: [] as AgentDecision[], executed: 0, metrics });
   const { data: agent } = await supabaseAdmin.from("ai_trade_agents").select("*").eq("id", agentId).maybeSingle();
   if (!agent) throw new Error("agent not found");
   if (agent.status === "stopped" || agent.status === "error") return { decisions: [], executed: 0 };
