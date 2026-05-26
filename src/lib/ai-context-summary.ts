@@ -7,6 +7,7 @@
 // context builder (src/lib/ai-app-context.server.ts) call this helper.
 
 import { summarizeSourceHealth, overallStatusLabel, overallStatusTone, type SourceHealthSummary } from "./source-health";
+import { getIDXMarketSession, type IDXSessionState } from "./idx-market-session";
 
 export type Tone = "emerald" | "teal" | "sky" | "amber" | "rose" | "slate";
 
