@@ -177,7 +177,6 @@ async function handler(request: Request) {
     errors,
   });
 }
-}
 
 export const Route = createFileRoute("/api/public/cron/ai-agent")({
   server: {
