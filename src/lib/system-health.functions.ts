@@ -291,10 +291,11 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
       lastUpdatedAt: cronAudit?.created_at ?? null,
     });
 
-    // 8) Database Consistency (basic checks)
-    const { data: positions } = await supabaseAdmin
-      .from("paper_positions")
-      .select("id, qty, avg_price");
+    // 8) Database Consistency — scoped to active account.
+    const positionsQ = acc?.id
+      ? supabaseAdmin.from("paper_positions").select("id, qty, avg_price").eq("account_id", acc.id)
+      : supabaseAdmin.from("paper_positions").select("id, qty, avg_price").eq("user_id", USER_ID);
+    const { data: positions } = await positionsQ;
     let invalidPos = 0;
     for (const p of (positions ?? []) as any[]) {
       if (!Number.isFinite(Number(p.qty)) || !Number.isFinite(Number(p.avg_price))) invalidPos++;
@@ -302,10 +303,10 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
     }
     if (invalidPos > 0) warnings.push(`${invalidPos} posisi paper tidak valid (qty/avg_price NaN atau ≤0).`);
 
-    const { data: orphanOrders } = await supabaseAdmin
-      .from("paper_orders")
-      .select("id, price, qty, status")
-      .eq("status", "filled");
+    const ordersQ = acc?.id
+      ? supabaseAdmin.from("paper_orders").select("id, price, qty, status").eq("account_id", acc.id).eq("status", "filled")
+      : supabaseAdmin.from("paper_orders").select("id, price, qty, status").eq("user_id", USER_ID).eq("status", "filled");
+    const { data: orphanOrders } = await ordersQ;
     let invalidOrders = 0;
     for (const o of (orphanOrders ?? []) as any[]) {
       const px = Number(o.price);
