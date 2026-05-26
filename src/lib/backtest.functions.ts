@@ -50,7 +50,10 @@ function signalsForRule(rule: Rule, candles: Candle[]): number[] {
 }
 
 export const runBacktest = createServerFn({ method: "POST" })
-  .inputValidator((d: { symbol: string; timeframe?: string; rule?: Rule; startEquity?: number; persist?: boolean; strategyId?: string }) =>
+  .inputValidator((d: {
+    symbol: string; timeframe?: string; rule?: Rule; startEquity?: number; persist?: boolean;
+    strategyId?: string; strategyName?: string; sector?: string; marketRegime?: string;
+  }) =>
     z.object({
       symbol: z.string().min(1).toUpperCase(),
       timeframe: z.string().optional().default("1d"),
@@ -58,6 +61,9 @@ export const runBacktest = createServerFn({ method: "POST" })
       startEquity: z.number().positive().optional().default(100000),
       persist: z.boolean().optional().default(false),
       strategyId: z.string().uuid().optional(),
+      strategyName: z.string().min(1).max(64).optional(),
+      sector: z.string().min(1).max(64).optional(),
+      marketRegime: z.string().min(1).max(32).optional(),
     }).parse(d))
   .handler(async ({ data }) => {
     const candles = (await getCandles({ data: { symbol: data.symbol, timeframe: data.timeframe } })) as Candle[];
@@ -103,6 +109,13 @@ export const runBacktest = createServerFn({ method: "POST" })
     const sharpe = Math.sqrt(252) * (mean / (Math.sqrt(variance) || 1));
     const finalEquity = curve[curve.length - 1]?.equity ?? equity;
 
+    const sortedPnl = [...trades.map(t => t.pnlPct)].sort((a, b) => a - b);
+    const median = sortedPnl.length
+      ? sortedPnl.length % 2
+        ? sortedPnl[(sortedPnl.length - 1) / 2]
+        : (sortedPnl[sortedPnl.length / 2 - 1] + sortedPnl[sortedPnl.length / 2]) / 2
+      : 0;
+
     const metrics = {
       trades: trades.length,
       winRate: trades.length ? (wins.length / trades.length) * 100 : 0,
@@ -117,12 +130,53 @@ export const runBacktest = createServerFn({ method: "POST" })
       await supabaseAdmin.from("backtests").insert({
         user_id: USER_ID, symbol: data.symbol, timeframe: data.timeframe,
         strategy_id: (data.strategyId ?? null) as any,
+        regime: data.marketRegime ?? null,
+        sector: data.sector ?? null,
         metrics_json: metrics, equity_curve_json: curve.slice(-500) as any,
       });
+
+      // Also persist a Strategy Intelligence summary row (Update 9).
+      // Use rule as strategyName fallback so older callers still aggregate.
+      const strategyName = (data.strategyName && data.strategyName.length > 0)
+        ? data.strategyName
+        : data.rule;
+      const avgReturn = trades.length ? trades.reduce((s, t) => s + t.pnlPct, 0) / trades.length : 0;
+      const best = trades.length ? Math.max(...trades.map(t => t.pnlPct)) : null;
+      const worst = trades.length ? Math.min(...trades.map(t => t.pnlPct)) : null;
+      const avgHoldDays = trades.length
+        ? trades.reduce((s, t) => s + Math.max(0, (t.exitTime - t.entryTime) / 86400), 0) / trades.length
+        : null;
+      const sampleQuality = trades.length < 5 ? "insufficient_sample" : trades.length < 20 ? "small" : "valid";
+      const testedFrom = candles[0]?.time ? new Date(candles[0].time * 1000).toISOString() : null;
+      const testedTo = candles[candles.length - 1]?.time
+        ? new Date(candles[candles.length - 1].time * 1000).toISOString() : null;
+
+      const { error: sbtErr } = await supabaseAdmin.from("strategy_backtest_results").insert({
+        strategy_name: strategyName,
+        symbol: data.symbol,
+        sector: data.sector ?? null,
+        market_regime: data.marketRegime ?? null,
+        timeframe: data.timeframe,
+        total_trades: trades.length,
+        win_rate: metrics.winRate,
+        avg_return: avgReturn,
+        median_return: median,
+        profit_factor: isFinite(metrics.profitFactor) ? metrics.profitFactor : 99,
+        max_drawdown: metrics.maxDrawdownPct,
+        avg_holding_period: avgHoldDays,
+        best_trade: best,
+        worst_trade: worst,
+        sharpe_like_score: metrics.sharpe,
+        sample_quality: sampleQuality,
+        tested_from: testedFrom,
+        tested_to: testedTo,
+      });
+      if (sbtErr) console.error("[runBacktest] strategy_backtest_results insert failed:", sbtErr.message);
     }
 
     return { metrics, equityCurve: curve, trades } satisfies BacktestResult;
   });
+
 
 export const listStrategies = createServerFn({ method: "GET" })
   .handler(async () => {
