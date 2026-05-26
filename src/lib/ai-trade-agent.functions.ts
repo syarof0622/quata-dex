@@ -359,6 +359,7 @@ async function executePaperFill(opts: {
 
   const finalOutcome = isOpenTrade ? {
     eventType,
+    tradeLifecycle,
     entryPrice: fillPrice,
     shares,
     paperPnL: 0,
@@ -366,6 +367,7 @@ async function executePaperFill(opts: {
     tradeResult: null, // not closed yet
   } : {
     eventType,
+    tradeLifecycle,
     closeReason: closeReason ?? null,
     entryPrice: entryAvgPrice,
     exitPrice: fillPrice,
