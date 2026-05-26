@@ -342,6 +342,94 @@ export function AiInsightsPanel() {
           )}
         </CardContent>
       </Card>
+
+      {/* Strategy Intelligence (Update 9) */}
+      <Card className="md:col-span-2">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base">Strategy Intelligence</CardTitle>
+          <div className="flex items-center gap-2">
+            {strategy.data?.marketRegime && (
+              <Badge variant="outline" className="text-[10px] uppercase">
+                Regime: {strategy.data.marketRegime}
+              </Badge>
+            )}
+            <Button size="sm" variant="outline" onClick={() => strategy.refetch()}>
+              Refresh
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {!strategy.data && (
+            <div className="text-xs text-muted-foreground">Memuat strategy intelligence…</div>
+          )}
+          {strategy.data && (
+            <div className="grid md:grid-cols-2 gap-4 text-xs">
+              <div>
+                <div className="font-semibold mb-1 text-emerald-500">Terbaik untuk regime ini</div>
+                <ul className="space-y-1">
+                  {strategy.data.bestForThisRegime.map((s: any) => (
+                    <li key={s.strategy} className="rounded-md border border-border/60 p-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-mono">{s.strategy}</span>
+                        <Badge variant="default" className="text-[10px]">{s.classification}</Badge>
+                      </div>
+                      <div className="text-muted-foreground mt-0.5">
+                        Score <span className="text-foreground font-mono">{s.score}</span> ·{" "}
+                        Sample <span className="font-mono">{s.sampleSize}</span> ({s.sampleQuality}) ·{" "}
+                        WR {s.forwardWinRate != null ? `${Math.round(s.forwardWinRate)}%` : "—"} fwd /{" "}
+                        {s.backtestWinRate != null ? `${Math.round(s.backtestWinRate)}%` : "—"} bt ·{" "}
+                        PF {s.profitFactor != null ? Number(s.profitFactor).toFixed(2) : "—"} ·{" "}
+                        DD {s.maxDrawdown != null ? `${Number(s.maxDrawdown).toFixed(1)}%` : "—"}
+                      </div>
+                    </li>
+                  ))}
+                  {strategy.data.bestForThisRegime.length === 0 && (
+                    <li className="text-muted-foreground">Belum ada data.</li>
+                  )}
+                </ul>
+              </div>
+              <div>
+                <div className="font-semibold mb-1 text-rose-500">Hindari untuk regime ini</div>
+                <ul className="space-y-1">
+                  {strategy.data.avoidForThisRegime.map((s: any) => (
+                    <li key={s.strategy} className="rounded-md border border-border/60 p-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-mono">{s.strategy}</span>
+                        <Badge variant="destructive" className="text-[10px]">{s.classification}</Badge>
+                      </div>
+                      <div className="text-muted-foreground mt-0.5">
+                        Score <span className="text-foreground font-mono">{s.score}</span> · Sample{" "}
+                        <span className="font-mono">{s.sampleSize}</span> ({s.sampleQuality})
+                      </div>
+                      {s.warnings?.length > 0 && (
+                        <div className="text-rose-400/80 mt-0.5">{s.warnings.join(" · ")}</div>
+                      )}
+                    </li>
+                  ))}
+                  {strategy.data.avoidForThisRegime.length === 0 && (
+                    <li className="text-muted-foreground">Belum ada strategi yang masuk kategori avoid.</li>
+                  )}
+                </ul>
+              </div>
+              <div className="md:col-span-2 flex flex-wrap gap-1 pt-1 border-t border-border/40">
+                {strategy.data.proven.map((n: string) => (
+                  <Badge key={`p-${n}`} variant="default" className="text-[10px]">proven · {n}</Badge>
+                ))}
+                {strategy.data.promising.map((n: string) => (
+                  <Badge key={`pr-${n}`} variant="secondary" className="text-[10px]">promising · {n}</Badge>
+                ))}
+                {strategy.data.insufficient.map((n: string) => (
+                  <Badge key={`i-${n}`} variant="outline" className="text-[10px]">insufficient · {n}</Badge>
+                ))}
+              </div>
+              <div className="md:col-span-2 text-[10px] text-muted-foreground">
+                Generated {formatDateTimeWIB(strategy.data.generatedAt)} · paper trading only — score, regime
+                compatibility & sample size dipakai AI Trade Agent sebelum BUY.
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
