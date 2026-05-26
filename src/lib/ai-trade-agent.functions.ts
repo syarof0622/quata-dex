@@ -1328,3 +1328,86 @@ export const backfillScanCandidateOutcomes = createServerFn({ method: "POST" })
     return { processed, updated, skipped };
   });
 
+
+// ============================================================
+// AI Learning Label Repair
+// Re-classifies legacy training events that lack the standardized event_type
+// taxonomy. Does NOT mutate raw decision/execution data — only writes
+// event_type + final_outcome.eventType + tradeLifecycle so downstream
+// aggregations (win rate, profit factor, trade memory, post-trade review)
+// are correctly scoped to closed trades only.
+// ============================================================
+
+function classifyLegacyEvent(row: any): { eventType: string; lifecycle: "open" | "closed" | "none" } | null {
+  const action = String(row?.ai_decision?.action ?? "").toUpperCase();
+  const exec = row?.paper_execution ?? {};
+  const executed = exec?.executed === true || exec?.status === "filled";
+  const realized = Number(row?.pnl ?? 0);
+  const hasRealized = Number.isFinite(realized) && realized !== 0;
+  const closeReason = String(row?.close_reason ?? "").toLowerCase();
+
+  if (closeReason === "stop_loss_triggered") return { eventType: "stop_loss_exit", lifecycle: "closed" };
+  if (closeReason === "take_profit_triggered") return { eventType: "take_profit_exit", lifecycle: "closed" };
+
+  if ((action === "SELL" || action === "EXIT") && executed && hasRealized) {
+    return { eventType: "closed_trade", lifecycle: "closed" };
+  }
+  if (action === "BUY" && executed) {
+    return { eventType: "open_trade_snapshot", lifecycle: "open" };
+  }
+  if (action === "HOLD") {
+    return { eventType: "open_position_hold", lifecycle: "open" };
+  }
+  if (action === "BLOCKED" || action === "NO_TRADE" || action === "") {
+    return { eventType: "no_trade_snapshot", lifecycle: "none" };
+  }
+  if (action === "WATCH") return { eventType: "watch_snapshot", lifecycle: "none" };
+  if (action === "RESEARCH") return { eventType: "research_snapshot", lifecycle: "none" };
+  return null;
+}
+
+export const repairAITrainingEventLabels = createServerFn({ method: "POST" })
+  .inputValidator((d: { limit?: number } | undefined) => ({
+    limit: Math.min(Math.max(d?.limit ?? 500, 1), 2000),
+  }))
+  .handler(async ({ data }) => {
+    // Pull recent events; we reclassify those without a standardized event_type
+    // or labeled with legacy values.
+    const { data: rows } = await supabaseAdmin
+      .from("ai_agent_training_events")
+      .select("id, event_type, ai_decision, paper_execution, pnl, paper_pnl_percent, close_reason, final_outcome, created_at")
+      .order("created_at", { ascending: false })
+      .limit(data.limit);
+    if (!rows?.length) return { scanned: 0, repaired: 0 };
+
+    let repaired = 0;
+    const LEGACY = new Set(["completed_trade", "trade_decision", "passive_analysis", "premarket_plan", ""]);
+    for (const row of rows as any[]) {
+      const current = String(row?.event_type ?? "").toLowerCase();
+      const needsRepair = !current || LEGACY.has(current);
+      if (!needsRepair) continue;
+      const klass = classifyLegacyEvent(row);
+      if (!klass) continue;
+
+      const fo = (row.final_outcome ?? {}) as any;
+      const newFo = {
+        ...fo,
+        eventType: klass.eventType,
+        tradeLifecycle: klass.lifecycle,
+      };
+      // For closed trades, ensure realized P/L is reflected in tradeResult.
+      if (klass.lifecycle === "closed") {
+        const realized = Number(row.pnl ?? 0);
+        newFo.tradeResult = realized > 0 ? "win" : realized < 0 ? "loss" : "breakeven";
+      } else {
+        newFo.tradeResult = null;
+      }
+
+      const { error } = await supabaseAdmin
+        .from("ai_agent_training_events")
+        .update({ event_type: klass.eventType, final_outcome: newFo })
+        .eq("id", row.id);
+      if (!error) repaired += 1;
+    }
+    return { scanned: rows.length, repaired };
+  });
