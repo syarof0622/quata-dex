@@ -1112,7 +1112,14 @@ function AIAgentPanel() {
                     {d.symbol}
                     {inactive && <span className="ml-1 text-[9px] uppercase bg-muted text-muted-foreground px-1 py-0.5 rounded align-middle">previous session</span>}
                   </td>
-                  <td className={`p-2 text-xs font-semibold ${executed && d.action === "BUY" ? "text-bull" : executed && (d.action === "EXIT" || d.action === "SELL") ? "text-bear" : "text-muted-foreground"}`}>{d.action}</td>
+                  <td className="p-2 text-xs font-semibold">
+                    {(() => { const da = displayActionFor(d, exec.status); return (
+                      <span className={TONE_TEXT[da.tone]}>
+                        {da.label}
+                        {da.intent && <span className="ml-1 text-[9px] uppercase text-muted-foreground italic">intent {da.intent}</span>}
+                      </span>
+                    ); })()}
+                  </td>
                   <td className={`p-2 text-right font-mono text-xs ${conf.muted ? "text-muted-foreground" : ""}`} title={conf.tooltip}>{conf.label}</td>
                   <td className="p-2 text-right font-mono" title={lotNote ?? ""}>
                     {executed ? (d.suggested_lot ?? "—") : "0"}
