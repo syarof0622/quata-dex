@@ -69,3 +69,54 @@ export const formatMoneyCompact = (
 export const colorForChange = (n: number | null | undefined) =>
   n == null ? "text-muted-foreground" : n >= 0 ? "text-bull" : "text-bear";
 
+// ---------- WIB (Asia/Jakarta) timestamp formatters ----------
+// DB timestamps are stored UTC. UI is for Indonesian users, so always render
+// in WIB. Returns "—" for null/invalid so we never show "Invalid Date".
+
+const WIB_TZ = "Asia/Jakarta";
+
+function toDateOrNull(d: Date | string | number | null | undefined): Date | null {
+  if (d == null || d === "") return null;
+  const dt = d instanceof Date ? d : new Date(d);
+  return isNaN(dt.getTime()) ? null : dt;
+}
+
+/** "26 Mei 2026, 14.36 WIB" — long form with Indonesian month */
+export const formatDateTimeWIB = (d: Date | string | number | null | undefined): string => {
+  const dt = toDateOrNull(d);
+  if (!dt) return "—";
+  return new Intl.DateTimeFormat("id-ID", {
+    timeZone: WIB_TZ, day: "2-digit", month: "long", year: "numeric",
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  }).format(dt) + " WIB";
+};
+
+/** "26/05/2026, 14.36 WIB" — short numeric form */
+export const formatDateTimeShortWIB = (d: Date | string | number | null | undefined): string => {
+  const dt = toDateOrNull(d);
+  if (!dt) return "—";
+  return new Intl.DateTimeFormat("id-ID", {
+    timeZone: WIB_TZ, day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  }).format(dt) + " WIB";
+};
+
+/** "14.36.22 WIB" */
+export const formatTimeWIB = (d: Date | string | number | null | undefined): string => {
+  const dt = toDateOrNull(d);
+  if (!dt) return "—";
+  return new Intl.DateTimeFormat("id-ID", {
+    timeZone: WIB_TZ, hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+  }).format(dt) + " WIB";
+};
+
+/** "26 Mei 2026" */
+export const formatDateWIB = (d: Date | string | number | null | undefined): string => {
+  const dt = toDateOrNull(d);
+  if (!dt) return "—";
+  return new Intl.DateTimeFormat("id-ID", {
+    timeZone: WIB_TZ, day: "2-digit", month: "long", year: "numeric",
+  }).format(dt);
+};
+
+

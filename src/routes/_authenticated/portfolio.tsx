@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getPortfolioAnalytics } from "@/lib/analytics.functions";
-import { colorForChange, formatPct, formatMoneyByCurrency, formatMoneyCompact } from "@/lib/format";
+import { colorForChange, formatPct, formatMoneyByCurrency, formatMoneyCompact, formatTimeWIB, formatDateTimeWIB } from "@/lib/format";
 import { formatLocalPrice, symbolMarket } from "@/lib/symbols";
 import { Link } from "@tanstack/react-router";
 import { Sparkline } from "@/routes/_authenticated/screener";
@@ -104,7 +104,7 @@ function Portfolio() {
           <span>·</span>
           <span>{closedTrades} closed</span>
           <span>·</span>
-          <span>Updated {d.lastUpdated ? new Date(d.lastUpdated).toLocaleTimeString() : "—"}</span>
+          <span>Updated {formatTimeWIB(d.lastUpdated)}</span>
         </div>
       </div>
 
@@ -370,7 +370,7 @@ function Portfolio() {
                   <td className={`p-2 text-right font-mono ${colorForChange(t.realized)}`}>{money(t.realized)}</td>
                   <td className={`p-2 text-right font-mono text-xs ${colorForChange(t.returnPct)}`}>{formatPct(t.returnPct)}</td>
                   <td className="p-2 text-xs text-muted-foreground">{t.closeReason}</td>
-                  <td className="p-2 text-right text-[10px] text-muted-foreground">{new Date(t.closedAt).toLocaleString()}</td>
+                  <td className="p-2 text-right text-[10px] text-muted-foreground">{formatDateTimeWIB(t.closedAt)}</td>
                 </tr>
               ))}
               {recentClosed.length === 0 && (

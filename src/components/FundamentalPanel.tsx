@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getFundamentals, type FundamentalDTO } from "@/lib/fundamentals.functions";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Building2, ExternalLink, Globe, Users, TrendingUp, ShieldCheck, Coins, CalendarClock, BarChart3 } from "lucide-react";
+import { formatDateWIB, formatTimeWIB } from "@/lib/format";
 
 function compactNumber(n: number | null | undefined, currency?: string | null): string {
   if (n == null || !isFinite(n)) return "—";
@@ -26,12 +27,7 @@ function ratio(n: number | null | undefined, digits = 2): string {
   return n.toFixed(digits);
 }
 function fmtDate(s: string | null | undefined): string {
-  if (!s) return "—";
-  try {
-    return new Date(s).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-  } catch {
-    return s;
-  }
+  return formatDateWIB(s);
 }
 
 function Stat({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: "bull" | "bear" | "muted" }) {
@@ -285,7 +281,7 @@ export function FundamentalPanel({ symbol }: { symbol: string }) {
       </Section>
 
       <div className="text-[10px] text-muted-foreground text-right">
-        Data: Yahoo Finance · diperbarui {new Date(f.asOf).toLocaleTimeString()}
+        Data: Yahoo Finance · diperbarui {formatTimeWIB(f.asOf)}
       </div>
     </div>
   );

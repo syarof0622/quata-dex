@@ -7,6 +7,7 @@ import { serpapiStatus } from "@/lib/serpapi.functions";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Newspaper, TrendingUp, TrendingDown, Minus, Activity, RefreshCw, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
+import { formatTimeWIB, formatDateTimeWIB } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/news")({
   head: () => ({
@@ -199,7 +200,7 @@ function NewsHub() {
                   {ok ? `${s.articles_today ?? 0} hari ini` : (s.last_error?.slice(0, 40) ?? "no data")}
                 </div>
                 <div className="text-[10px] text-muted-foreground mt-0.5">
-                  {s.last_success_at ? `Last: ${new Date(s.last_success_at).toLocaleTimeString()}` : "—"}
+                  {s.last_success_at ? `Last: ${formatTimeWIB(s.last_success_at)}` : "—"}
                 </div>
               </div>
             );
@@ -258,7 +259,7 @@ function NewsHub() {
             </div>
             {n.summary && <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{n.summary}</div>}
             <div className="text-[10px] text-muted-foreground mt-2">
-              {n.source} · {new Date(n.published_at).toLocaleString()}
+              {n.source} · {formatDateTimeWIB(n.published_at)}
             </div>
             <div className="mt-2 flex items-center flex-wrap gap-1.5">
               <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${

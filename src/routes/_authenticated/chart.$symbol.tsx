@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getPaperAccount } from "@/lib/paper.functions";
-import { formatIDRCompact } from "@/lib/format";
+import { formatIDRCompact, formatTimeWIB } from "@/lib/format";
 import { useEffect, useRef, useState } from "react";
 import { getQuote, getQuoteRealtime } from "@/lib/market.functions";
 import {
@@ -341,7 +341,7 @@ function ChartPage() {
               </div>
               {quote.dataUpdatedAt > 0 && (
                 <div className="text-[10px] text-muted-foreground mt-0.5">
-                  Updated {new Date(quote.dataUpdatedAt).toLocaleTimeString()}
+                  Updated {formatTimeWIB(quote.dataUpdatedAt)}
                 </div>
               )}
             </div>
