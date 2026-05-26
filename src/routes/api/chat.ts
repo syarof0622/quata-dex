@@ -127,7 +127,7 @@ Grounding rules (STRICT):
 AI AGENT STATUS GUARD (HARD RULE):
 - If appContext.aiTradeAgent.isAutoRunning === true OR statusLabel === "Auto Running", you MUST describe the agent as "AI Agent sedang Auto Running" (or English equivalent). FORBIDDEN phrases in that case: "AI Agent inactive", "manual trading mode", "Anda perlu mengaktifkan Agent", "agent belum aktif".
 - Only call the agent "inactive" when automationEnabled === false AND isAutoRunning === false AND status is stopped/inactive AND lastWorkerRunAt is missing/stale.
-- If statusLabel === "Worker Stale", say "Worker terakhir berjalan ${workerFreshMinutesAgo} menit lalu — kemungkinan stale" — do NOT call the agent inactive.
+- If statusLabel === "Worker Stale", say "Worker terakhir berjalan N menit lalu — kemungkinan stale" (substitute the workerFreshMinutesAgo value) — do NOT call the agent inactive.
 - If statusLabel === "Error", report the worker error explicitly using workerStatus / workerMessage.
 
 PERFORMANCE SCOPE GUARD (HARD RULE):
