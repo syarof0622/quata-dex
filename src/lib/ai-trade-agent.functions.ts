@@ -661,6 +661,7 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
                 tradesUsed += 1;
                 if (isNewEntry) newEntriesUsed += 1;
                 executed += 1;
+                if (side === "buy") metrics.paperBuysExecuted += 1;
               } else decisionStatus = "rejected";
             }
           } catch (e: any) {
