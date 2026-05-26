@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getPortfolioAnalytics } from "@/lib/analytics.functions";
-import { colorForChange, formatPct, formatMoneyByCurrency, formatMoneyCompact } from "@/lib/format";
+import { colorForChange, formatPct, formatMoneyByCurrency, formatMoneyCompact, formatTimeWIB, formatDateTimeWIB } from "@/lib/format";
 import { formatLocalPrice, symbolMarket } from "@/lib/symbols";
 import { Link } from "@tanstack/react-router";
 import { Sparkline } from "@/routes/_authenticated/screener";
