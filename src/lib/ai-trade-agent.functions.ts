@@ -580,6 +580,8 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
   let newEntriesUsed = 0;
   const maxNew = Number(agent.max_new_entries_per_day ?? 3);
 
+  metrics.candidatesScanned = symbolsToEvaluate.length;
+  metrics.candidatesSelected = symbolsToEvaluate.length;
   for (const sym of symbolsToEvaluate) {
     try {
       const metaPre = autonomousMeta.get(sym);
