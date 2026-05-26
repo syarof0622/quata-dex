@@ -633,7 +633,7 @@ export async function evaluateSymbol(
     if (symbolExposure >= agent.maxPositionPerSymbol) {
       return emptySnap(sym, `Eksposur ${(symbolExposure*100).toFixed(1)}% melebihi limit per simbol.`, {
         riskSnapshot: { exposure: symbolExposure, cap: agent.maxPositionPerSymbol },
-        blockedReason: "exposure_cap_reached",
+        blockedReason: "max_position_weight_reached",
       });
     }
     // ===== Advanced Risk Engine =====
