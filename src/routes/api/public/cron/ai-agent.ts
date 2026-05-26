@@ -148,7 +148,18 @@ async function handler(request: Request) {
     decisionsCreated: acc.decisionsCreated + r.decisionsCreated,
     paperBuysExecuted: acc.paperBuysExecuted + r.paperBuysExecuted,
     blockedDecisions: acc.blockedDecisions + r.blockedDecisions,
-  }), { decisionsCreated: 0, paperBuysExecuted: 0, blockedDecisions: 0 });
+    candidatesScanned: acc.candidatesScanned + r.candidatesScanned,
+    candidatesSelected: acc.candidatesSelected + r.candidatesSelected,
+    buyEvaluations: acc.buyEvaluations + r.buyEvaluations,
+    openPositionsMonitored: acc.openPositionsMonitored + r.openPositionsMonitored,
+    stopLossTriggered: acc.stopLossTriggered + r.stopLossTriggered,
+    takeProfitTriggered: acc.takeProfitTriggered + r.takeProfitTriggered,
+  }), { decisionsCreated: 0, paperBuysExecuted: 0, blockedDecisions: 0,
+        candidatesScanned: 0, candidatesSelected: 0, buyEvaluations: 0,
+        openPositionsMonitored: 0, stopLossTriggered: 0, takeProfitTriggered: 0 });
+  const allReasons = results.flatMap(r => r.topBlockedReasons);
+  const topBlockedReasons = Array.from(new Set(allReasons)).slice(0, 5);
+  const mode = !session.isOpen ? "passive_analysis_only" : "full_cycle";
 
   return Response.json({
     ok: true,
