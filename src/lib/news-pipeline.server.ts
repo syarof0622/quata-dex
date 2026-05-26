@@ -233,11 +233,23 @@ export function normalize(item: RawItem, source: { id: string; priority: number;
   try { pub = item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(); }
   catch { pub = new Date().toISOString(); }
 
+  const summaryText = (item.description ?? "").slice(0, 600) || null;
+  const relevance = computeRelevance(title, summaryText ?? "", tickers, sectors);
+  const impactCat = classifyImpactCategory(blob);
+  const reliability = sourceReliability(source.id);
+  const isNoise =
+    relevance.cls === "irrelevant_noise" ||
+    (relevance.score < 10 && impactCat.category === "generic_market_news" && impact.score < 25);
+  const finalImpactCategory: ImpactCategory = isNoise ? "noise" : impactCat.category;
+  const clusterKey = relevance.primary
+    ? `${relevance.primary}-${impactCat.category}-${timeBucketHour(pub)}`
+    : `${impactCat.category}-${timeBucketHour(pub)}-${titleHash.slice(0, 6)}`;
+
   return {
     source: source.id,
     source_id: item.guid ?? cu ?? item.link,
     title,
-    summary: (item.description ?? "").slice(0, 600) || null,
+    summary: summaryText,
     url: item.link,
     canonical_url: cu,
     image_url: item.image ?? null,
@@ -254,6 +266,14 @@ export function normalize(item: RawItem, source: { id: string; priority: number;
     related_symbols: [...tickers, ...(blob.toUpperCase().includes("IHSG") ? ["IHSG"] : [])],
     title_hash: titleHash,
     raw_payload: { guid: item.guid ?? null },
+    ticker_relevance_score: relevance.score,
+    relevance_class: relevance.cls,
+    impact_category: finalImpactCategory,
+    event_cluster_id: clusterKey,
+    duplicate_group_id: titleHash,
+    source_reliability_weight: reliability,
+    is_noise: isNoise,
+    primary_ticker: relevance.primary,
   };
 }
 
