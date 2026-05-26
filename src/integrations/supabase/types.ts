@@ -716,6 +716,7 @@ export type Database = {
           allow_watch_candidates: boolean
           auto_stop_loss: boolean | null
           auto_take_profit: boolean | null
+          automation_enabled: boolean
           autonomous_allocation_mode: string
           autonomous_mode_acknowledged: boolean
           autonomous_rescan_interval_minutes: number
@@ -724,10 +725,16 @@ export type Database = {
           created_at: string
           expert_research_max_allocation_pct: number
           id: string
+          last_auto_decision_at: string | null
+          last_auto_execution_at: string | null
           last_autonomous_scan_at: string | null
+          last_blocked_reason: string | null
           last_error: string | null
           last_market_session_state: string | null
           last_run_at: string | null
+          last_worker_message: string | null
+          last_worker_run_at: string | null
+          last_worker_status: string | null
           max_active_positions: number
           max_autonomous_symbols: number
           max_daily_loss: number | null
@@ -752,6 +759,7 @@ export type Database = {
           momentum_min_rvol: number
           momentum_min_score: number
           name: string
+          next_expected_worker_run_at: string | null
           paper_account_id: string
           paper_trading_only: boolean
           paused_at: string | null
@@ -770,6 +778,7 @@ export type Database = {
           trailing_stop: boolean | null
           updated_at: string
           user_id: string
+          worker_error_count: number
         }
         Insert: {
           allocation_amount?: number | null
@@ -788,6 +797,7 @@ export type Database = {
           allow_watch_candidates?: boolean
           auto_stop_loss?: boolean | null
           auto_take_profit?: boolean | null
+          automation_enabled?: boolean
           autonomous_allocation_mode?: string
           autonomous_mode_acknowledged?: boolean
           autonomous_rescan_interval_minutes?: number
@@ -796,10 +806,16 @@ export type Database = {
           created_at?: string
           expert_research_max_allocation_pct?: number
           id?: string
+          last_auto_decision_at?: string | null
+          last_auto_execution_at?: string | null
           last_autonomous_scan_at?: string | null
+          last_blocked_reason?: string | null
           last_error?: string | null
           last_market_session_state?: string | null
           last_run_at?: string | null
+          last_worker_message?: string | null
+          last_worker_run_at?: string | null
+          last_worker_status?: string | null
           max_active_positions?: number
           max_autonomous_symbols?: number
           max_daily_loss?: number | null
@@ -824,6 +840,7 @@ export type Database = {
           momentum_min_rvol?: number
           momentum_min_score?: number
           name?: string
+          next_expected_worker_run_at?: string | null
           paper_account_id: string
           paper_trading_only?: boolean
           paused_at?: string | null
@@ -842,6 +859,7 @@ export type Database = {
           trailing_stop?: boolean | null
           updated_at?: string
           user_id: string
+          worker_error_count?: number
         }
         Update: {
           allocation_amount?: number | null
@@ -860,6 +878,7 @@ export type Database = {
           allow_watch_candidates?: boolean
           auto_stop_loss?: boolean | null
           auto_take_profit?: boolean | null
+          automation_enabled?: boolean
           autonomous_allocation_mode?: string
           autonomous_mode_acknowledged?: boolean
           autonomous_rescan_interval_minutes?: number
@@ -868,10 +887,16 @@ export type Database = {
           created_at?: string
           expert_research_max_allocation_pct?: number
           id?: string
+          last_auto_decision_at?: string | null
+          last_auto_execution_at?: string | null
           last_autonomous_scan_at?: string | null
+          last_blocked_reason?: string | null
           last_error?: string | null
           last_market_session_state?: string | null
           last_run_at?: string | null
+          last_worker_message?: string | null
+          last_worker_run_at?: string | null
+          last_worker_status?: string | null
           max_active_positions?: number
           max_autonomous_symbols?: number
           max_daily_loss?: number | null
@@ -896,6 +921,7 @@ export type Database = {
           momentum_min_rvol?: number
           momentum_min_score?: number
           name?: string
+          next_expected_worker_run_at?: string | null
           paper_account_id?: string
           paper_trading_only?: boolean
           paused_at?: string | null
@@ -914,6 +940,7 @@ export type Database = {
           trailing_stop?: boolean | null
           updated_at?: string
           user_id?: string
+          worker_error_count?: number
         }
         Relationships: []
       }

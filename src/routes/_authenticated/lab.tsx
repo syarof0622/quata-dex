@@ -398,10 +398,75 @@ function confidenceCell(agent: any, session: any, d: any) {
 }
 
 function runButtonCopy(agent: any, session: any) {
+  const tip = "Manual trigger for debugging. AI automation runs automatically when the server worker is active — you do not need to click this for the agent to trade.";
   const s = agent?.status ?? "stopped";
-  if (s === "paused") return { label: "Run analysis preview", tip: "Agent sedang pause. Analisis dapat dijalankan sebagai preview tanpa eksekusi." };
-  if (session && !session.isOpen) return { label: "Run analysis now", tip: "Market sedang tidak buka. Agent hanya akan melakukan analisis pasif dan tidak akan membuat order." };
-  return { label: "Run decision now", tip: "Jalankan decision cycle sekarang. Agent dapat membuat paper order jika valid." };
+  if (s === "paused") return { label: "Manual run (preview)", tip };
+  if (session && !session.isOpen) return { label: "Manual run (analysis only)", tip };
+  return { label: "Manual run now", tip };
+}
+
+function AutomationStatusPanel({ agent, session }: { agent: any; session: any }) {
+  if (!agent) return null;
+  const lastRun = agent.last_worker_run_at ? new Date(agent.last_worker_run_at) : null;
+  const ageMs = lastRun ? Date.now() - lastRun.getTime() : null;
+  const automationEnabled = agent.automation_enabled !== false;
+  const isOpen = !!session?.isOpen;
+
+  let state: { label: string; cls: string; msg: string };
+  if (!automationEnabled) {
+    state = { label: "Manual mode only", cls: "bg-muted text-muted-foreground",
+      msg: "Automation disabled. Agent will not trade automatically." };
+  } else if (!lastRun) {
+    state = { label: "Auto stale", cls: "bg-bear/15 text-bear",
+      msg: "AI automation worker has not run yet. Autonomous trading will not execute until the scheduler calls /api/public/cron/ai-agent." };
+  } else if (ageMs !== null && isOpen && ageMs > 120_000) {
+    state = { label: "Auto stale", cls: "bg-bear/15 text-bear",
+      msg: `AI worker appears inactive (last run ${Math.round(ageMs/1000)}s ago). No automatic decisions will be made.` };
+  } else if (agent.last_worker_status === "error") {
+    state = { label: "Auto error", cls: "bg-bear/15 text-bear",
+      msg: agent.last_worker_message ?? "Worker reported an error on the last cycle." };
+  } else if (!isOpen) {
+    state = { label: "Auto waiting market open", cls: "bg-muted text-muted-foreground",
+      msg: "Worker is alive but market is closed/break. Heartbeat only — no orders." };
+  } else {
+    state = { label: "Auto running", cls: "bg-bull/15 text-bull",
+      msg: "AI worker active — decisions run automatically." };
+  }
+
+  const fmt = (iso: string | null | undefined) =>
+    iso ? new Date(iso).toLocaleTimeString("id-ID", { hour12: false }) + " · " + new Date(iso).toLocaleDateString("id-ID") : "—";
+
+  return (
+    <div className="panel p-3 space-y-2 border border-dashed">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold uppercase text-muted-foreground">Automation Status</span>
+          <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${state.cls}`}>{state.label}</span>
+        </div>
+        <span className="text-[10px] text-muted-foreground">cron: /api/public/cron/ai-agent</span>
+      </div>
+      <p className="text-xs text-muted-foreground leading-relaxed">{state.msg}</p>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+        <div><span className="text-muted-foreground">Automation:</span> <span className="font-mono">{automationEnabled ? "enabled" : "disabled"}</span></div>
+        <div><span className="text-muted-foreground">Last worker run:</span> <span className="font-mono">{fmt(agent.last_worker_run_at)}</span></div>
+        <div><span className="text-muted-foreground">Next expected:</span> <span className="font-mono">{fmt(agent.next_expected_worker_run_at)}</span></div>
+        <div><span className="text-muted-foreground">Last auto decision:</span> <span className="font-mono">{fmt(agent.last_auto_decision_at)}</span></div>
+        <div><span className="text-muted-foreground">Last auto execution:</span> <span className="font-mono">{fmt(agent.last_auto_execution_at)}</span></div>
+        <div><span className="text-muted-foreground">Worker errors:</span> <span className="font-mono">{agent.worker_error_count ?? 0}</span></div>
+      </div>
+      {agent.last_blocked_reason && (
+        <div className="text-xs">
+          <span className="text-muted-foreground">Last blocked reason: </span>
+          <span className="font-mono">{agent.last_blocked_reason}</span>
+        </div>
+      )}
+      {!lastRun && (
+        <p className="text-[11px] text-muted-foreground italic">
+          Note: the cron route exists, but autonomous execution requires an external scheduler (pg_cron or platform cron) to hit this endpoint every minute. Manual run is a debug shortcut only.
+        </p>
+      )}
+    </div>
+  );
 }
 
 function AIAgentPanel() {
@@ -538,6 +603,8 @@ function AIAgentPanel() {
           Namun seluruh transaksi dilakukan hanya di Paper Trading menggunakan saldo virtual — tidak ada eksekusi real-money,
           tidak terhubung ke broker, dan tidak ada order ke sekuritas.
         </p>
+
+        <AutomationStatusPanel agent={agent} session={session} />
 
         <AutonomousModeControls agent={agent} onChange={() => status.refetch()} />
 
