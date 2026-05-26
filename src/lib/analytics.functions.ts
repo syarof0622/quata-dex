@@ -306,6 +306,63 @@ export const getPortfolioAnalytics = createServerFn({ method: "GET" })
     if (!Number.isFinite(pnlPct)) consistency.push("pnl_pct_invalid");
     if (exposure > 100.5) consistency.push("exposure_exceeds_100");
 
+    // ---------- ATTRIBUTION + SCENARIOS ----------
+    // Per-position beta & volatility: only fetch candles when position count is small,
+    // otherwise fall back to sector prior to keep upstream quota safe.
+    const baselineForContribution = initialBalance > 0 ? initialBalance : equity || 1;
+    const fetchPerPosBeta = enriched.length > 0 && enriched.length <= 12 && benchReturns.length > 30;
+    const positionStats = await Promise.all(
+      enriched.map(async (p) => {
+        let beta: number | null = null;
+        let vol: number | null = null;
+        let betaSource: "computed" | "sector_prior" = "sector_prior";
+        if (fetchPerPosBeta) {
+          try {
+            const c = await getCandles({ data: { symbol: p.symbol, timeframe: "1d" } });
+            const r: number[] = [];
+            for (let i = 1; i < c.length; i++) r.push((c[i].close - c[i - 1].close) / c[i - 1].close);
+            const b = betaFromReturns(r, benchReturns);
+            if (b != null && Number.isFinite(b)) { beta = b; betaSource = "computed"; }
+            vol = annualizedVol(r);
+          } catch {/* ignore — fall back */}
+        }
+        if (beta == null) beta = SECTOR_BETA_PRIOR[p.sector] ?? 1;
+        return { symbol: p.symbol, beta, betaSource, vol };
+      }),
+    );
+    const statsBy = new Map(positionStats.map((s) => [s.symbol, s]));
+
+    const attribPositions: AttribPosition[] = enriched.map((p) => {
+      const s = statsBy.get(p.symbol)!;
+      const weight = equity ? (p.value / equity) * 100 : 0;
+      return {
+        symbol: p.symbol,
+        sector: p.sector as any,
+        marketValue: p.value,
+        weight,
+        unrealizedPnl: p.pnl,
+        unrealizedPnlPct: p.pnlPct,
+        contributionToReturn: baselineForContribution ? (p.pnl / baselineForContribution) * 100 : 0,
+        contributionToRisk: 0, // filled below after normalisation
+        beta: s.beta,
+        betaSource: s.betaSource,
+        volatility: s.vol,
+      };
+    });
+    // Risk contribution = weight × volatility (or |beta| as fallback), normalised to sum to 100.
+    const rawRisk = attribPositions.map((p) => (p.weight / 100) * ((p.volatility ?? (Math.abs(p.beta ?? 1) * 20))));
+    const rawSum = rawRisk.reduce((s, v) => s + v, 0);
+    attribPositions.forEach((p, i) => {
+      p.contributionToRisk = rawSum > 0 ? (rawRisk[i] / rawSum) * 100 : 0;
+    });
+    const sectorAttribution = computeSectorAttribution(attribPositions, equity, baselineForContribution);
+    const cashDrag = computeCashDrag({ cash, equity, benchReturns, lookbackDays: 60 });
+    const scenarios = computeScenarios({ positions: attribPositions, equity });
+
+    const sortedByContrib = [...attribPositions].sort((a, b) => b.contributionToReturn - a.contributionToReturn);
+    const topContributor = sortedByContrib[0] ?? null;
+    const worstContributor = sortedByContrib.length ? sortedByContrib[sortedByContrib.length - 1] : null;
+
     return {
       currency: accountAny.currency ?? "IDR",
       initialBalance,
@@ -325,5 +382,87 @@ export const getPortfolioAnalytics = createServerFn({ method: "GET" })
       lastUpdated: new Date().toISOString(),
       priceStaleSymbols: Array.from(priceStale),
       consistency,
+      // Attribution & scenario block
+      attribution: {
+        positions: attribPositions,
+        sectors: sectorAttribution,
+        topContributor: topContributor ? { symbol: topContributor.symbol, contributionToReturn: topContributor.contributionToReturn, unrealizedPnl: topContributor.unrealizedPnl } : null,
+        worstContributor: worstContributor && worstContributor !== topContributor
+          ? { symbol: worstContributor.symbol, contributionToReturn: worstContributor.contributionToReturn, unrealizedPnl: worstContributor.unrealizedPnl }
+          : null,
+        baselineForContribution,
+        betaCoverage: fetchPerPosBeta
+          ? `${positionStats.filter((s) => s.betaSource === "computed").length}/${positionStats.length} computed`
+          : `0/${positionStats.length} computed (sector_prior only)`,
+      },
+      cashDrag,
+      scenarios,
     };
+  });
+
+// ----- What-if simulator (read-only) -----
+export const simulatePortfolioWhatIf = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.discriminatedUnion("action", [
+      z.object({ action: z.literal("close"), symbol: z.string().min(1) }),
+      z.object({
+        action: z.literal("add"),
+        symbol: z.string().min(1),
+        lot: z.number().positive().max(100000),
+        price: z.number().positive().optional(),
+      }),
+    ]).parse,
+  )
+  .handler(async ({ data }) => {
+    const { data: account } = await supabaseAdmin
+      .from("paper_accounts").select("*").eq("user_id", USER_ID).maybeSingle();
+    if (!account) return { error: "Paper account belum diinisialisasi." };
+    const { data: positions } = await supabaseAdmin
+      .from("paper_positions").select("*").eq("account_id", account.id);
+
+    const symbols = (positions ?? []).map((p: any) => p.symbol);
+    let quotes: any[] = [];
+    if (symbols.length) {
+      try { quotes = await getQuotes({ data: { symbols } }); } catch { quotes = []; }
+    }
+    const priceBy: Record<string, number> = {};
+    quotes.forEach((q) => { if (q.price) priceBy[q.symbol] = q.price; });
+
+    const enriched: AttribPosition[] = (positions ?? []).map((p: any) => {
+      const qty = Number(p.qty);
+      const avg = Number(p.avg_price);
+      const last = priceBy[p.symbol] ?? avg;
+      const value = last * qty;
+      const pnl = (last - avg) * qty;
+      return {
+        symbol: p.symbol,
+        sector: sectorOf(p.symbol) as any,
+        marketValue: value,
+        weight: 0,
+        unrealizedPnl: pnl,
+        unrealizedPnlPct: avg ? (pnl / (avg * qty)) * 100 : 0,
+        contributionToReturn: 0,
+        contributionToRisk: 0,
+        beta: null,
+        betaSource: "sector_prior",
+        volatility: null,
+      };
+    });
+    const cash = Number(account.cash);
+    const totalValue = enriched.reduce((s, p) => s + p.marketValue, 0);
+    const equity = cash + totalValue;
+    enriched.forEach((p) => { p.weight = equity ? (p.marketValue / equity) * 100 : 0; });
+
+    if (data.action === "close") {
+      return simulateClose({ positions: enriched, cash, equity, symbol: data.symbol });
+    }
+    // add — resolve price from quote if not provided
+    let price = data.price ?? 0;
+    if (!price) {
+      try {
+        const q = await getQuotes({ data: { symbols: [data.symbol] } });
+        price = Number(q?.[0]?.price ?? 0);
+      } catch {/* */}
+    }
+    return simulateAdd({ positions: enriched, cash, equity, symbol: data.symbol, lot: data.lot, price });
   });
