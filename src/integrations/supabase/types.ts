@@ -38,6 +38,7 @@ export type Database = {
           exploration_trade: boolean
           id: string
           idempotency_key: string | null
+          market_regime: string | null
           paper_account_id: string
           portfolio_snapshot: Json | null
           raw_confidence: number | null
@@ -48,8 +49,12 @@ export type Database = {
           selection_mode: string
           selection_reason: string | null
           sentiment_snapshot: Json | null
+          setup_type: string | null
+          signal_source: string | null
           stop_loss: number | null
           strategy: string | null
+          strategy_context: Json | null
+          strategy_name: string | null
           suggested_lot: number | null
           suggested_shares: number | null
           symbol: string
@@ -79,6 +84,7 @@ export type Database = {
           exploration_trade?: boolean
           id?: string
           idempotency_key?: string | null
+          market_regime?: string | null
           paper_account_id: string
           portfolio_snapshot?: Json | null
           raw_confidence?: number | null
@@ -89,8 +95,12 @@ export type Database = {
           selection_mode?: string
           selection_reason?: string | null
           sentiment_snapshot?: Json | null
+          setup_type?: string | null
+          signal_source?: string | null
           stop_loss?: number | null
           strategy?: string | null
+          strategy_context?: Json | null
+          strategy_name?: string | null
           suggested_lot?: number | null
           suggested_shares?: number | null
           symbol: string
@@ -120,6 +130,7 @@ export type Database = {
           exploration_trade?: boolean
           id?: string
           idempotency_key?: string | null
+          market_regime?: string | null
           paper_account_id?: string
           portfolio_snapshot?: Json | null
           raw_confidence?: number | null
@@ -130,8 +141,12 @@ export type Database = {
           selection_mode?: string
           selection_reason?: string | null
           sentiment_snapshot?: Json | null
+          setup_type?: string | null
+          signal_source?: string | null
           stop_loss?: number | null
           strategy?: string | null
+          strategy_context?: Json | null
+          strategy_name?: string | null
           suggested_lot?: number | null
           suggested_shares?: number | null
           symbol?: string
@@ -2066,6 +2081,123 @@ export type Database = {
           name?: string
           rules_json?: Json
           user_id?: string
+        }
+        Relationships: []
+      }
+      strategy_backtest_results: {
+        Row: {
+          avg_holding_period: number | null
+          avg_return: number
+          best_trade: number | null
+          created_at: string
+          id: string
+          market_regime: string | null
+          max_drawdown: number
+          median_return: number | null
+          profit_factor: number
+          sample_quality: string
+          sector: string | null
+          sharpe_like_score: number | null
+          strategy_name: string
+          symbol: string
+          tested_from: string | null
+          tested_to: string | null
+          timeframe: string | null
+          total_trades: number
+          win_rate: number
+          worst_trade: number | null
+        }
+        Insert: {
+          avg_holding_period?: number | null
+          avg_return?: number
+          best_trade?: number | null
+          created_at?: string
+          id?: string
+          market_regime?: string | null
+          max_drawdown?: number
+          median_return?: number | null
+          profit_factor?: number
+          sample_quality?: string
+          sector?: string | null
+          sharpe_like_score?: number | null
+          strategy_name: string
+          symbol: string
+          tested_from?: string | null
+          tested_to?: string | null
+          timeframe?: string | null
+          total_trades?: number
+          win_rate?: number
+          worst_trade?: number | null
+        }
+        Update: {
+          avg_holding_period?: number | null
+          avg_return?: number
+          best_trade?: number | null
+          created_at?: string
+          id?: string
+          market_regime?: string | null
+          max_drawdown?: number
+          median_return?: number | null
+          profit_factor?: number
+          sample_quality?: string
+          sector?: string | null
+          sharpe_like_score?: number | null
+          strategy_name?: string
+          symbol?: string
+          tested_from?: string | null
+          tested_to?: string | null
+          timeframe?: string | null
+          total_trades?: number
+          win_rate?: number
+          worst_trade?: number | null
+        }
+        Relationships: []
+      }
+      strategy_forward_test_results: {
+        Row: {
+          close_reason: string | null
+          created_at: string
+          holding_duration_minutes: number | null
+          id: string
+          market_regime: string | null
+          paper_order_id: string | null
+          realized_pnl: number | null
+          realized_pnl_pct: number | null
+          result: string
+          sector: string | null
+          strategy_name: string
+          symbol: string
+          training_event_id: string | null
+        }
+        Insert: {
+          close_reason?: string | null
+          created_at?: string
+          holding_duration_minutes?: number | null
+          id?: string
+          market_regime?: string | null
+          paper_order_id?: string | null
+          realized_pnl?: number | null
+          realized_pnl_pct?: number | null
+          result?: string
+          sector?: string | null
+          strategy_name: string
+          symbol: string
+          training_event_id?: string | null
+        }
+        Update: {
+          close_reason?: string | null
+          created_at?: string
+          holding_duration_minutes?: number | null
+          id?: string
+          market_regime?: string | null
+          paper_order_id?: string | null
+          realized_pnl?: number | null
+          realized_pnl_pct?: number | null
+          result?: string
+          sector?: string | null
+          strategy_name?: string
+          symbol?: string
+          training_event_id?: string | null
         }
         Relationships: []
       }
