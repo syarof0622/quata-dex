@@ -31,25 +31,94 @@ const ACTION_CLS: Record<string, string> = {
 
 // Reasons that mean: AI wanted to act, but a guard/limit prevented execution.
 // These must surface as BLOCKED in the final status while keeping the original
-// action as the intent.
+// action as the intent. Keep this in sync with risk-engine.ts canonical spec.
 const BLOCKING_REASONS = new Set([
-  "limit_reached",
+  "limit_reached", // legacy alias → max_active_positions_reached
+  "risk_limit_reached", // legacy
+  "exposure_cap_reached", // legacy → max_position_weight_reached
+  "low_liquidity", // legacy → liquidity_too_low
+  "insufficient_balance", // legacy → insufficient_cash
+  "risk_pause_active", // legacy → pause_active
+  "sector_exposure_limit", // legacy → max_sector_exposure_reached
+  // Spec (Patch 4) canonical reasons:
   "max_active_positions_reached",
-  "risk_limit_reached",
-  "confidence_below_threshold",
-  "market_closed",
+  "max_position_weight_reached",
+  "max_sector_exposure_reached",
+  "cash_buffer_required",
   "insufficient_cash",
-  "sector_exposure_limit",
+  "confidence_below_threshold",
+  "strategy_incompatible_with_regime",
   "risk_reward_invalid",
-  "daily_loss_limit",
+  "lot_below_minimum",
+  "market_closed",
+  "data_quality_stale",
+  "source_health_degraded",
+  "negative_disclosure_detected",
+  "news_shock_risk",
+  "liquidity_too_low",
+  "volatility_too_high",
+  "daily_loss_limit_reached",
+  "drawdown_limit_reached",
+  "max_losses_per_day_reached",
+  "consecutive_losses_limit",
   "pause_active",
   "cooldown_active",
+  "risk_guard_blocked",
 ]);
+
+// Legacy → canonical mapping for display (Patch 4 backwards-compat).
+const REASON_ALIAS: Record<string, string> = {
+  limit_reached: "max_active_positions_reached",
+  risk_limit_reached: "max_active_positions_reached",
+  exposure_cap_reached: "max_position_weight_reached",
+  low_liquidity: "liquidity_too_low",
+  insufficient_balance: "insufficient_cash",
+  risk_pause_active: "pause_active",
+  sector_exposure_limit: "max_sector_exposure_reached",
+};
+
+const REASON_LABEL: Record<string, string> = {
+  max_active_positions_reached: "Slot posisi penuh",
+  max_position_weight_reached: "Bobot posisi melebihi limit",
+  max_sector_exposure_reached: "Eksposur sektor melebihi limit",
+  cash_buffer_required: "Cash buffer kurang",
+  insufficient_cash: "Cash tidak cukup",
+  confidence_below_threshold: "Confidence di bawah threshold",
+  strategy_incompatible_with_regime: "Strategi tidak cocok regime",
+  risk_reward_invalid: "Risk/Reward tidak valid",
+  lot_below_minimum: "Lot di bawah minimum",
+  market_closed: "Pasar tutup",
+  data_quality_stale: "Data tidak fresh",
+  source_health_degraded: "Source health degraded",
+  negative_disclosure_detected: "Disclosure negatif",
+  news_shock_risk: "News shock risk",
+  liquidity_too_low: "Likuiditas terlalu rendah",
+  volatility_too_high: "Volatilitas terlalu tinggi",
+  daily_loss_limit_reached: "Daily loss limit",
+  drawdown_limit_reached: "Drawdown limit",
+  max_losses_per_day_reached: "Loss harian limit",
+  consecutive_losses_limit: "Loss beruntun limit",
+  pause_active: "Risk pause aktif",
+  cooldown_active: "Cooldown aktif",
+  risk_guard_blocked: "Risk guard memblokir",
+  executed: "Eksekusi paper order",
+  filled: "Order filled",
+  watch_only: "Watch only",
+  research_only: "Research only",
+  premarket_plan: "Pre-market plan",
+};
+
+function friendlyReason(raw?: string | null): string {
+  if (!raw) return "—";
+  const key = REASON_ALIAS[raw] ?? raw;
+  return REASON_LABEL[key] ?? key.replace(/_/g, " ");
+}
 
 type Derived = {
   intent: string;            // original AI intent (BUY/SELL/HOLD/WATCH/…)
   finalStatus: string;       // BUY only if executed; otherwise BLOCKED/HOLD/WATCH/NO_TRADE
-  reason: string | null;
+  reason: string | null;     // friendly label for display
+  rawReason: string | null;  // canonical reason tag
   blocked: boolean;
 };
 
@@ -77,13 +146,15 @@ function deriveStatus(row: DecisionReplayRow): Derived {
   if (intent === "BUY" || intent === "SELL" || intent === "EXIT") {
     if (executed) finalStatus = intent;
     else if (isBlocked) finalStatus = "BLOCKED";
-    else finalStatus = intent === "BUY" ? "WATCH" : intent; // intent not executed & no clear block ⇒ research/watch
+    else finalStatus = intent === "BUY" ? "WATCH" : intent;
   }
-  // HOLD / WATCH / RESEARCH stay as-is
+  // HOLD only valid for open positions; persistence layer already remaps but
+  // belt-and-suspenders for legacy rows.
   return {
     intent,
     finalStatus,
-    reason: row.decision_status ?? null,
+    reason: friendlyReason(row.decision_status),
+    rawReason: row.decision_status ?? null,
     blocked: isBlocked,
   };
 }
