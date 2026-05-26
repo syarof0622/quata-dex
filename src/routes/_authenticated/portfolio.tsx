@@ -5,15 +5,13 @@ import { colorForChange, formatPct, formatMoneyByCurrency, formatMoneyCompact } 
 import { formatLocalPrice, symbolMarket } from "@/lib/symbols";
 import { Link } from "@tanstack/react-router";
 import { Sparkline } from "@/routes/_authenticated/screener";
-import { ShieldAlert, TrendingUp, Layers, Activity, Target } from "lucide-react";
+import { ShieldAlert, TrendingUp, Layers, Activity, Target, Wallet, AlertTriangle, CheckCircle2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/portfolio")({
   head: () => ({ meta: [{ title: "Portfolio — Quanta Terminal" }] }),
   component: Portfolio,
 });
 
-/** Per-symbol share-price formatter. Uses local price units (IDR for IDX,
- *  USD-like for others) — distinct from account currency formatting. */
 function priceFmt(symbol: string, n: number | null | undefined) {
   if (n == null || isNaN(n)) return "—";
   return symbolMarket(symbol) === "idx"
@@ -38,10 +36,17 @@ function Portfolio() {
   const moneyCompact = (n: number | null | undefined) => formatMoneyCompact(currency, n);
 
   const exposure = num(d.exposure);
-  const concentration = num(d.concentration);
-  const beta = d.beta == null ? null : num(d.beta, 0);
+  const concentration = num(d.maxPositionWeight ?? d.concentration);
+  const cashRatio = num(d.cashRatio);
+  const largestSectorPct = num(d.largestSectorPct);
+  const drawdown = num(d.drawdown);
+  const dailyPnl = num(d.dailyPnl);
+  const dailyPnlPct = num(d.dailyPnlPct);
   const winRate = num(d.winRate);
-  const totalTrades = num(d.totalTrades);
+  const closedTrades = num(d.closedTradesCount ?? d.totalTrades);
+  const executedOrders = num(d.executedOrdersCount);
+  const openPositionsCount = num(d.openPositionsCount);
+  const profitFactor = d.profitFactor;
   const pnlPct = num(d.pnlPct);
   const totalReturnAmount = num(d.totalReturnAmount);
   const initialBalance = num(d.initialBalance);
@@ -49,120 +54,179 @@ function Portfolio() {
   const positions = Array.isArray(d.positions) ? d.positions : [];
   const sectorBreakdown = Array.isArray(d.sectorBreakdown) ? d.sectorBreakdown : [];
   const curve = Array.isArray(d.curve) ? d.curve : [];
+  const recentClosed = Array.isArray(d.recentClosedTrades) ? d.recentClosedTrades : [];
+  const warnings = Array.isArray(d.warnings) ? d.warnings : [];
+  const riskLevel = (d.riskLevel ?? "low") as "low" | "moderate" | "elevated" | "high";
 
   const hasPositions = positions.length > 0;
-  const hasActivity = hasPositions || totalTrades > 0;
+  const hasActivity = hasPositions || executedOrders > 0;
   const hasBaseline = initialBalance > 0;
+  const hasClosed = closedTrades > 0;
 
   // Smarter concentration label
   const concentrationHint =
     positions.length === 0 ? "No positions"
-      : positions.length === 1 ? "Single holding — concentrated by definition"
-      : concentration > 35 ? "Single position dominates equity"
-      : positions.length <= 3 ? "Concentrated across few names"
-      : concentration > 25 ? "Moderate concentration"
-      : "Diversified across holdings";
+      : positions.length === 1 ? "Single holding"
+      : concentration > 35 ? "High concentration"
+      : concentration > 20 ? "Moderate concentration"
+      : "Diversified";
   const concentrationTone: "bull" | "bear" | "warn" =
-    positions.length === 0 ? "warn"
-      : positions.length === 1 ? "warn"
+    positions.length <= 1 ? "warn"
       : concentration > 35 ? "bear"
-      : concentration > 25 ? "warn"
+      : concentration > 20 ? "warn"
       : "bull";
 
   const exposureHint = !hasPositions
     ? "No positions"
-    : exposure > 60 ? "High exposure — low cash buffer"
+    : exposure > 60 ? "High exposure"
     : exposure >= 20 ? "Moderate exposure"
     : "Low exposure";
 
-  const betaConfidenceOK = hasPositions && beta != null && (d.betaSamples ?? 0) >= 30;
-  const betaHint = !hasPositions
-    ? "Beta requires holdings"
-    : !betaConfidenceOK ? "Not enough history for reliable beta"
-    : beta! > 1.3 ? "Aggressive — moves more than market"
-    : beta! < 0.7 ? "Defensive vs market"
-    : "Tracks market";
+  const riskTone =
+    riskLevel === "high" ? "bear"
+      : riskLevel === "elevated" ? "bear"
+      : riskLevel === "moderate" ? "warn"
+      : "bull";
 
   return (
     <div className="p-4 md:p-6 space-y-5">
       <div className="flex items-end justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-2xl font-semibold">Portfolio Risk Analytics</h1>
-          <p className="text-sm text-muted-foreground">Real-time exposure, P&amp;L breakdown &amp; risk metrics</p>
+          <p className="text-sm text-muted-foreground">Mark-to-market equity, P&amp;L breakdown &amp; risk intelligence — paper trading only.</p>
         </div>
-        <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+        <div className="flex items-center gap-3 text-[11px] text-muted-foreground flex-wrap">
           <span>Currency <span className="font-mono text-foreground">{currency}</span></span>
           <span>·</span>
-          <span>{positions.length} position{positions.length === 1 ? "" : "s"}</span>
+          <span>{openPositionsCount} open</span>
           <span>·</span>
-          <span>{totalTrades} closed trade{totalTrades === 1 ? "" : "s"}</span>
+          <span>{executedOrders} executed</span>
+          <span>·</span>
+          <span>{closedTrades} closed</span>
+          <span>·</span>
+          <span>Updated {d.lastUpdated ? new Date(d.lastUpdated).toLocaleTimeString() : "—"}</span>
         </div>
       </div>
 
       {!hasActivity && (
         <div className="panel p-8 text-center space-y-3">
-          <div className="text-lg font-semibold">No holdings yet</div>
+          <div className="text-lg font-semibold">Belum ada aktivitas paper trading</div>
           <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            Mulai dengan membuat paper trade dari halaman chart, atau gunakan screener untuk mencari kandidat saham.
+            Mulai dengan paper trade dari halaman chart, atau aktifkan AI Trade Agent.
           </p>
           <div className="flex justify-center gap-2 flex-wrap">
-            <Link to="/screener" className="text-xs px-3 py-1.5 rounded bg-primary text-primary-foreground hover:opacity-90">Open Screener</Link>
-            <Link to="/lab" className="text-xs px-3 py-1.5 rounded bg-accent/40 hover:bg-accent/60">Simulation Lab</Link>
-            <Link to="/watchlist" className="text-xs px-3 py-1.5 rounded bg-accent/40 hover:bg-accent/60">Add Watchlist</Link>
+            <Link to="/screener" className="text-xs px-3 py-1.5 rounded bg-primary text-primary-foreground hover:opacity-90">Screener</Link>
+            <Link to="/lab" className="text-xs px-3 py-1.5 rounded bg-accent/40 hover:bg-accent/60">AI Trade Agent</Link>
+            <Link to="/watchlist" className="text-xs px-3 py-1.5 rounded bg-accent/40 hover:bg-accent/60">Watchlist</Link>
           </div>
         </div>
       )}
 
-      {/* Top stats — all use account currency */}
+      {/* Row 1: P&L / equity stats */}
       <div className="grid md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <Stat label="Equity" value={money(equity)} title="Cash + current holdings value" />
+        <Stat label="Equity" value={money(equity)} title="Cash + holdings (mark-to-market)" />
         <Stat label="Cash" value={money(num(d.cash))} />
-        <Stat label="Market Value" value={hasPositions ? money(num(d.totalValue)) : "—"} title="Current mark-to-market value of holdings" />
+        <Stat label="Market Value" value={hasPositions ? money(num(d.totalValue)) : "—"} title="Current value of holdings" />
         <Stat
           label="Unrealized P/L"
           value={hasPositions ? money(num(d.unrealized)) : "—"}
           tone={hasPositions ? (num(d.unrealized) >= 0 ? "bull" : "bear") : undefined}
-          title="P/L from positions still open"
+          title="From positions still open"
         />
         <Stat
           label="Realized P/L"
-          value={hasActivity ? money(num(d.realized)) : "—"}
-          tone={hasActivity ? (num(d.realized) >= 0 ? "bull" : "bear") : undefined}
-          title="P/L from positions already closed"
+          value={hasClosed ? money(num(d.realized)) : "—"}
+          tone={hasClosed ? (num(d.realized) >= 0 ? "bull" : "bear") : undefined}
+          title="From closed trades"
         />
         <Stat
           label="Total Return"
           value={hasBaseline ? formatPct(pnlPct) : "—"}
           sub={hasBaseline ? money(totalReturnAmount) : `Baseline: ${money(initialBalance)}`}
           tone={hasBaseline ? (pnlPct >= 0 ? "bull" : "bear") : undefined}
-          title="Equity change vs initial balance"
+          title={`Equity vs initial balance (${money(initialBalance)})`}
         />
       </div>
 
-      {/* Risk metrics */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* Row 2: trade counts + perf */}
+      <div className="grid md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <Stat label="Executed Orders" value={String(executedOrders)} sub="paper fills (buy + sell)" />
+        <Stat label="Open Positions" value={String(openPositionsCount)} sub="from paper_positions" />
+        <Stat label="Closed Trades" value={String(closedTrades)} sub="sell fills (FIFO)" />
+        <Stat
+          label="Win Rate"
+          value={hasClosed ? winRate.toFixed(0) + "%" : "N/A"}
+          sub={hasClosed ? (closedTrades < 5 ? "Low sample size" : `${closedTrades} closed`) : "No closed trades yet"}
+          tone={!hasClosed ? undefined : winRate >= 55 ? "bull" : winRate >= 45 ? undefined : "bear"}
+        />
+        <Stat
+          label="Profit Factor"
+          value={!hasClosed ? "N/A" : profitFactor == null ? "∞" : profitFactor.toFixed(2)}
+          sub={hasClosed ? "gross profit ÷ |loss|" : "Needs closed trades"}
+          tone={!hasClosed || profitFactor == null ? undefined : profitFactor >= 1.5 ? "bull" : profitFactor >= 1 ? undefined : "bear"}
+        />
+        <Stat
+          label="Risk Level"
+          value={riskLevel.toUpperCase()}
+          sub={warnings.length ? `${warnings.length} warning${warnings.length === 1 ? "" : "s"}` : "no warnings"}
+          tone={riskTone === "bull" ? "bull" : riskTone === "bear" ? "bear" : undefined}
+        />
+      </div>
+
+      {/* Risk cards */}
+      <div className="grid md:grid-cols-2 lg:grid-cols-6 gap-3">
         <RiskCard icon={<Layers className="size-4" />} label="Exposure"
           value={hasPositions ? exposure.toFixed(1) + "%" : "N/A"}
           tone={!hasPositions ? "warn" : exposure > 60 ? "bear" : exposure >= 20 ? "warn" : "bull"}
           hint={exposureHint}
         />
+        <RiskCard icon={<Wallet className="size-4" />} label="Cash Ratio"
+          value={cashRatio.toFixed(1) + "%"}
+          tone={cashRatio < 10 && hasPositions ? "bear" : cashRatio < 25 ? "warn" : "bull"}
+          hint={cashRatio < 10 ? "Low cash buffer" : cashRatio < 25 ? "Moderate cash" : "Healthy cash"}
+        />
         <RiskCard icon={<Target className="size-4" />} label="Top Concentration"
           value={hasPositions ? concentration.toFixed(1) + "%" : "N/A"}
           tone={concentrationTone}
           hint={concentrationHint}
-          subhint="Largest position weight vs total equity"
         />
-        <RiskCard icon={<Activity className="size-4" />} label="Beta vs JKSE"
-          value={betaConfidenceOK ? beta!.toFixed(2) : "N/A"}
-          tone={!betaConfidenceOK ? "warn" : Math.abs((beta ?? 1) - 1) < 0.3 ? "warn" : (beta ?? 1) > 1.3 ? "bear" : "bull"}
-          hint={betaHint}
+        <RiskCard icon={<Layers className="size-4" />} label="Sector Exposure"
+          value={hasPositions ? largestSectorPct.toFixed(1) + "%" : "N/A"}
+          tone={!hasPositions ? "warn" : largestSectorPct > 40 ? "bear" : largestSectorPct > 25 ? "warn" : "bull"}
+          hint={hasPositions ? `Largest sector` : "—"}
         />
-        <RiskCard icon={<TrendingUp className="size-4" />} label="Win Rate"
-          value={totalTrades > 0 ? winRate.toFixed(0) + "%" : "N/A"}
-          tone={totalTrades === 0 ? "warn" : winRate >= 55 ? "bull" : winRate >= 45 ? "warn" : "bear"}
-          hint={totalTrades > 0 ? `${totalTrades} closed trade${totalTrades === 1 ? "" : "s"}` : "No closed trades yet"}
+        <RiskCard icon={<Activity className="size-4" />} label="Drawdown"
+          value={drawdown < 0 ? drawdown.toFixed(2) + "%" : "0.00%"}
+          tone={drawdown < -8 ? "bear" : drawdown < -5 ? "warn" : "bull"}
+          hint={drawdown < -5 ? "Below peak" : "Near peak equity"}
+        />
+        <RiskCard icon={<TrendingUp className="size-4" />} label="Daily P/L"
+          value={hasActivity ? formatPct(dailyPnlPct) : "N/A"}
+          tone={!hasActivity ? "warn" : dailyPnlPct >= 0 ? "bull" : dailyPnlPct > -2 ? "warn" : "bear"}
+          hint={hasActivity ? money(dailyPnl) : "—"}
         />
       </div>
+
+      {/* Risk warnings */}
+      {warnings.length > 0 && (
+        <div className="panel p-4 border-l-2 border-amber-500/60">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="size-4 text-amber-400" />
+            <h3 className="font-semibold text-sm">Risk Warnings</h3>
+          </div>
+          <ul className="space-y-1 text-sm text-muted-foreground">
+            {warnings.map((w, i) => (
+              <li key={i} className="flex gap-2"><span className="text-amber-400">•</span><span>{w}</span></li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {hasActivity && warnings.length === 0 && (
+        <div className="panel p-3 flex items-center gap-2 text-sm text-muted-foreground">
+          <CheckCircle2 className="size-4 text-bull" />
+          No active risk warnings. Portfolio within configured limits.
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-3 gap-3">
         {/* Equity curve */}
@@ -204,23 +268,23 @@ function Portfolio() {
                       <span className="text-muted-foreground font-mono">{num(s.pct).toFixed(1)}%</span>
                     </div>
                     <div className="h-1.5 rounded bg-accent/40 mt-1 overflow-hidden">
-                      <div className="h-full bg-primary" style={{ width: `${Math.min(100, num(s.pct))}%` }} />
+                      <div className={`h-full ${num(s.pct) > 40 ? "bg-bear" : "bg-primary"}`} style={{ width: `${Math.min(100, num(s.pct))}%` }} />
                     </div>
                   </li>
                 ))}
               </ul>
               {sectorBreakdown.length === 1 && (
-                <div className="text-[10px] text-amber-400 mt-2">Hanya 1 sektor — eksposur belum terdiversifikasi.</div>
+                <div className="text-[10px] text-amber-400 mt-2">Hanya 1 sektor — belum terdiversifikasi.</div>
               )}
             </>
           )}
         </div>
       </div>
 
-      {/* Holdings table */}
+      {/* Open Positions table */}
       <div className="panel p-2">
         <div className="px-2 pt-2 pb-1 flex items-center justify-between">
-          <h3 className="font-semibold">Holdings</h3>
+          <h3 className="font-semibold">Open Positions</h3>
           {positions.length > 1 && concentration > 35 && (
             <span className="text-xs text-bear flex items-center gap-1"><ShieldAlert className="size-3" /> Concentration risk</span>
           )}
@@ -231,13 +295,14 @@ function Portfolio() {
               <tr>
                 <th className="text-left p-2">Symbol</th>
                 <th className="text-left p-2">Sector</th>
-                <th className="text-right p-2">Qty</th>
-                <th className="text-right p-2">Avg Cost</th>
-                <th className="text-right p-2">Last Price</th>
+                <th className="text-right p-2">Lot</th>
+                <th className="text-right p-2">Shares</th>
+                <th className="text-right p-2">Avg Entry</th>
+                <th className="text-right p-2">Last</th>
                 <th className="text-right p-2">Market Value</th>
                 <th className="text-right p-2">Unrealized P/L</th>
                 <th className="text-right p-2">Weight</th>
-                <th className="text-right p-2">Realized P/L</th>
+                <th className="text-right p-2">Realized</th>
               </tr>
             </thead>
             <tbody>
@@ -248,8 +313,10 @@ function Portfolio() {
                   <tr key={p.symbol} className="border-t border-border">
                     <td className="p-2 font-medium">
                       <Link to="/chart/$symbol" params={{ symbol: p.symbol }} className="hover:text-primary">{p.symbol}</Link>
+                      {p.stale && <span className="ml-1 text-[9px] text-amber-400">(stale)</span>}
                     </td>
                     <td className="p-2 text-xs text-muted-foreground">{p.sector}</td>
+                    <td className="p-2 text-right font-mono text-xs">{num(p.lot).toFixed(0)}</td>
                     <td className="p-2 text-right font-mono">{p.qty}</td>
                     <td className="p-2 text-right font-mono">{priceFmt(p.symbol, p.avg)}</td>
                     <td className="p-2 text-right font-mono">{priceFmt(p.symbol, p.last)}</td>
@@ -264,7 +331,50 @@ function Portfolio() {
                 );
               })}
               {positions.length === 0 && (
-                <tr><td colSpan={9} className="p-6 text-center text-muted-foreground">No holdings yet. Buy a paper position from any chart.</td></tr>
+                <tr><td colSpan={10} className="p-6 text-center text-muted-foreground">
+                  Belum ada open position. AI belum mengeksekusi paper BUY atau semua posisi sudah ditutup.
+                </td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Recent Closed Trades */}
+      <div className="panel p-2">
+        <div className="px-2 pt-2 pb-1">
+          <h3 className="font-semibold">Recent Closed Trades</h3>
+          <div className="text-[11px] text-muted-foreground">Realized P/L hanya dihitung dari closed trades.</div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="text-xs text-muted-foreground">
+              <tr>
+                <th className="text-left p-2">Symbol</th>
+                <th className="text-right p-2">Entry</th>
+                <th className="text-right p-2">Exit</th>
+                <th className="text-right p-2">Qty</th>
+                <th className="text-right p-2">Realized P/L</th>
+                <th className="text-right p-2">Return %</th>
+                <th className="text-left p-2">Reason</th>
+                <th className="text-right p-2">Closed</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentClosed.map((t: any, i: number) => (
+                <tr key={i} className="border-t border-border">
+                  <td className="p-2 font-medium">{t.symbol}</td>
+                  <td className="p-2 text-right font-mono text-xs">{priceFmt(t.symbol, t.entryPrice)}</td>
+                  <td className="p-2 text-right font-mono text-xs">{priceFmt(t.symbol, t.exitPrice)}</td>
+                  <td className="p-2 text-right font-mono text-xs">{t.qty}</td>
+                  <td className={`p-2 text-right font-mono ${colorForChange(t.realized)}`}>{money(t.realized)}</td>
+                  <td className={`p-2 text-right font-mono text-xs ${colorForChange(t.returnPct)}`}>{formatPct(t.returnPct)}</td>
+                  <td className="p-2 text-xs text-muted-foreground">{t.closeReason}</td>
+                  <td className="p-2 text-right text-[10px] text-muted-foreground">{new Date(t.closedAt).toLocaleString()}</td>
+                </tr>
+              ))}
+              {recentClosed.length === 0 && (
+                <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">Belum ada closed trade.</td></tr>
               )}
             </tbody>
           </table>
@@ -284,16 +394,15 @@ function Stat({ label, value, sub, tone, title }: { label: string; value: string
   );
 }
 
-function RiskCard({ icon, label, value, tone, hint, subhint }: { icon: React.ReactNode; label: string; value: string; tone: "bull" | "bear" | "warn"; hint: string; subhint?: string }) {
+function RiskCard({ icon, label, value, tone, hint }: { icon: React.ReactNode; label: string; value: string; tone: "bull" | "bear" | "warn"; hint: string }) {
   const cls = tone === "bull" ? "text-bull" : tone === "bear" ? "text-bear" : "text-amber-400";
   return (
     <div className="panel p-4">
       <div className="flex items-center justify-between text-xs text-muted-foreground">
         <span className="flex items-center gap-1">{icon} {label}</span>
       </div>
-      <div className={`font-mono text-2xl mt-1 ${cls}`}>{value}</div>
+      <div className={`font-mono text-xl mt-1 ${cls}`}>{value}</div>
       <div className="text-[11px] text-muted-foreground mt-1">{hint}</div>
-      {subhint && <div className="text-[10px] text-muted-foreground/70 mt-0.5">{subhint}</div>}
     </div>
   );
 }
