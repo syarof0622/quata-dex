@@ -43,6 +43,10 @@ export interface SummaryInput {
   paperTrading?: { closedTrades?: number; openPositions?: number } | null;
   autonomousScan?: { lastRunAt?: string | null; candidates?: number } | null;
   undervalue?: { ranked?: number } | null;
+  /** Count of `ai_agent_decisions` in the last 5 minutes. If > 0 and the
+   * agent row reads as Inactive, the agent badge is downgraded to a
+   * "Sync Warning" instead of falsely showing "Inactive". */
+  recentAgentDecisionCount?: number;
   now?: Date;
 }
 
