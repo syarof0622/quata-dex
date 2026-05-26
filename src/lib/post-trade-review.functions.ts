@@ -17,6 +17,7 @@ type LessonLabel =
   | "regime_misaligned"
   | "value_trap"
   | "well_executed_loss"
+  | "pending_review_data"
   | "neutral";
 
 function deriveLesson(pnlPct: number, holdingMinutes: number, ctx: any): LessonLabel {
