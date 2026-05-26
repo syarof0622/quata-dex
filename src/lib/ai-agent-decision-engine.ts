@@ -472,12 +472,16 @@ export async function evaluateSymbol(
       // (rawConfidence already calibrated below; we adjust calib floor instead.)
     }
 
-    if (confidence < agent.minConfidenceToTrade) {
-      return emptySnap(sym, `Confidence ${(confidence * 100).toFixed(0)}% < threshold ${(agent.minConfidenceToTrade*100).toFixed(0)}%. ${calib.reason}`, {
+    const effectiveMinConfidence = autoGate
+      ? Math.min(agent.minConfidenceToTrade, autoGate.minConfidence)
+      : agent.minConfidenceToTrade;
+    if (confidence < effectiveMinConfidence) {
+      return emptySnap(sym, `Confidence ${(confidence * 100).toFixed(0)}% < threshold ${(effectiveMinConfidence*100).toFixed(0)}%. ${calib.reason}`, {
         confidence, rawConfidence, calibrationReason: calib.reason,
         realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
         portfolioSnapshot, dataFreshnessSeconds: freshness,
         dataSource: "Yahoo Finance + public news feed",
+        blockedReason: "confidence_below_threshold",
       });
     }
     if (symbolExposure >= agent.maxPositionPerSymbol) {
