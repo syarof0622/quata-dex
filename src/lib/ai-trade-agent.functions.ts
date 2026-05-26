@@ -814,7 +814,7 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
   await recomputePerformance(agent.id, agent.paper_account_id);
   await recomputeTradeMemory(agent.id);
 
-  return { decisions, executed };
+  return { decisions, executed, metrics };
 }
 
 /** Extract realized return % from a finalized training event. Prefers paper_pnl_percent. */
