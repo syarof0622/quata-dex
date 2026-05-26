@@ -822,6 +822,13 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
   await recomputePerformance(agent.id, agent.paper_account_id);
   await recomputeTradeMemory(agent.id);
 
+  metrics.blockedBuys = Math.max(0, metrics.buyEvaluations - metrics.paperBuysExecuted);
+  const reasonSet = new Set<string>();
+  for (const d of decisions) {
+    const r = (d as any)?.blockedReason ?? (d as any)?.blocked_reason ?? null;
+    if (r) reasonSet.add(String(r));
+  }
+  metrics.blockedReasons = Array.from(reasonSet).slice(0, 8);
   return { decisions, executed, metrics };
 }
 
