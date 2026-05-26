@@ -17,6 +17,7 @@ type LessonLabel =
   | "regime_misaligned"
   | "value_trap"
   | "well_executed_loss"
+  | "pending_review_data"
   | "neutral";
 
 function deriveLesson(pnlPct: number, holdingMinutes: number, ctx: any): LessonLabel {
@@ -50,8 +51,9 @@ export const runPostTradeReview = createServerFn({ method: "POST" })
     limit: Math.min(Math.max(input?.limit ?? 25, 1), 100),
   }))
   .handler(async ({ data }) => {
-    // Closed paper trades = filled SELL orders. These ARE the source of truth
-    // for realized P/L — never default to breakeven when realized_pnl is set.
+    // Closed paper trades = filled SELL orders. realized_pnl on the SELL order
+    // is the SOURCE OF TRUTH. If it's missing/null, mark the review as
+    // pending_review_data — NEVER default to breakeven.
     const { data: orders } = await supabaseAdmin
       .from("paper_orders")
       .select("*")
@@ -87,20 +89,25 @@ export const runPostTradeReview = createServerFn({ method: "POST" })
 
       const exitPrice = Number(o.filled_price ?? o.price ?? 0);
       const qty = Number(o.qty ?? 0);
-      // SOURCE OF TRUTH: realized_pnl on the SELL order.
-      const realizedPnl = Number(o.realized_pnl ?? 0);
-      // Reverse-derive entry price from realized P/L when possible; otherwise
-      // fall back to the AI decision's recorded entry.
+
+      // Detect missing realized P/L: column is NULL or non-numeric.
+      const realizedRaw = o.realized_pnl;
+      const realizedMissing = realizedRaw === null || realizedRaw === undefined
+        || !Number.isFinite(Number(realizedRaw));
+      const realizedPnl = realizedMissing ? 0 : Number(realizedRaw);
+
       const aiDec = (exitEvent?.ai_decision ?? {}) as any;
       const aiEntry = Number(aiDec?.entry_price ?? 0);
       const entryPrice =
-        qty > 0 && Number.isFinite(realizedPnl) && realizedPnl !== 0
+        qty > 0 && !realizedMissing && realizedPnl !== 0
           ? exitPrice - realizedPnl / qty
           : aiEntry > 0
             ? aiEntry
             : exitPrice;
       const pnlPct =
-        entryPrice > 0 ? ((exitPrice - entryPrice) / entryPrice) * 100 : 0;
+        entryPrice > 0 && !realizedMissing
+          ? ((exitPrice - entryPrice) / entryPrice) * 100
+          : 0;
       const holdingMinutes = exitEvent?.created_at
         ? Math.round(
             (new Date(o.filled_at ?? o.created_at).getTime() -
@@ -109,17 +116,23 @@ export const runPostTradeReview = createServerFn({ method: "POST" })
           )
         : 0;
 
-      // Outcome strictly from realized P/L sign — never default to breakeven
-      // when realized_pnl is non-zero.
-      const outcome: "win" | "loss" | "breakeven" =
-        realizedPnl > 0 ? "win" : realizedPnl < 0 ? "loss" : "breakeven";
+      // Outcome strictly from realized P/L. If realized is missing entirely,
+      // mark as pending_review_data so the UI doesn't show a fake breakeven.
+      type Outcome = "win" | "loss" | "breakeven" | "pending_review_data";
+      const outcome: Outcome = realizedMissing
+        ? "pending_review_data"
+        : realizedPnl > 0
+          ? "win"
+          : realizedPnl < 0
+            ? "loss"
+            : "breakeven";
 
-      // Re-evaluate lesson with the corrected pnlPct so labels match outcome.
-      const lesson =
-        outcome === "breakeven" && realizedPnl === 0
-          ? "neutral"
-          : deriveLesson(pnlPct, holdingMinutes, exitEvent ?? {});
-
+      const lesson: LessonLabel =
+        outcome === "pending_review_data"
+          ? "pending_review_data"
+          : outcome === "breakeven" && realizedPnl === 0
+            ? "neutral"
+            : deriveLesson(pnlPct, holdingMinutes, exitEvent ?? {});
 
       let wentRight: string | null = null;
       let wentWrong: string | null = null;
@@ -140,10 +153,19 @@ export const runPostTradeReview = createServerFn({ method: "POST" })
                 : "Setup gagal — tinjau ulang strategi.";
         if (Number(aiDec?.confidence ?? 0) > 0.7)
           wentRight = "Setup confidence tinggi tetapi market berbalik.";
+      } else if (outcome === "breakeven") {
+        wentRight = "Realized P/L netral — tidak ada gain/loss material.";
+        wentWrong = "Strategi tidak menghasilkan edge yang dapat diukur.";
       } else {
-        wentRight = "Tidak ada kerugian material.";
-        wentWrong = "Tidak ada gain material — strategi netral.";
+        // pending_review_data
+        wentRight = null;
+        wentWrong = "Realized P/L belum tersedia — review menunggu data eksekusi final.";
       }
+
+      const aiReview =
+        outcome === "pending_review_data"
+          ? `Trade ${o.symbol} menunggu data realized P/L. Review akan dihasilkan setelah data eksekusi tersedia.`
+          : `Trade ${o.symbol} ditutup ${outcome} (${pnlPct.toFixed(2)}%, realized ${realizedPnl.toFixed(2)}) setelah ${holdingMinutes} menit. Pelajaran: ${lesson}.`;
 
       const review = {
         agent_id: (exitEvent as any)?.agent_id ?? "00000000-0000-0000-0000-000000000000",
@@ -154,16 +176,22 @@ export const runPostTradeReview = createServerFn({ method: "POST" })
         entry_price: entryPrice,
         exit_price: exitPrice,
         qty,
-        pnl: realizedPnl,
-        pnl_pct: pnlPct,
+        pnl: realizedMissing ? null : realizedPnl,
+        pnl_pct: realizedMissing ? null : pnlPct,
         holding_minutes: holdingMinutes,
         outcome,
         lesson_label: lesson,
         what_went_right: wentRight,
         what_went_wrong: wentWrong,
-        ai_review: `Trade ${o.symbol} ditutup ${outcome} (${pnlPct.toFixed(2)}%, realized ${realizedPnl.toFixed(2)}) setelah ${holdingMinutes} menit. Pelajaran: ${lesson}.`,
+        ai_review: aiReview,
         entry_context: (exitEvent as any)?.real_market_context ?? (exitEvent as any)?.ai_decision ?? null,
-        exit_context: { exit_price: exitPrice, exit_time: o.filled_at, realized_pnl: realizedPnl, close_reason: (o as any).close_reason ?? null },
+        exit_context: {
+          exit_price: exitPrice,
+          exit_time: o.filled_at,
+          realized_pnl: realizedMissing ? null : realizedPnl,
+          close_reason: (o as any).close_reason ?? null,
+          pending_review_data: realizedMissing,
+        },
       };
       await supabaseAdmin.from("ai_trade_reviews").insert(review);
       count += 1;

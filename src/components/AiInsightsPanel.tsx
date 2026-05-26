@@ -235,17 +235,22 @@ export function AiInsightsPanel() {
           <ScrollArea className="h-48">
             <ul className="space-y-2 text-xs">
               {(reviews.data ?? []).map((r: any) => {
+                const isPending = r.outcome === "pending_review_data" || r.pnl === null;
                 const pnl = Number(r.pnl ?? 0);
                 const pct = Number(r.pnl_pct ?? 0);
+                const badgeVariant =
+                  isPending ? "outline"
+                  : r.outcome === "win" ? "default"
+                  : r.outcome === "loss" ? "destructive"
+                  : "secondary";
                 return (
                   <li key={r.id} className="border-b border-border/50 pb-2">
                     <div className="flex justify-between">
                       <span className="font-medium">{r.symbol}</span>
-                      <Badge
-                        variant={r.outcome === "win" ? "default" : r.outcome === "loss" ? "destructive" : "secondary"}
-                        className="text-[10px]"
-                      >
-                        {r.outcome} · {pct.toFixed(2)}% · {pnl >= 0 ? "+" : ""}{pnl.toFixed(2)}
+                      <Badge variant={badgeVariant as any} className="text-[10px]">
+                        {isPending
+                          ? "pending review data"
+                          : `${r.outcome} · ${pct.toFixed(2)}% · ${pnl >= 0 ? "+" : ""}${pnl.toFixed(2)}`}
                       </Badge>
                     </div>
                     <div className="text-muted-foreground">Lesson: {r.lesson_label}</div>
@@ -259,7 +264,7 @@ export function AiInsightsPanel() {
                 );
               })}
               {(!reviews.data || reviews.data.length === 0) && (
-                <li className="text-muted-foreground">Belum ada review.</li>
+                <li className="text-muted-foreground">Belum ada closed trade untuk direview.</li>
               )}
             </ul>
           </ScrollArea>

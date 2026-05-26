@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sparkles, X, Bot, Play, Pause, Square, AlertTriangle } from "lucide-react";
 import { JournalPanel } from "@/components/JournalPanel";
 import { ChatPanel } from "@/components/ChatPanel";
-import { startAgent, pauseAgent, stopAgent, emergencyStop, getAgentStatus, runAgentNow, updateAgentSymbols, listTradeMemory, setSelectionMode, runAutonomousScanNow, getLatestScan, setAutonomousRiskMode, backfillScanCandidateOutcomes } from "@/lib/ai-trade-agent.functions";
+import { startAgent, pauseAgent, stopAgent, emergencyStop, getAgentStatus, runAgentNow, updateAgentSymbols, listTradeMemory, setSelectionMode, runAutonomousScanNow, getLatestScan, setAutonomousRiskMode, backfillScanCandidateOutcomes, repairAITrainingEventLabels } from "@/lib/ai-trade-agent.functions";
 import { TickerSearch } from "@/components/TickerSearch";
 import { AiInsightsPanel } from "@/components/AiInsightsPanel";
 
@@ -683,6 +683,11 @@ function AIAgentPanel() {
     onSuccess: (r: any) => { toast.success(`Tick: ${r.count} decisions, ${r.executed} executed`); status.refetch(); },
     onError: (e: any) => toast.error(e?.message ?? "Tick failed"),
   });
+  const repairLabels = useMutation({
+    mutationFn: () => repairAITrainingEventLabels({ data: { limit: 1000 } }),
+    onSuccess: (r: any) => { toast.success(`Repair: scanned ${r.scanned}, repaired ${r.repaired}`); status.refetch(); },
+    onError: (e: any) => toast.error(e?.message ?? "Repair failed"),
+  });
 
   const isActive = agent && agent.status !== "stopped" && agent.status !== "error";
   const runCopy = runButtonCopy(agent, session);
@@ -916,8 +921,15 @@ function AIAgentPanel() {
         <Stat label="Closed trades" value={String(orderCounts.closedTrades)} />
         <Stat label="Executed orders" value={String(orderCounts.executed)} />
         <Stat label="Open positions" value={String(orderCounts.openPositions)} tone={orderCounts.openPositions > 0 ? "bull" : undefined} />
-        <Stat label="Win rate" value={Number(performance?.win_rate ?? 0).toFixed(1) + "%"} tone={Number(performance?.win_rate ?? 0) >= 50 ? "bull" : "bear"} />
-        <Stat label="Profit factor" value={Number(performance?.profit_factor ?? 0).toFixed(2)} />
+        <Stat
+          label="Win rate"
+          value={orderCounts.closedTrades === 0 ? "N/A" : Number(performance?.win_rate ?? 0).toFixed(1) + "%"}
+          tone={orderCounts.closedTrades === 0 ? undefined : Number(performance?.win_rate ?? 0) >= 50 ? "bull" : "bear"}
+        />
+        <Stat
+          label="Profit factor"
+          value={orderCounts.closedTrades === 0 ? "N/A" : Number(performance?.profit_factor ?? 0).toFixed(2)}
+        />
       </div>
       {orderCounts.closedTrades === 0 && (
         <div className="panel p-3 text-xs text-muted-foreground flex items-center justify-between flex-wrap gap-2">
@@ -926,7 +938,12 @@ function AIAgentPanel() {
               ? `Sudah ada ${orderCounts.executed} paper order tereksekusi dan ${orderCounts.openPositions} open position. Belum ada closed trade — win rate dan profit factor akan dihitung setelah posisi pertama ditutup.`
               : "Belum ada closed trade. Win rate dan profit factor akan dihitung setelah posisi pertama ditutup."}
           </span>
-          <span className="text-[10px] uppercase bg-muted px-1.5 py-0.5 rounded">{orderCounts.executed > 0 ? "Waiting for first close" : "Waiting for first executed trade"}</span>
+          <span className="flex items-center gap-2">
+            <Button size="sm" variant="outline" disabled={repairLabels.isPending} onClick={() => repairLabels.mutate()}>
+              {repairLabels.isPending ? "Repairing…" : "Repair AI Learning Labels"}
+            </Button>
+            <span className="text-[10px] uppercase bg-muted px-1.5 py-0.5 rounded">{orderCounts.executed > 0 ? "Waiting for first close" : "Waiting for first executed trade"}</span>
+          </span>
         </div>
       )}
 
