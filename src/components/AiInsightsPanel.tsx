@@ -367,11 +367,15 @@ export function AiInsightsPanel() {
               <div>
                 <div className="font-semibold mb-1 text-emerald-500">Terbaik untuk regime ini</div>
                 <ul className="space-y-1">
-                  {strategy.data.bestForThisRegime.map((s: any) => (
+                  {strategy.data.bestForThisRegime.map((s: any) => {
+                    const noSample = s.sampleSize < 5;
+                    return (
                     <li key={s.strategyName} className="rounded-md border border-border/60 p-2">
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-mono">{s.strategyName}</span>
-                        <Badge variant="default" className="text-[10px]">{s.classification}</Badge>
+                        <Badge variant={noSample ? "outline" : "default"} className="text-[10px]">
+                          {noSample ? "insufficient_sample" : s.classification}
+                        </Badge>
                       </div>
                       <div className="text-muted-foreground mt-0.5">
                         Score <span className="text-foreground font-mono">{s.strategyScore}</span> ·{" "}
@@ -381,8 +385,14 @@ export function AiInsightsPanel() {
                         PF {s.profitFactor != null ? Number(s.profitFactor).toFixed(2) : "—"} ·{" "}
                         DD {s.maxDrawdown != null ? `${Number(s.maxDrawdown).toFixed(1)}%` : "—"}
                       </div>
+                      {noSample && (
+                        <div className="text-amber-400/90 mt-0.5 text-[10px]">
+                          Insufficient sample — do not overtrust this strategy.
+                        </div>
+                      )}
                     </li>
-                  ))}
+                    );
+                  })}
                   {strategy.data.bestForThisRegime.length === 0 && (
                     <li className="text-muted-foreground">Belum ada data.</li>
                   )}
