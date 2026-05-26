@@ -732,6 +732,8 @@ export type Database = {
           allow_short_sell: boolean | null
           allow_small_lot_exploration: boolean
           allow_watch_candidates: boolean
+          atr_stop_enabled: boolean
+          atr_stop_multiplier: number
           auto_stop_loss: boolean | null
           auto_take_profit: boolean | null
           automation_enabled: boolean
@@ -740,6 +742,9 @@ export type Database = {
           autonomous_rescan_interval_minutes: number
           autonomous_risk_mode: string
           autonomous_universe: string
+          circuit_breaker_enabled: boolean
+          consecutive_losses: number
+          correlation_risk_enabled: boolean
           created_at: string
           expert_research_max_allocation_pct: number
           id: string
@@ -749,20 +754,26 @@ export type Database = {
           last_blocked_reason: string | null
           last_error: string | null
           last_market_session_state: string | null
+          last_risk_evaluation: Json | null
           last_run_at: string | null
           last_worker_message: string | null
           last_worker_run_at: string | null
           last_worker_status: string | null
+          liquidity_risk_enabled: boolean
           max_active_positions: number
           max_autonomous_symbols: number
           max_daily_loss: number | null
           max_daily_trades: number | null
           max_drawdown: number | null
+          max_losses_per_day: number
           max_new_entries_per_day: number
           max_position_per_symbol: number | null
+          max_position_weight_pct: number
           max_research_trades_per_day: number
+          max_sector_exposure_pct: number
           max_value_trap_risk: number
           min_autonomous_score: number
+          min_cash_buffer_pct: number
           min_confidence_to_trade: number | null
           min_data_quality_score: number
           min_liquidity_score: number
@@ -777,6 +788,7 @@ export type Database = {
           momentum_min_rvol: number
           momentum_min_score: number
           name: string
+          news_shock_risk_enabled: boolean
           next_expected_worker_run_at: string | null
           paper_account_id: string
           paper_trading_only: boolean
@@ -785,6 +797,9 @@ export type Database = {
           require_fresh_data: boolean | null
           require_fundamental_data: boolean
           risk_level: string
+          risk_pause_reason: string | null
+          risk_paused_until: string | null
+          risk_per_trade_pct: number
           selected_symbols: Json
           started_at: string | null
           status: string
@@ -796,6 +811,7 @@ export type Database = {
           trailing_stop: boolean | null
           updated_at: string
           user_id: string
+          volatility_sizing_enabled: boolean
           worker_error_count: number
         }
         Insert: {
@@ -813,6 +829,8 @@ export type Database = {
           allow_short_sell?: boolean | null
           allow_small_lot_exploration?: boolean
           allow_watch_candidates?: boolean
+          atr_stop_enabled?: boolean
+          atr_stop_multiplier?: number
           auto_stop_loss?: boolean | null
           auto_take_profit?: boolean | null
           automation_enabled?: boolean
@@ -821,6 +839,9 @@ export type Database = {
           autonomous_rescan_interval_minutes?: number
           autonomous_risk_mode?: string
           autonomous_universe?: string
+          circuit_breaker_enabled?: boolean
+          consecutive_losses?: number
+          correlation_risk_enabled?: boolean
           created_at?: string
           expert_research_max_allocation_pct?: number
           id?: string
@@ -830,20 +851,26 @@ export type Database = {
           last_blocked_reason?: string | null
           last_error?: string | null
           last_market_session_state?: string | null
+          last_risk_evaluation?: Json | null
           last_run_at?: string | null
           last_worker_message?: string | null
           last_worker_run_at?: string | null
           last_worker_status?: string | null
+          liquidity_risk_enabled?: boolean
           max_active_positions?: number
           max_autonomous_symbols?: number
           max_daily_loss?: number | null
           max_daily_trades?: number | null
           max_drawdown?: number | null
+          max_losses_per_day?: number
           max_new_entries_per_day?: number
           max_position_per_symbol?: number | null
+          max_position_weight_pct?: number
           max_research_trades_per_day?: number
+          max_sector_exposure_pct?: number
           max_value_trap_risk?: number
           min_autonomous_score?: number
+          min_cash_buffer_pct?: number
           min_confidence_to_trade?: number | null
           min_data_quality_score?: number
           min_liquidity_score?: number
@@ -858,6 +885,7 @@ export type Database = {
           momentum_min_rvol?: number
           momentum_min_score?: number
           name?: string
+          news_shock_risk_enabled?: boolean
           next_expected_worker_run_at?: string | null
           paper_account_id: string
           paper_trading_only?: boolean
@@ -866,6 +894,9 @@ export type Database = {
           require_fresh_data?: boolean | null
           require_fundamental_data?: boolean
           risk_level?: string
+          risk_pause_reason?: string | null
+          risk_paused_until?: string | null
+          risk_per_trade_pct?: number
           selected_symbols?: Json
           started_at?: string | null
           status?: string
@@ -877,6 +908,7 @@ export type Database = {
           trailing_stop?: boolean | null
           updated_at?: string
           user_id: string
+          volatility_sizing_enabled?: boolean
           worker_error_count?: number
         }
         Update: {
@@ -894,6 +926,8 @@ export type Database = {
           allow_short_sell?: boolean | null
           allow_small_lot_exploration?: boolean
           allow_watch_candidates?: boolean
+          atr_stop_enabled?: boolean
+          atr_stop_multiplier?: number
           auto_stop_loss?: boolean | null
           auto_take_profit?: boolean | null
           automation_enabled?: boolean
@@ -902,6 +936,9 @@ export type Database = {
           autonomous_rescan_interval_minutes?: number
           autonomous_risk_mode?: string
           autonomous_universe?: string
+          circuit_breaker_enabled?: boolean
+          consecutive_losses?: number
+          correlation_risk_enabled?: boolean
           created_at?: string
           expert_research_max_allocation_pct?: number
           id?: string
@@ -911,20 +948,26 @@ export type Database = {
           last_blocked_reason?: string | null
           last_error?: string | null
           last_market_session_state?: string | null
+          last_risk_evaluation?: Json | null
           last_run_at?: string | null
           last_worker_message?: string | null
           last_worker_run_at?: string | null
           last_worker_status?: string | null
+          liquidity_risk_enabled?: boolean
           max_active_positions?: number
           max_autonomous_symbols?: number
           max_daily_loss?: number | null
           max_daily_trades?: number | null
           max_drawdown?: number | null
+          max_losses_per_day?: number
           max_new_entries_per_day?: number
           max_position_per_symbol?: number | null
+          max_position_weight_pct?: number
           max_research_trades_per_day?: number
+          max_sector_exposure_pct?: number
           max_value_trap_risk?: number
           min_autonomous_score?: number
+          min_cash_buffer_pct?: number
           min_confidence_to_trade?: number | null
           min_data_quality_score?: number
           min_liquidity_score?: number
@@ -939,6 +982,7 @@ export type Database = {
           momentum_min_rvol?: number
           momentum_min_score?: number
           name?: string
+          news_shock_risk_enabled?: boolean
           next_expected_worker_run_at?: string | null
           paper_account_id?: string
           paper_trading_only?: boolean
@@ -947,6 +991,9 @@ export type Database = {
           require_fresh_data?: boolean | null
           require_fundamental_data?: boolean
           risk_level?: string
+          risk_pause_reason?: string | null
+          risk_paused_until?: string | null
+          risk_per_trade_pct?: number
           selected_symbols?: Json
           started_at?: string | null
           status?: string
@@ -958,6 +1005,7 @@ export type Database = {
           trailing_stop?: boolean | null
           updated_at?: string
           user_id?: string
+          volatility_sizing_enabled?: boolean
           worker_error_count?: number
         }
         Relationships: []
