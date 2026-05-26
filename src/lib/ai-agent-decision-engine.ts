@@ -395,8 +395,40 @@ export async function evaluateSymbol(
     }
   } catch { /* tolerate */ }
 
+  // Cross-strategy fundamental / undervalue boost.
+  // STRONG_UNDERVALUE => +bonus, VALUE_TRAP => -penalty, INSUFFICIENT_DATA => neutral.
+  // Hard undervalued gate (below) still applies for "undervalued" strategy modes.
+  let fundamentalBoost = 0;
+  let fundamentalContext: any = { classification: "unknown", undervalueScore: null, valueTrapRisk: null, fundamentalConfidence: "low", fundamentalReasons: [] as string[] };
+  try {
+    const { data: uvRow } = await supabaseAdmin
+      .from("ai_undervalue_scores")
+      .select("final_undervalue_score, value_trap_risk_score, classification, reasoning, data_coverage")
+      .eq("symbol", sym)
+      .order("created_at", { ascending: false })
+      .limit(1).maybeSingle();
+    if (uvRow) {
+      const fscore = Number((uvRow as any).final_undervalue_score ?? 0);
+      const ftrap = Number((uvRow as any).value_trap_risk_score ?? 0);
+      const fcls = String((uvRow as any).classification ?? "insufficient_data");
+      const cov = Number((uvRow as any).data_coverage ?? 0);
+      if (fcls === "strong_undervalued" && ftrap <= 35) fundamentalBoost = 0.12;
+      else if (fcls === "undervalued" && ftrap <= 50) fundamentalBoost = 0.07;
+      else if (fcls === "value_trap_risk") fundamentalBoost = -0.15;
+      else if (fcls === "overvalued") fundamentalBoost = -0.05;
+      else fundamentalBoost = 0; // fair_value / insufficient_data => neutral
+      fundamentalContext = {
+        classification: fcls,
+        undervalueScore: fscore,
+        valueTrapRisk: ftrap,
+        fundamentalConfidence: cov >= 0.6 ? "high" : cov >= 0.4 ? "medium" : "low",
+        fundamentalReasons: (uvRow as any).reasoning ? [String((uvRow as any).reasoning)] : [],
+      };
+    }
+  } catch { /* tolerate */ }
+
   const composite = techNorm * 0.45 + sentScore * 0.18 + newsBiasNorm * 0.18
-                  + disclosureBoost + macroBoost + sectorRotationBoost;
+                  + disclosureBoost + macroBoost + sectorRotationBoost + fundamentalBoost;
   let rawConfidence = Math.min(0.99, Math.abs(composite));
 
   // Autonomous scanner already gated DQ + liquidity. For trade-classified
