@@ -861,6 +861,21 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
     if (r) reasonSet.add(String(r));
   }
   metrics.blockedReasons = Array.from(reasonSet).slice(0, 8);
+
+  // Circuit breaker: trip risk pause if daily-loss / drawdown / loss-streak hit.
+  try {
+    const { evaluateCircuitBreaker } = await import("./risk-engine");
+    const cb = await evaluateCircuitBreaker(agent.id);
+    if (cb.paused) (metrics as any).riskPause = { reason: cb.reason, until: cb.untilISO };
+  } catch { /* tolerate */ }
+
+  // Persist last blocked reason (latest from this run, if any).
+  if (metrics.blockedReasons.length > 0) {
+    await supabaseAdmin.from("ai_trade_agents")
+      .update({ last_blocked_reason: metrics.blockedReasons[0] })
+      .eq("id", agent.id);
+  }
+
   return { decisions, executed, metrics };
 }
 
