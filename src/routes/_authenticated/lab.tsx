@@ -201,7 +201,12 @@ type ExecStatus =
   | "blocked_risk_limit"
   | "blocked_low_confidence"
   | "blocked_duplicate_order"
-  | "blocked_rr_invalid";
+  | "blocked_rr_invalid"
+  | "blocked_max_daily_trades"
+  | "blocked_max_active_positions"
+  | "blocked_max_new_entries"
+  | "blocked_cooldown"
+  | "hold_position";
 
 const EXEC_LABEL: Record<ExecStatus, string> = {
   executed_buy: "Executed — Paper BUY",
