@@ -194,22 +194,9 @@ export async function getAIAppContext(userText: string) {
 
   // ---------- AI TRADE AGENT ----------
   const agentRes = await safe("agent", async () => {
-    // Pick the most active agent (active status > automation_enabled > most recent worker activity).
-    const { data: agents } = await supabaseAdmin
-      .from("ai_trade_agents").select("*").eq("user_id", USER_ID);
-    const list = agents ?? [];
-    const activeStatuses = new Set(["active_market_open", "active", "running"]);
-    const scoreAgent = (a: any) => {
-      let s = 0;
-      if (activeStatuses.has(a.status)) s += 1_000_000;
-      if (a.automation_enabled) s += 500_000;
-      const lwr = a.last_worker_run_at ? new Date(a.last_worker_run_at).getTime() : 0;
-      const lad = a.last_auto_decision_at ? new Date(a.last_auto_decision_at).getTime() : 0;
-      const upd = a.updated_at ? new Date(a.updated_at).getTime() : 0;
-      s += Math.max(lwr, lad, upd) / 1000;
-      return s;
-    };
-    const agent = list.length ? [...list].sort((a, b) => scoreAgent(b) - scoreAgent(a))[0] : null;
+    // Single source of truth for "currently active" agent.
+    const { getActiveAIAgent } = await import("./ai-context-summary.server");
+    const agent = await getActiveAIAgent();
     if (!agent) return { agent: null, decisions: [], scans: [], candidates: [], perf: null };
     const [{ data: decisions }, { data: scans }, { data: perf }] = await Promise.all([
       supabaseAdmin.from("ai_agent_decisions").select("*").eq("agent_id", agent.id).order("created_at", { ascending: false }).limit(20),
