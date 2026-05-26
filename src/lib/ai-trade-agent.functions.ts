@@ -725,6 +725,11 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
         candidate_classification: meta?.classification ?? null,
         exploration_trade: isExplorationTrade && (agent.autonomous_risk_mode === "progressive"),
         research_trade: isExplorationTrade && (agent.autonomous_risk_mode === "expert_research"),
+        strategy_name: (decision as any).strategyName ?? decision.strategy ?? null,
+        setup_type: (decision as any).setupType ?? null,
+        market_regime: (decision as any).marketRegime ?? null,
+        signal_source: (decision as any).signalSource ?? (isAutonomous ? "autonomous_scanner" : "manual_strategy_mode"),
+        strategy_context: (decision as any).strategyContext ?? null,
       });
     } catch (e: any) {
       await supabaseAdmin.from("ai_agent_risk_logs").insert({
