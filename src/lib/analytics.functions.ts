@@ -402,7 +402,7 @@ export const getPortfolioAnalytics = createServerFn({ method: "GET" })
 
 // ----- What-if simulator (read-only) -----
 export const simulatePortfolioWhatIf = createServerFn({ method: "POST" })
-  .inputValidator(
+  .inputValidator((d: unknown) =>
     z.discriminatedUnion("action", [
       z.object({ action: z.literal("close"), symbol: z.string().min(1) }),
       z.object({
@@ -411,7 +411,7 @@ export const simulatePortfolioWhatIf = createServerFn({ method: "POST" })
         lot: z.number().positive().max(100000),
         price: z.number().positive().optional(),
       }),
-    ]).parse,
+    ]).parse(d),
   )
   .handler(async ({ data }) => {
     const { data: account } = await supabaseAdmin
