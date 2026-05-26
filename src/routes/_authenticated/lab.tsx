@@ -1028,7 +1028,7 @@ function AIAgentPanel() {
                 const dTech: DataStatus = tech?.label || tech?.score != null ? "fresh" : "unavailable";
                 const dNews: DataStatus = Number(sent?.news?.latestNewsCount ?? 0) > 0 ? "fresh" : "unavailable";
                 const dSent: DataStatus = sent?.news ? "fresh" : "unavailable";
-                const da = displayActionFor(d, exec.status);
+                const da = displayActionFor(d, exec.status, openPositionSymbols);
                 const cardKind = executed && isBuy
                   ? { label: "OPEN POSITION", cls: "bg-bull/15 text-bull" }
                   : executed && isExit
