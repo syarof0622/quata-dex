@@ -53,6 +53,7 @@ export function AiInsightsPanel() {
   const fetchLessons = useServerFn(summarizeLessonsLearned);
   const fetchAlerts = useServerFn(evaluateAiAlerts);
   const fetchDefs = useServerFn(listAlertDefinitions);
+  const fetchStrategy = useServerFn(getStrategyIntelligence);
 
   const runRegime = useServerFn(computeMarketRegime);
   const runSectors = useServerFn(computeSectorRotation);
