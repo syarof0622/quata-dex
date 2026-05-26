@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { ChatMarkdown } from "@/components/ChatMarkdown";
 import { AIReportRenderer } from "@/components/AIReportRenderer";
 import { Send, Loader2, Copy, RotateCcw, Sparkles, TrendingUp, ShieldAlert, Search, Bot, User } from "lucide-react";
 import { cn } from "@/lib/utils";
