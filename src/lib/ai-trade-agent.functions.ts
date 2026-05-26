@@ -1051,9 +1051,12 @@ async function backfillTrainingOutcomes(agentId: string) {
           : null;
 
         if (isHold) {
-          // Passive analysis snapshot — NOT a trade. No P/L, not counted in performance/memory.
+          // HOLD: open_position_hold snapshot — NOT a closed trade.
+          // No realized P/L. `was_correct` is direction-accuracy only,
+          // NEVER consumed for win rate / profit factor / trade memory.
           patch.final_outcome = {
-            eventType: "passive_analysis",
+            eventType: "open_position_hold",
+            tradeLifecycle: "open",
             priceAtFinalize: px,
             priceMovePercent: +priceMovePct.toFixed(3),
             paperPnL: 0,
@@ -1061,11 +1064,26 @@ async function backfillTrainingOutcomes(agentId: string) {
             wasDirectionCorrect: directionCorrect,
             tradeResult: null,
           };
-          patch.was_correct = directionCorrect;
-          // Intentionally do NOT set paper_pnl_percent for HOLD.
+          patch.event_type = "open_position_hold";
+          patch.was_correct = directionCorrect; // direction accuracy only
           patch.lesson_label = "hold_no_trade";
+        } else if (isLong && realized === 0) {
+          // Open BUY snapshot — no exit yet. Do not synthesize a closed trade.
+          patch.final_outcome = {
+            eventType: "open_trade_snapshot",
+            tradeLifecycle: "open",
+            priceAtFinalize: px,
+            priceMovePercent: +priceMovePct.toFixed(3),
+            paperPnL: 0,
+            paperPnLPercent: null,
+            wasDirectionCorrect: directionCorrect,
+            tradeResult: null,
+          };
+          patch.event_type = "open_trade_snapshot";
+          patch.was_correct = directionCorrect; // direction accuracy only
+          patch.lesson_label = "open_position_pending_exit";
         } else {
-          // Trade decision → realized P/L drives win/loss.
+          // Closed trade — realized P/L drives win/loss.
           const pnlPercent = realized !== 0
             ? +((realized / Math.max(1, entry * (dec.shares ?? 1))) * 100).toFixed(3)
             : +pnlPctRaw.toFixed(3);
@@ -1080,13 +1098,15 @@ async function backfillTrainingOutcomes(agentId: string) {
           else if (isExit && pnlPercent >= 0) lesson = "bad_exit";
 
           patch.final_outcome = {
-            eventType: "trade_decision",
+            eventType: "closed_trade",
+            tradeLifecycle: "closed",
             exitPrice: px,
             paperPnL: realized,
             paperPnLPercent: pnlPercent,
             wasDirectionCorrect: directionCorrect,
             tradeResult,
           };
+          patch.event_type = "closed_trade";
           patch.paper_pnl_percent = pnlPercent;
           patch.was_correct = directionCorrect;
           patch.lesson_label = lesson;
