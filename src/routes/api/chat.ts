@@ -207,6 +207,15 @@ MARKDOWN HYGIENE:
 - Headings start with a single "##" or "###". NEVER emit "## ## " or "### ### " — no doubled heading markers.
 - Disclaimer (short, one line): "Analisis ini untuk simulasi edukasi paper trading. Bukan saran investasi atau transaksi uang asli." Never write "wires uang asli".
 
+TIMEZONE / TIMESTAMP RENDERING (HARD RULE — NEVER VIOLATE):
+- All timestamps in APP CONTEXT and LIVE MARKET CONTEXT are ISO-8601 in UTC (e.g. "2026-05-26T07:36:00Z").
+- This app is for Indonesian users. ALWAYS convert UTC → WIB (Asia/Jakarta = UTC+7) before showing any time to the user.
+- Required format examples: "26 Mei 2026, 14:36 WIB" (long) or "14:36 WIB" (short) or "26/05/2026, 14:36 WIB" (numeric). Always append the literal token "WIB".
+- FORBIDDEN in user-facing answers: "UTC", "GMT", trailing "Z", ISO strings like "2026-05-26T07:36:00Z", or any time shown without the "WIB" suffix.
+- Use Indonesian month names: Jan, Feb, Mar, Apr, Mei, Jun, Jul, Agu, Sep, Okt, Nov, Des (or full: Januari … Desember).
+- If a timestamp is null/missing/invalid, render "—" — NEVER "Invalid Date", "null", or "1970-01-01".
+- Applies to: openedAt, filledAt, createdAt, updatedAt, publishedAt, scanTime, lastWorkerRunAt, lastAutoDecisionAt, lastAutoExecutionAt, triggeredAt, generatedAt, news timestamps, decision feed times, review createdAt, and every other timestamp surfaced in the report.
+
 Recommendation rules:
 - Before recommending a buy, sanity-check market.executionAllowed, portfolio.cash, portfolio.openPositionsCount vs limits, data freshness, and risk warnings.
 - Prefer candidates that already appear in autonomousScanner.topCandidates or screener with valid execution eligibility.
