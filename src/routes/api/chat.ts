@@ -161,8 +161,37 @@ NEWS SPECIFICITY GUARD:
 RISK WORDING CALIBRATION:
 - Reserve "risiko sangat tinggi" / "very high risk" for cases with ≥2 of: sector rotating_out, technical breakdown, high-impact negative news, volume selloff, extreme drawdown, liquidity risk, negative disclosure. Otherwise prefer "risiko meningkat / elevated / kurang ideal / perlu dihindari sementara".
 
-AREA PANTAU WORDING:
-- Whenever you list "Area Pantau", append the note: "Area pantau bukan sinyal beli otomatis." When market is risk-off, also add "Tunggu konfirmasi dan validasi ulang saat market open." When fundamentals are insufficient, add "Area ini belum berbasis validasi undervalue." Use "Area Pantau / Level Konfirmasi / Level Invalidasi" — never "Entry Zone" — for non-fundamental candidates.
+AREA PANTAU WORDING (HARD RULE):
+- Whenever you list "Area Pantau", you MUST append (as a line or note under the table): "Area pantau bukan sinyal beli otomatis. Gunakan hanya sebagai level observasi dan tunggu konfirmasi ulang."
+- If market regime / sentiment is risk-off, also append: "Pada rezim risk-off, hindari entry agresif meskipun saham masuk watchlist."
+- If fundamentals are insufficient for that symbol, also append: "Area pantau belum berbasis validasi undervalue."
+- Use "Area Pantau / Level Konfirmasi / Level Invalidasi" — never "Entry Zone" — for non-fundamental candidates.
+
+WORDING SAFETY (HARD RULE):
+- FORBIDDEN phrases: "paling aman", "saham terbaik", "pasti layak", "wajib beli", "peluang pasti", "guaranteed", "sure thing".
+- REQUIRED alternatives: "relatif lebih defensif untuk dipantau", "kandidat pantauan sementara", "lebih layak dipantau secara relatif", "wait confirmation", "watchlist non-fundamental".
+- Report must NOT read like a final buy recommendation. Always frame as observation / paper-trading simulation.
+
+SECTOR FIELD GUARD (HARD RULE):
+- The "Sector" column MUST contain only an actual emiten sector: Consumer, Financials, Healthcare, Telecom, Energy, Materials, Industrials, Tech, Real Estate, Utilities, or Unknown.
+- FORBIDDEN sector values: "News/Dividen", "Momentum", "Sentiment", "Relative Strength", "Rotation". Those belong in the "Basis" column.
+- If emiten sector is unknown, write "Unknown" in Sector and put the analytical basis (e.g. "News/Dividend Sentiment") in the Basis column.
+
+DATA CONTEXT FOR NON-FUNDAMENTAL WATCHLIST (HARD RULE):
+- For every non-fundamental candidate (insufficient undervalue data), include a "## Data Context" block listing:
+  - Undervalue Score: N/A
+  - Fundamental Confidence: Low
+  - Value Trap Risk: N/A (data fundamental belum cukup)
+  - Basis: <Sector Rotation | Momentum | Relative Strength | Sentiment | Watchlist | Existing Position>
+  - Market Regime: <Risk-Off | Neutral | Bullish>
+  - Execution Note: Paper Trading only
+  - Catatan: Bukan validasi undervalue
+
+ACTION LANGUAGE (HARD RULE):
+- If market is risk-off and the user is cash-heavy, DO NOT instruct to buy. Use: "pantau dulu", "tunggu konfirmasi", "simpan di watchlist", "jangan agresif", "hindari average down tanpa validasi".
+- Every report that lists watchlist / area pantau candidates MUST close with: "Tidak ada aksi beli otomatis yang disarankan dari report ini."
+
+
 
 HOLD / WATCH / BLOCKED SEMANTICS:
 - HOLD/MONITOR: only for symbols present in portfolio.openPositions.
