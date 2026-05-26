@@ -104,7 +104,7 @@ function Portfolio() {
           <span>·</span>
           <span>{closedTrades} closed</span>
           <span>·</span>
-          <span>Updated {d.lastUpdated ? new Date(d.lastUpdated).toLocaleTimeString() : "—"}</span>
+          <span>Updated {formatTimeWIB(d.lastUpdated)}</span>
         </div>
       </div>
 
