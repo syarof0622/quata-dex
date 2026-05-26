@@ -110,18 +110,26 @@ export function computeContextSummary(input: SummaryInput): AIContextSummary {
     raw: shRaw,
   };
 
-  // AI Agent (worker liveness)
+  // AI Agent (worker liveness) — mirrors src/lib/ai-app-context.server.ts so
+  // the header badge and the AI Chat see the SAME status.
   const agent = input.agent;
   let aiAgent: AIContextSummary["aiAgent"] = { label: "Inactive", tone: "slate" };
   if (agent) {
     const lastRun = agent.last_worker_run_at ? new Date(agent.last_worker_run_at).getTime() : 0;
-    const ageMs = lastRun ? Date.now() - lastRun : null;
-    if (agent.automation_enabled === false) aiAgent = { label: "Manual Only", tone: "slate" };
-    else if (!lastRun) aiAgent = { label: "Worker Not Started", tone: "amber" };
-    else if (agent.last_worker_status === "error") aiAgent = { label: "Worker Error", tone: "rose" };
-    else if (ageMs != null && ageMs > 5 * 60_000) aiAgent = { label: "Worker Stale", tone: "amber" };
-    else aiAgent = { label: "Auto Running", tone: "emerald" };
+    const ageMin = lastRun ? (Date.now() - lastRun) / 60_000 : Infinity;
+    const workerFresh = ageMin <= WORKER_STALE_MINUTES;
+    const workerOk = !agent.last_worker_status || agent.last_worker_status === "success" || agent.last_worker_status === "running";
+    const statusActive = ACTIVE_AGENT_STATUSES.has(String(agent.status ?? ""));
+    const isAutoRunning = Boolean(agent.automation_enabled && workerFresh && statusActive && workerOk);
+
+    if (isAutoRunning) aiAgent = { label: "Auto Running", tone: "emerald" };
+    else if (agent.automation_enabled && agent.last_worker_status === "error") aiAgent = { label: "Worker Error", tone: "rose" };
+    else if (agent.automation_enabled && statusActive && !workerFresh) aiAgent = { label: "Worker Stale", tone: "amber" };
+    else if (agent.automation_enabled && !lastRun) aiAgent = { label: "Worker Not Started", tone: "amber" };
+    else if (agent.automation_enabled === false && statusActive) aiAgent = { label: "Manual Only", tone: "slate" };
+    else aiAgent = { label: "Inactive", tone: "slate" };
   }
+
 
   // Per-badge statuses for the App Context strip
   const badges: BadgeStatus[] = [
