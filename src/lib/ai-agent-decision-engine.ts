@@ -10,6 +10,7 @@ import { sizeOrder, isIDXSymbol, convertSharesToLot } from "./lot-sizing";
 import { canExecutePaperTrade, getIDXMarketSession } from "./idx-market-session";
 import { computeDataQuality, type DataQualityReport } from "./data-quality";
 import { sectorOf } from "./sectors";
+import { getStrategyContextFor } from "./strategy-intelligence.functions";
 
 export type AgentAction = "BUY" | "SELL" | "HOLD" | "EXIT";
 
@@ -44,6 +45,12 @@ export type AgentDecision = {
   riskSnapshot: Record<string, unknown>;
   dataQuality: DataQualityReport | null;
   warnings: string[];
+  // Strategy attribution + intelligence (persisted to ai_agent_decisions).
+  strategyName?: string | null;
+  setupType?: string | null;
+  marketRegime?: string | null;
+  signalSource?: string | null;
+  strategyContext?: Record<string, unknown> | null;
 };
 
 export type AgentConfig = {
@@ -427,8 +434,37 @@ export async function evaluateSymbol(
     }
   } catch { /* tolerate */ }
 
+
+  // 8.5 Strategy intelligence — fetch latest regime + score for this strategy.
+  let marketRegimeLabel: string = "unknown";
+  try {
+    const { data: regRow } = await supabaseAdmin
+      .from("market_regime_snapshots")
+      .select("regime_classification")
+      .order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (regRow) marketRegimeLabel = String((regRow as any).regime_classification ?? "unknown");
+  } catch { /* tolerate */ }
+  const symbolSector = sectorOf(sym) ?? "Unknown";
+  const strategyName: string = String(agent.strategyMode || "trend_following");
+  let strategyContext: any = null;
+  let strategyBoost = 0;
+  try {
+    strategyContext = await getStrategyContextFor({
+      strategyName, sector: symbolSector, regime: marketRegimeLabel,
+    });
+    const cls = strategyContext.classification;
+    const compat = Number(strategyContext.regimeCompatibility ?? 0.5);
+    if (cls === "proven" && compat >= 0.7) strategyBoost = 0.10;
+    else if (cls === "promising" && compat >= 0.6) strategyBoost = 0.05;
+    else if (cls === "underperforming") strategyBoost = -0.10;
+    else if (cls === "unstable") strategyBoost = -0.07;
+    else if (cls === "avoid") strategyBoost = -0.12;
+    // Regime mismatch — hard reduce.
+    if (compat < 0.35) strategyBoost -= 0.08;
+  } catch { /* tolerate */ }
+
   const composite = techNorm * 0.45 + sentScore * 0.18 + newsBiasNorm * 0.18
-                  + disclosureBoost + macroBoost + sectorRotationBoost + fundamentalBoost;
+                  + disclosureBoost + macroBoost + sectorRotationBoost + fundamentalBoost + strategyBoost;
   let rawConfidence = Math.min(0.99, Math.abs(composite));
 
   // Autonomous scanner already gated DQ + liquidity. For trade-classified
@@ -594,7 +630,7 @@ export async function evaluateSymbol(
       allocationAmount: agent.allocationAmount,
       suggestedLot: sized.lot, suggestedShares: sized.shares,
       entryPrice: price, stopLoss, takeProfit, riskRewardRatio: rr,
-      reasoning: `Teknikal ${techLabel} (${techScore.toFixed(0)}), sentimen ${sentScore.toFixed(2)}, news +${realNewsData.positiveNewsCount}/-${realNewsData.negativeNewsCount} (high ${realNewsData.highImpactNewsCount}), IHSG ${realMarketContext.ihsgBias}, sektor ${sectorRotationLabel}, fundamental ${fundamentalContext.classification} (trap ${fundamentalContext.valueTrapRisk ?? "n/a"}). Composite ${(composite*100).toFixed(0)}%.${autoReasonTag} ${calib.reason} Allocate ${sized.lot} lot @ ${price}.`,
+      reasoning: `Teknikal ${techLabel} (${techScore.toFixed(0)}), sentimen ${sentScore.toFixed(2)}, news +${realNewsData.positiveNewsCount}/-${realNewsData.negativeNewsCount} (high ${realNewsData.highImpactNewsCount}), IHSG ${realMarketContext.ihsgBias}, sektor ${sectorRotationLabel}, fundamental ${fundamentalContext.classification} (trap ${fundamentalContext.valueTrapRisk ?? "n/a"}), strategi ${strategyName} (${strategyContext?.classification ?? "n/a"}, score ${strategyContext?.strategyScore ?? "n/a"}, regime ${marketRegimeLabel} compat ${((strategyContext?.regimeCompatibility ?? 0)*100).toFixed(0)}%). Composite ${(composite*100).toFixed(0)}%.${autoReasonTag} ${calib.reason} Allocate ${sized.lot} lot @ ${price}.`,
       dataFreshnessSeconds: freshness, dataSource: "Yahoo Finance + Google News RSS + IDX disclosure",
       executionAllowed: true, analysisOnly: false,
       realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
@@ -602,9 +638,12 @@ export async function evaluateSymbol(
       riskSnapshot: { slPct: preset.slPct, tpPct: preset.tpPct, rr,
         autonomousScore: autonomousContext?.score ?? null,
         autonomousRiskMode: agent.autonomousRiskMode ?? null,
-        fundamentalContext,
+        fundamentalContext, strategyContext,
       },
       dataQuality, warnings,
+      strategyName, setupType: strategyName, marketRegime: marketRegimeLabel,
+      signalSource: autoGate ? "autonomous_scanner" : "manual_strategy_mode",
+      strategyContext,
     };
   }
 
@@ -614,5 +653,6 @@ export async function evaluateSymbol(
     portfolioSnapshot, dataFreshnessSeconds: freshness,
     dataSource: "Yahoo Finance + public news feed",
     dataQuality,
+    strategyName, marketRegime: marketRegimeLabel, strategyContext,
   });
 }
