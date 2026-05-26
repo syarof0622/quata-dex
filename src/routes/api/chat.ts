@@ -174,7 +174,7 @@ HOLD / WATCH / BLOCKED SEMANTICS:
 
 MARKDOWN HYGIENE:
 - Headings start with a single "##" or "###". NEVER emit "## ## " or "### ### " — no doubled heading markers.
-- Disclaimer (short, one line): "Analisis ini untuk simulasi edukasi paper trading. Bukan saran investasi atau transaksi uang asli." Never write "wires uang asli".`;
+- Disclaimer (short, one line): "Analisis ini untuk simulasi edukasi paper trading. Bukan saran investasi atau transaksi uang asli." Never write "wires uang asli".
 
 Recommendation rules:
 - Before recommending a buy, sanity-check market.executionAllowed, portfolio.cash, portfolio.openPositionsCount vs limits, data freshness, and risk warnings.
