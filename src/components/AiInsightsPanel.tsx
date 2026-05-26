@@ -367,11 +367,15 @@ export function AiInsightsPanel() {
               <div>
                 <div className="font-semibold mb-1 text-emerald-500">Terbaik untuk regime ini</div>
                 <ul className="space-y-1">
-                  {strategy.data.bestForThisRegime.map((s: any) => (
+                  {strategy.data.bestForThisRegime.map((s: any) => {
+                    const noSample = s.sampleSize < 5;
+                    return (
                     <li key={s.strategyName} className="rounded-md border border-border/60 p-2">
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-mono">{s.strategyName}</span>
-                        <Badge variant="default" className="text-[10px]">{s.classification}</Badge>
+                        <Badge variant={noSample ? "outline" : "default"} className="text-[10px]">
+                          {noSample ? "insufficient_sample" : s.classification}
+                        </Badge>
                       </div>
                       <div className="text-muted-foreground mt-0.5">
                         Score <span className="text-foreground font-mono">{s.strategyScore}</span> ·{" "}
@@ -381,8 +385,14 @@ export function AiInsightsPanel() {
                         PF {s.profitFactor != null ? Number(s.profitFactor).toFixed(2) : "—"} ·{" "}
                         DD {s.maxDrawdown != null ? `${Number(s.maxDrawdown).toFixed(1)}%` : "—"}
                       </div>
+                      {noSample && (
+                        <div className="text-amber-400/90 mt-0.5 text-[10px]">
+                          Insufficient sample — do not overtrust this strategy.
+                        </div>
+                      )}
                     </li>
-                  ))}
+                    );
+                  })}
                   {strategy.data.bestForThisRegime.length === 0 && (
                     <li className="text-muted-foreground">Belum ada data.</li>
                   )}
@@ -412,16 +422,22 @@ export function AiInsightsPanel() {
                 </ul>
               </div>
               <div className="md:col-span-2 flex flex-wrap gap-1 pt-1 border-t border-border/40">
-                {strategy.data.proven.map((s: any) => (
-                  <Badge key={`p-${s.strategyName}`} variant="default" className="text-[10px]">proven · {s.strategyName}</Badge>
+                {strategy.data.proven.filter((s: any) => s.sampleSize >= 5).map((s: any) => (
+                  <Badge key={`p-${s.strategyName}`} variant="default" className="text-[10px]">proven · {s.strategyName} (n={s.sampleSize})</Badge>
                 ))}
-                {strategy.data.promising.map((s: any) => (
-                  <Badge key={`pr-${s.strategyName}`} variant="secondary" className="text-[10px]">promising · {s.strategyName}</Badge>
+                {strategy.data.promising.filter((s: any) => s.sampleSize >= 5).map((s: any) => (
+                  <Badge key={`pr-${s.strategyName}`} variant="secondary" className="text-[10px]">promising · {s.strategyName} (n={s.sampleSize})</Badge>
                 ))}
                 {strategy.data.insufficient.map((s: any) => (
                   <Badge key={`i-${s.strategyName}`} variant="outline" className="text-[10px]">insufficient · {s.strategyName}</Badge>
                 ))}
               </div>
+              {strategy.data.insufficient.length > 0 && (
+                <div className="md:col-span-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-[11px] text-amber-300">
+                  Insufficient sample untuk {strategy.data.insufficient.length} strategi — jangan overtrust label proven/promising.
+                  Sample &lt; 5 trade tidak signifikan secara statistik.
+                </div>
+              )}
               <div className="md:col-span-2 text-[10px] text-muted-foreground">
                 Generated {formatDateTimeWIB(strategy.data.generatedAt)} · paper trading only — score, regime
                 compatibility & sample size dipakai AI Trade Agent sebelum BUY.
