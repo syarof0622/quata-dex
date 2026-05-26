@@ -175,28 +175,43 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
       lastUpdatedAt: dq?.created_at ?? null,
     });
 
-    // 4) Source Health
+    // 4) Source Health — normalized via summarizeSourceHealth so the Health
+    // Dashboard matches the AI Analyst header (fallback / quota-protected
+    // are partial, not failed total).
     const { data: sources } = await supabaseAdmin
       .from("news_sources")
-      .select("id, status, fail_count, enabled, last_success_at, last_failed_at");
-    const enabled = (sources ?? []).filter((s: any) => s.enabled);
-    const failing = enabled.filter((s: any) => s.status === "error" || (s.fail_count ?? 0) >= 3);
-    const srcStatus: HealthStatus = enabled.length === 0
-      ? "unknown"
-      : failing.length === 0
-      ? "healthy"
-      : failing.length / enabled.length < 0.4
-      ? "partial"
-      : "degraded";
+      .select("id, name, status, enabled, fail_count, last_success_at, last_failed_at, last_error");
+    const summary = summarizeSourceHealth((sources ?? []) as any);
+    const overallMap: Record<OverallStatus, HealthStatus> = {
+      active: "healthy",
+      partial: "partial",
+      degraded: "degraded",
+      failed: "failed",
+      unknown: "unknown",
+    };
+    const detailParts: string[] = [];
+    if (summary.activeCount) detailParts.push(`${summary.activeCount} active`);
+    if (summary.fallbackCount) detailParts.push(`${summary.fallbackCount} fallback`);
+    if (summary.quotaProtectedCount) detailParts.push(`${summary.quotaProtectedCount} quota protected`);
+    if (summary.degradedCount) detailParts.push(`${summary.degradedCount} degraded`);
+    if (summary.failedCount) detailParts.push(`${summary.failedCount} failed`);
+    if (summary.disabledCount) detailParts.push(`${summary.disabledCount} disabled`);
     cards.push({
       key: "source_health",
       label: "Source Health",
-      status: srcStatus,
-      detail: enabled.length === 0
-        ? "Tidak ada source aktif."
-        : `${failing.length}/${enabled.length} source bermasalah.`,
-      lastUpdatedAt: null,
-      metrics: { enabled: enabled.length, failing: failing.length },
+      status: overallMap[summary.overallStatus],
+      detail: summary.sources.length === 0
+        ? "Tidak ada data source."
+        : `${overallStatusLabel(summary.overallStatus)} · ${detailParts.join(" · ") || "no signal"}`,
+      lastUpdatedAt: summary.lastUpdated,
+      metrics: {
+        active: summary.activeCount,
+        fallback: summary.fallbackCount,
+        quotaProtected: summary.quotaProtectedCount,
+        degraded: summary.degradedCount,
+        failed: summary.failedCount,
+        disabled: summary.disabledCount,
+      },
     });
 
     // 5) Portfolio Sync (latest equity snapshot vs computed equity)
