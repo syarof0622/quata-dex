@@ -305,7 +305,7 @@ export const getPortfolioAnalytics = createServerFn({ method: "GET" })
       beta, betaSamples,
       winRate, totalTrades: closedCount,
       executedOrdersCount, openPositionsCount, closedTradesCount: closedCount,
-      profitFactor: Number.isFinite(profitFactor) ? profitFactor : null,
+      profitFactor: profitFactor != null && Number.isFinite(profitFactor) ? profitFactor : (profitFactor === Infinity ? null : profitFactor),
       bestTrade, worstTrade,
       riskLevel, warnings,
       positions: enriched, sectorBreakdown, perSymbol,
