@@ -295,10 +295,26 @@ function NewsHub() {
               }`}>{n.sentiment.toUpperCase()}</span>
             </div>
             {n.summary && <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{n.summary}</div>}
-            <div className="text-[10px] text-muted-foreground mt-2">
-              {n.source} · {formatDateTimeWIB(n.published_at)}
+            <div className="text-[10px] text-muted-foreground mt-2 flex items-center gap-2">
+              <span>{n.source} · {formatDateTimeWIB(n.published_at)}</span>
+              {typeof n.source_reliability_weight === "number" && (
+                <span title="Source reliability" className="font-mono">rel {Math.round(n.source_reliability_weight * 100)}%</span>
+              )}
             </div>
             <div className="mt-2 flex items-center flex-wrap gap-1.5">
+              {n.relevance_class && n.relevance_class !== "irrelevant_noise" && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium" title={`Relevance score ${Math.round(n.ticker_relevance_score ?? 0)}`}>
+                  {n.relevance_class.replace(/_/g, " ")}
+                </span>
+              )}
+              {n.impact_category && n.impact_category !== "generic_market_news" && n.impact_category !== "noise" && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/40 text-foreground">
+                  {n.impact_category.replace(/_/g, " ")}
+                </span>
+              )}
+              {n.is_noise && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">noise</span>
+              )}
               <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
                 n.impact_level === "high" ? "bg-primary/15 text-primary" :
                 n.impact_level === "medium" ? "bg-accent/40 text-foreground" :
