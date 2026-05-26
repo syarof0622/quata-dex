@@ -398,11 +398,26 @@ function UndervaluedPanel() {
                 <td className="p-2 text-right font-mono">{Number(r.sectorRelativeScore ?? 0).toFixed(0)}</td>
                 <td className="p-2 text-right font-mono">{Number(r.technicalTimingScore ?? 0).toFixed(0)}</td>
                 <td className={`p-2 text-right font-mono ${Number(r.valueTrapRiskScore ?? 0) >= 60 ? "text-bear" : ""}`}>{Number(r.valueTrapRiskScore ?? 0).toFixed(0)}</td>
+                <td className="p-2 text-xs">
+                  {(() => {
+                    const base = String(r.symbol ?? "").replace(/\.JK$/i, "");
+                    const d = disclosureBySymbol[base];
+                    if (!d) return <span className="text-muted-foreground">—</span>;
+                    const tone = d.impact_level === "high" && d.sentiment === "negative" ? "text-bear"
+                      : d.disclosure_type === "suspension" || d.disclosure_type === "uma" ? "text-bear"
+                      : d.sentiment === "positive" ? "text-bull" : "text-muted-foreground";
+                    return (
+                      <span className={tone} title={`${d.disclosure_type} · ${d.impact_level}/${d.sentiment} · ${new Date(d.published_at).toLocaleString("id-ID")}`}>
+                        {d.disclosure_type}
+                      </span>
+                    );
+                  })()}
+                </td>
                 <td className="p-2 text-xs text-muted-foreground max-w-[420px]">{r.reasoning ?? "—"}</td>
               </tr>
             ))}
             {rows.length === 0 && !scan.isPending && (
-              <tr><td colSpan={12} className="p-8 text-center text-muted-foreground">Belum ada skor undervalued. Klik <em>Run Fundamental Scan</em> untuk memulai.</td></tr>
+              <tr><td colSpan={13} className="p-8 text-center text-muted-foreground">Belum ada skor undervalued. Klik <em>Run Fundamental Scan</em> untuk memulai.</td></tr>
             )}
           </tbody>
         </table>
