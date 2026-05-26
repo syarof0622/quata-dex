@@ -276,9 +276,20 @@ function lotZeroExplanation(execStatus: ExecStatus): string {
   }
 }
 
+// Signal intent (what the AI WANTED to do) — separate from displayed action
+// (what actually happened). Persisted in data_snapshot.signalIntent by the
+// worker; falls back to the raw action column for legacy rows.
+function signalIntentFor(d: any): "BUY" | "SELL" | "EXIT" | "WATCH" | "NONE" {
+  const snap: any = d?.data_snapshot ?? {};
+  const raw = String(snap.signalIntent ?? d?.action ?? "").toUpperCase();
+  if (raw === "BUY" || raw === "SELL" || raw === "EXIT" || raw === "WATCH") return raw as any;
+  return "NONE";
+}
+
 // Derived "display action" so the Action column does not show "BUY" when no
-// paper order was actually executed. HOLD is reserved for live open positions.
-function displayActionFor(d: any, execStatus: ExecStatus): {
+// paper order was actually executed. HOLD is reserved for live open positions —
+// we cross-check `openSymbols` (from paper_positions) to demote stale HOLD rows.
+function displayActionFor(d: any, execStatus: ExecStatus, openSymbols?: Set<string>): {
   label: string;
   intent: string | null;
   tone: "bull" | "bear" | "muted" | "warn";
@@ -290,8 +301,14 @@ function displayActionFor(d: any, execStatus: ExecStatus): {
     if (action === "SELL") return { label: "SELL", intent: null, tone: "bear" };
     if (action === "EXIT") return { label: "EXIT", intent: null, tone: "bear" };
   }
-  if (execStatus === "hold_position") {
+  // HOLD requires a real open position. If paper_positions doesn't contain the
+  // symbol, downgrade so the UI never lies about "holding".
+  const hasOpen = openSymbols ? openSymbols.has(String(d?.symbol ?? "")) : true;
+  if (execStatus === "hold_position" && hasOpen) {
     return { label: "HOLD", intent: null, tone: "muted" };
+  }
+  if (action === "HOLD" && !hasOpen) {
+    return { label: "WATCH", intent: "WATCH", tone: "warn" };
   }
   if (execStatus === "watch_snapshot")     return { label: "WATCH",    intent: action || null, tone: "warn" };
   if (execStatus === "research_snapshot")  return { label: "RESEARCH", intent: action || null, tone: "warn" };
@@ -304,6 +321,19 @@ function displayActionFor(d: any, execStatus: ExecStatus): {
   }
   return { label: action || "—", intent: null, tone: "muted" };
 }
+
+// Decision Feed filter taxonomy (per spec): keep previous-session events out of
+// the default Active view, and let the user drill into Executed / Blocked / Watch.
+type FeedFilter = "active" | "executed" | "open_position" | "blocked" | "watch_research" | "previous" | "all";
+const FEED_FILTER_OPTIONS: { value: FeedFilter; label: string }[] = [
+  { value: "active",         label: "Active Session" },
+  { value: "executed",       label: "Executed Only" },
+  { value: "open_position",  label: "Open Position Events" },
+  { value: "blocked",        label: "Blocked" },
+  { value: "watch_research", label: "Watch / Research" },
+  { value: "previous",       label: "Previous Session" },
+  { value: "all",            label: "All" },
+];
 
 const TONE_TEXT: Record<"bull"|"bear"|"muted"|"warn", string> = {
   bull: "text-bull",
@@ -589,6 +619,11 @@ function AIAgentPanel() {
   const [alloc, setAlloc] = useState("1000000");
   const [risk, setRisk] = useState<"conservative" | "balanced" | "aggressive">("balanced");
   const [conf, setConf] = useState("0.70");
+  const [feedFilter, setFeedFilter] = useState<FeedFilter>("active");
+
+  // Set of symbols with an actual open position (paper_positions). Used to
+  // enforce HOLD semantics in the UI even if a legacy decision row says HOLD.
+  const openPositionSymbols = new Set<string>(agentPositions.map((p: any) => String(p.symbol)));
 
   // Sync local symbols from active agent on load
   useEffect(() => {
@@ -993,7 +1028,7 @@ function AIAgentPanel() {
                 const dTech: DataStatus = tech?.label || tech?.score != null ? "fresh" : "unavailable";
                 const dNews: DataStatus = Number(sent?.news?.latestNewsCount ?? 0) > 0 ? "fresh" : "unavailable";
                 const dSent: DataStatus = sent?.news ? "fresh" : "unavailable";
-                const da = displayActionFor(d, exec.status);
+                const da = displayActionFor(d, exec.status, openPositionSymbols);
                 const cardKind = executed && isBuy
                   ? { label: "OPEN POSITION", cls: "bg-bull/15 text-bull" }
                   : executed && isExit
@@ -1057,94 +1092,148 @@ function AIAgentPanel() {
       })()}
 
       <div className="panel p-2 overflow-x-auto">
-        <div className="px-2 py-1 text-xs text-muted-foreground flex items-center justify-between">
-          <span>Decision feed</span>
-          <span className="text-[10px] text-muted-foreground">menampilkan semua history; emiten tidak aktif diberi tanda</span>
+        <div className="px-2 py-1 text-xs text-muted-foreground flex items-center justify-between flex-wrap gap-2">
+          <span className="font-semibold uppercase tracking-wide text-foreground">Decision feed</span>
+          <div className="flex items-center gap-1 flex-wrap">
+            {FEED_FILTER_OPTIONS.map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => setFeedFilter(opt.value)}
+                className={`text-[10px] uppercase tracking-wide px-2 py-0.5 rounded border transition-colors ${
+                  feedFilter === opt.value
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-muted/30 text-muted-foreground border-transparent hover:border-border"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
-        <table className="w-full text-sm min-w-[720px]">
+        <table className="w-full text-sm min-w-[960px]">
           <thead className="text-xs text-muted-foreground">
-            <tr><th className="text-left p-2">Time</th><th className="text-left p-2">Symbol</th><th className="text-left p-2">Action</th>
+            <tr><th className="text-left p-2">Time</th><th className="text-left p-2">Symbol</th>
+              <th className="text-left p-2">Mode</th>
+              <th className="text-left p-2">Action</th>
+              <th className="text-left p-2">Intent</th>
               <th className="text-right p-2">Conf (raw→cal)</th><th className="text-right p-2">Lot</th>
-              <th className="text-right p-2">Entry</th><th className="text-right p-2">SL</th><th className="text-right p-2">TP</th>
+              <th className="text-right p-2">Entry / Ref</th><th className="text-right p-2">SL</th><th className="text-right p-2">TP</th>
               <th className="text-left p-2">Source · Fresh</th>
               <th className="text-left p-2">Status</th><th className="text-left p-2">Reasoning</th></tr>
           </thead>
           <tbody>
-            {decisions.map((d: any) => {
-              const conf = confidenceCell(agent, session, d);
-              const fresh = d.data_freshness_seconds;
-              const inactive = !selectedSet.has(d.symbol);
-              const exec = deriveExecutionStatusForCard(agent, session, d);
-              const executed = isExecutedDecision(d);
-              const refPrice = referencePriceFor(d);
-              const lotNum = Number(d.suggested_lot ?? 0);
+            {(() => {
+              // Apply Decision Feed filter. "Active" hides previous-session rows
+              // (symbols no longer selected/held); the other filters slice by
+              // execution kind so previous-session noise never leaks into the
+              // active trade plan view.
+              const filtered = decisions.filter((d: any) => {
+                const exec = deriveExecutionStatusForCard(agent, session, d);
+                const inactive = !selectedSet.has(d.symbol) && !openPositionSymbols.has(d.symbol);
+                const isExecRow = ["executed_buy","executed_sell","executed_exit","executed_stop_loss","executed_take_profit"].includes(exec.status);
+                const isOpenPosEvt = exec.status === "hold_position" || (isExecRow && exec.status === "executed_buy");
+                const isBlocked = exec.status.startsWith("blocked_");
+                const isWatchResearch = ["watch_snapshot","research_snapshot","premarket_snapshot"].includes(exec.status);
+                switch (feedFilter) {
+                  case "active":          return !inactive;
+                  case "executed":        return isExecRow;
+                  case "open_position":   return isOpenPosEvt;
+                  case "blocked":         return isBlocked;
+                  case "watch_research":  return isWatchResearch;
+                  case "previous":        return inactive;
+                  case "all":
+                  default:                return true;
+                }
+              });
+              if (filtered.length === 0) {
+                return (
+                  <tr><td colSpan={13} className="p-6 text-center text-muted-foreground text-xs">
+                    {decisions.length === 0
+                      ? `Belum ada keputusan. Klik "${runCopy.label}" untuk memulai analysis cycle.`
+                      : `Tidak ada decision pada filter "${FEED_FILTER_OPTIONS.find(o => o.value === feedFilter)?.label}". Coba filter lain.`}
+                  </td></tr>
+                );
+              }
+              return filtered.map((d: any) => {
+                const conf = confidenceCell(agent, session, d);
+                const fresh = d.data_freshness_seconds;
+                const inactive = !selectedSet.has(d.symbol) && !openPositionSymbols.has(d.symbol);
+                const exec = deriveExecutionStatusForCard(agent, session, d);
+                const executed = isExecutedDecision(d);
+                const refPrice = referencePriceFor(d);
+                const lotNum = Number(d.suggested_lot ?? 0);
+                const mode = String(d.selection_mode ?? "manual");
+                const intent = signalIntentFor(d);
 
-              const snap: any = d.data_snapshot ?? {};
-              const priceFreshness: DataStatus = snap?.price ? classifyFreshness(fresh) : (refPrice != null ? "stale" : "unavailable");
-              const sourceLabel = priceFreshness === "unavailable"
-                ? "Price unavailable"
-                : priceFreshness === "stale"
-                ? (refPrice != null && !snap?.price ? "Reference price (cached)" : "Stale price")
-                : "Price fresh";
+                const snap: any = d.data_snapshot ?? {};
+                const priceFreshness: DataStatus = snap?.price ? classifyFreshness(fresh) : (refPrice != null ? "stale" : "unavailable");
+                const sourceLabel = priceFreshness === "unavailable"
+                  ? "Price unavailable"
+                  : priceFreshness === "stale"
+                  ? (refPrice != null && !snap?.price ? "Reference price (cached)" : "Stale price")
+                  : "Price fresh";
 
-              const isExecutedRow = ["executed_buy","executed_sell","executed_exit","executed_stop_loss","executed_take_profit"].includes(exec.status);
-              const isSnapshotRow = ["watch_snapshot","research_snapshot","premarket_snapshot"].includes(exec.status);
-              const badgeClass = isExecutedRow
-                ? "bg-bull/15 text-bull"
-                : isSnapshotRow
-                ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                : exec.status === "allowed"
-                ? "bg-bull/15 text-bull"
-                : "bg-bear/10 text-bear";
+                const isExecutedRow = ["executed_buy","executed_sell","executed_exit","executed_stop_loss","executed_take_profit"].includes(exec.status);
+                const isSnapshotRow = ["watch_snapshot","research_snapshot","premarket_snapshot"].includes(exec.status);
+                const badgeClass = isExecutedRow
+                  ? "bg-bull/15 text-bull"
+                  : isSnapshotRow
+                  ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                  : exec.status === "allowed"
+                  ? "bg-bull/15 text-bull"
+                  : "bg-bear/10 text-bear";
 
-              const reasoningPretty = executed
-                ? (d.reasoning ?? "—")
-                : `${exec.primary}. ${exec.detail}`;
-              const refLine = !executed && refPrice != null
-                ? `Ref price: ${formatPrice(refPrice)}${priceFreshness === "stale" ? " · cached" : ""}`
-                : null;
-              const lotNote = lotNum === 0 ? lotZeroExplanation(exec.status) : null;
+                const reasoningPretty = executed
+                  ? (d.reasoning ?? "—")
+                  : `${exec.primary}. ${exec.detail}`;
+                const lotNote = lotNum === 0 ? lotZeroExplanation(exec.status) : null;
+                const da = displayActionFor(d, exec.status, openPositionSymbols);
+                const entryCell = executed && d.entry_price != null
+                  ? <span className="font-semibold">{formatPrice(d.entry_price)}</span>
+                  : refPrice != null
+                  ? <span className="text-muted-foreground" title="Reference / scan price — not an executed entry">Ref {formatPrice(refPrice)}{priceFreshness === "stale" ? " · cached" : ""}</span>
+                  : <span className="text-muted-foreground">—</span>;
 
-              return (
-                <tr key={d.id} className="border-t border-border align-top">
-                  <td className="p-2 text-xs text-muted-foreground whitespace-nowrap">{fmtWIBTime(d.created_at)}</td>
-                  <td className="p-2 font-medium">
-                    {d.symbol}
-                    {inactive && <span className="ml-1 text-[9px] uppercase bg-muted text-muted-foreground px-1 py-0.5 rounded align-middle">previous session</span>}
-                  </td>
-                  <td className="p-2 text-xs font-semibold">
-                    {(() => { const da = displayActionFor(d, exec.status); return (
-                      <span className={TONE_TEXT[da.tone]}>
-                        {da.label}
-                        {da.intent && <span className="ml-1 text-[9px] uppercase text-muted-foreground italic">intent {da.intent}</span>}
+                return (
+                  <tr key={d.id} className="border-t border-border align-top">
+                    <td className="p-2 text-xs text-muted-foreground whitespace-nowrap">{fmtWIBTime(d.created_at)}</td>
+                    <td className="p-2 font-medium">
+                      {d.symbol}
+                      {inactive && <span className="ml-1 text-[9px] uppercase bg-muted text-muted-foreground px-1 py-0.5 rounded align-middle">previous</span>}
+                    </td>
+                    <td className="p-2 text-[10px] uppercase text-muted-foreground">{mode}</td>
+                    <td className="p-2 text-xs font-semibold">
+                      <span className={TONE_TEXT[da.tone]}>{da.label}</span>
+                    </td>
+                    <td className="p-2 text-[10px] uppercase">
+                      {intent === "NONE"
+                        ? <span className="text-muted-foreground">—</span>
+                        : <span className={intent === "BUY" ? "text-bull" : intent === "SELL" || intent === "EXIT" ? "text-bear" : "text-amber-600 dark:text-amber-400"}>{intent}</span>}
+                    </td>
+                    <td className={`p-2 text-right font-mono text-xs ${conf.muted ? "text-muted-foreground" : ""}`} title={conf.tooltip}>{conf.label}</td>
+                    <td className="p-2 text-right font-mono" title={lotNote ?? ""}>
+                      {executed ? (d.suggested_lot ?? "—") : "0"}
+                      {lotNote && <div className="text-[9px] font-sans text-muted-foreground italic max-w-[140px] whitespace-normal text-right">{lotNote}</div>}
+                    </td>
+                    <td className="p-2 text-right font-mono text-xs">{entryCell}</td>
+                    <td className="p-2 text-right font-mono">{executed && d.stop_loss != null ? formatPrice(d.stop_loss) : "—"}</td>
+                    <td className="p-2 text-right font-mono">{executed && d.take_profit != null ? formatPrice(d.take_profit) : "—"}</td>
+                    <td className="p-2 text-[11px] text-muted-foreground max-w-[200px]" title={d.data_source ?? ""}>
+                      <div className="truncate">{sourceLabel}{fresh != null ? ` · ${fresh}s` : ""}</div>
+                    </td>
+                    <td className="p-2 text-xs">
+                      <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${badgeClass}`}>
+                        {EXEC_LABEL[exec.status]}
                       </span>
-                    ); })()}
-                  </td>
-                  <td className={`p-2 text-right font-mono text-xs ${conf.muted ? "text-muted-foreground" : ""}`} title={conf.tooltip}>{conf.label}</td>
-                  <td className="p-2 text-right font-mono" title={lotNote ?? ""}>
-                    {executed ? (d.suggested_lot ?? "—") : "0"}
-                    {lotNote && <div className="text-[9px] font-sans text-muted-foreground italic max-w-[140px] whitespace-normal text-right">{lotNote}</div>}
-                  </td>
-                  <td className="p-2 text-right font-mono">{executed && d.entry_price != null ? formatPrice(d.entry_price) : "—"}</td>
-                  <td className="p-2 text-right font-mono">{executed && d.stop_loss != null ? formatPrice(d.stop_loss) : "—"}</td>
-                  <td className="p-2 text-right font-mono">{executed && d.take_profit != null ? formatPrice(d.take_profit) : "—"}</td>
-                  <td className="p-2 text-[11px] text-muted-foreground max-w-[200px]" title={d.data_source ?? ""}>
-                    <div className="truncate">{sourceLabel}{fresh != null ? ` · ${fresh}s` : ""}</div>
-                    {refLine && <div className="text-[10px] font-mono opacity-80">{refLine}</div>}
-                  </td>
-                  <td className="p-2 text-xs">
-                    <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${badgeClass}`}>
-                      {EXEC_LABEL[exec.status]}
-                    </span>
-                  </td>
-                  <td className="p-2 text-xs text-muted-foreground max-w-md">
-                    {reasoningPretty}
-                    {d.calibration_reason ? <div className="mt-1 text-[10px] italic opacity-80">↳ {d.calibration_reason}</div> : null}
-                  </td>
-                </tr>
-              );
-            })}
-            {decisions.length === 0 && <tr><td colSpan={11} className="p-6 text-center text-muted-foreground">Belum ada keputusan. Klik "{runCopy.label}" untuk memulai analysis cycle.</td></tr>}
+                    </td>
+                    <td className="p-2 text-xs text-muted-foreground max-w-md">
+                      {reasoningPretty}
+                      {d.calibration_reason ? <div className="mt-1 text-[10px] italic opacity-80">↳ {d.calibration_reason}</div> : null}
+                    </td>
+                  </tr>
+                );
+              });
+            })()}
           </tbody>
         </table>
       </div>
