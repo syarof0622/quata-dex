@@ -1092,15 +1092,32 @@ function AIAgentPanel() {
       })()}
 
       <div className="panel p-2 overflow-x-auto">
-        <div className="px-2 py-1 text-xs text-muted-foreground flex items-center justify-between">
-          <span>Decision feed</span>
-          <span className="text-[10px] text-muted-foreground">menampilkan semua history; emiten tidak aktif diberi tanda</span>
+        <div className="px-2 py-1 text-xs text-muted-foreground flex items-center justify-between flex-wrap gap-2">
+          <span className="font-semibold uppercase tracking-wide text-foreground">Decision feed</span>
+          <div className="flex items-center gap-1 flex-wrap">
+            {FEED_FILTER_OPTIONS.map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => setFeedFilter(opt.value)}
+                className={`text-[10px] uppercase tracking-wide px-2 py-0.5 rounded border transition-colors ${
+                  feedFilter === opt.value
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-muted/30 text-muted-foreground border-transparent hover:border-border"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
-        <table className="w-full text-sm min-w-[720px]">
+        <table className="w-full text-sm min-w-[960px]">
           <thead className="text-xs text-muted-foreground">
-            <tr><th className="text-left p-2">Time</th><th className="text-left p-2">Symbol</th><th className="text-left p-2">Action</th>
+            <tr><th className="text-left p-2">Time</th><th className="text-left p-2">Symbol</th>
+              <th className="text-left p-2">Mode</th>
+              <th className="text-left p-2">Action</th>
+              <th className="text-left p-2">Intent</th>
               <th className="text-right p-2">Conf (raw→cal)</th><th className="text-right p-2">Lot</th>
-              <th className="text-right p-2">Entry</th><th className="text-right p-2">SL</th><th className="text-right p-2">TP</th>
+              <th className="text-right p-2">Entry / Ref</th><th className="text-right p-2">SL</th><th className="text-right p-2">TP</th>
               <th className="text-left p-2">Source · Fresh</th>
               <th className="text-left p-2">Status</th><th className="text-left p-2">Reasoning</th></tr>
           </thead>
