@@ -4,7 +4,7 @@ import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu,
   SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger, SidebarHeader, SidebarFooter,
 } from "@/components/ui/sidebar";
-import { Activity, Bell, Bot, FlaskConical, LayoutDashboard, Newspaper, PieChart, Settings, SlidersHorizontal, Star, TrendingUp, LogOut, Sparkles } from "lucide-react";
+import { Activity, Bell, Bot, FlaskConical, LayoutDashboard, Newspaper, PieChart, Settings, SlidersHorizontal, Star, TrendingUp, LogOut, Sparkles, HeartPulse } from "lucide-react";
 import { useRouterState } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { TickerSearch } from "@/components/TickerSearch";
@@ -25,6 +25,7 @@ const NAV = [
   { to: "/expert", icon: Sparkles, label: "Expert Tools" },
   { to: "/news", icon: Newspaper, label: "News" },
   { to: "/alerts", icon: Bell, label: "Alerts" },
+  { to: "/health", icon: HeartPulse, label: "System Health" },
   { to: "/settings", icon: Settings, label: "Settings" },
 ] as const;
 

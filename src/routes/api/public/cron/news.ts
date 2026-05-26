@@ -149,12 +149,10 @@ function* chunks<T>(arr: T[], n: number): Generator<T[]> {
   for (let i = 0; i < arr.length; i += n) yield arr.slice(i, i + n);
 }
 
+// Re-export the shared cron guard so existing call sites keep working.
+import { checkCronSecret } from "@/lib/cron-auth.server";
 function checkCronAuth(request: Request): Response | null {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) return null;
-  const provided = request.headers.get("x-cron-secret") ?? new URL(request.url).searchParams.get("secret");
-  if (provided !== cronSecret) return new Response("Unauthorized", { status: 401 });
-  return null;
+  return checkCronSecret(request);
 }
 
 export const Route = createFileRoute("/api/public/cron/news")({

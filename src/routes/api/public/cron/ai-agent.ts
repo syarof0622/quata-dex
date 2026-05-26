@@ -13,6 +13,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { runAgentOnce } from "@/lib/ai-trade-agent.functions";
 import { getIDXMarketSession } from "@/lib/idx-market-session";
+import { checkCronSecret } from "@/lib/cron-auth.server";
+import { audit } from "@/lib/audit.server";
 
 type AgentResult = {
   id: string;
@@ -33,18 +35,9 @@ type AgentResult = {
 async function handler(request: Request) {
   const startedAt = new Date();
 
-  // Optional shared secret. Accept via header or ?secret= query string.
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret) {
-    const provided = request.headers.get("x-cron-secret")
-      ?? new URL(request.url).searchParams.get("secret");
-    if (provided !== cronSecret) {
-      return new Response(
-        JSON.stringify({ ok: false, error: "unauthorized", reason: "cron_secret_mismatch" }),
-        { status: 401, headers: { "Content-Type": "application/json" } },
-      );
-    }
-  }
+  // Require CRON_SECRET. See src/lib/cron-auth.server.ts.
+  const denied = checkCronSecret(request);
+  if (denied) return denied;
 
   const session = getIDXMarketSession();
 

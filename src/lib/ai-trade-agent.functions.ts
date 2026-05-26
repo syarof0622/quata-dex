@@ -745,6 +745,18 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
         market_regime: (decision as any).marketRegime ?? null,
         signal_source: (decision as any).signalSource ?? (isAutonomous ? "autonomous_scanner" : "manual_strategy_mode"),
         strategy_context: (decision as any).strategyContext ?? null,
+        decision_replay_snapshot: {
+          marketSession: (decision as any).realMarketContext?.session ?? null,
+          priceContext: (decision as any).realMarketData ?? null,
+          technicalContext: decision.realTechnicalData ?? null,
+          newsContext: decision.realNewsData ?? null,
+          sentimentContext: { news: decision.realNewsData, disclosure: decision.realDisclosureData },
+          portfolioRiskContext: { portfolio: decision.portfolioSnapshot, risk: decision.riskSnapshot },
+          strategyContext: (decision as any).strategyContext ?? null,
+          riskGuard: { blockedReason: decision.blockedReason ?? null, limitReason: limitReason ?? null },
+          finalDecision: { action: persistedAction, confidence: decision.confidence, status: decisionStatus },
+          capturedAt: new Date().toISOString(),
+        } as any,
       });
     } catch (e: any) {
       await supabaseAdmin.from("ai_agent_risk_logs").insert({

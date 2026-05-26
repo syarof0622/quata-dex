@@ -2,20 +2,18 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import { getQuote, getCandles } from "@/lib/market.functions";
 import { rsi, ema, type Candle } from "@/lib/indicators";
+import { checkCronSecret } from "@/lib/cron-auth.server";
 
 // Public cron endpoint. Iterates ALL active alerts across users and triggers
 // any that match. Designed to be hit by an external scheduler every 1-5 min.
-// Lives under /api/public/* — no auth header required.
+// Lives under /api/public/* — requires CRON_SECRET.
 
 export const Route = createFileRoute("/api/public/cron/alerts")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const cronSecret = process.env.CRON_SECRET;
-        if (cronSecret) {
-          const provided = request.headers.get("x-cron-secret") ?? new URL(request.url).searchParams.get("secret");
-          if (provided !== cronSecret) return new Response("Unauthorized", { status: 401 });
-        }
+        const denied = checkCronSecret(request);
+        if (denied) return denied;
         const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
         const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
         if (!url || !key) return new Response(JSON.stringify({ error: "missing env" }), { status: 500 });
