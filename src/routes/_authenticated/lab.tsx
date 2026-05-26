@@ -201,7 +201,12 @@ type ExecStatus =
   | "blocked_risk_limit"
   | "blocked_low_confidence"
   | "blocked_duplicate_order"
-  | "blocked_rr_invalid";
+  | "blocked_rr_invalid"
+  | "blocked_max_daily_trades"
+  | "blocked_max_active_positions"
+  | "blocked_max_new_entries"
+  | "blocked_cooldown"
+  | "hold_position";
 
 const EXEC_LABEL: Record<ExecStatus, string> = {
   executed_buy: "Executed — Paper BUY",
@@ -225,6 +230,11 @@ const EXEC_LABEL: Record<ExecStatus, string> = {
   blocked_low_confidence: "Blocked — Confidence below threshold",
   blocked_duplicate_order: "Blocked — Duplicate order guard",
   blocked_rr_invalid: "Blocked — Risk/reward invalid",
+  blocked_max_daily_trades: "Blocked — Max daily AI trades reached",
+  blocked_max_active_positions: "Blocked — Max active positions reached",
+  blocked_max_new_entries: "Blocked — Max new entries today reached",
+  blocked_cooldown: "Blocked — Cooldown active",
+  hold_position: "Holding position",
 };
 
 // True only when AI actually placed a simulated paper order for this decision.
@@ -275,6 +285,7 @@ function deriveExecutionStatusForCard(
   const reasoning = String(d?.reasoning ?? "").toLowerCase();
   const dStatus = d?.decision_status as string | undefined;
   const action = d?.action as string | undefined;
+  const blockReason = (d?.data_snapshot as any)?.blockReason as string | undefined;
 
   // 0. Executed paper orders — show success states.
   if (isExecutedDecision(d)) {
@@ -300,6 +311,58 @@ function deriveExecutionStatusForCard(
   if (dStatus === "premarket_plan") {
     return { status: "premarket_snapshot", primary: "Pre-market plan",
       detail: "Pre-market watchlist. Monitor saat market open — belum ada paper order." };
+  }
+
+  // 0c. Specific limit_reached / cooldown reasons (from persisted blockReason).
+  if (dStatus === "limit_reached" || dStatus === "cooldown") {
+    if (blockReason === "max_daily_ai_trades_reached") {
+      return { status: "blocked_max_daily_trades", primary: "Max daily AI trades reached",
+        detail: "Batas max daily AI trades sudah tercapai untuk hari ini. AI tidak membuka entry baru sampai window berikutnya." };
+    }
+    if (blockReason === "max_active_positions_reached") {
+      return { status: "blocked_max_active_positions", primary: "Max active positions reached",
+        detail: `AI ingin BUY ${d.symbol}, tetapi slot max active positions sudah penuh.` };
+    }
+    if (blockReason === "max_new_entries_per_day_reached") {
+      return { status: "blocked_max_new_entries", primary: "Max new entries today reached",
+        detail: "Jumlah entry baru hari ini sudah mencapai batas. Posisi existing tetap dimonitor." };
+    }
+    if (blockReason === "cooldown_active" || blockReason === "duplicate_order_guard") {
+      return { status: "blocked_cooldown", primary: "Cooldown / duplicate guard aktif",
+        detail: "Menunggu jeda antar aksi pada simbol ini untuk mencegah duplikat order." };
+    }
+    if (dStatus === "limit_reached") {
+      return { status: "blocked_risk_limit", primary: "Risk limit reached",
+        detail: "AI ingin trade, tetapi salah satu risk limit harian sudah tercapai." };
+    }
+    return { status: "blocked_cooldown", primary: "Cooldown aktif",
+      detail: "Menunggu jeda antar aksi pada simbol ini untuk mencegah duplikat order." };
+  }
+
+  // 0d. Decision-engine block reasons.
+  if (blockReason === "insufficient_balance") {
+    return { status: "blocked_insufficient_balance", primary: "Saldo paper tidak cukup",
+      detail: "Saldo paper trading tidak cukup untuk minimal 1 lot." };
+  }
+  if (blockReason === "risk_reward_invalid") {
+    return { status: "blocked_rr_invalid", primary: "Risk/reward invalid",
+      detail: "Risk/reward setup tidak memenuhi minimum untuk mode risiko ini." };
+  }
+  if (blockReason === "confidence_below_threshold") {
+    return { status: "blocked_low_confidence", primary: "Confidence di bawah threshold",
+      detail: "AI belum mengeksekusi order karena confidence masih di bawah threshold." };
+  }
+  if (blockReason === "exposure_cap_reached") {
+    return { status: "blocked_max_active_positions", primary: "Exposure cap reached",
+      detail: "Eksposur portfolio sudah mencapai batas untuk mode risiko ini." };
+  }
+  if (blockReason === "lot_below_minimum") {
+    return { status: "blocked_insufficient_balance", primary: "Lot di bawah minimum",
+      detail: "Alokasi tidak cukup untuk minimal 1 lot pada harga saat ini." };
+  }
+  if (blockReason === "market_closed") {
+    return { status: "blocked_market_closed", primary: "Market closed",
+      detail: "Market sedang tutup. AI hanya menyimpan snapshot analisis tanpa paper order." };
   }
 
   if (agentStatus === "error") {
@@ -332,14 +395,6 @@ function deriveExecutionStatusForCard(
     return { status: "blocked_data_unavailable", primary: "Price unavailable",
       detail: "Harga fresh tidak tersedia, sehingga AI tidak dapat menghitung lot dan tidak mengeksekusi order." };
   }
-  if (dStatus === "limit_reached" || /batas risiko|risk limit/.test(reasoning)) {
-    return { status: "blocked_risk_limit", primary: "Batas risiko harian tercapai",
-      detail: "Agent masuk mode risk-paused sampai window berikutnya." };
-  }
-  if (dStatus === "cooldown" || /cooldown/.test(reasoning)) {
-    return { status: "blocked_duplicate_order", primary: "Cooldown aktif",
-      detail: "Menunggu jeda antar aksi pada simbol ini untuk mencegah duplikat order." };
-  }
   if (/saldo .* tidak cukup|saldo paper|insufficient/.test(reasoning)) {
     return { status: "blocked_insufficient_balance", primary: "Saldo paper tidak cukup",
       detail: "Saldo paper trading tidak cukup untuk minimal 1 lot." };
@@ -361,7 +416,7 @@ function deriveExecutionStatusForCard(
       detail: d?.reasoning || "Decision diblokir oleh guard eksekusi. Lihat alasan untuk detail." };
   }
   if (action === "HOLD") {
-    return { status: "blocked_low_confidence", primary: "Hold posisi",
+    return { status: "hold_position", primary: "Holding position",
       detail: "AI menahan posisi existing. Tidak ada paper order baru pada tick ini." };
   }
   return { status: "allowed", primary: "Allowed", detail: "Setup valid untuk eksekusi paper order." };
@@ -476,6 +531,9 @@ function AIAgentPanel() {
   const decisions = (status.data?.decisions ?? []) as any[];
   const risks = (status.data?.risks ?? []) as any[];
   const performance = status.data?.performance as any;
+  const agentPositions = ((status.data as any)?.paperPositions ?? []) as any[];
+  const agentOrders = ((status.data as any)?.agentOrders ?? []) as any[];
+  const orderCounts = ((status.data as any)?.orderCounts ?? { executed: 0, openPositions: 0, closedTrades: 0 }) as { executed: number; openPositions: number; closedTrades: number };
 
   const memory = useQuery({
     queryKey: ["ai-agent-memory", agent?.id],
@@ -556,18 +614,49 @@ function AIAgentPanel() {
     ? { label: "Training Data Saved", cls: "bg-bull/15 text-bull" }
     : { label: "Waiting for Training Data", cls: "bg-muted text-muted-foreground" };
 
-  // Data Readiness from the most-recent decision (any symbol)
+  // Data Readiness — aggregated across active candidates (selectedSet) and open
+  // positions. A single fresh candidate should NOT show as "unavailable".
+  const activeSyms = new Set<string>([
+    ...((agent?.selected_symbols ?? symbols) as string[]),
+    ...agentPositions.map((p: any) => p.symbol),
+  ]);
+  const activeDecisions: any[] = [];
+  {
+    const seen = new Set<string>();
+    for (const d of decisions) {
+      if (!activeSyms.has(d.symbol)) continue;
+      if (seen.has(d.symbol)) continue;
+      seen.add(d.symbol);
+      activeDecisions.push(d);
+    }
+  }
+  function aggregate(values: DataStatus[]): DataStatus {
+    if (values.length === 0) return "unavailable";
+    const fresh = values.filter(v => v === "fresh").length;
+    const stale = values.filter(v => v === "stale").length;
+    if (fresh === values.length) return "fresh";
+    if (fresh > 0) return "stale"; // partial → render as amber/stale
+    if (stale > 0) return "stale";
+    return "unavailable";
+  }
+  const perSymStatus = activeDecisions.map(d => {
+    const snap: any = d.data_snapshot ?? {};
+    const tech: any = d.technical_snapshot ?? {};
+    const sent: any = d.sentiment_snapshot ?? {};
+    return {
+      price: (snap?.price ? classifyFreshness(d.data_freshness_seconds) : "unavailable") as DataStatus,
+      tech: (tech && (tech.score != null || tech.label) ? "fresh" : "unavailable") as DataStatus,
+      news: (Number(sent?.news?.latestNewsCount ?? 0) > 0 ? "fresh" : "unavailable") as DataStatus,
+      sent: (sent?.news ? "fresh" : "unavailable") as DataStatus,
+      disc: (sent?.disclosure?.hasRecentDisclosure ? "fresh" : sent?.disclosure ? "stale" : "unavailable") as DataStatus,
+    };
+  });
+  const priceStatus: DataStatus = aggregate(perSymStatus.map(s => s.price));
+  const techStatus: DataStatus = aggregate(perSymStatus.map(s => s.tech));
+  const newsStatus: DataStatus = aggregate(perSymStatus.map(s => s.news));
+  const sentStatus: DataStatus = aggregate(perSymStatus.map(s => s.sent));
+  const discStatus: DataStatus = aggregate(perSymStatus.map(s => s.disc));
   const newestDecision = decisions[0];
-  const newestSnap: any = newestDecision?.data_snapshot ?? {};
-  const newestTech: any = newestDecision?.technical_snapshot ?? {};
-  const newestSent: any = newestDecision?.sentiment_snapshot ?? {};
-  const priceStatus: DataStatus = newestSnap?.price ? classifyFreshness(newestDecision?.data_freshness_seconds) : "unavailable";
-  const techStatus: DataStatus = newestTech && (newestTech.score != null || newestTech.label) ? "fresh" : "unavailable";
-  const newsCount = Number(newestSent?.news?.latestNewsCount ?? 0);
-  const newsStatus: DataStatus = newsCount > 0 ? "fresh" : "unavailable";
-  const sentStatus: DataStatus = newestSent?.news ? "fresh" : "unavailable";
-  const discStatus: DataStatus = newestSent?.disclosure?.hasRecentDisclosure ? "fresh"
-    : newestSent?.disclosure ? "stale" : "unavailable";
   const execAllowed = !!session?.isOpen && agent?.status !== "paused" && agent?.status !== "error" && agent?.status !== "stopped";
 
   return (
@@ -660,12 +749,12 @@ function AIAgentPanel() {
         </div>
       </div>
 
-      {/* Data Readiness Card */}
-      <div className="panel p-3 space-y-2">
+      {/* Data Readiness Card — aggregated across active candidates + open positions */}
+      <div className="panel p-3 space-y-2" title="Aggregated from active candidates and open positions.">
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="text-xs font-semibold uppercase tracking-wide">Data Readiness</div>
+          <div className="text-xs font-semibold uppercase tracking-wide">Data Readiness <span className="text-[10px] normal-case text-muted-foreground font-normal">· aggregated</span></div>
           <div className="text-[10px] text-muted-foreground">
-            Last update: {newestDecision ? fmtWIBTime(newestDecision.created_at) : "—"}
+            Last update: {newestDecision ? fmtWIBTime(newestDecision.created_at) : "—"} · {activeDecisions.length} active
           </div>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 text-[11px]">
@@ -676,9 +765,9 @@ function AIAgentPanel() {
             { k: "Sentiment",   v: sentStatus },
             { k: "Disclosure",  v: discStatus },
           ].map(item => (
-            <div key={item.k} className="flex items-center justify-between gap-2 px-2 py-1 rounded bg-muted/30">
+            <div key={item.k} className="flex items-center justify-between gap-2 px-2 py-1 rounded bg-muted/30" title="Aggregated from active candidates and open positions.">
               <span className="text-muted-foreground">{item.k}</span>
-              <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${statusBadgeClass(item.v)}`}>{item.v}</span>
+              <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${statusBadgeClass(item.v)}`}>{item.v === "stale" && perSymStatus.some(s => (s as any)[item.k.toLowerCase()] === "fresh") ? "partial" : item.v}</span>
             </div>
           ))}
           <div className="flex items-center justify-between gap-2 px-2 py-1 rounded bg-muted/30">
@@ -696,18 +785,71 @@ function AIAgentPanel() {
         </div>
       </div>
 
-      {/* Performance — show with empty state if no executed trades yet */}
+      {/* Open Positions panel — source of truth: paper_positions */}
+      <div className="panel p-2 overflow-x-auto">
+        <div className="px-2 py-1 text-xs text-muted-foreground flex items-center justify-between flex-wrap gap-2">
+          <span className="flex items-center gap-2">
+            <span className="font-semibold uppercase tracking-wide text-foreground">Open Positions</span>
+            <span className="text-[10px] uppercase bg-bull/15 text-bull px-1.5 py-0.5 rounded">{agentPositions.length} open</span>
+          </span>
+          <span className="text-[10px] text-muted-foreground">source: paper_positions</span>
+        </div>
+        {agentPositions.length === 0 ? (
+          <div className="p-3 text-xs text-muted-foreground">Belum ada open position. AI belum mengeksekusi paper BUY.</div>
+        ) : (
+          <table className="w-full text-sm min-w-[720px]">
+            <thead className="text-xs text-muted-foreground">
+              <tr>
+                <th className="text-left p-2">Symbol</th>
+                <th className="text-right p-2">Lot</th>
+                <th className="text-right p-2">Shares</th>
+                <th className="text-right p-2">Avg Entry</th>
+                <th className="text-right p-2">Last Price</th>
+                <th className="text-right p-2">Market Value</th>
+                <th className="text-right p-2">Unrealized P/L</th>
+                <th className="text-right p-2">Opened</th>
+              </tr>
+            </thead>
+            <tbody>
+              {agentPositions.map((p: any) => {
+                const qty = Number(p.qty);
+                const lot = Math.floor(qty / 100);
+                const mark = Number(p.mark ?? p.avg_price);
+                const mv = mark * qty;
+                return (
+                  <tr key={p.id} className="border-t border-border">
+                    <td className="p-2 font-mono">{p.symbol}</td>
+                    <td className="p-2 text-right font-mono">{lot}</td>
+                    <td className="p-2 text-right font-mono">{qty}</td>
+                    <td className="p-2 text-right font-mono">{formatPrice(p.avg_price)}</td>
+                    <td className="p-2 text-right font-mono">{formatPrice(mark)}</td>
+                    <td className="p-2 text-right font-mono">{formatIDRCompact(mv)}</td>
+                    <td className={`p-2 text-right font-mono ${colorForChange(p.pnl ?? 0)}`}>{p.pnl != null ? formatIDRCompact(p.pnl) : "—"}{p.pnlPct != null ? ` (${Number(p.pnlPct).toFixed(2)}%)` : ""}</td>
+                    <td className="p-2 text-right text-xs text-muted-foreground">{fmtWIBDateTime(p.opened_at)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Performance */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-        <Stat label="Total trades" value={String(performance?.total_trades ?? 0)} />
+        <Stat label="Closed trades" value={String(orderCounts.closedTrades)} />
+        <Stat label="Executed orders" value={String(orderCounts.executed)} />
+        <Stat label="Open positions" value={String(orderCounts.openPositions)} tone={orderCounts.openPositions > 0 ? "bull" : undefined} />
         <Stat label="Win rate" value={Number(performance?.win_rate ?? 0).toFixed(1) + "%"} tone={Number(performance?.win_rate ?? 0) >= 50 ? "bull" : "bear"} />
         <Stat label="Profit factor" value={Number(performance?.profit_factor ?? 0).toFixed(2)} />
-        <Stat label="Total return" value={formatIDRCompact(Number(performance?.total_return ?? 0))} tone={Number(performance?.total_return ?? 0) >= 0 ? "bull" : "bear"} />
-        <Stat label="Best / Worst" value={`${formatIDRCompact(Number(performance?.best_trade ?? 0))} / ${formatIDRCompact(Number(performance?.worst_trade ?? 0))}`} />
       </div>
-      {(!performance || Number(performance.total_trades ?? 0) === 0) && (
+      {orderCounts.closedTrades === 0 && (
         <div className="panel p-3 text-xs text-muted-foreground flex items-center justify-between flex-wrap gap-2">
-          <span>Belum ada trade tereksekusi. Performa agent akan dihitung setelah paper order pertama berhasil filled.</span>
-          <span className="text-[10px] uppercase bg-muted px-1.5 py-0.5 rounded">Waiting for first executed trade</span>
+          <span>
+            {orderCounts.executed > 0
+              ? `Sudah ada ${orderCounts.executed} paper order tereksekusi dan ${orderCounts.openPositions} open position. Belum ada closed trade — win rate dan profit factor akan dihitung setelah posisi pertama ditutup.`
+              : "Belum ada closed trade. Win rate dan profit factor akan dihitung setelah posisi pertama ditutup."}
+          </span>
+          <span className="text-[10px] uppercase bg-muted px-1.5 py-0.5 rounded">{orderCounts.executed > 0 ? "Waiting for first close" : "Waiting for first executed trade"}</span>
         </div>
       )}
 

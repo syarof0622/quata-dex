@@ -161,15 +161,43 @@ export const emergencyStop = createServerFn({ method: "POST" })
 export const getAgentStatus = createServerFn({ method: "GET" }).handler(async () => {
   const { data: agent } = await supabaseAdmin.from("ai_trade_agents")
     .select("*").eq("user_id", USER_ID).order("created_at", { ascending: false }).limit(1).maybeSingle();
-  if (!agent) return { agent: null, session: getIDXMarketSession(), decisions: [], risks: [], performance: null };
-  const [{ data: decisions }, { data: risks }, { data: performance }] = await Promise.all([
+  if (!agent) return { agent: null, session: getIDXMarketSession(), decisions: [], risks: [], performance: null, paperPositions: [], agentOrders: [], orderCounts: { executed: 0, openPositions: 0, closedTrades: 0 } };
+  const [{ data: decisions }, { data: risks }, { data: performance }, { data: paperPositions }, { data: agentOrders }] = await Promise.all([
     supabaseAdmin.from("ai_agent_decisions").select("*").eq("agent_id", agent.id).order("created_at", { ascending: false }).limit(50),
     supabaseAdmin.from("ai_agent_risk_logs").select("*").eq("agent_id", agent.id).order("created_at", { ascending: false }).limit(20),
     supabaseAdmin.from("ai_agent_performance").select("*").eq("agent_id", agent.id).maybeSingle(),
+    supabaseAdmin.from("paper_positions").select("*").eq("user_id", USER_ID),
+    supabaseAdmin.from("paper_orders").select("*").eq("agent_id", agent.id).eq("status", "filled")
+      .order("filled_at", { ascending: false }).limit(100),
   ]);
+  const orders = (agentOrders ?? []) as any[];
+  const sells = orders.filter(o => o.side === "sell").length;
+  // Enrich positions with mark/PnL using current quotes
+  let positionsWithMark: any[] = paperPositions ?? [];
+  const syms = Array.from(new Set(positionsWithMark.map((p: any) => p.symbol)));
+  if (syms.length > 0) {
+    try {
+      const { getQuotes } = await import("./market.functions");
+      const quotes = await getQuotes({ data: { symbols: syms } });
+      const qMap = new Map(quotes.map((q: any) => [q.symbol, q.price]));
+      positionsWithMark = positionsWithMark.map((p: any) => {
+        const mark = qMap.get(p.symbol) ?? Number(p.avg_price);
+        const pnl = (Number(mark) - Number(p.avg_price)) * Number(p.qty);
+        const pnlPct = ((Number(mark) / Number(p.avg_price)) - 1) * 100;
+        return { ...p, mark, pnl, pnlPct };
+      });
+    } catch { /* ignore */ }
+  }
   return {
     agent, session: getIDXMarketSession(),
     decisions: decisions ?? [], risks: risks ?? [], performance: performance ?? null,
+    paperPositions: positionsWithMark,
+    agentOrders: orders,
+    orderCounts: {
+      executed: orders.length,
+      openPositions: positionsWithMark.length,
+      closedTrades: sells, // each SELL closes some/all of a position
+    },
   };
 });
 
@@ -535,6 +563,7 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
       decisions.push(decision);
 
       let decisionStatus: "executed" | "rejected" | "hold" | "cooldown" | "limit_reached" = "hold";
+      let limitReason: string | null = null;
       let orderId: string | null = null;
 
       const isTrade = decision.action === "BUY" || decision.action === "EXIT";
@@ -542,13 +571,16 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
 
       if (isTrade && tradesUsed >= dailyTradesLeft) {
         decisionStatus = "limit_reached";
+        limitReason = "max_daily_ai_trades_reached";
       } else if (isAutonomous && isNewEntry && slotsLeft - newEntriesUsed <= 0) {
         decisionStatus = "limit_reached";
+        limitReason = "max_active_positions_reached";
       } else if (isAutonomous && isNewEntry && newEntriesUsed >= maxNew) {
         decisionStatus = "limit_reached";
+        limitReason = "max_new_entries_per_day_reached";
       } else if (isTrade) {
         const action = decision.action;
-        if (await recentCooldownActive(agent.id, sym, action)) decisionStatus = "cooldown";
+        if (await recentCooldownActive(agent.id, sym, action)) { decisionStatus = "cooldown"; limitReason = "cooldown_active"; }
         else if (!cfg.tradingHoursOnly || !isIDXSymbol(sym) || canExecutePaperTrade().ok) {
           try {
             // Pre-execution idempotency: skip if an executed decision with the
@@ -559,7 +591,7 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
               .select("id", { count: "exact", head: true })
               .eq("agent_id", agent.id).eq("idempotency_key", existingKey)
               .eq("decision_status", "executed");
-            if ((dupCount ?? 0) > 0) { decisionStatus = "cooldown"; }
+            if ((dupCount ?? 0) > 0) { decisionStatus = "cooldown"; limitReason = "duplicate_order_guard"; }
             else {
               const existing = await loadActivePosition(sym);
               const side: "buy" | "sell" = action === "BUY" ? "buy" : "sell";
@@ -629,7 +661,7 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
         suggested_lot: decision.suggestedLot, suggested_shares: decision.suggestedShares,
         entry_price: decision.entryPrice, stop_loss: decision.stopLoss, take_profit: decision.takeProfit,
         risk_reward_ratio: decision.riskRewardRatio, reasoning: decision.reasoning,
-        data_snapshot: { ...(decision.realMarketData as any), blockReason: decision.blockedReason ?? null } as any,
+        data_snapshot: { ...(decision.realMarketData as any), blockReason: limitReason ?? decision.blockedReason ?? null, signalIntent: decision.action } as any,
         technical_snapshot: decision.realTechnicalData as any,
         sentiment_snapshot: { news: decision.realNewsData, disclosure: decision.realDisclosureData } as any,
         portfolio_snapshot: decision.portfolioSnapshot as any,
