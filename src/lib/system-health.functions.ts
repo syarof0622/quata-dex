@@ -89,7 +89,49 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
         errorCount: agent?.worker_error_count ?? 0,
         automationEnabled: agent?.automation_enabled ? "yes" : "no",
         lastMessage: agent?.last_worker_message ?? null,
+        lastRunWIB: formatWIB(agent?.last_worker_run_at ?? null),
       },
+    });
+
+    // 1b) Next expected worker run / last auto decision / last auto execution
+    const nextRunMins = minutesAgo((agent as any)?.next_expected_worker_run_at ?? null);
+    cards.push({
+      key: "next_worker_run",
+      label: "Next Expected Worker Run",
+      status: (agent as any)?.next_expected_worker_run_at
+        ? (nextRunMins != null && nextRunMins > 0 ? "partial" : "healthy")
+        : "unknown",
+      detail: (agent as any)?.next_expected_worker_run_at
+        ? `Dijadwalkan: ${formatWIB((agent as any).next_expected_worker_run_at)}`
+        : "Jadwal next run belum tercatat.",
+      lastUpdatedAt: (agent as any)?.next_expected_worker_run_at ?? null,
+    });
+
+    const { data: agentTimes } = await supabaseAdmin
+      .from("ai_trade_agents")
+      .select("last_auto_decision_at, last_auto_execution_at")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const decMinsAuto = minutesAgo(agentTimes?.last_auto_decision_at ?? null);
+    cards.push({
+      key: "last_auto_decision",
+      label: "Last Auto Decision",
+      status: agentTimes?.last_auto_decision_at ? freshnessStatus(decMinsAuto, 60, 240) : "unknown",
+      detail: agentTimes?.last_auto_decision_at
+        ? `${formatWIB(agentTimes.last_auto_decision_at)} (${decMinsAuto} menit lalu)`
+        : "Belum ada keputusan otomatis.",
+      lastUpdatedAt: agentTimes?.last_auto_decision_at ?? null,
+    });
+    const exMinsAuto = minutesAgo(agentTimes?.last_auto_execution_at ?? null);
+    cards.push({
+      key: "last_auto_execution",
+      label: "Last Auto Execution",
+      status: agentTimes?.last_auto_execution_at ? freshnessStatus(exMinsAuto, 240, 1440) : "unknown",
+      detail: agentTimes?.last_auto_execution_at
+        ? `${formatWIB(agentTimes.last_auto_execution_at)} (${exMinsAuto} menit lalu)`
+        : "Belum ada eksekusi otomatis.",
+      lastUpdatedAt: agentTimes?.last_auto_execution_at ?? null,
     });
 
     // 2) News Pipeline (latest article fetch)
