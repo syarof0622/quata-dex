@@ -594,7 +594,7 @@ export async function evaluateSymbol(
       allocationAmount: agent.allocationAmount,
       suggestedLot: sized.lot, suggestedShares: sized.shares,
       entryPrice: price, stopLoss, takeProfit, riskRewardRatio: rr,
-      reasoning: `Teknikal ${techLabel} (${techScore.toFixed(0)}), sentimen ${sentScore.toFixed(2)}, news +${realNewsData.positiveNewsCount}/-${realNewsData.negativeNewsCount} (high ${realNewsData.highImpactNewsCount}), IHSG ${realMarketContext.ihsgBias}. Composite ${(composite*100).toFixed(0)}%.${autoReasonTag} ${calib.reason} Allocate ${sized.lot} lot @ ${price}.`,
+      reasoning: `Teknikal ${techLabel} (${techScore.toFixed(0)}), sentimen ${sentScore.toFixed(2)}, news +${realNewsData.positiveNewsCount}/-${realNewsData.negativeNewsCount} (high ${realNewsData.highImpactNewsCount}), IHSG ${realMarketContext.ihsgBias}, sektor ${sectorRotationLabel}, fundamental ${fundamentalContext.classification} (trap ${fundamentalContext.valueTrapRisk ?? "n/a"}). Composite ${(composite*100).toFixed(0)}%.${autoReasonTag} ${calib.reason} Allocate ${sized.lot} lot @ ${price}.`,
       dataFreshnessSeconds: freshness, dataSource: "Yahoo Finance + Google News RSS + IDX disclosure",
       executionAllowed: true, analysisOnly: false,
       realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
