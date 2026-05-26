@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Trash2, Bell, Zap, Target } from "lucide-react";
+import { formatDateTimeWIB } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/alerts")({
   head: () => ({ meta: [{ title: "Smart Alerts — Quanta Terminal" }] }),
