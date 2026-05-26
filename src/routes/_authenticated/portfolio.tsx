@@ -282,6 +282,9 @@ function Portfolio() {
         </div>
       </div>
 
+      {/* Attribution, Scenarios, What-If */}
+      {hasActivity && <PortfolioAttributionPanel data={d} />}
+
       {/* Open Positions table */}
       <div className="panel p-2">
         <div className="px-2 pt-2 pb-1 flex items-center justify-between">
