@@ -120,19 +120,16 @@ async function handler(request: Request) {
     } catch (e: any) {
       const msg = e?.message ?? "unknown error";
       errors.push(`${agentId}: ${msg}`);
-      await supabaseAdmin.rpc as any; // noop hint for TS
+      // Mark error state and increment worker_error_count.
+      const { data: row } = await supabaseAdmin
+        .from("ai_trade_agents").select("worker_error_count").eq("id", agentId).maybeSingle();
       await supabaseAdmin.from("ai_trade_agents").update({
         last_worker_run_at: new Date().toISOString(),
         last_worker_status: "error",
         last_worker_message: msg.slice(0, 500),
         next_expected_worker_run_at: new Date(Date.now() + 60_000).toISOString(),
+        worker_error_count: Number((row as any)?.worker_error_count ?? 0) + 1,
       }).eq("id", agentId);
-      // Best-effort increment
-      const { data: row } = await supabaseAdmin
-        .from("ai_trade_agents").select("worker_error_count").eq("id", agentId).maybeSingle();
-      await supabaseAdmin.from("ai_trade_agents")
-        .update({ worker_error_count: Number((row as any)?.worker_error_count ?? 0) + 1 })
-        .eq("id", agentId);
       results.push({
         id: agentId, decisionsCreated: 0, paperBuysExecuted: 0,
         blockedDecisions: 0, topBlockedReasons: [], lastBlockedReason: null,
