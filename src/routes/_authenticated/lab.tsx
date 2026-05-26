@@ -276,9 +276,20 @@ function lotZeroExplanation(execStatus: ExecStatus): string {
   }
 }
 
+// Signal intent (what the AI WANTED to do) — separate from displayed action
+// (what actually happened). Persisted in data_snapshot.signalIntent by the
+// worker; falls back to the raw action column for legacy rows.
+function signalIntentFor(d: any): "BUY" | "SELL" | "EXIT" | "WATCH" | "NONE" {
+  const snap: any = d?.data_snapshot ?? {};
+  const raw = String(snap.signalIntent ?? d?.action ?? "").toUpperCase();
+  if (raw === "BUY" || raw === "SELL" || raw === "EXIT" || raw === "WATCH") return raw as any;
+  return "NONE";
+}
+
 // Derived "display action" so the Action column does not show "BUY" when no
-// paper order was actually executed. HOLD is reserved for live open positions.
-function displayActionFor(d: any, execStatus: ExecStatus): {
+// paper order was actually executed. HOLD is reserved for live open positions —
+// we cross-check `openSymbols` (from paper_positions) to demote stale HOLD rows.
+function displayActionFor(d: any, execStatus: ExecStatus, openSymbols?: Set<string>): {
   label: string;
   intent: string | null;
   tone: "bull" | "bear" | "muted" | "warn";
@@ -290,8 +301,14 @@ function displayActionFor(d: any, execStatus: ExecStatus): {
     if (action === "SELL") return { label: "SELL", intent: null, tone: "bear" };
     if (action === "EXIT") return { label: "EXIT", intent: null, tone: "bear" };
   }
-  if (execStatus === "hold_position") {
+  // HOLD requires a real open position. If paper_positions doesn't contain the
+  // symbol, downgrade so the UI never lies about "holding".
+  const hasOpen = openSymbols ? openSymbols.has(String(d?.symbol ?? "")) : true;
+  if (execStatus === "hold_position" && hasOpen) {
     return { label: "HOLD", intent: null, tone: "muted" };
+  }
+  if (action === "HOLD" && !hasOpen) {
+    return { label: "WATCH", intent: "WATCH", tone: "warn" };
   }
   if (execStatus === "watch_snapshot")     return { label: "WATCH",    intent: action || null, tone: "warn" };
   if (execStatus === "research_snapshot")  return { label: "RESEARCH", intent: action || null, tone: "warn" };
@@ -304,6 +321,19 @@ function displayActionFor(d: any, execStatus: ExecStatus): {
   }
   return { label: action || "—", intent: null, tone: "muted" };
 }
+
+// Decision Feed filter taxonomy (per spec): keep previous-session events out of
+// the default Active view, and let the user drill into Executed / Blocked / Watch.
+type FeedFilter = "active" | "executed" | "open_position" | "blocked" | "watch_research" | "previous" | "all";
+const FEED_FILTER_OPTIONS: { value: FeedFilter; label: string }[] = [
+  { value: "active",         label: "Active Session" },
+  { value: "executed",       label: "Executed Only" },
+  { value: "open_position",  label: "Open Position Events" },
+  { value: "blocked",        label: "Blocked" },
+  { value: "watch_research", label: "Watch / Research" },
+  { value: "previous",       label: "Previous Session" },
+  { value: "all",            label: "All" },
+];
 
 const TONE_TEXT: Record<"bull"|"bear"|"muted"|"warn", string> = {
   bull: "text-bull",
