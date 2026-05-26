@@ -9,6 +9,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sizeOrder, isIDXSymbol, convertSharesToLot } from "./lot-sizing";
 import { canExecutePaperTrade, getIDXMarketSession } from "./idx-market-session";
 import { computeDataQuality, type DataQualityReport } from "./data-quality";
+import { sectorOf } from "./sectors";
 
 export type AgentAction = "BUY" | "SELL" | "HOLD" | "EXIT";
 
