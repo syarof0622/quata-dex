@@ -86,6 +86,13 @@ export function RiskEnginePanel() {
         )}
       </div>
 
+      {(data as any).syncWarning && (
+        <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-2 text-xs text-amber-300">
+          <div className="font-semibold">Agent sync warning</div>
+          <div className="text-[11px] opacity-90">{(data as any).syncWarning}</div>
+        </div>
+      )}
+
       {pause && (
         <div className="rounded-md border border-rose-500/30 bg-rose-500/10 px-2.5 py-2 text-xs text-rose-300">
           <div className="font-semibold">Risk pause active</div>
