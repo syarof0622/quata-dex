@@ -45,6 +45,12 @@ export type AgentDecision = {
   riskSnapshot: Record<string, unknown>;
   dataQuality: DataQualityReport | null;
   warnings: string[];
+  // Strategy attribution + intelligence (persisted to ai_agent_decisions).
+  strategyName?: string | null;
+  setupType?: string | null;
+  marketRegime?: string | null;
+  signalSource?: string | null;
+  strategyContext?: Record<string, unknown> | null;
 };
 
 export type AgentConfig = {
