@@ -79,11 +79,30 @@ Top headlines:
 ${headlines || "(no recent headlines)"}${perTicker}`;
 }
 
+// Same-origin guard — prevents anonymous internet callers from draining
+// Lovable AI credits and leaking APP CONTEXT data via this endpoint.
+function checkChatAccess(request: Request): Response | null {
+  const host = request.headers.get("host");
+  if (!host) return new Response("Forbidden", { status: 403 });
+  const matches = (val: string | null) => {
+    if (!val) return false;
+    try { return new URL(val).host === host; } catch { return false; }
+  };
+  const origin = request.headers.get("origin");
+  const referer = request.headers.get("referer");
+  if (matches(origin) || matches(referer)) return null;
+  return new Response(JSON.stringify({ error: "Forbidden" }), {
+    status: 403, headers: { "Content-Type": "application/json" },
+  });
+}
+
 export const Route = createFileRoute("/api/chat")({
   server: {
     handlers: {
       POST: async ({ request }) => {
         try {
+          const denied = checkChatAccess(request);
+          if (denied) return denied;
           const { messages, system } = await request.json() as {
             messages: { role: "user" | "assistant"; content: string }[];
             system?: string;
