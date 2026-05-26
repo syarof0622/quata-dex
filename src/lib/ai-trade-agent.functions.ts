@@ -633,7 +633,7 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
         suggested_lot: decision.suggestedLot, suggested_shares: decision.suggestedShares,
         entry_price: decision.entryPrice, stop_loss: decision.stopLoss, take_profit: decision.takeProfit,
         risk_reward_ratio: decision.riskRewardRatio, reasoning: decision.reasoning,
-        data_snapshot: { ...(decision.realMarketData as any), blockReason: decision.blockedReason ?? null } as any,
+        data_snapshot: { ...(decision.realMarketData as any), blockReason: limitReason ?? decision.blockedReason ?? null, signalIntent: decision.action } as any,
         technical_snapshot: decision.realTechnicalData as any,
         sentiment_snapshot: { news: decision.realNewsData, disclosure: decision.realDisclosureData } as any,
         portfolio_snapshot: decision.portfolioSnapshot as any,
