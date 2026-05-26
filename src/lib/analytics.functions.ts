@@ -1,7 +1,19 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getQuotes, getCandles } from "./market.functions";
 import { sectorOf } from "./sectors";
+import {
+  SECTOR_BETA_PRIOR,
+  betaFromReturns,
+  annualizedVol,
+  computeSectorAttribution,
+  computeCashDrag,
+  computeScenarios,
+  simulateClose,
+  simulateAdd,
+  type AttribPosition,
+} from "./portfolio-attribution";
 
 const USER_ID = "00000000-0000-0000-0000-000000000001";
 
