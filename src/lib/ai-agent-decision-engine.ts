@@ -602,6 +602,7 @@ export async function evaluateSymbol(
       riskSnapshot: { slPct: preset.slPct, tpPct: preset.tpPct, rr,
         autonomousScore: autonomousContext?.score ?? null,
         autonomousRiskMode: agent.autonomousRiskMode ?? null,
+        fundamentalContext,
       },
       dataQuality, warnings,
     };
