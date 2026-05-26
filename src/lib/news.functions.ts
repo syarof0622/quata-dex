@@ -12,6 +12,12 @@ const FilterSchema = z.object({
   search: z.string().max(100).regex(/^[\p{L}\p{N}\s.\-_'"&]+$/u, "Invalid characters in search").optional(),
   fromDate: z.string().optional(),
   toDate: z.string().optional(),
+  relevanceClass: z.enum([
+    "direct_ticker_news","company_name_match","sector_news","macro_news","global_context","irrelevant_noise",
+  ]).optional(),
+  impactCategory: z.string().max(40).optional(),
+  hideNoise: z.boolean().optional(),
+  hideDuplicates: z.boolean().optional(),
 });
 
 export const listNews = createServerFn({ method: "POST" })
@@ -22,21 +28,21 @@ export const listNews = createServerFn({ method: "POST" })
     let q = supabaseAdmin
       .from("news_articles")
       .select(
-        "id, source, title, summary, url, image_url, published_at, sentiment, sentiment_score, impact_level, impact_score, tickers, sectors",
+        "id, source, title, summary, url, image_url, published_at, sentiment, sentiment_score, impact_level, impact_score, tickers, sectors, ticker_relevance_score, relevance_class, impact_category, event_cluster_id, source_reliability_weight, is_noise, primary_ticker",
         { count: "exact" },
       )
-      .eq("is_duplicate", false)
       .order("published_at", { ascending: false })
       .range(from, to);
 
+    if (data.hideDuplicates !== false) q = q.eq("is_duplicate", false);
+    if (data.hideNoise) q = q.eq("is_noise", false);
     if (data.source) q = q.eq("source", data.source);
     if (data.sentiment) q = q.eq("sentiment", data.sentiment);
     if (data.impactLevel) q = q.eq("impact_level", data.impactLevel);
+    if (data.relevanceClass) q = q.eq("relevance_class", data.relevanceClass);
+    if (data.impactCategory) q = q.eq("impact_category", data.impactCategory);
     if (data.ticker) q = q.contains("tickers", [data.ticker.toUpperCase()]);
     if (data.search) {
-      // Strip PostgREST filter metacharacters and SQL LIKE wildcards to prevent
-      // OR-filter injection. Schema regex already restricts the charset; this is
-      // defense-in-depth before interpolation into a raw .or() string.
       const safe = data.search.trim()
         .replace(/[,()%_*\\]/g, " ")
         .replace(/\s+/g, " ")
