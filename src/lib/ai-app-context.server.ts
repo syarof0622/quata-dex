@@ -90,8 +90,26 @@ export async function getAIAppContext(userText: string) {
       if (o.side === "buy" && !latestBuyBySymbol[o.symbol]) latestBuyBySymbol[o.symbol] = o;
     }
 
+    // Latest BUY decision per symbol → exit plan (stop loss / take profit).
+    // Patch 7: every open position must have an exit plan for AI Analyst.
+    const openSymbols = positions.map((p: any) => p.symbol);
+    let decisionPlans: Record<string, any> = {};
+    if (openSymbols.length > 0) {
+      const { data: lastBuyDec } = await supabaseAdmin
+        .from("ai_agent_decisions")
+        .select("symbol, entry_price, stop_loss, take_profit, risk_reward_ratio, strategy_name, market_regime, created_at, id")
+        .in("symbol", openSymbols)
+        .eq("action", "BUY")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      for (const d of (lastBuyDec ?? []) as any[]) {
+        if (!decisionPlans[d.symbol]) decisionPlans[d.symbol] = d;
+      }
+    }
+
     openPositions = positions.map((p: any) => {
       const lastBuy = latestBuyBySymbol[p.symbol];
+      const plan = decisionPlans[p.symbol] ?? null;
       return {
         symbol: p.symbol,
         qty: Number(p.qty),
@@ -102,6 +120,16 @@ export async function getAIAppContext(userText: string) {
         openedAt: p.opened_at,
         ownershipSource: lastBuy?.agent_id ? "ai_agent" : (lastBuy ? "manual_or_unknown" : "unknown"),
         openedByAgentId: lastBuy?.agent_id ?? null,
+        currentStatus: "HOLDING_POSITION",
+        exitPlan: plan ? {
+          stopLoss: plan.stop_loss ?? null,
+          takeProfit: plan.take_profit ?? null,
+          riskRewardRatio: plan.risk_reward_ratio ?? null,
+          strategyName: plan.strategy_name ?? null,
+          marketRegime: plan.market_regime ?? null,
+          plannedAt: plan.created_at ?? null,
+          source: "last_ai_buy_decision",
+        } : { source: "no_plan_recorded", note: "Posisi belum punya stop/TP terdokumentasi — AI Analyst harus rekomendasikan plan baru." },
       };
     });
     const agentOpenPositionsCount = openPositions.filter((p) => p.ownershipSource === "ai_agent").length;
