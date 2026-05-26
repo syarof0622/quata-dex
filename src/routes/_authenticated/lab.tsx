@@ -285,6 +285,7 @@ function deriveExecutionStatusForCard(
   const reasoning = String(d?.reasoning ?? "").toLowerCase();
   const dStatus = d?.decision_status as string | undefined;
   const action = d?.action as string | undefined;
+  const blockReason = (d?.data_snapshot as any)?.blockReason as string | undefined;
 
   // 0. Executed paper orders — show success states.
   if (isExecutedDecision(d)) {
@@ -310,6 +311,58 @@ function deriveExecutionStatusForCard(
   if (dStatus === "premarket_plan") {
     return { status: "premarket_snapshot", primary: "Pre-market plan",
       detail: "Pre-market watchlist. Monitor saat market open — belum ada paper order." };
+  }
+
+  // 0c. Specific limit_reached / cooldown reasons (from persisted blockReason).
+  if (dStatus === "limit_reached" || dStatus === "cooldown") {
+    if (blockReason === "max_daily_ai_trades_reached") {
+      return { status: "blocked_max_daily_trades", primary: "Max daily AI trades reached",
+        detail: "Batas max daily AI trades sudah tercapai untuk hari ini. AI tidak membuka entry baru sampai window berikutnya." };
+    }
+    if (blockReason === "max_active_positions_reached") {
+      return { status: "blocked_max_active_positions", primary: "Max active positions reached",
+        detail: `AI ingin BUY ${d.symbol}, tetapi slot max active positions sudah penuh.` };
+    }
+    if (blockReason === "max_new_entries_per_day_reached") {
+      return { status: "blocked_max_new_entries", primary: "Max new entries today reached",
+        detail: "Jumlah entry baru hari ini sudah mencapai batas. Posisi existing tetap dimonitor." };
+    }
+    if (blockReason === "cooldown_active" || blockReason === "duplicate_order_guard") {
+      return { status: "blocked_cooldown", primary: "Cooldown / duplicate guard aktif",
+        detail: "Menunggu jeda antar aksi pada simbol ini untuk mencegah duplikat order." };
+    }
+    if (dStatus === "limit_reached") {
+      return { status: "blocked_risk_limit", primary: "Risk limit reached",
+        detail: "AI ingin trade, tetapi salah satu risk limit harian sudah tercapai." };
+    }
+    return { status: "blocked_cooldown", primary: "Cooldown aktif",
+      detail: "Menunggu jeda antar aksi pada simbol ini untuk mencegah duplikat order." };
+  }
+
+  // 0d. Decision-engine block reasons.
+  if (blockReason === "insufficient_balance") {
+    return { status: "blocked_insufficient_balance", primary: "Saldo paper tidak cukup",
+      detail: "Saldo paper trading tidak cukup untuk minimal 1 lot." };
+  }
+  if (blockReason === "risk_reward_invalid") {
+    return { status: "blocked_rr_invalid", primary: "Risk/reward invalid",
+      detail: "Risk/reward setup tidak memenuhi minimum untuk mode risiko ini." };
+  }
+  if (blockReason === "confidence_below_threshold") {
+    return { status: "blocked_low_confidence", primary: "Confidence di bawah threshold",
+      detail: "AI belum mengeksekusi order karena confidence masih di bawah threshold." };
+  }
+  if (blockReason === "exposure_cap_reached") {
+    return { status: "blocked_max_active_positions", primary: "Exposure cap reached",
+      detail: "Eksposur portfolio sudah mencapai batas untuk mode risiko ini." };
+  }
+  if (blockReason === "lot_below_minimum") {
+    return { status: "blocked_insufficient_balance", primary: "Lot di bawah minimum",
+      detail: "Alokasi tidak cukup untuk minimal 1 lot pada harga saat ini." };
+  }
+  if (blockReason === "market_closed") {
+    return { status: "blocked_market_closed", primary: "Market closed",
+      detail: "Market sedang tutup. AI hanya menyimpan snapshot analisis tanpa paper order." };
   }
 
   if (agentStatus === "error") {
@@ -342,14 +395,6 @@ function deriveExecutionStatusForCard(
     return { status: "blocked_data_unavailable", primary: "Price unavailable",
       detail: "Harga fresh tidak tersedia, sehingga AI tidak dapat menghitung lot dan tidak mengeksekusi order." };
   }
-  if (dStatus === "limit_reached" || /batas risiko|risk limit/.test(reasoning)) {
-    return { status: "blocked_risk_limit", primary: "Batas risiko harian tercapai",
-      detail: "Agent masuk mode risk-paused sampai window berikutnya." };
-  }
-  if (dStatus === "cooldown" || /cooldown/.test(reasoning)) {
-    return { status: "blocked_duplicate_order", primary: "Cooldown aktif",
-      detail: "Menunggu jeda antar aksi pada simbol ini untuk mencegah duplikat order." };
-  }
   if (/saldo .* tidak cukup|saldo paper|insufficient/.test(reasoning)) {
     return { status: "blocked_insufficient_balance", primary: "Saldo paper tidak cukup",
       detail: "Saldo paper trading tidak cukup untuk minimal 1 lot." };
@@ -371,7 +416,7 @@ function deriveExecutionStatusForCard(
       detail: d?.reasoning || "Decision diblokir oleh guard eksekusi. Lihat alasan untuk detail." };
   }
   if (action === "HOLD") {
-    return { status: "blocked_low_confidence", primary: "Hold posisi",
+    return { status: "hold_position", primary: "Holding position",
       detail: "AI menahan posisi existing. Tidak ada paper order baru pada tick ini." };
   }
   return { status: "allowed", primary: "Allowed", detail: "Setup valid untuk eksekusi paper order." };
