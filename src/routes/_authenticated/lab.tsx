@@ -276,6 +276,48 @@ function lotZeroExplanation(execStatus: ExecStatus): string {
   }
 }
 
+// Derived "display action" so the Action column does not show "BUY" when no
+// paper order was actually executed. HOLD is reserved for live open positions.
+function displayActionFor(d: any, execStatus: ExecStatus): {
+  label: string;
+  intent: string | null;
+  tone: "bull" | "bear" | "muted" | "warn";
+} {
+  const action = String(d?.action ?? "").toUpperCase();
+  const executed = isExecutedDecision(d);
+  if (executed) {
+    if (action === "BUY")  return { label: "BUY",  intent: null, tone: "bull" };
+    if (action === "SELL") return { label: "SELL", intent: null, tone: "bear" };
+    if (action === "EXIT") return { label: "EXIT", intent: null, tone: "bear" };
+  }
+  if (execStatus === "hold_position") {
+    return { label: "HOLD", intent: null, tone: "muted" };
+  }
+  if (execStatus === "watch_snapshot")     return { label: "WATCH",    intent: action || null, tone: "warn" };
+  if (execStatus === "research_snapshot")  return { label: "RESEARCH", intent: action || null, tone: "warn" };
+  if (execStatus === "premarket_snapshot") return { label: "PRE-MKT",  intent: action || null, tone: "warn" };
+  if (execStatus.startsWith("blocked_")) {
+    return { label: "BLOCKED", intent: action || null, tone: "bear" };
+  }
+  if (execStatus === "allowed" && action) {
+    return { label: action, intent: null, tone: action === "BUY" ? "bull" : action === "SELL" || action === "EXIT" ? "bear" : "muted" };
+  }
+  return { label: action || "—", intent: null, tone: "muted" };
+}
+
+const TONE_TEXT: Record<"bull"|"bear"|"muted"|"warn", string> = {
+  bull: "text-bull",
+  bear: "text-bear",
+  muted: "text-muted-foreground",
+  warn: "text-amber-600 dark:text-amber-400",
+};
+const TONE_BADGE: Record<"bull"|"bear"|"muted"|"warn", string> = {
+  bull: "bg-bull/15 text-bull",
+  bear: "bg-bear/15 text-bear",
+  muted: "bg-muted text-muted-foreground",
+  warn: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+};
+
 function deriveExecutionStatusForCard(
   agent: any,
   session: any,
@@ -951,12 +993,28 @@ function AIAgentPanel() {
                 const dTech: DataStatus = tech?.label || tech?.score != null ? "fresh" : "unavailable";
                 const dNews: DataStatus = Number(sent?.news?.latestNewsCount ?? 0) > 0 ? "fresh" : "unavailable";
                 const dSent: DataStatus = sent?.news ? "fresh" : "unavailable";
+                const da = displayActionFor(d, exec.status);
+                const cardKind = executed && isBuy
+                  ? { label: "OPEN POSITION", cls: "bg-bull/15 text-bull" }
+                  : executed && isExit
+                  ? { label: "EXIT", cls: "bg-bear/15 text-bear" }
+                  : exec.status === "hold_position"
+                  ? { label: "OPEN POSITION", cls: "bg-bull/10 text-bull" }
+                  : exec.status === "watch_snapshot"
+                  ? { label: "WATCH", cls: "bg-amber-500/15 text-amber-600 dark:text-amber-400" }
+                  : exec.status === "research_snapshot"
+                  ? { label: "RESEARCH", cls: "bg-amber-500/10 text-amber-600 dark:text-amber-400" }
+                  : exec.status === "premarket_snapshot"
+                  ? { label: "PRE-MARKET", cls: "bg-primary/10 text-primary" }
+                  : exec.status.startsWith("blocked_")
+                  ? { label: "BLOCKED", cls: "bg-bear/10 text-bear" }
+                  : { label: da.label, cls: TONE_BADGE[da.tone] };
                 return (
                   <div key={d.id} className={`panel p-3 space-y-2 border ${executed && isBuy ? "border-bull/40" : executed && isExit ? "border-bear/40" : "border-border"}`}>
                     <div className="flex items-center justify-between gap-2">
                       <div className="font-mono font-semibold">{d.symbol}</div>
-                      <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${executed && isBuy ? "bg-bull/15 text-bull" : executed && isExit ? "bg-bear/15 text-bear" : "bg-muted text-muted-foreground"}`} title={conf.tooltip}>
-                        {d.action} · {conf.label}
+                      <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${cardKind.cls}`} title={conf.tooltip}>
+                        {cardKind.label}{da.intent && !executed && exec.status !== "hold_position" ? ` · intent ${da.intent}` : ""} · {conf.label}
                       </span>
                     </div>
                     {executed && (
@@ -1054,7 +1112,14 @@ function AIAgentPanel() {
                     {d.symbol}
                     {inactive && <span className="ml-1 text-[9px] uppercase bg-muted text-muted-foreground px-1 py-0.5 rounded align-middle">previous session</span>}
                   </td>
-                  <td className={`p-2 text-xs font-semibold ${executed && d.action === "BUY" ? "text-bull" : executed && (d.action === "EXIT" || d.action === "SELL") ? "text-bear" : "text-muted-foreground"}`}>{d.action}</td>
+                  <td className="p-2 text-xs font-semibold">
+                    {(() => { const da = displayActionFor(d, exec.status); return (
+                      <span className={TONE_TEXT[da.tone]}>
+                        {da.label}
+                        {da.intent && <span className="ml-1 text-[9px] uppercase text-muted-foreground italic">intent {da.intent}</span>}
+                      </span>
+                    ); })()}
+                  </td>
                   <td className={`p-2 text-right font-mono text-xs ${conf.muted ? "text-muted-foreground" : ""}`} title={conf.tooltip}>{conf.label}</td>
                   <td className="p-2 text-right font-mono" title={lotNote ?? ""}>
                     {executed ? (d.suggested_lot ?? "—") : "0"}
