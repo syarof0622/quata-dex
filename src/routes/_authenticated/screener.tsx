@@ -252,6 +252,7 @@ function Screener() {
 function UndervaluedPanel() {
   const [universe, setUniverse] = useState<"idx_lq45" | "undervalued_candidates" | "quality_undervalued" | "dividend_undervalued" | "sector_discount" | "hybrid_trading_and_value" | "watchlist">("idx_lq45");
   const [limit, setLimit] = useState(15);
+  const [classFilter, setClassFilter] = useState<"all" | "strong_undervalued" | "undervalued" | "fair_value" | "overvalued" | "value_trap_risk" | "insufficient_data">("all");
   const latest = useQuery({
     queryKey: ["undervalue-latest"],
     queryFn: () => getLatestUndervalueScores({ data: { limit: 50 } }),
@@ -262,7 +263,7 @@ function UndervaluedPanel() {
     onSuccess: (r: any) => { toast.success(`Scan selesai: ${r.scanned} dianalisis, ${r.candidates.length} kandidat`); latest.refetch(); },
     onError: (e: any) => toast.error(e?.message ?? "Scan gagal"),
   });
-  const rows: any[] = (scan.data as any)?.candidates?.length
+  const baseRows: any[] = (scan.data as any)?.candidates?.length
     ? (scan.data as any).candidates
     : (latest.data ?? []).map((r: any) => ({
         symbol: r.symbol,
@@ -278,9 +279,38 @@ function UndervaluedPanel() {
         valueTrapRiskScore: r.value_trap_risk_score,
         reasoning: r.reasoning,
       }));
+  const rows = classFilter === "all" ? baseRows : baseRows.filter((r: any) => r.classification === classFilter);
+
+  // Summary tally for the cards.
+  const tally = baseRows.reduce((acc: Record<string, number>, r: any) => {
+    const k = String(r.classification ?? "insufficient_data");
+    acc[k] = (acc[k] ?? 0) + 1; return acc;
+  }, {} as Record<string, number>);
+
+  const cards: { key: typeof classFilter; label: string; cls: string }[] = [
+    { key: "strong_undervalued", label: "Strong Undervalue", cls: "text-bull" },
+    { key: "undervalued",        label: "Undervalued",       cls: "text-bull" },
+    { key: "fair_value",         label: "Fair Value",        cls: "" },
+    { key: "overvalued",         label: "Overvalued",        cls: "text-amber-500" },
+    { key: "value_trap_risk",    label: "Value Trap",        cls: "text-bear" },
+    { key: "insufficient_data",  label: "Insufficient Data", cls: "text-muted-foreground" },
+  ];
 
   return (
     <div className="space-y-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+        {cards.map(c => (
+          <button
+            key={c.key}
+            onClick={() => setClassFilter(classFilter === c.key ? "all" : c.key)}
+            className={`panel p-3 text-left hover:border-primary/40 transition-colors ${classFilter === c.key ? "ring-1 ring-primary" : ""}`}
+          >
+            <div className={`text-xs ${c.cls}`}>{c.label}</div>
+            <div className="text-lg font-semibold font-mono">{tally[c.key] ?? 0}</div>
+          </button>
+        ))}
+      </div>
+
       <div className="panel p-4 flex flex-wrap items-end gap-3">
         <div>
           <label className="text-xs text-muted-foreground">Universe</label>
@@ -295,6 +325,18 @@ function UndervaluedPanel() {
           </select>
         </div>
         <div>
+          <label className="text-xs text-muted-foreground">Classification</label>
+          <select value={classFilter} onChange={e => setClassFilter(e.target.value as any)} className="h-9 px-2 rounded-md bg-background border border-border text-sm">
+            <option value="all">All</option>
+            <option value="strong_undervalued">Strong Undervalue</option>
+            <option value="undervalued">Undervalued</option>
+            <option value="fair_value">Fair Value</option>
+            <option value="overvalued">Overvalued</option>
+            <option value="value_trap_risk">Value Trap</option>
+            <option value="insufficient_data">Insufficient Data</option>
+          </select>
+        </div>
+        <div>
           <label className="text-xs text-muted-foreground">Limit</label>
           <Input type="number" min={1} max={30} value={limit} onChange={e => setLimit(parseInt(e.target.value || "10", 10))} className="w-24" />
         </div>
@@ -302,9 +344,10 @@ function UndervaluedPanel() {
           {scan.isPending ? "Scanning…" : "Run Fundamental Scan"}
         </Button>
         <div className="text-[11px] text-muted-foreground ml-auto">
-          Fundamental scan menggunakan data publik Yahoo Finance · skor dievaluasi 8 dimensi · hasil disimpan untuk training.
+          Fundamental scan menggunakan data publik Yahoo Finance · skor dievaluasi 8 dimensi · saham dengan data tidak cukup ditandai INSUFFICIENT DATA, bukan undervalued.
         </div>
       </div>
+
 
       <div className="panel p-2 overflow-x-auto">
         <table className="w-full text-sm min-w-[1100px]">
