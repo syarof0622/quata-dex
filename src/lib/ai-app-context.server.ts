@@ -191,8 +191,22 @@ export async function getAIAppContext(userText: string) {
 
   // ---------- AI TRADE AGENT ----------
   const agentRes = await safe("agent", async () => {
-    const { data: agent } = await supabaseAdmin
-      .from("ai_trade_agents").select("*").eq("user_id", USER_ID).maybeSingle();
+    // Pick the most active agent (active status > automation_enabled > most recent worker activity).
+    const { data: agents } = await supabaseAdmin
+      .from("ai_trade_agents").select("*").eq("user_id", USER_ID);
+    const list = agents ?? [];
+    const activeStatuses = new Set(["active_market_open", "active", "running"]);
+    const scoreAgent = (a: any) => {
+      let s = 0;
+      if (activeStatuses.has(a.status)) s += 1_000_000;
+      if (a.automation_enabled) s += 500_000;
+      const lwr = a.last_worker_run_at ? new Date(a.last_worker_run_at).getTime() : 0;
+      const lad = a.last_auto_decision_at ? new Date(a.last_auto_decision_at).getTime() : 0;
+      const upd = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+      s += Math.max(lwr, lad, upd) / 1000;
+      return s;
+    };
+    const agent = list.length ? [...list].sort((a, b) => scoreAgent(b) - scoreAgent(a))[0] : null;
     if (!agent) return { agent: null, decisions: [], scans: [], candidates: [], perf: null };
     const [{ data: decisions }, { data: scans }, { data: perf }] = await Promise.all([
       supabaseAdmin.from("ai_agent_decisions").select("*").eq("agent_id", agent.id).order("created_at", { ascending: false }).limit(20),
@@ -209,7 +223,7 @@ export async function getAIAppContext(userText: string) {
     return { agent, decisions: decisions ?? [], scans: scans ?? [], candidates, perf };
   });
 
-  let aiTradeAgent: any = { status: "inactive" as Status };
+  let aiTradeAgent: any = { status: "inactive" as Status, isAutoRunning: false, statusLabel: "Inactive" };
   let autonomousScanner: any = { status: "empty" as Status };
 
   if (agentRes.ok && agentRes.data.agent) {
@@ -218,9 +232,27 @@ export async function getAIAppContext(userText: string) {
     const blocked = decisions.filter((d: any) => d.decision_status === "blocked" || d.decision_status === "blocked_by_risk");
     const watch = decisions.filter((d: any) => d.candidate_classification === "watch" || d.decision_status === "watch_snapshot");
     const research = decisions.filter((d: any) => d.research_trade || d.candidate_classification === "research");
+
+    // Derive isAutoRunning + statusLabel from worker freshness, status, and automation flag.
+    const activeStatuses = new Set(["active_market_open", "active", "running"]);
+    const lwrTs = agent.last_worker_run_at ? new Date(agent.last_worker_run_at).getTime() : 0;
+    const workerFreshMins = lwrTs ? (Date.now() - lwrTs) / 60000 : Infinity;
+    const workerFresh = workerFreshMins <= 30;
+    const workerOk = !agent.last_worker_status || agent.last_worker_status === "success" || agent.last_worker_status === "running";
+    const isAutoRunning = Boolean(agent.automation_enabled && workerFresh && activeStatuses.has(agent.status) && workerOk);
+    let statusLabel: string;
+    if (isAutoRunning) statusLabel = "Auto Running";
+    else if (agent.automation_enabled && activeStatuses.has(agent.status) && !workerFresh) statusLabel = "Worker Stale";
+    else if (agent.automation_enabled && agent.last_worker_status === "error") statusLabel = "Error";
+    else if (agent.automation_enabled === false && activeStatuses.has(agent.status)) statusLabel = "Manual Only";
+    else statusLabel = "Inactive";
+
     aiTradeAgent = {
       status: agent.status,
+      statusLabel,
+      isAutoRunning,
       automationEnabled: agent.automation_enabled,
+      workerFreshMinutesAgo: Number.isFinite(workerFreshMins) ? Math.round(workerFreshMins) : null,
       symbolSelectionMode: agent.symbol_selection_mode,
       autonomousRiskMode: agent.autonomous_risk_mode,
       selectedSymbols: agent.selected_symbols,
@@ -252,11 +284,15 @@ export async function getAIAppContext(userText: string) {
         ? (agent.last_blocked_reason ?? blocked[0]?.calibration_reason ?? "No executed paper buys recently. Check market session, candidate scores, risk limits, and data freshness.")
         : null,
       performanceSummary: perf ? {
-        totalTrades: perf.total_trades, winRate: perf.win_rate, profitFactor: perf.profit_factor,
-        totalReturn: perf.total_return, maxDrawdown: perf.max_drawdown,
+        totalTrades: perf.total_trades,
+        winRate: perf.total_trades > 0 ? perf.win_rate : null,
+        profitFactor: perf.total_trades > 0 ? perf.profit_factor : null,
+        totalReturn: perf.total_return,
+        maxDrawdown: perf.max_drawdown,
+        note: !perf.total_trades ? "No closed AI trades yet — win rate / profit factor must be rendered as N/A." : null,
       } : null,
     };
-    contextStatus.aiTradeAgent = agent.automation_enabled || agent.status === "running" ? "connected" : "inactive";
+    contextStatus.aiTradeAgent = isAutoRunning ? "connected" : (agent.automation_enabled ? "partial" : "inactive");
 
     const latestScan = scans[0];
     if (latestScan) {
