@@ -614,18 +614,49 @@ function AIAgentPanel() {
     ? { label: "Training Data Saved", cls: "bg-bull/15 text-bull" }
     : { label: "Waiting for Training Data", cls: "bg-muted text-muted-foreground" };
 
-  // Data Readiness from the most-recent decision (any symbol)
+  // Data Readiness — aggregated across active candidates (selectedSet) and open
+  // positions. A single fresh candidate should NOT show as "unavailable".
+  const activeSyms = new Set<string>([
+    ...((agent?.selected_symbols ?? symbols) as string[]),
+    ...agentPositions.map((p: any) => p.symbol),
+  ]);
+  const activeDecisions: any[] = [];
+  {
+    const seen = new Set<string>();
+    for (const d of decisions) {
+      if (!activeSyms.has(d.symbol)) continue;
+      if (seen.has(d.symbol)) continue;
+      seen.add(d.symbol);
+      activeDecisions.push(d);
+    }
+  }
+  function aggregate(values: DataStatus[]): DataStatus {
+    if (values.length === 0) return "unavailable";
+    const fresh = values.filter(v => v === "fresh").length;
+    const stale = values.filter(v => v === "stale").length;
+    if (fresh === values.length) return "fresh";
+    if (fresh > 0) return "stale"; // partial → render as amber/stale
+    if (stale > 0) return "stale";
+    return "unavailable";
+  }
+  const perSymStatus = activeDecisions.map(d => {
+    const snap: any = d.data_snapshot ?? {};
+    const tech: any = d.technical_snapshot ?? {};
+    const sent: any = d.sentiment_snapshot ?? {};
+    return {
+      price: (snap?.price ? classifyFreshness(d.data_freshness_seconds) : "unavailable") as DataStatus,
+      tech: (tech && (tech.score != null || tech.label) ? "fresh" : "unavailable") as DataStatus,
+      news: (Number(sent?.news?.latestNewsCount ?? 0) > 0 ? "fresh" : "unavailable") as DataStatus,
+      sent: (sent?.news ? "fresh" : "unavailable") as DataStatus,
+      disc: (sent?.disclosure?.hasRecentDisclosure ? "fresh" : sent?.disclosure ? "stale" : "unavailable") as DataStatus,
+    };
+  });
+  const priceStatus: DataStatus = aggregate(perSymStatus.map(s => s.price));
+  const techStatus: DataStatus = aggregate(perSymStatus.map(s => s.tech));
+  const newsStatus: DataStatus = aggregate(perSymStatus.map(s => s.news));
+  const sentStatus: DataStatus = aggregate(perSymStatus.map(s => s.sent));
+  const discStatus: DataStatus = aggregate(perSymStatus.map(s => s.disc));
   const newestDecision = decisions[0];
-  const newestSnap: any = newestDecision?.data_snapshot ?? {};
-  const newestTech: any = newestDecision?.technical_snapshot ?? {};
-  const newestSent: any = newestDecision?.sentiment_snapshot ?? {};
-  const priceStatus: DataStatus = newestSnap?.price ? classifyFreshness(newestDecision?.data_freshness_seconds) : "unavailable";
-  const techStatus: DataStatus = newestTech && (newestTech.score != null || newestTech.label) ? "fresh" : "unavailable";
-  const newsCount = Number(newestSent?.news?.latestNewsCount ?? 0);
-  const newsStatus: DataStatus = newsCount > 0 ? "fresh" : "unavailable";
-  const sentStatus: DataStatus = newestSent?.news ? "fresh" : "unavailable";
-  const discStatus: DataStatus = newestSent?.disclosure?.hasRecentDisclosure ? "fresh"
-    : newestSent?.disclosure ? "stale" : "unavailable";
   const execAllowed = !!session?.isOpen && agent?.status !== "paused" && agent?.status !== "error" && agent?.status !== "stopped";
 
   return (
