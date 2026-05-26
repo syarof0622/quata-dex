@@ -258,15 +258,18 @@ export async function finalRiskGuard(input: RiskInput): Promise<RiskGuardResult>
   const newsOk = !newsShockReason;
 
   // ----- Decide blocked reason (ordered by severity) -----
+  // Reason strings MUST stay in the canonical spec list (Patch 4). UI and
+  // AI Analyst rely on these exact tags. Risk pause blocks BUY only —
+  // SELL/EXIT paths in the decision engine never call finalRiskGuard.
   let blockedReason: string | null = null;
-  if (pauseActive) blockedReason = "risk_pause_active";
+  if (pauseActive) blockedReason = "pause_active";
   else if (lot < 1) blockedReason = "lot_below_minimum";
-  else if (estCost > cash) blockedReason = "insufficient_balance";
+  else if (estCost > cash) blockedReason = "insufficient_cash";
   else if (!activeOk) blockedReason = "max_active_positions_reached";
   else if (!weightOk) blockedReason = "max_position_weight_reached";
-  else if (cfg.correlationRiskEnabled && !sectorOk) blockedReason = "sector_exposure_limit";
+  else if (cfg.correlationRiskEnabled && !sectorOk) blockedReason = "max_sector_exposure_reached";
   else if (!cashOk) blockedReason = "cash_buffer_required";
-  else if (!liquidityOk) blockedReason = "low_liquidity";
+  else if (!liquidityOk) blockedReason = "liquidity_too_low";
   else if (!rrOk) blockedReason = "risk_reward_invalid";
   else if (newsShockReason) blockedReason = newsShockReason;
 
