@@ -22,7 +22,8 @@ export type AuditRow = {
   message: string | null;
   entity_type: string | null;
   entity_id: string | null;
-  metadata: Record<string, unknown> | null;
+  // JSON columns — typed as any so server fn payloads stay serializable.
+  metadata: any;
   created_at: string;
 };
 
@@ -302,13 +303,13 @@ export type DecisionReplayRow = {
   decision_status: string | null;
   reasoning: string | null;
   created_at: string;
-  data_snapshot: Record<string, unknown> | null;
-  technical_snapshot: Record<string, unknown> | null;
-  sentiment_snapshot: Record<string, unknown> | null;
-  portfolio_snapshot: Record<string, unknown> | null;
-  risk_snapshot: Record<string, unknown> | null;
-  strategy_context: Record<string, unknown> | null;
-  decision_replay_snapshot: Record<string, unknown> | null;
+  data_snapshot: any;
+  technical_snapshot: any;
+  sentiment_snapshot: any;
+  portfolio_snapshot: any;
+  risk_snapshot: any;
+  strategy_context: any;
+  decision_replay_snapshot: any;
 };
 
 export const getDecisionReplays = createServerFn({ method: "GET" }).handler(
