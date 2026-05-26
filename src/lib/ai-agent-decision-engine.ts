@@ -617,6 +617,25 @@ export async function evaluateSymbol(
     const negativeDisclosure = !!(realDisclosureData?.hasRecentDisclosure
       && realDisclosureData?.disclosureSentiment === "negative");
 
+    // 9b. Hard-block on official high-impact negative disclosure or suspension/UMA.
+    if (officialDisclosure) {
+      const hardBlock =
+        (officialDisclosure.sentiment === "negative" && officialDisclosure.impact === "high")
+        || officialDisclosure.type === "suspension"
+        || officialDisclosure.type === "uma";
+      if (hardBlock) {
+        return emptySnap(sym, `Disclosure block: ${officialDisclosure.type} (${officialDisclosure.impact}/${officialDisclosure.sentiment}) — "${officialDisclosure.title}".`, {
+          confidence, rawConfidence, calibrationReason: calib.reason,
+          realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
+          portfolioSnapshot, dataFreshnessSeconds: freshness, dataQuality,
+          riskSnapshot: { fundamentalContext } as any,
+          blockedReason: `disclosure_${officialDisclosure.type}`,
+          warnings: [...warnings, ...disclosureRiskFlags.map(f => `disclosure:${f}`)],
+        });
+      }
+    }
+
+
     const guard = await finalRiskGuard({
       agent: { ...(agent.agentRow ?? {}), ...agent },
       symbol: sym,
