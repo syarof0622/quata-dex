@@ -44,6 +44,10 @@ function NewsHub() {
   const [source, setSource] = useState("");
   const [sentiment, setSentiment] = useState<"" | "positive" | "neutral" | "negative">("");
   const [impact, setImpact] = useState<"" | "low" | "medium" | "high">("");
+  const [relevanceClass, setRelevanceClass] = useState<string>("");
+  const [impactCategory, setImpactCategory] = useState<string>("");
+  const [hideNoise, setHideNoise] = useState(true);
+  const [hideDuplicates, setHideDuplicates] = useState(true);
   const [ticker, setTicker] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
@@ -51,8 +55,7 @@ function NewsHub() {
   const dSearch = useDebounced(search.trim(), 350);
   const dTicker = useDebounced(ticker.trim(), 350);
 
-  // Reset to first page when filters change
-  useEffect(() => { setPage(0); }, [source, sentiment, impact, dTicker, dSearch]);
+  useEffect(() => { setPage(0); }, [source, sentiment, impact, relevanceClass, impactCategory, hideNoise, hideDuplicates, dTicker, dSearch]);
 
   const filterArgs = {
     limit: PAGE_SIZE,
@@ -60,6 +63,10 @@ function NewsHub() {
     source: source || undefined,
     sentiment: (sentiment || undefined) as any,
     impactLevel: (impact || undefined) as any,
+    relevanceClass: (relevanceClass || undefined) as any,
+    impactCategory: impactCategory || undefined,
+    hideNoise,
+    hideDuplicates,
     ticker: dTicker || undefined,
     search: dSearch || undefined,
   };
