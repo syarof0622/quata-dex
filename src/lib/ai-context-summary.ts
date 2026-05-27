@@ -139,11 +139,13 @@ export function computeContextSummary(input: SummaryInput): AIContextSummary {
   else dataQuality = { label: "Stale", tone: "rose" };
 
   // AI Agent (worker liveness) — mirrors src/lib/ai-app-context.server.ts so
-  // the header badge and the AI Chat see the SAME status. If the agent row
-  // reads inactive but `recentAgentDecisionCount > 0`, surface a Sync Warning
-  // rather than falsely claiming the agent is off.
+  // the header badge and the AI Chat see the SAME status. Worker stale and
+  // market-closed are NOT the same as "Inactive". Inactive is reserved for
+  // agents that are truly off (no automation, no worker run ever, no recent
+  // decisions, status stopped/inactive).
   const agent = input.agent;
   const recentDecisions = Number(input.recentAgentDecisionCount ?? 0);
+  const marketClosed = !sess.isOpen;
   let aiAgent: AIContextSummary["aiAgent"] = { label: "Inactive", tone: "slate" };
   if (agent) {
     const lastRun = agent.last_worker_run_at ? new Date(agent.last_worker_run_at).getTime() : 0;
@@ -152,18 +154,22 @@ export function computeContextSummary(input: SummaryInput): AIContextSummary {
     const workerOk = !agent.last_worker_status || agent.last_worker_status === "success" || agent.last_worker_status === "running";
     const statusActive = ACTIVE_AGENT_STATUSES.has(String(agent.status ?? ""));
     const isAutoRunning = Boolean(agent.automation_enabled && workerFresh && statusActive && workerOk);
+    const everRan = lastRun > 0 || recentDecisions > 0;
 
-    if (isAutoRunning) aiAgent = { label: "Auto Running", tone: "emerald" };
+    if (isAutoRunning && !marketClosed) aiAgent = { label: "Auto Running", tone: "emerald" };
+    else if (isAutoRunning && marketClosed) aiAgent = { label: "Market Closed", tone: "sky" };
     else if (agent.automation_enabled && agent.last_worker_status === "error") aiAgent = { label: "Worker Error", tone: "rose" };
+    else if (agent.automation_enabled && statusActive && !workerFresh && marketClosed && everRan) aiAgent = { label: "Worker Idle", tone: "sky" };
     else if (agent.automation_enabled && statusActive && !workerFresh) aiAgent = { label: "Worker Stale", tone: "amber" };
     else if (agent.automation_enabled && !lastRun) aiAgent = { label: "Worker Not Started", tone: "amber" };
     else if (agent.automation_enabled === false && statusActive) aiAgent = { label: "Manual Only", tone: "slate" };
+    else if (agent.automation_enabled && !statusActive && everRan) aiAgent = { label: "Paused", tone: "slate" };
     else aiAgent = { label: "Inactive", tone: "slate" };
   }
 
   // Sync warning override: recent decisions exist but the agent row reads as
-  // non-running. Don't lie to the user — show that something IS happening.
-  if (recentDecisions > 0 && aiAgent.tone !== "emerald") {
+  // truly Inactive. Don't lie to the user — show that something IS happening.
+  if (recentDecisions > 0 && aiAgent.label === "Inactive") {
     aiAgent = { label: "Sync Warning", tone: "amber" };
   }
 
