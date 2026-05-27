@@ -31,6 +31,7 @@ import { Route as ApiSerpapiMarketContextSymbolRouteImport } from './routes/api/
 import { Route as ApiSerpapiGoogleFinanceSymbolRouteImport } from './routes/api/serpapi/google-finance.$symbol'
 import { Route as ApiPublicCronOrdersRouteImport } from './routes/api/public/cron/orders'
 import { Route as ApiPublicCronNewsRouteImport } from './routes/api/public/cron/news'
+import { Route as ApiPublicCronFundamentalsRouteImport } from './routes/api/public/cron/fundamentals'
 import { Route as ApiPublicCronAlertsRouteImport } from './routes/api/public/cron/alerts'
 import { Route as ApiPublicCronAiAgentRouteImport } from './routes/api/public/cron/ai-agent'
 
@@ -146,6 +147,12 @@ const ApiPublicCronNewsRoute = ApiPublicCronNewsRouteImport.update({
   path: '/api/public/cron/news',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCronFundamentalsRoute =
+  ApiPublicCronFundamentalsRouteImport.update({
+    id: '/api/public/cron/fundamentals',
+    path: '/api/public/cron/fundamentals',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicCronAlertsRoute = ApiPublicCronAlertsRouteImport.update({
   id: '/api/public/cron/alerts',
   path: '/api/public/cron/alerts',
@@ -177,6 +184,7 @@ export interface FileRoutesByFullPath {
   '/api/serpapi/news': typeof ApiSerpapiNewsRoute
   '/api/public/cron/ai-agent': typeof ApiPublicCronAiAgentRoute
   '/api/public/cron/alerts': typeof ApiPublicCronAlertsRoute
+  '/api/public/cron/fundamentals': typeof ApiPublicCronFundamentalsRoute
   '/api/public/cron/news': typeof ApiPublicCronNewsRoute
   '/api/public/cron/orders': typeof ApiPublicCronOrdersRoute
   '/api/serpapi/google-finance/$symbol': typeof ApiSerpapiGoogleFinanceSymbolRoute
@@ -202,6 +210,7 @@ export interface FileRoutesByTo {
   '/api/serpapi/news': typeof ApiSerpapiNewsRoute
   '/api/public/cron/ai-agent': typeof ApiPublicCronAiAgentRoute
   '/api/public/cron/alerts': typeof ApiPublicCronAlertsRoute
+  '/api/public/cron/fundamentals': typeof ApiPublicCronFundamentalsRoute
   '/api/public/cron/news': typeof ApiPublicCronNewsRoute
   '/api/public/cron/orders': typeof ApiPublicCronOrdersRoute
   '/api/serpapi/google-finance/$symbol': typeof ApiSerpapiGoogleFinanceSymbolRoute
@@ -229,6 +238,7 @@ export interface FileRoutesById {
   '/api/serpapi/news': typeof ApiSerpapiNewsRoute
   '/api/public/cron/ai-agent': typeof ApiPublicCronAiAgentRoute
   '/api/public/cron/alerts': typeof ApiPublicCronAlertsRoute
+  '/api/public/cron/fundamentals': typeof ApiPublicCronFundamentalsRoute
   '/api/public/cron/news': typeof ApiPublicCronNewsRoute
   '/api/public/cron/orders': typeof ApiPublicCronOrdersRoute
   '/api/serpapi/google-finance/$symbol': typeof ApiSerpapiGoogleFinanceSymbolRoute
@@ -256,6 +266,7 @@ export interface FileRouteTypes {
     | '/api/serpapi/news'
     | '/api/public/cron/ai-agent'
     | '/api/public/cron/alerts'
+    | '/api/public/cron/fundamentals'
     | '/api/public/cron/news'
     | '/api/public/cron/orders'
     | '/api/serpapi/google-finance/$symbol'
@@ -281,6 +292,7 @@ export interface FileRouteTypes {
     | '/api/serpapi/news'
     | '/api/public/cron/ai-agent'
     | '/api/public/cron/alerts'
+    | '/api/public/cron/fundamentals'
     | '/api/public/cron/news'
     | '/api/public/cron/orders'
     | '/api/serpapi/google-finance/$symbol'
@@ -307,6 +319,7 @@ export interface FileRouteTypes {
     | '/api/serpapi/news'
     | '/api/public/cron/ai-agent'
     | '/api/public/cron/alerts'
+    | '/api/public/cron/fundamentals'
     | '/api/public/cron/news'
     | '/api/public/cron/orders'
     | '/api/serpapi/google-finance/$symbol'
@@ -321,6 +334,7 @@ export interface RootRouteChildren {
   ApiSerpapiNewsRoute: typeof ApiSerpapiNewsRoute
   ApiPublicCronAiAgentRoute: typeof ApiPublicCronAiAgentRoute
   ApiPublicCronAlertsRoute: typeof ApiPublicCronAlertsRoute
+  ApiPublicCronFundamentalsRoute: typeof ApiPublicCronFundamentalsRoute
   ApiPublicCronNewsRoute: typeof ApiPublicCronNewsRoute
   ApiPublicCronOrdersRoute: typeof ApiPublicCronOrdersRoute
   ApiSerpapiGoogleFinanceSymbolRoute: typeof ApiSerpapiGoogleFinanceSymbolRoute
@@ -483,6 +497,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronNewsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/fundamentals': {
+      id: '/api/public/cron/fundamentals'
+      path: '/api/public/cron/fundamentals'
+      fullPath: '/api/public/cron/fundamentals'
+      preLoaderRoute: typeof ApiPublicCronFundamentalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cron/alerts': {
       id: '/api/public/cron/alerts'
       path: '/api/public/cron/alerts'
@@ -544,6 +565,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSerpapiNewsRoute: ApiSerpapiNewsRoute,
   ApiPublicCronAiAgentRoute: ApiPublicCronAiAgentRoute,
   ApiPublicCronAlertsRoute: ApiPublicCronAlertsRoute,
+  ApiPublicCronFundamentalsRoute: ApiPublicCronFundamentalsRoute,
   ApiPublicCronNewsRoute: ApiPublicCronNewsRoute,
   ApiPublicCronOrdersRoute: ApiPublicCronOrdersRoute,
   ApiSerpapiGoogleFinanceSymbolRoute: ApiSerpapiGoogleFinanceSymbolRoute,

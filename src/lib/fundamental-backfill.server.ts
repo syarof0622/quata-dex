@@ -1,0 +1,377 @@
+// Update 12 — Fundamental backfill orchestrator.
+// Server-only. Picks a universe (open positions + watchlist + top scanner
+// candidates), fetches from Twelve Data / SerpApi via fundamental-sources,
+// upserts snapshot + valuation, recomputes sector medians, then derives
+// fundamental_signal_snapshots + fundamental_quality_scores rows.
+
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import {
+  fetchFundamentalFromSources,
+  upsertFundamentalSnapshot,
+  upsertValuationMetrics,
+  type RawFundamentalSnapshot,
+  type RawValuationMetrics,
+} from "./fundamental-sources.server";
+import {
+  computeFundamentalSignal,
+  type SectorBenchmark,
+} from "./fundamental-signal.server";
+import type { FundamentalDTO } from "./fundamentals.functions";
+
+const HARDCODED_USER = "00000000-0000-0000-0000-000000000001";
+
+// ---------- universe selection ----------
+export async function selectUniverse(limit = 30): Promise<string[]> {
+  const set = new Set<string>();
+
+  // open positions
+  try {
+    const { data } = await supabaseAdmin
+      .from("paper_positions")
+      .select("symbol")
+      .eq("user_id", HARDCODED_USER);
+    for (const r of data ?? []) if (r?.symbol) set.add(String(r.symbol).toUpperCase());
+  } catch {}
+
+  // watchlist
+  try {
+    const { data } = await supabaseAdmin
+      .from("watchlist")
+      .select("symbol")
+      .eq("user_id", HARDCODED_USER);
+    for (const r of (data ?? []) as any[]) if (r?.symbol) set.add(String(r.symbol).toUpperCase());
+  } catch {}
+
+  // recent scanner candidates
+  try {
+    const { data } = await supabaseAdmin
+      .from("ai_agent_scan_candidates")
+      .select("symbol")
+      .order("created_at", { ascending: false })
+      .limit(50);
+    for (const r of (data ?? []) as any[]) if (r?.symbol) set.add(String(r.symbol).toUpperCase());
+  } catch {}
+
+  return Array.from(set).slice(0, limit);
+}
+
+// ---------- DTO adapter (raw rows -> FundamentalDTO for signal engine) ----------
+function toDTO(
+  symbol: string,
+  snap: RawFundamentalSnapshot | null,
+  val: RawValuationMetrics | null,
+): FundamentalDTO | null {
+  if (!snap && !val) return null;
+  const div = (n: number | null | undefined) => (n == null ? null : n / 100);
+  return {
+    symbol,
+    profile: {
+      longName: snap?.company_name ?? null,
+      sector: val?.sector ?? snap?.sector ?? null,
+      industry: null,
+      country: "ID",
+      website: null,
+      fullTimeEmployees: null,
+      summary: null,
+    },
+    price: {
+      currency: snap?.currency ?? "IDR",
+      marketCap: val?.market_cap ?? null,
+      regularMarketPrice: val?.price ?? null,
+    },
+    valuation: {
+      trailingPE: val?.per ?? null,
+      forwardPE: null,
+      pegRatio: null,
+      priceToBook: val?.pbv ?? null,
+      priceToSales: val?.ps ?? null,
+      enterpriseToEbitda: val?.ev_ebitda ?? null,
+      enterpriseToRevenue: null,
+    },
+    profitability: {
+      profitMargin: div(val?.npm ?? null),
+      operatingMargin: div(val?.opm ?? null),
+      grossMargin: div(val?.gpm ?? null),
+      returnOnEquity: div(val?.roe ?? null),
+      returnOnAssets: div(val?.roa ?? null),
+      ebitdaMargin: null,
+    },
+    growth: {
+      revenueGrowth: div(val?.revenue_growth_yoy ?? null),
+      earningsGrowth: div(val?.net_income_growth_yoy ?? null),
+      earningsQuarterlyGrowth: null,
+    },
+    health: {
+      totalCash: snap?.cash ?? null,
+      totalDebt: snap?.total_debt ?? null,
+      debtToEquity: val?.der ?? null,
+      currentRatio: null,
+      quickRatio: null,
+      freeCashflow: snap?.free_cashflow ?? null,
+      operatingCashflow: snap?.operating_cashflow ?? null,
+    },
+    dividends: {
+      dividendRate: val?.dividend_per_share ?? null,
+      dividendYield: div(val?.dividend_yield ?? null),
+      payoutRatio: val?.payout_ratio ?? null,
+      exDividendDate: null,
+    },
+    earnings: {
+      nextEarningsDate: null,
+      epsTrailing: snap?.eps ?? null,
+      epsForward: null,
+      epsRevisionsUp: null,
+      epsRevisionsDown: null,
+    },
+    recommendation: { mean: null, key: null, targetMean: null, targetHigh: null, targetLow: null, numAnalysts: null },
+    statements: {
+      income: snap?.report_date
+        ? [{
+            date: snap.report_date,
+            revenue: snap.revenue,
+            netIncome: snap.net_income,
+            grossProfit: snap.gross_profit,
+            operatingIncome: snap.operating_profit,
+          }]
+        : [],
+      balance: snap?.report_date
+        ? [{
+            date: snap.report_date,
+            totalAssets: snap.total_assets,
+            totalLiab: snap.total_liabilities,
+            totalEquity: snap.total_equity,
+            cash: snap.cash,
+          }]
+        : [],
+      cashflow: snap?.report_date
+        ? [{
+            date: snap.report_date,
+            operating: snap.operating_cashflow,
+            investing: snap.investing_cashflow,
+            financing: snap.financing_cashflow,
+            capex: snap.capex,
+          }]
+        : [],
+    },
+    asOf: new Date().toISOString(),
+  };
+}
+
+// ---------- sector benchmark recompute ----------
+const median = (xs: number[]) => {
+  if (!xs.length) return null;
+  const s = [...xs].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+};
+const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
+const clean = (xs: (number | null | undefined)[]) =>
+  xs.map((n) => Number(n)).filter((n) => Number.isFinite(n) && n > 0);
+
+export async function recomputeSectorBenchmarks(): Promise<number> {
+  const { data } = await supabaseAdmin
+    .from("valuation_metrics")
+    .select("symbol, sector, per, pbv, roe, der, revenue_growth_yoy, eps_growth_yoy, net_income_growth_yoy, dividend_yield");
+  const rows = data ?? [];
+  const bySector = new Map<string, any[]>();
+  for (const r of rows) {
+    const s = (r as any).sector;
+    if (!s) continue;
+    const arr = bySector.get(s) ?? [];
+    arr.push(r);
+    bySector.set(s, arr);
+  }
+  let updated = 0;
+  for (const [sector, list] of bySector) {
+    const per = clean(list.map((r) => r.per));
+    const pbv = clean(list.map((r) => r.pbv));
+    const roe = clean(list.map((r) => r.roe));
+    const der = clean(list.map((r) => r.der));
+    const revG = clean(list.map((r) => r.revenue_growth_yoy));
+    const epsG = clean(list.map((r) => r.eps_growth_yoy));
+    const niG = clean(list.map((r) => r.net_income_growth_yoy));
+    const dy = clean(list.map((r) => r.dividend_yield));
+    const sample = list.length;
+    const conf = sample >= 8 ? "high" : sample >= 4 ? "medium" : "low";
+
+    await supabaseAdmin
+      .from("sector_fundamental_benchmarks")
+      .upsert(
+        {
+          sector,
+          median_per: median(per),
+          median_pbv: median(pbv),
+          median_roe: median(roe),
+          median_der: median(der),
+          median_revenue_growth: median(revG),
+          median_profit_growth: median(niG),
+          median_dividend_yield: median(dy),
+          median_eps_growth_yoy: median(epsG),
+          median_revenue_growth_yoy: median(revG),
+          median_net_income_growth_yoy: median(niG),
+          avg_per: mean(per),
+          avg_pbv: mean(pbv),
+          avg_roe: mean(roe),
+          avg_der: mean(der),
+          sample_size: sample,
+          benchmark_confidence: conf,
+          included_symbols: list.map((r) => r.symbol),
+          excluded_symbols: [],
+          as_of: new Date().toISOString(),
+        },
+        { onConflict: "sector" },
+      );
+    updated++;
+  }
+  return updated;
+}
+
+export async function loadSectorBenchmark(sector: string | null): Promise<SectorBenchmark> {
+  if (!sector) return {};
+  const { data } = await supabaseAdmin
+    .from("sector_fundamental_benchmarks")
+    .select("median_per, median_pbv, median_roe")
+    .eq("sector", sector)
+    .maybeSingle();
+  if (!data) return {};
+  return {
+    per: (data as any).median_per != null ? Number((data as any).median_per) : null,
+    pbv: (data as any).median_pbv != null ? Number((data as any).median_pbv) : null,
+    roe: (data as any).median_roe != null ? Number((data as any).median_roe) : null,
+  };
+}
+
+// ---------- per-symbol backfill ----------
+export type BackfillRow = {
+  symbol: string;
+  sourceUsed: string | null;
+  sourceTried: string[];
+  label: string;
+  confidence: number;
+  partial: boolean;
+};
+
+async function persistSignal(
+  symbol: string,
+  dto: FundamentalDTO | null,
+  val: RawValuationMetrics | null,
+  bench: SectorBenchmark,
+  sourceUsed: string | null,
+  sourceUrl: string | null,
+) {
+  const sig = computeFundamentalSignal(symbol, dto, bench);
+  await supabaseAdmin.from("fundamental_signal_snapshots").insert({
+    symbol,
+    sector: val?.sector ?? dto?.profile.sector ?? null,
+    final_fundamental_label: sig.label,
+    confidence: sig.confidence,
+    undervalue_score: sig.undervalueScore,
+    valuation_score: sig.scores.valuation,
+    quality_score: sig.scores.quality,
+    growth_score: sig.scores.growth,
+    profitability_score: sig.scores.profitability,
+    solvency_score: sig.scores.solvency,
+    dividend_score: sig.scores.dividend,
+    value_trap_risk: sig.valueTrapRisk,
+    value_trap_level: sig.valueTrapLevel,
+    value_trap_reasons: sig.valueTrapReasons as any,
+    valuation_status: sig.valuationStatus,
+    explanation: sig.explanation,
+    reasons: sig.reasons as any,
+    warnings: sig.warnings as any,
+    positive_reasons: sig.reasons.filter((r) => /murah|kuat|positif/i.test(r)) as any,
+    negative_reasons: sig.reasons.filter((r) => /mahal|lemah|melemah|trap/i.test(r)) as any,
+    missing_data_reasons: sig.quality.missingFields as any,
+    key_metrics: sig.keyMetrics as any,
+    per: val?.per ?? null,
+    pbv: val?.pbv ?? null,
+    roe: val?.roe ?? null,
+    der: val?.der ?? null,
+    dividend_yield: val?.dividend_yield ?? null,
+    sector_median_per: bench.per ?? null,
+    sector_median_pbv: bench.pbv ?? null,
+    sector_median_roe: bench.roe ?? null,
+    source: sourceUsed,
+    source_url: sourceUrl,
+  });
+
+  await supabaseAdmin.from("fundamental_quality_scores").insert({
+    symbol,
+    completeness_score: sig.quality.completenessScore,
+    freshness_score: sig.quality.freshnessScore,
+    consistency_score: sig.quality.consistencyScore,
+    confidence_score: sig.quality.confidenceScore,
+    source_score: sourceUsed ? (sourceUsed === "twelve_data" ? 90 : 60) : 0,
+    status: sig.quality.status,
+    fundamental_freshness:
+      sig.quality.freshnessScore >= 85 ? "fresh" :
+      sig.quality.freshnessScore >= 50 ? "stale" :
+      sig.quality.freshnessScore > 0 ? "very_stale" : "unavailable",
+    missing_fields: sig.quality.missingFields as any,
+    stale_fields: sig.quality.staleFields as any,
+    warnings: sig.quality.warnings as any,
+    blocking_reasons: (sig.label === "INSUFFICIENT_DATA" ? sig.quality.warnings : []) as any,
+  });
+
+  return sig;
+}
+
+export async function backfillSymbol(symbol: string): Promise<BackfillRow> {
+  const res = await fetchFundamentalFromSources(symbol);
+  if (res.snapshot) await upsertFundamentalSnapshot(res.snapshot);
+  if (res.valuation) await upsertValuationMetrics(res.valuation);
+
+  const sector = res.valuation?.sector ?? res.snapshot?.sector ?? null;
+  const bench = await loadSectorBenchmark(sector);
+  const dto = toDTO(symbol, res.snapshot, res.valuation);
+  const sig = await persistSignal(
+    symbol,
+    dto,
+    res.valuation,
+    bench,
+    res.sourceUsed,
+    res.valuation?.source_url ?? res.snapshot?.source_url ?? null,
+  );
+
+  return {
+    symbol,
+    sourceUsed: res.sourceUsed,
+    sourceTried: res.sourceTried,
+    label: sig.label,
+    confidence: sig.confidence,
+    partial: res.partial,
+  };
+}
+
+export type BackfillReport = {
+  ran_at: string;
+  universe_size: number;
+  processed: number;
+  rows: BackfillRow[];
+  sectors_updated: number;
+  errors: { symbol: string; error: string }[];
+};
+
+export async function runFundamentalBackfill(opts: { limit?: number; symbols?: string[] } = {}): Promise<BackfillReport> {
+  const universe = opts.symbols?.length
+    ? opts.symbols.map((s) => s.toUpperCase())
+    : await selectUniverse(opts.limit ?? 25);
+  const rows: BackfillRow[] = [];
+  const errors: { symbol: string; error: string }[] = [];
+  for (const sym of universe) {
+    try {
+      rows.push(await backfillSymbol(sym));
+    } catch (e: any) {
+      errors.push({ symbol: sym, error: String(e?.message ?? e) });
+    }
+  }
+  const sectors = await recomputeSectorBenchmarks();
+  return {
+    ran_at: new Date().toISOString(),
+    universe_size: universe.length,
+    processed: rows.length,
+    rows,
+    sectors_updated: sectors,
+    errors,
+  };
+}
