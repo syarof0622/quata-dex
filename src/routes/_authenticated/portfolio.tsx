@@ -90,13 +90,13 @@ function Portfolio() {
       : "bull";
 
   return (
-    <div className="p-4 md:p-6 space-y-5">
+    <div className="p-3 md:p-6 space-y-4 md:space-y-5">
       <div className="flex items-end justify-between flex-wrap gap-2">
-        <div>
-          <h1 className="text-2xl font-semibold">Portfolio Risk Analytics</h1>
-          <p className="text-sm text-muted-foreground">Mark-to-market equity, P&amp;L breakdown &amp; risk intelligence — paper trading only.</p>
+        <div className="min-w-0">
+          <h1 className="hero-h1 text-2xl md:text-2xl font-semibold tracking-tight">Portfolio Risk Analytics</h1>
+          <p className="text-[12.5px] md:text-sm text-muted-foreground">Mark-to-market equity, P&amp;L breakdown &amp; risk intelligence — paper trading only.</p>
         </div>
-        <div className="flex items-center gap-3 text-[11px] text-muted-foreground flex-wrap">
+        <div className="flex items-center gap-x-2 gap-y-1 text-[10.5px] md:text-[11px] text-muted-foreground flex-wrap">
           <span>Currency <span className="font-mono text-foreground">{currency}</span></span>
           <span>·</span>
           <span>{openPositionsCount} open</span>
