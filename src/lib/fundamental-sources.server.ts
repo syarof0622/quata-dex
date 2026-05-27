@@ -431,7 +431,7 @@ export async function upsertFundamentalSnapshot(s: RawFundamentalSnapshot) {
         financing_cashflow: s.financing_cashflow,
         capex: s.capex,
         free_cashflow: s.free_cashflow,
-        raw_payload: s.raw_payload,
+        raw_payload: s.raw_payload as any,
         data_quality: s.data_quality,
       },
       { onConflict: "symbol,fiscal_year,fiscal_quarter,source" }
