@@ -154,8 +154,25 @@ async function handler(request: Request) {
   const topBlockedReasons = Array.from(new Set(allReasons)).slice(0, 5);
   const mode = !session.isOpen ? "passive_analysis_only" : "full_cycle";
 
+  const workerStatus = errors.length > 0
+    ? "error"
+    : (!session.isOpen ? "idle_market_closed" : "running");
+  const message = errors.length > 0
+    ? `Worker completed with ${errors.length} error(s).`
+    : (!session.isOpen
+      ? `Worker active — market ${session.isBreak ? "break" : "closed"}, no new paper order.`
+      : `Worker active — ${totals.decisionsCreated} decision(s), ${totals.paperBuysExecuted} executed, ${totals.blockedDecisions} blocked.`);
+
   return Response.json({
-    ok: true,
+    ok: errors.length === 0,
+    ranAt: finishedAt.toISOString(),
+    decisions: totals.decisionsCreated,
+    executed: totals.paperBuysExecuted,
+    blocked: totals.blockedDecisions,
+    session: session.state,
+    workerStatus,
+    message,
+    // Detail fields (backward compatible)
     startedAt: startedAt.toISOString(),
     finishedAt: finishedAt.toISOString(),
     durationMs: finishedAt.getTime() - startedAt.getTime(),
