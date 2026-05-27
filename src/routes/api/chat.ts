@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getAIAppContext } from "@/lib/ai-app-context.server";
+import { GLOBAL_FUNDAMENTAL_GUARD } from "@/lib/ai-fundamental-guard";
 
 // Extract IDX-style tickers (3-4 uppercase letters, optional .JK) from text.
 function extractTickers(text: string): string[] {
@@ -365,7 +366,7 @@ OUTPUT FORMAT — strict GitHub-Flavored Markdown (renderer supports tables, lis
             appContextBlock = `APP CONTEXT: unavailable (internal error). Tell the user app data could not be loaded right now.`;
           }
 
-          const sys = [baseSystem, marketContextBlock, appContextBlock].filter(Boolean).join("\n\n");
+          const sys = [GLOBAL_FUNDAMENTAL_GUARD, baseSystem, marketContextBlock, appContextBlock].filter(Boolean).join("\n\n");
 
           const upstream = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
             method: "POST",

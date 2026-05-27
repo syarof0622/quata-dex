@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { GLOBAL_FUNDAMENTAL_GUARD } from "@/lib/ai-fundamental-guard";
 
 const USER_ID = "00000000-0000-0000-0000-000000000001";
 
@@ -102,7 +103,7 @@ ${summary}`;
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: "You are an institutional trading coach. Be direct, specific, and actionable. Use markdown." },
+          { role: "system", content: `${GLOBAL_FUNDAMENTAL_GUARD}\n\nYou are an institutional trading coach. Be direct, specific, and actionable. Use markdown. Never invent fundamental ratios (PER/PBV/ROE/DER) or value-trap labels — follow the GLOBAL FUNDAMENTAL & DISCLOSURE GUARD above.` },
           { role: "user", content: prompt },
         ],
       }),
