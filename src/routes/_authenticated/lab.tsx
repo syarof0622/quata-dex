@@ -637,6 +637,11 @@ function AutomationStatusPanel({ agent, session }: { agent: any; session: any })
         <Button size="sm" variant="outline" onClick={testCron}>Test cron now</Button>
         <Button size="sm" variant="outline" onClick={copyCronUrl}>Copy cron URL</Button>
       </div>
+      <div className="text-[11px] text-muted-foreground leading-relaxed border border-dashed rounded p-2 space-y-0.5">
+        <div><span className="font-semibold">Endpoint:</span> <code className="font-mono">{cronUrl}</code></div>
+        <div><span className="font-semibold">Required header:</span> <code className="font-mono">x-cron-secret: &lt;CRON_SECRET&gt;</code> (or <code className="font-mono">Authorization: Bearer &lt;CRON_SECRET&gt;</code>)</div>
+        <div>Schedule every 1 minute. Paper Trading only — no real-money execution.</div>
+      </div>
       {workerStale && (
         <div className="text-[11px] text-amber-600 dark:text-amber-400 leading-relaxed border border-amber-500/30 bg-amber-500/5 rounded p-2">
           <strong>Action required:</strong> An external scheduler (pg_cron or platform cron) must call
