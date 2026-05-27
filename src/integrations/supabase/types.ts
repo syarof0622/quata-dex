@@ -1348,13 +1348,19 @@ export type Database = {
       fundamental_quality_scores: {
         Row: {
           as_of: string
+          blocking_reasons: Json
           completeness_score: number
           confidence_score: number
           consistency_score: number
           created_at: string
+          days_since_report: number | null
           freshness_score: number
+          fundamental_freshness: string
           id: string
+          latest_report_date: string | null
+          latest_report_period: string | null
           missing_fields: Json
+          source_score: number
           stale_fields: Json
           status: string
           symbol: string
@@ -1363,13 +1369,19 @@ export type Database = {
         }
         Insert: {
           as_of?: string
+          blocking_reasons?: Json
           completeness_score?: number
           confidence_score?: number
           consistency_score?: number
           created_at?: string
+          days_since_report?: number | null
           freshness_score?: number
+          fundamental_freshness?: string
           id?: string
+          latest_report_date?: string | null
+          latest_report_period?: string | null
           missing_fields?: Json
+          source_score?: number
           stale_fields?: Json
           status?: string
           symbol: string
@@ -1378,13 +1390,19 @@ export type Database = {
         }
         Update: {
           as_of?: string
+          blocking_reasons?: Json
           completeness_score?: number
           confidence_score?: number
           consistency_score?: number
           created_at?: string
+          days_since_report?: number | null
           freshness_score?: number
+          fundamental_freshness?: string
           id?: string
+          latest_report_date?: string | null
+          latest_report_period?: string | null
           missing_fields?: Json
+          source_score?: number
           stale_fields?: Json
           status?: string
           symbol?: string
@@ -1398,19 +1416,35 @@ export type Database = {
           as_of: string
           confidence: number
           created_at: string
+          der: number | null
           dividend_score: number
+          dividend_yield: number | null
           explanation: string | null
           final_fundamental_label: string
           growth_score: number
           id: string
           key_metrics: Json
+          missing_data_reasons: Json
+          negative_reasons: Json
+          pbv: number | null
+          per: number | null
+          positive_reasons: Json
           profitability_score: number
           quality_score: number
           reasons: Json
+          roe: number | null
+          sector: string | null
+          sector_median_der: number | null
+          sector_median_pbv: number | null
+          sector_median_per: number | null
+          sector_median_roe: number | null
           solvency_score: number
+          source: string | null
+          source_url: string | null
           symbol: string
           undervalue_score: number
           updated_at: string
+          valuation_score: number
           valuation_status: string
           value_trap_level: string
           value_trap_reasons: Json
@@ -1421,19 +1455,35 @@ export type Database = {
           as_of?: string
           confidence?: number
           created_at?: string
+          der?: number | null
           dividend_score?: number
+          dividend_yield?: number | null
           explanation?: string | null
           final_fundamental_label?: string
           growth_score?: number
           id?: string
           key_metrics?: Json
+          missing_data_reasons?: Json
+          negative_reasons?: Json
+          pbv?: number | null
+          per?: number | null
+          positive_reasons?: Json
           profitability_score?: number
           quality_score?: number
           reasons?: Json
+          roe?: number | null
+          sector?: string | null
+          sector_median_der?: number | null
+          sector_median_pbv?: number | null
+          sector_median_per?: number | null
+          sector_median_roe?: number | null
           solvency_score?: number
+          source?: string | null
+          source_url?: string | null
           symbol: string
           undervalue_score?: number
           updated_at?: string
+          valuation_score?: number
           valuation_status?: string
           value_trap_level?: string
           value_trap_reasons?: Json
@@ -1444,19 +1494,35 @@ export type Database = {
           as_of?: string
           confidence?: number
           created_at?: string
+          der?: number | null
           dividend_score?: number
+          dividend_yield?: number | null
           explanation?: string | null
           final_fundamental_label?: string
           growth_score?: number
           id?: string
           key_metrics?: Json
+          missing_data_reasons?: Json
+          negative_reasons?: Json
+          pbv?: number | null
+          per?: number | null
+          positive_reasons?: Json
           profitability_score?: number
           quality_score?: number
           reasons?: Json
+          roe?: number | null
+          sector?: string | null
+          sector_median_der?: number | null
+          sector_median_pbv?: number | null
+          sector_median_per?: number | null
+          sector_median_roe?: number | null
           solvency_score?: number
+          source?: string | null
+          source_url?: string | null
           symbol?: string
           undervalue_score?: number
           updated_at?: string
+          valuation_score?: number
           valuation_status?: string
           value_trap_level?: string
           value_trap_reasons?: Json
@@ -1470,14 +1536,18 @@ export type Database = {
           book_value_per_share: number | null
           capex: number | null
           cash: number | null
+          company_name: string | null
           created_at: string
           currency: string
+          data_quality: string | null
           eps: number | null
+          financing_cashflow: number | null
           fiscal_quarter: number | null
           fiscal_year: number
           free_cashflow: number | null
           gross_profit: number | null
           id: string
+          investing_cashflow: number | null
           net_income: number | null
           operating_cashflow: number | null
           operating_profit: number | null
@@ -1485,6 +1555,7 @@ export type Database = {
           raw_payload: Json | null
           report_date: string | null
           revenue: number | null
+          sector: string | null
           shares_outstanding: number | null
           source: string
           source_url: string | null
@@ -1499,14 +1570,18 @@ export type Database = {
           book_value_per_share?: number | null
           capex?: number | null
           cash?: number | null
+          company_name?: string | null
           created_at?: string
           currency?: string
+          data_quality?: string | null
           eps?: number | null
+          financing_cashflow?: number | null
           fiscal_quarter?: number | null
           fiscal_year: number
           free_cashflow?: number | null
           gross_profit?: number | null
           id?: string
+          investing_cashflow?: number | null
           net_income?: number | null
           operating_cashflow?: number | null
           operating_profit?: number | null
@@ -1514,6 +1589,7 @@ export type Database = {
           raw_payload?: Json | null
           report_date?: string | null
           revenue?: number | null
+          sector?: string | null
           shares_outstanding?: number | null
           source: string
           source_url?: string | null
@@ -1528,14 +1604,18 @@ export type Database = {
           book_value_per_share?: number | null
           capex?: number | null
           cash?: number | null
+          company_name?: string | null
           created_at?: string
           currency?: string
+          data_quality?: string | null
           eps?: number | null
+          financing_cashflow?: number | null
           fiscal_quarter?: number | null
           fiscal_year?: number
           free_cashflow?: number | null
           gross_profit?: number | null
           id?: string
+          investing_cashflow?: number | null
           net_income?: number | null
           operating_cashflow?: number | null
           operating_profit?: number | null
@@ -1543,6 +1623,7 @@ export type Database = {
           raw_payload?: Json | null
           report_date?: string | null
           revenue?: number | null
+          sector?: string | null
           shares_outstanding?: number | null
           source?: string
           source_url?: string | null
@@ -2342,12 +2423,19 @@ export type Database = {
       sector_fundamental_benchmarks: {
         Row: {
           as_of: string
+          avg_der: number | null
+          avg_pbv: number | null
+          avg_per: number | null
+          avg_roe: number | null
           benchmark_confidence: string
           created_at: string
+          excluded_symbols: string[] | null
           id: string
+          included_symbols: string[] | null
           median_der: number | null
           median_dividend_yield: number | null
           median_eps_growth_yoy: number | null
+          median_net_income_growth_yoy: number | null
           median_pbv: number | null
           median_per: number | null
           median_profit_growth: number | null
@@ -2360,12 +2448,19 @@ export type Database = {
         }
         Insert: {
           as_of?: string
+          avg_der?: number | null
+          avg_pbv?: number | null
+          avg_per?: number | null
+          avg_roe?: number | null
           benchmark_confidence?: string
           created_at?: string
+          excluded_symbols?: string[] | null
           id?: string
+          included_symbols?: string[] | null
           median_der?: number | null
           median_dividend_yield?: number | null
           median_eps_growth_yoy?: number | null
+          median_net_income_growth_yoy?: number | null
           median_pbv?: number | null
           median_per?: number | null
           median_profit_growth?: number | null
@@ -2378,12 +2473,19 @@ export type Database = {
         }
         Update: {
           as_of?: string
+          avg_der?: number | null
+          avg_pbv?: number | null
+          avg_per?: number | null
+          avg_roe?: number | null
           benchmark_confidence?: string
           created_at?: string
+          excluded_symbols?: string[] | null
           id?: string
+          included_symbols?: string[] | null
           median_der?: number | null
           median_dividend_yield?: number | null
           median_eps_growth_yoy?: number | null
+          median_net_income_growth_yoy?: number | null
           median_pbv?: number | null
           median_per?: number | null
           median_profit_growth?: number | null
@@ -2969,12 +3071,17 @@ export type Database = {
         Row: {
           as_of: string
           book_value_growth_yoy: number | null
+          book_value_growth_yoy_v2: number | null
+          calculation_method: string | null
           created_at: string
           current_ratio: number | null
           debt_to_assets: number | null
           der: number | null
+          dividend_consistency_score: number | null
+          dividend_per_share: number | null
           dividend_yield: number | null
           eps_growth_yoy: number | null
+          equity_growth_yoy: number | null
           ev_ebitda: number | null
           fcf_yield: number | null
           gpm: number | null
@@ -2982,6 +3089,7 @@ export type Database = {
           market_cap: number | null
           net_income_growth_yoy: number | null
           npm: number | null
+          operating_cashflow_margin: number | null
           opm: number | null
           payout_ratio: number | null
           pbv: number | null
@@ -2989,22 +3097,31 @@ export type Database = {
           price: number | null
           ps: number | null
           quick_ratio: number | null
+          raw_payload: Json | null
           revenue_growth_yoy: number | null
           roa: number | null
           roe: number | null
+          sector: string | null
+          shares_outstanding: number | null
           source: string
+          source_url: string | null
           symbol: string
           updated_at: string
         }
         Insert: {
           as_of?: string
           book_value_growth_yoy?: number | null
+          book_value_growth_yoy_v2?: number | null
+          calculation_method?: string | null
           created_at?: string
           current_ratio?: number | null
           debt_to_assets?: number | null
           der?: number | null
+          dividend_consistency_score?: number | null
+          dividend_per_share?: number | null
           dividend_yield?: number | null
           eps_growth_yoy?: number | null
+          equity_growth_yoy?: number | null
           ev_ebitda?: number | null
           fcf_yield?: number | null
           gpm?: number | null
@@ -3012,6 +3129,7 @@ export type Database = {
           market_cap?: number | null
           net_income_growth_yoy?: number | null
           npm?: number | null
+          operating_cashflow_margin?: number | null
           opm?: number | null
           payout_ratio?: number | null
           pbv?: number | null
@@ -3019,22 +3137,31 @@ export type Database = {
           price?: number | null
           ps?: number | null
           quick_ratio?: number | null
+          raw_payload?: Json | null
           revenue_growth_yoy?: number | null
           roa?: number | null
           roe?: number | null
+          sector?: string | null
+          shares_outstanding?: number | null
           source: string
+          source_url?: string | null
           symbol: string
           updated_at?: string
         }
         Update: {
           as_of?: string
           book_value_growth_yoy?: number | null
+          book_value_growth_yoy_v2?: number | null
+          calculation_method?: string | null
           created_at?: string
           current_ratio?: number | null
           debt_to_assets?: number | null
           der?: number | null
+          dividend_consistency_score?: number | null
+          dividend_per_share?: number | null
           dividend_yield?: number | null
           eps_growth_yoy?: number | null
+          equity_growth_yoy?: number | null
           ev_ebitda?: number | null
           fcf_yield?: number | null
           gpm?: number | null
@@ -3042,6 +3169,7 @@ export type Database = {
           market_cap?: number | null
           net_income_growth_yoy?: number | null
           npm?: number | null
+          operating_cashflow_margin?: number | null
           opm?: number | null
           payout_ratio?: number | null
           pbv?: number | null
@@ -3049,10 +3177,14 @@ export type Database = {
           price?: number | null
           ps?: number | null
           quick_ratio?: number | null
+          raw_payload?: Json | null
           revenue_growth_yoy?: number | null
           roa?: number | null
           roe?: number | null
+          sector?: string | null
+          shares_outstanding?: number | null
           source?: string
+          source_url?: string | null
           symbol?: string
           updated_at?: string
         }
