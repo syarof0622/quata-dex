@@ -32,8 +32,12 @@ const fmtWIBTime = (d: string | number | Date) =>
 const fmtWIBDate = (d: string | number | Date) =>
   new Date(d).toLocaleDateString("id-ID", { timeZone: WIB_TZ });
 
+type LabSearch = { tab?: string };
 export const Route = createFileRoute("/_authenticated/lab")({
   head: () => ({ meta: [{ title: "Simulation Lab — Quanta Terminal" }] }),
+  validateSearch: (s: Record<string, unknown>): LabSearch => ({
+    tab: typeof s.tab === "string" ? s.tab : undefined,
+  }),
   component: Lab,
 });
 
