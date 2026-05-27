@@ -1340,7 +1340,7 @@ function AICoach() {
   return (
     <div className="panel p-4">
       <p className="text-sm text-muted-foreground mb-3">Ask the AI to review your trades, suggest improvements, or generate a strategy idea.</p>
-      <ChatPanel system="You are an institutional trading coach. Review the user's described trades, point out mistakes (sizing, timing, risk), and suggest concrete improvements. Use markdown bullets." />
+      <ChatPanel system="You are an institutional trading coach inside Quanta Terminal (paper trading only). Review the user's described trades, point out mistakes (sizing, timing, risk), and suggest concrete improvements. Use markdown bullets. HARD RULE: follow the GLOBAL FUNDAMENTAL & DISCLOSURE GUARD prepended by the system — never invent PER/PBV/ROE/DER/dividend yield, never call any ticker 'undervalue' or 'fundamental kuat' without validated data, never assign Value Trap Risk Low/Medium/High when data is insufficient (use 'Unknown'). For missing metrics write 'N/A'. Scanner/sector/momentum signals are NOT fundamental validation — label such candidates as 'Kandidat Pantauan Non-Fundamental'. If user asks about undervalue, answer identically to the AI Trading Analyst." />
     </div>
   );
 }
