@@ -80,8 +80,9 @@ function Lab() {
         <div className="panel p-4"><div className="text-xs text-muted-foreground">Pending</div><div className="font-mono text-xl md:text-2xl">{pending.length}</div></div>
       </div>
 
-      <Tabs defaultValue="positions">
-        <TabsList className="flex-wrap h-auto">
+      <Tabs defaultValue={initialTab}>
+        <TabsList className="flex-wrap h-auto no-scrollbar overflow-x-auto max-w-full">
+
           <TabsTrigger value="positions">Positions</TabsTrigger>
           <TabsTrigger value="pending">Pending Orders</TabsTrigger>
           <TabsTrigger value="orders">Order History</TabsTrigger>
