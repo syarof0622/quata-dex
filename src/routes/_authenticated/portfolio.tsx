@@ -150,7 +150,7 @@ function Portfolio() {
       </div>
 
       {/* Row 2: trade counts + perf */}
-      <div className="grid md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5 md:gap-3">
         <Stat label="Executed Orders" value={String(executedOrders)} sub="paper fills (buy + sell)" />
         <Stat label="Open Positions" value={String(openPositionsCount)} sub="from paper_positions" />
         <Stat label="Closed Trades" value={String(closedTrades)} sub="sell fills (FIFO)" />
