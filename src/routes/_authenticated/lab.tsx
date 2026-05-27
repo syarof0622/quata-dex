@@ -533,36 +533,78 @@ function runButtonCopy(agent: any, session: any) {
   return { label: "Manual run now", tip };
 }
 
+function formatRelativeWIB(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  const diffMs = Date.now() - d.getTime();
+  const absSec = Math.abs(diffMs) / 1000;
+  const future = diffMs < 0;
+  let rel: string;
+  if (absSec < 60) rel = `${Math.round(absSec)}s ${future ? "from now" : "ago"}`;
+  else if (absSec < 3600) rel = `${Math.round(absSec / 60)}m ${future ? "from now" : "ago"}`;
+  else if (absSec < 86400) rel = `${Math.round(absSec / 3600)}h ${future ? "from now" : "ago"}`;
+  else if (absSec < 86400 * 2 && !future) rel = "yesterday";
+  else rel = `${Math.round(absSec / 86400)}d ${future ? "from now" : "ago"}`;
+  const abs = d.toLocaleTimeString("id-ID", { timeZone: WIB_TZ, hour12: false }) +
+    " · " + d.toLocaleDateString("id-ID", { timeZone: WIB_TZ }) + " WIB";
+  return `${rel} (${abs})`;
+}
+
 function AutomationStatusPanel({ agent, session }: { agent: any; session: any }) {
   if (!agent) return null;
   const lastRun = agent.last_worker_run_at ? new Date(agent.last_worker_run_at) : null;
   const ageMs = lastRun ? Date.now() - lastRun.getTime() : null;
   const automationEnabled = agent.automation_enabled !== false;
   const isOpen = !!session?.isOpen;
+  // Worker considered fresh if heartbeat within 3 minutes (cron runs every 1m).
+  const workerFresh = ageMs !== null && ageMs <= 180_000;
+  const workerStale = automationEnabled && (!lastRun || (ageMs !== null && ageMs > 180_000));
+
+  const cronUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/api/public/cron/ai-agent`
+    : "/api/public/cron/ai-agent";
 
   let state: { label: string; cls: string; msg: string };
   if (!automationEnabled) {
-    state = { label: "Manual mode only", cls: "bg-muted text-muted-foreground",
+    state = { label: "MANUAL / INACTIVE", cls: "bg-muted text-muted-foreground",
       msg: "Automation disabled. Agent will not trade automatically." };
-  } else if (!lastRun) {
-    state = { label: "Auto stale", cls: "bg-bear/15 text-bear",
-      msg: "AI automation worker has not run yet. Autonomous trading will not execute until the scheduler calls /api/public/cron/ai-agent." };
-  } else if (ageMs !== null && isOpen && ageMs > 120_000) {
-    state = { label: "Auto stale", cls: "bg-bear/15 text-bear",
-      msg: `AI worker appears inactive (last run ${Math.round(ageMs/1000)}s ago). No automatic decisions will be made.` };
+  } else if (workerStale) {
+    state = { label: "AUTO STALE", cls: "bg-bear/15 text-bear",
+      msg: `Worker stale — scheduler is not calling /api/public/cron/ai-agent. Configure cron to call this endpoint every 1 minute.` };
   } else if (agent.last_worker_status === "error") {
-    state = { label: "Auto error", cls: "bg-bear/15 text-bear",
+    state = { label: "AUTO ERROR", cls: "bg-bear/15 text-bear",
       msg: agent.last_worker_message ?? "Worker reported an error on the last cycle." };
-  } else if (!isOpen) {
-    state = { label: "Auto waiting market open", cls: "bg-muted text-muted-foreground",
-      msg: "Worker is alive but market is closed/break. Heartbeat only — no orders." };
+  } else if (!isOpen && workerFresh) {
+    state = { label: "AUTO IDLE — MARKET CLOSED", cls: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+      msg: "Worker active — market closed, no new paper order." };
   } else {
-    state = { label: "Auto running", cls: "bg-bull/15 text-bull",
+    state = { label: "AUTO RUNNING", cls: "bg-bull/15 text-bull",
       msg: "AI worker active — decisions run automatically." };
   }
 
-  const fmt = (iso: string | null | undefined) =>
-    iso ? new Date(iso).toLocaleTimeString("id-ID", { hour12: false }) + " · " + new Date(iso).toLocaleDateString("id-ID") : "—";
+  const testCron = async () => {
+    try {
+      const res = await fetch(cronUrl, { method: "GET" });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(`Cron returned ${res.status}: ${j?.error ?? j?.reason ?? "failed"}`);
+        if (j?.error === "cron_secret_not_configured") {
+          toast.info("Set CRON_SECRET in project secrets, then schedule the cron with that secret in the x-cron-secret header.");
+        } else if (j?.error === "unauthorized") {
+          toast.info("Endpoint reachable but rejected — supply x-cron-secret header from your scheduler.");
+        }
+      } else {
+        toast.success(`Cron OK — ${j?.message ?? "worker pinged"}`);
+      }
+    } catch (e: any) {
+      toast.error(`Cron unreachable: ${e?.message ?? "network error"}`);
+    }
+  };
+
+  const copyCronUrl = async () => {
+    try { await navigator.clipboard.writeText(cronUrl); toast.success("Cron URL copied"); }
+    catch { toast.error("Copy failed"); }
+  };
 
   return (
     <div className="panel p-3 space-y-2 border border-dashed">
@@ -571,16 +613,16 @@ function AutomationStatusPanel({ agent, session }: { agent: any; session: any })
           <span className="text-xs font-semibold uppercase text-muted-foreground">Automation Status</span>
           <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${state.cls}`}>{state.label}</span>
         </div>
-        <span className="text-[10px] text-muted-foreground">cron: /api/public/cron/ai-agent</span>
+        <span className="text-[10px] text-muted-foreground font-mono">{cronUrl}</span>
       </div>
       <p className="text-xs text-muted-foreground leading-relaxed">{state.msg}</p>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
         <div><span className="text-muted-foreground">Automation:</span> <span className="font-mono">{automationEnabled ? "enabled" : "disabled"}</span></div>
-        <div><span className="text-muted-foreground">Last worker run:</span> <span className="font-mono">{fmt(agent.last_worker_run_at)}</span></div>
-        <div><span className="text-muted-foreground">Next expected:</span> <span className="font-mono">{fmt(agent.next_expected_worker_run_at)}</span></div>
-        <div><span className="text-muted-foreground">Last auto decision:</span> <span className="font-mono">{fmt(agent.last_auto_decision_at)}</span></div>
-        <div><span className="text-muted-foreground">Last auto execution:</span> <span className="font-mono">{fmt(agent.last_auto_execution_at)}</span></div>
+        <div className="md:col-span-2"><span className="text-muted-foreground">Last worker run:</span> <span className="font-mono">{formatRelativeWIB(agent.last_worker_run_at)}</span></div>
+        <div className="md:col-span-2"><span className="text-muted-foreground">Next expected:</span> <span className="font-mono">{formatRelativeWIB(agent.next_expected_worker_run_at)}</span></div>
         <div><span className="text-muted-foreground">Worker errors:</span> <span className="font-mono">{agent.worker_error_count ?? 0}</span></div>
+        <div className="md:col-span-2"><span className="text-muted-foreground">Last auto decision:</span> <span className="font-mono">{formatRelativeWIB(agent.last_auto_decision_at)}</span></div>
+        <div className="md:col-span-2"><span className="text-muted-foreground">Last auto execution:</span> <span className="font-mono">{formatRelativeWIB(agent.last_auto_execution_at)}</span></div>
       </div>
       {agent.last_blocked_reason && (
         <div className="text-xs">
@@ -588,10 +630,17 @@ function AutomationStatusPanel({ agent, session }: { agent: any; session: any })
           <span className="font-mono">{agent.last_blocked_reason}</span>
         </div>
       )}
-      {!lastRun && (
-        <p className="text-[11px] text-muted-foreground italic">
-          Note: the cron route exists, but autonomous execution requires an external scheduler (pg_cron or platform cron) to hit this endpoint every minute. Manual run is a debug shortcut only.
-        </p>
+      <div className="flex flex-wrap gap-2 pt-1">
+        <Button size="sm" variant="outline" onClick={testCron}>Test cron now</Button>
+        <Button size="sm" variant="outline" onClick={copyCronUrl}>Copy cron URL</Button>
+      </div>
+      {workerStale && (
+        <div className="text-[11px] text-amber-600 dark:text-amber-400 leading-relaxed border border-amber-500/30 bg-amber-500/5 rounded p-2">
+          <strong>Action required:</strong> An external scheduler (pg_cron or platform cron) must call
+          <code className="mx-1 font-mono">{cronUrl}</code>
+          every 1 minute with header <code className="font-mono">x-cron-secret: &lt;CRON_SECRET&gt;</code>.
+          The "Manual run now" button is a debug shortcut and does not replace the automatic schedule.
+        </div>
       )}
     </div>
   );
