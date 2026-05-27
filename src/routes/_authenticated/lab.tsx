@@ -42,6 +42,8 @@ export const Route = createFileRoute("/_authenticated/lab")({
 });
 
 function Lab() {
+  const search = Route.useSearch();
+  const initialTab = (search as LabSearch)?.tab ?? "positions";
   const acct = useQuery({ queryKey: ["paper"], queryFn: () => getPaperAccount(), refetchInterval: 8000 });
   const positions = (acct.data?.positions ?? []) as any[];
   const orders = acct.data?.orders ?? [];
