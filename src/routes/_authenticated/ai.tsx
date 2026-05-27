@@ -24,8 +24,47 @@ function AIAnalystPage() {
 
   return (
     <div className="p-3 sm:p-5 space-y-3">
-      {/* Header */}
-      <div className="rounded-2xl border border-border/60 bg-gradient-to-br from-card/80 to-card/40 backdrop-blur p-4 sm:p-5">
+      {/* Mobile: compact chat-first header. Desktop: full hero. */}
+      <div className="md:hidden">
+        <div className="flex items-center gap-2 px-1">
+          <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-md shrink-0">
+            <Activity className="h-4 w-4 text-primary-foreground" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-[17px] font-semibold leading-tight truncate">AI Trading Analyst</h1>
+            <p className="text-[11.5px] text-muted-foreground truncate">Ask about market, portfolio, risk, or AI Agent decisions.</p>
+          </div>
+        </div>
+        {/* Compact status chip strip */}
+        <div className="mt-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar px-1 pb-1">
+          <Chip tone={ctx?.idxSession.tone ?? "slate"} label={`IDX: ${ctx?.idxSession.label ?? "—"}`} />
+          <Chip tone={ctx?.sentiment.tone ?? "slate"} label={`Sentiment: ${ctx?.sentiment.label ?? "—"}`} />
+          <Chip tone={ctx?.dataQuality.tone ?? "amber"} label={`Data: ${ctx?.dataQuality.label ?? "—"}`} />
+          <Chip tone={ctx?.sourceHealth.tone ?? "slate"} label={`Source: ${ctx?.sourceHealth.label ?? "—"}`} />
+          <Chip tone="amber" label="Paper Only" />
+        </div>
+        <details className="mt-2 rounded-xl border border-border/60 bg-card/40 px-3 py-2">
+          <summary className="cursor-pointer list-none text-[11.5px] uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+            <span>View AI Context</span>
+            <span className="text-primary text-[11px]">tap to expand</span>
+          </summary>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {(ctx?.badges ?? []).map(b => {
+              const cls = TONE_BADGE[b.tone] ?? TONE_BADGE.slate;
+              const dot = TONE_DOT[b.tone] ?? TONE_DOT.slate;
+              return (
+                <span key={b.label} className={cn("inline-flex items-center gap-1 rounded-full border text-[10px] px-2 py-0.5", cls)} title={b.status}>
+                  <span className={cn("h-1 w-1 rounded-full", dot)} />
+                  {b.label}: <span className="font-semibold">{b.status}</span>
+                </span>
+              );
+            })}
+          </div>
+        </details>
+      </div>
+
+      {/* Desktop hero */}
+      <div className="hidden md:block rounded-2xl border border-border/60 bg-gradient-to-br from-card/80 to-card/40 backdrop-blur p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -48,8 +87,8 @@ function AIAnalystPage() {
         </div>
       </div>
 
-      {/* Market context bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+      {/* Desktop market context bar */}
+      <div className="hidden md:grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
         <ContextCard title="IDX Session" value={ctx?.idxSession.label ?? "—"} tone={ctx?.idxSession.tone ?? "slate"} />
         <ContextCard title="IHSG Bias" value={ctx?.ihsgBias.label ?? "PARTIAL DATA"} tone={ctx?.ihsgBias.tone ?? "slate"} />
         <ContextCard title="Sentiment" value={ctx?.sentiment.label ?? "PARTIAL DATA"} tone={ctx?.sentiment.tone ?? "slate"} />
@@ -57,8 +96,8 @@ function AIAnalystPage() {
         <ContextCard title="Source Health" value={ctx?.sourceHealth.label ?? "Unknown"} tone={ctx?.sourceHealth.tone ?? "slate"} subtext={ctx?.sourceHealth.subtext} />
       </div>
 
-      {/* App Context status — reflects ACTUAL data status, not always green */}
-      <div className="rounded-xl border border-border/60 bg-card/40 px-3 py-2">
+      {/* Desktop App Context status */}
+      <div className="hidden md:block rounded-xl border border-border/60 bg-card/40 px-3 py-2">
         <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">AI App Context (read-only)</div>
         <div className="flex flex-wrap gap-1.5">
           {(ctx?.badges ?? []).map(b => {
@@ -78,9 +117,28 @@ function AIAnalystPage() {
       {/* Chat is the primary surface — render before audit / risk panels so the
           composer is visible without scrolling past Decision Replay. */}
       <ChatPanel />
-      <DecisionReplayPanel defaultOpen={false} />
-      <RiskEnginePanel />
+      {/* Risk + replay collapsed on mobile to keep AI chat as the focus. */}
+      <details className="md:hidden rounded-xl border border-border/60 bg-card/40">
+        <summary className="cursor-pointer list-none px-3 py-2 text-[12px] font-medium text-muted-foreground">Decision Replay & Risk Engine</summary>
+        <div className="p-2 space-y-3">
+          <DecisionReplayPanel defaultOpen={false} />
+          <RiskEnginePanel />
+        </div>
+      </details>
+      <div className="hidden md:block space-y-3">
+        <DecisionReplayPanel defaultOpen={false} />
+        <RiskEnginePanel />
+      </div>
     </div>
+  );
+}
+
+function Chip({ label, tone }: { label: string; tone: string }) {
+  const cls = TONE_BADGE[tone] ?? TONE_BADGE.slate;
+  return (
+    <span className={cn("shrink-0 inline-flex items-center gap-1 rounded-full border text-[10.5px] px-2 py-0.5 whitespace-nowrap", cls)}>
+      {label}
+    </span>
   );
 }
 

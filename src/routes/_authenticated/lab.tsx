@@ -32,12 +32,18 @@ const fmtWIBTime = (d: string | number | Date) =>
 const fmtWIBDate = (d: string | number | Date) =>
   new Date(d).toLocaleDateString("id-ID", { timeZone: WIB_TZ });
 
+type LabSearch = { tab?: string };
 export const Route = createFileRoute("/_authenticated/lab")({
   head: () => ({ meta: [{ title: "Simulation Lab — Quanta Terminal" }] }),
+  validateSearch: (s: Record<string, unknown>): LabSearch => ({
+    tab: typeof s.tab === "string" ? s.tab : undefined,
+  }),
   component: Lab,
 });
 
 function Lab() {
+  const search = Route.useSearch();
+  const initialTab = (search as LabSearch)?.tab ?? "positions";
   const acct = useQuery({ queryKey: ["paper"], queryFn: () => getPaperAccount(), refetchInterval: 8000 });
   const positions = (acct.data?.positions ?? []) as any[];
   const orders = acct.data?.orders ?? [];
@@ -74,8 +80,9 @@ function Lab() {
         <div className="panel p-4"><div className="text-xs text-muted-foreground">Pending</div><div className="font-mono text-xl md:text-2xl">{pending.length}</div></div>
       </div>
 
-      <Tabs defaultValue="positions">
-        <TabsList className="flex-wrap h-auto">
+      <Tabs defaultValue={initialTab}>
+        <TabsList className="flex-wrap h-auto no-scrollbar overflow-x-auto max-w-full">
+
           <TabsTrigger value="positions">Positions</TabsTrigger>
           <TabsTrigger value="pending">Pending Orders</TabsTrigger>
           <TabsTrigger value="orders">Order History</TabsTrigger>

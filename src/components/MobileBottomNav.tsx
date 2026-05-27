@@ -10,13 +10,14 @@ import { useNavigate } from "@tanstack/react-router";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 const PRIMARY = [
-  { to: "/dashboard", icon: LayoutDashboard, label: "Home" },
-  { to: "/ai", icon: Bot, label: "Analyst" },
-  { to: "/market", icon: TrendingUp, label: "Markets" },
-  { to: "/portfolio", icon: PieChart, label: "Portfolio" },
+  { to: "/dashboard", icon: LayoutDashboard, label: "Home", search: undefined as any },
+  { to: "/ai", icon: Bot, label: "Analyst", search: undefined as any },
+  { to: "/lab", icon: Sparkles, label: "Agent", search: { tab: "agent" } as any },
+  { to: "/portfolio", icon: PieChart, label: "Portfolio", search: undefined as any },
 ] as const;
 
 const MORE_ITEMS = [
+  { to: "/market", icon: TrendingUp, label: "Market Pulse" },
   { to: "/lab", icon: FlaskConical, label: "Simulation Lab" },
   { to: "/watchlist", icon: Star, label: "Watchlist" },
   { to: "/screener", icon: SlidersHorizontal, label: "Screener" },
@@ -44,12 +45,13 @@ export function MobileBottomNav() {
           className="pointer-events-auto mx-auto max-w-md rounded-2xl border border-border bg-background/85 backdrop-blur-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.6)] flex items-stretch justify-between px-1 py-1"
           style={{ minHeight: 60 }}
         >
-          {PRIMARY.map(({ to, icon: Icon, label }) => {
-            const active = path === to || path.startsWith(to + "/");
+          {PRIMARY.map(({ to, icon: Icon, label, search }) => {
+            const active = path === to || path.startsWith(to + "/") || (to === "/lab" && label === "Agent" && path.startsWith("/lab"));
             return (
               <Link
-                key={to}
+                key={label}
                 to={to}
+                search={search as any}
                 className="flex-1 flex flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 transition-colors"
                 style={{
                   color: active ? "var(--primary)" : "var(--muted-foreground)",
