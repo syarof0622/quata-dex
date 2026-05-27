@@ -5,8 +5,9 @@ import { getIndices, getMovers, getNews } from "@/lib/market.functions";
 import { motion } from "framer-motion";
 import { formatCompact, formatPct, formatPrice, colorForChange } from "@/lib/format";
 import { formatLocalPrice } from "@/lib/symbols";
-import { ArrowDownRight, ArrowUpRight, Newspaper } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Newspaper, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MobileEmptyState, MobileSkeletonRows } from "@/components/mobile-ui";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — Quanta Terminal" }] }),
@@ -23,114 +24,143 @@ function Dashboard() {
   });
   const news = useQuery({ queryKey: ["news", market], queryFn: () => getNews({ data: { market } }), refetchInterval: 60000 });
 
+  const gainers = movers.data?.gainers ?? [];
+  const losers = movers.data?.losers ?? [];
+  const newsItems = news.data ?? [];
+
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">Market Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Realtime overview · IDX, indices, movers, news</p>
+    <div className="p-3 md:p-6 space-y-4 md:space-y-6">
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex flex-wrap items-end justify-between gap-2">
+        <div className="min-w-0">
+          <h1 className="hero-h1 text-2xl md:text-2xl font-semibold tracking-tight">Market Dashboard</h1>
+          <p className="text-[12.5px] md:text-sm text-muted-foreground">Realtime overview · IDX, indices, movers, news</p>
         </div>
-        <div className="inline-flex rounded-md border border-border p-0.5">
+        <div className="inline-flex rounded-lg border border-border p-0.5 bg-card/40">
           {(["idx", "us", "global"] as const).map(m => (
-            <Button key={m} size="sm" variant={market === m ? "default" : "ghost"} onClick={() => setMarket(m)} className="h-7 px-3">
+            <Button key={m} size="sm" variant={market === m ? "default" : "ghost"} onClick={() => setMarket(m)} className="h-7 px-2.5 text-[11.5px]">
               {m === "idx" ? "🇮🇩 IDX" : m === "us" ? "🇺🇸 US" : "🌐 Global"}
             </Button>
           ))}
         </div>
       </motion.div>
 
-      {/* Indices */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {(indices.data ?? Array.from({ length: 6 })).map((q: any, i: number) => (
-          <Link key={q?.symbol ?? i} to={q ? "/chart/$symbol" : "/dashboard"} params={q ? { symbol: q.symbol } : undefined as any}
-                className="panel p-3 hover:border-primary/40 transition-colors">
-            <div className="text-xs text-muted-foreground">{q?.shortName ?? "—"}</div>
-            <div className="font-mono text-lg mt-1">{q ? formatPrice(q.price) : "—"}</div>
-            <div className={`text-xs font-mono ${colorForChange(q?.changePercent)}`}>{q ? formatPct(q.changePercent) : "—"}</div>
-          </Link>
-        ))}
+      {/* Indices — horizontal scroll on mobile, grid on md+ */}
+      <div className="-mx-3 md:mx-0 px-3 md:px-0">
+        <div className="flex md:grid md:grid-cols-3 lg:grid-cols-6 gap-2.5 md:gap-3 overflow-x-auto no-scrollbar pb-1">
+          {(indices.data ?? Array.from({ length: 6 })).map((q: any, i: number) => (
+            <Link key={q?.symbol ?? i} to={q ? "/chart/$symbol" : "/dashboard"} params={q ? { symbol: q.symbol } : undefined as any}
+                  className="panel p-3 hover:border-primary/40 transition-colors shrink-0 min-w-[44vw] md:min-w-0">
+              <div className="text-[10.5px] md:text-xs text-muted-foreground uppercase tracking-wider truncate">{q?.shortName ?? "—"}</div>
+              <div className="font-mono text-[15px] md:text-lg mt-1">{q ? formatPrice(q.price) : "—"}</div>
+              <div className={`text-[11px] md:text-xs font-mono ${colorForChange(q?.changePercent)}`}>{q ? formatPct(q.changePercent) : "—"}</div>
+            </Link>
+          ))}
+        </div>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-4">
+      {/* Movers + News */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
         {/* Gainers */}
-        <div className="panel p-4">
-          <div className="flex items-center gap-2 mb-3"><ArrowUpRight className="size-4 text-bull" /><h3 className="font-semibold">Top Gainers</h3></div>
-          <ul className="divide-y divide-border">
-            {(movers.data?.gainers ?? []).map(q => (
-              <li key={q.symbol}>
-                <Link to="/chart/$symbol" params={{ symbol: q.symbol }} className="flex items-center justify-between py-2 hover:bg-accent/40 rounded px-1">
-                  <div>
-                    <div className="font-medium">{q.symbol}</div>
-                    <div className="text-xs text-muted-foreground truncate max-w-[16ch]">{q.shortName}</div>
-                  </div>
-                  <div className="text-right font-mono">
-                    <div>{formatLocalPrice(q.symbol, q.price)}</div>
-                    <div className={colorForChange(q.changePercent) + " text-xs"}>{formatPct(q.changePercent)}</div>
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
+        <div className="panel p-3 md:p-4">
+          <div className="flex items-center gap-2 mb-2"><ArrowUpRight className="size-4 text-bull" /><h3 className="font-semibold text-[13.5px] md:text-base">Top Gainers</h3></div>
+          {movers.isLoading ? (
+            <MobileSkeletonRows rows={4} />
+          ) : gainers.length === 0 ? (
+            <MobileEmptyState icon={<TrendingUp className="size-5" />} title="No movers yet" hint="Data will load once the market feed updates." />
+          ) : (
+            <ul className="divide-y divide-border/60">
+              {gainers.slice(0, 6).map(q => (
+                <li key={q.symbol}>
+                  <Link to="/chart/$symbol" params={{ symbol: q.symbol }} className="flex items-center justify-between py-1.5 hover:bg-accent/40 rounded px-1 gap-2">
+                    <div className="min-w-0">
+                      <div className="font-medium text-[13px] md:text-sm truncate">{q.symbol}</div>
+                      <div className="text-[10.5px] md:text-xs text-muted-foreground truncate">{q.shortName}</div>
+                    </div>
+                    <div className="text-right font-mono shrink-0">
+                      <div className="text-[12px] md:text-sm">{formatLocalPrice(q.symbol, q.price)}</div>
+                      <div className={colorForChange(q.changePercent) + " text-[10.5px] md:text-xs"}>{formatPct(q.changePercent)}</div>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         {/* Losers */}
-        <div className="panel p-4">
-          <div className="flex items-center gap-2 mb-3"><ArrowDownRight className="size-4 text-bear" /><h3 className="font-semibold">Top Losers</h3></div>
-          <ul className="divide-y divide-border">
-            {(movers.data?.losers ?? []).map(q => (
-              <li key={q.symbol}>
-                <Link to="/chart/$symbol" params={{ symbol: q.symbol }} className="flex items-center justify-between py-2 hover:bg-accent/40 rounded px-1">
-                  <div>
-                    <div className="font-medium">{q.symbol}</div>
-                    <div className="text-xs text-muted-foreground truncate max-w-[16ch]">{q.shortName}</div>
-                  </div>
-                  <div className="text-right font-mono">
-                    <div>{formatLocalPrice(q.symbol, q.price)}</div>
-                    <div className={colorForChange(q.changePercent) + " text-xs"}>{formatPct(q.changePercent)}</div>
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
+        <div className="panel p-3 md:p-4">
+          <div className="flex items-center gap-2 mb-2"><ArrowDownRight className="size-4 text-bear" /><h3 className="font-semibold text-[13.5px] md:text-base">Top Losers</h3></div>
+          {movers.isLoading ? (
+            <MobileSkeletonRows rows={4} />
+          ) : losers.length === 0 ? (
+            <MobileEmptyState icon={<TrendingUp className="size-5 rotate-180" />} title="No movers yet" hint="Data will load once the market feed updates." />
+          ) : (
+            <ul className="divide-y divide-border/60">
+              {losers.slice(0, 6).map(q => (
+                <li key={q.symbol}>
+                  <Link to="/chart/$symbol" params={{ symbol: q.symbol }} className="flex items-center justify-between py-1.5 hover:bg-accent/40 rounded px-1 gap-2">
+                    <div className="min-w-0">
+                      <div className="font-medium text-[13px] md:text-sm truncate">{q.symbol}</div>
+                      <div className="text-[10.5px] md:text-xs text-muted-foreground truncate">{q.shortName}</div>
+                    </div>
+                    <div className="text-right font-mono shrink-0">
+                      <div className="text-[12px] md:text-sm">{formatLocalPrice(q.symbol, q.price)}</div>
+                      <div className={colorForChange(q.changePercent) + " text-[10.5px] md:text-xs"}>{formatPct(q.changePercent)}</div>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
-        {/* News */}
-        <div className="panel p-4">
-          <div className="flex items-center gap-2 mb-3"><Newspaper className="size-4 text-primary" /><h3 className="font-semibold">Latest News</h3></div>
-          <ul className="space-y-3">
-            {(news.data ?? []).slice(0, 6).map((n: any, i: number) => (
-              <li key={i}>
-                <a href={n.link} target="_blank" rel="noreferrer" className="block hover:opacity-80">
-                  <div className="text-sm leading-snug line-clamp-2">{n.title}</div>
-                  <div className="text-xs text-muted-foreground mt-1">{n.publisher}</div>
-                </a>
-              </li>
-            ))}
-          </ul>
+        {/* News — full width on mobile (spans 2 cols), single col at lg */}
+        <div className="panel p-3 md:p-4 col-span-2 lg:col-span-1">
+          <div className="flex items-center gap-2 mb-2"><Newspaper className="size-4 text-primary" /><h3 className="font-semibold text-[13.5px] md:text-base">Latest News</h3></div>
+          {news.isLoading ? (
+            <MobileSkeletonRows rows={4} height={32} />
+          ) : newsItems.length === 0 ? (
+            <MobileEmptyState icon={<Newspaper className="size-5" />} title="No news yet" />
+          ) : (
+            <ul className="space-y-2.5">
+              {newsItems.slice(0, 6).map((n: any, i: number) => (
+                <li key={i}>
+                  <a href={n.link} target="_blank" rel="noreferrer" className="block hover:opacity-80">
+                    <div className="text-[12.5px] md:text-sm leading-snug line-clamp-2">{n.title}</div>
+                    <div className="text-[10.5px] md:text-xs text-muted-foreground mt-0.5">{n.publisher}</div>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
 
       {/* Heatmap mini */}
-      <div className="panel p-4">
-        <h3 className="font-semibold mb-3">Market Heatmap</h3>
-        <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-10 gap-1.5">
-          {(movers.data?.all ?? []).map(q => {
-            const pct = q.changePercent ?? 0;
-            const intensity = Math.min(1, Math.abs(pct) / 5);
-            const bg = pct >= 0
-              ? `oklch(0.74 0.18 150 / ${0.15 + intensity * 0.55})`
-              : `oklch(0.65 0.23 27 / ${0.15 + intensity * 0.55})`;
-            return (
-              <Link key={q.symbol} to="/chart/$symbol" params={{ symbol: q.symbol }}
-                    style={{ backgroundColor: bg }}
-                    className="rounded p-2 text-xs hover:ring-1 hover:ring-primary transition">
-                <div className="font-semibold">{q.symbol}</div>
-                <div className="font-mono">{formatPct(pct)}</div>
-                <div className="text-[10px] opacity-70 font-mono">{formatCompact(q.marketCap ?? undefined)}</div>
-              </Link>
-            );
-          })}
-        </div>
+      <div className="panel p-3 md:p-4">
+        <h3 className="font-semibold text-[13.5px] md:text-base mb-2 md:mb-3">Market Heatmap</h3>
+        {(movers.data?.all ?? []).length === 0 ? (
+          <MobileEmptyState title="Heatmap data unavailable" hint="Awaiting market feed." />
+        ) : (
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-10 gap-1.5">
+            {(movers.data?.all ?? []).map(q => {
+              const pct = q.changePercent ?? 0;
+              const intensity = Math.min(1, Math.abs(pct) / 5);
+              const bg = pct >= 0
+                ? `oklch(0.74 0.18 150 / ${0.15 + intensity * 0.55})`
+                : `oklch(0.65 0.23 27 / ${0.15 + intensity * 0.55})`;
+              return (
+                <Link key={q.symbol} to="/chart/$symbol" params={{ symbol: q.symbol }}
+                      style={{ backgroundColor: bg }}
+                      className="rounded-md p-1.5 md:p-2 text-[10.5px] md:text-xs hover:ring-1 hover:ring-primary transition">
+                  <div className="font-semibold truncate">{q.symbol.replace(".JK", "")}</div>
+                  <div className="font-mono">{formatPct(pct)}</div>
+                  <div className="text-[9.5px] md:text-[10px] opacity-70 font-mono truncate">{formatCompact(q.marketCap ?? undefined)}</div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
