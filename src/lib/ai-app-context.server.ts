@@ -251,38 +251,140 @@ export async function getAIAppContext(userText: string) {
     const watch = decisions.filter((d: any) => d.candidate_classification === "watch" || d.decision_status === "watch_snapshot");
     const research = decisions.filter((d: any) => d.research_trade || d.candidate_classification === "research");
 
-    // Derive isAutoRunning + statusLabel from worker freshness, status, and automation flag.
+    // Derive isAutoRunning + statusLabel from worker freshness, status, automation flag,
+    // AND market session. Worker stale / market closed are NOT "Inactive".
     const activeStatuses = new Set(["active_market_open", "active", "running"]);
     const lwrTs = agent.last_worker_run_at ? new Date(agent.last_worker_run_at).getTime() : 0;
     const workerFreshMins = lwrTs ? (Date.now() - lwrTs) / 60000 : Infinity;
     const workerFresh = workerFreshMins <= 30;
     const workerOk = !agent.last_worker_status || agent.last_worker_status === "success" || agent.last_worker_status === "running";
     const isAutoRunning = Boolean(agent.automation_enabled && workerFresh && activeStatuses.has(agent.status) && workerOk);
+    const sessionNow = getIDXMarketSession();
+    const marketClosedNow = !sessionNow.isOpen;
+    const everRan = lwrTs > 0 || decisions.length > 0;
     let statusLabel: string;
-    if (isAutoRunning) statusLabel = "Auto Running";
-    else if (agent.automation_enabled && activeStatuses.has(agent.status) && !workerFresh) statusLabel = "Worker Stale";
+    if (isAutoRunning && !marketClosedNow) statusLabel = "Auto Running";
+    else if (isAutoRunning && marketClosedNow) statusLabel = "Market Closed";
     else if (agent.automation_enabled && agent.last_worker_status === "error") statusLabel = "Error";
+    else if (agent.automation_enabled && activeStatuses.has(agent.status) && !workerFresh && marketClosedNow && everRan) statusLabel = "Worker Idle";
+    else if (agent.automation_enabled && activeStatuses.has(agent.status) && !workerFresh) statusLabel = "Worker Stale";
     else if (agent.automation_enabled === false && activeStatuses.has(agent.status)) statusLabel = "Manual Only";
+    else if (agent.automation_enabled && !activeStatuses.has(agent.status) && everRan) statusLabel = "Paused";
+    else if (!everRan && agent.automation_enabled === false) statusLabel = "Inactive";
+    else if (!everRan) statusLabel = "Worker Not Started";
     else statusLabel = "Inactive";
 
     // Human-readable worker warning the AI must echo verbatim when relevant.
     let workerWarningMessage: string;
-    if (isAutoRunning) {
+    if (isAutoRunning && marketClosedNow) {
+      workerWarningMessage = "Agent tidak membuka order baru karena market closed.";
+    } else if (isAutoRunning) {
       workerWarningMessage = "Worker active — autonomous decisions run automatically.";
     } else if (agent.automation_enabled && !lwrTs) {
       workerWarningMessage = "Worker has not run yet. Configure scheduler to call /api/public/cron/ai-agent every 1 minute.";
+    } else if (statusLabel === "Worker Idle") {
+      workerWarningMessage = `Worker idle — market closed, last run ${Math.round(workerFreshMins)} min ago. Agent akan resume saat market open.`;
     } else if (agent.automation_enabled && !workerFresh) {
-      workerWarningMessage = `Worker stale — scheduler may not be calling /api/public/cron/ai-agent. Last run ${Math.round(workerFreshMins)} min ago.`;
+      workerWarningMessage = `Worker terakhir berjalan ${Math.round(workerFreshMins)} menit lalu, sehingga status saat ini Worker Stale.`;
     } else if (agent.automation_enabled && agent.last_worker_status === "error") {
       workerWarningMessage = `Worker error — ${agent.last_worker_message ?? "unknown error"}.`;
+    } else if (statusLabel === "Paused") {
+      workerWarningMessage = "Agent paused — automation enabled tetapi status bukan active.";
     } else {
       workerWarningMessage = "Automation disabled — AI Agent will not act autonomously.";
     }
+
+    // ---- Blocked reason priority resolver (Patch 3 + 4) ----
+    // Priority: latest decision blockedReason → replay snapshot final reason →
+    // risk guard result → fallback scanner → global data quality.
+    // Also normalize legacy `limit_reached` → `max_active_positions_reached`
+    // when activePositions >= max_active_positions.
+    const REASON_ALIAS: Record<string, string> = {
+      limit_reached: "max_active_positions_reached",
+      risk_limit_reached: "max_active_positions_reached",
+      exposure_cap_reached: "max_position_weight_reached",
+      low_liquidity: "liquidity_too_low",
+      insufficient_balance: "insufficient_cash",
+      risk_pause_active: "pause_active",
+      sector_exposure_limit: "max_sector_exposure_reached",
+    };
+    const REASON_LABEL: Record<string, string> = {
+      max_active_positions_reached: "Slot posisi penuh / max active positions reached",
+      max_position_weight_reached: "Bobot posisi melebihi limit",
+      max_sector_exposure_reached: "Eksposur sektor melebihi limit",
+      cash_buffer_required: "Cash buffer kurang",
+      insufficient_cash: "Cash tidak cukup",
+      confidence_below_threshold: "Confidence di bawah threshold",
+      strategy_incompatible_with_regime: "Strategi tidak cocok dengan regime",
+      risk_reward_invalid: "Risk/Reward tidak valid",
+      lot_below_minimum: "Lot di bawah minimum",
+      market_closed: "Pasar tutup",
+      data_quality_stale: "Data tidak fresh",
+      source_health_degraded: "Source health degraded",
+      negative_disclosure_detected: "Disclosure negatif",
+      news_shock_risk: "News shock risk",
+      liquidity_too_low: "Likuiditas terlalu rendah",
+      volatility_too_high: "Volatilitas terlalu tinggi",
+      daily_loss_limit_reached: "Daily loss limit tercapai",
+      drawdown_limit_reached: "Drawdown limit tercapai",
+      max_losses_per_day_reached: "Loss harian limit tercapai",
+      consecutive_losses_limit: "Loss beruntun limit tercapai",
+      pause_active: "Risk pause aktif",
+      cooldown_active: "Cooldown aktif",
+      risk_guard_blocked: "Risk guard memblokir",
+    };
+    const activePositions = openPositions.length;
+    const maxActive = Number((agent as any).max_active_positions ?? 0);
+    const normalizeReason = (raw?: string | null): string | null => {
+      if (!raw) return null;
+      let key = REASON_ALIAS[raw] ?? raw;
+      if (raw === "limit_reached" && maxActive > 0 && activePositions < maxActive) {
+        // Generic limit but slots NOT full — leave as-is so it's not misleading.
+        key = "risk_guard_blocked";
+      }
+      return key;
+    };
+    const latestBlocked = blocked[0] ?? null;
+    const latestReplaySnap = (decisions[0] as any)?.decision_replay_snapshot ?? null;
+    const replayReason = latestReplaySnap?.finalDecision?.blockedReason
+      ?? latestReplaySnap?.finalDecision?.reason
+      ?? latestReplaySnap?.riskGuard?.reason
+      ?? null;
+    const candidateScannerReason = (() => {
+      const cand = (agentRes.ok ? agentRes.data.candidates : [])?.[0] as any;
+      return cand?.blocked_reason ?? cand?.rejection_reason ?? null;
+    })();
+    const rawPrimary =
+      (latestBlocked as any)?.calibration_reason
+      ?? (latestBlocked as any)?.selection_reason
+      ?? replayReason
+      ?? agent.last_blocked_reason
+      ?? candidateScannerReason
+      ?? null;
+    const canonicalPrimary = normalizeReason(rawPrimary);
+    const primarySource =
+      latestBlocked ? "latest_decision"
+      : replayReason ? "decision_replay"
+      : agent.last_blocked_reason ? "agent_state"
+      : candidateScannerReason ? "scanner"
+      : null;
+    const latestBlockedReasonPriority = canonicalPrimary ? {
+      raw: rawPrimary,
+      canonical: canonicalPrimary,
+      friendly: REASON_LABEL[canonicalPrimary] ?? canonicalPrimary.replace(/_/g, " "),
+      source: primarySource,
+      symbol: (latestBlocked as any)?.symbol ?? null,
+      at: (latestBlocked as any)?.created_at ?? null,
+      activePositions,
+      maxActivePositions: maxActive || null,
+      slotsFull: maxActive > 0 && activePositions >= maxActive,
+    } : null;
 
     aiTradeAgent = {
       status: agent.status,
       statusLabel,
       isAutoRunning,
+      marketClosed: marketClosedNow,
       workerWarningMessage,
       automationEnabled: agent.automation_enabled,
       workerFreshMinutesAgo: Number.isFinite(workerFreshMins) ? Math.round(workerFreshMins) : null,
@@ -294,6 +396,7 @@ export async function getAIAppContext(userText: string) {
       lastAutoDecisionAt: agent.last_auto_decision_at,
       lastAutoExecutionAt: agent.last_auto_execution_at,
       lastBlockedReason: agent.last_blocked_reason,
+      latestBlockedReasonPriority,
       workerStatus: agent.last_worker_status,
       workerMessage: agent.last_worker_message,
 
@@ -309,13 +412,23 @@ export async function getAIAppContext(userText: string) {
       recentExecutedBuys: executedBuys.slice(0, 10).map((d: any) => ({
         time: d.created_at, symbol: d.symbol, lot: d.suggested_lot, entry: d.entry_price, confidence: d.calibrated_confidence ?? d.confidence,
       })),
-      recentBlockedDecisions: blocked.slice(0, 10).map((d: any) => ({
-        time: d.created_at, symbol: d.symbol, blockedReason: d.calibration_reason || d.selection_reason || agent.last_blocked_reason,
-      })),
+      recentBlockedDecisions: blocked.slice(0, 10).map((d: any) => {
+        const raw = d.calibration_reason || d.selection_reason || agent.last_blocked_reason;
+        const canonical = normalizeReason(raw);
+        return {
+          time: d.created_at,
+          symbol: d.symbol,
+          blockedReason: raw,
+          canonicalReason: canonical,
+          friendlyReason: canonical ? (REASON_LABEL[canonical] ?? canonical.replace(/_/g, " ")) : null,
+        };
+      }),
       recentWatchSnapshots: watch.slice(0, 5).map((d: any) => ({ time: d.created_at, symbol: d.symbol })),
       recentResearchSnapshots: research.slice(0, 5).map((d: any) => ({ time: d.created_at, symbol: d.symbol })),
       whyNoBuySummary: executedBuys.length === 0
-        ? (agent.last_blocked_reason ?? blocked[0]?.calibration_reason ?? "No executed paper buys recently. Check market session, candidate scores, risk limits, and data freshness.")
+        ? (latestBlockedReasonPriority?.friendly
+            ?? agent.last_blocked_reason
+            ?? "No executed paper buys recently. Check market session, candidate scores, risk limits, and data freshness.")
         : null,
       performanceSummary: perf ? (() => {
         const tt = Number(perf.total_trades ?? 0);
