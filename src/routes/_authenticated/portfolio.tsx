@@ -390,10 +390,10 @@ function Portfolio() {
 
 function Stat({ label, value, sub, tone, title }: { label: string; value: string; sub?: string; tone?: "bull" | "bear"; title?: string }) {
   return (
-    <div className="panel p-4" title={title}>
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className={`font-mono text-xl md:text-2xl ${tone === "bull" ? "text-bull" : tone === "bear" ? "text-bear" : ""}`}>{value}</div>
-      {sub && <div className="text-[11px] text-muted-foreground mt-0.5 font-mono">{sub}</div>}
+    <div className="panel p-3 md:p-4" title={title}>
+      <div className="text-[10.5px] md:text-xs uppercase tracking-wider text-muted-foreground truncate">{label}</div>
+      <div className={`font-mono text-[17px] md:text-2xl leading-tight mt-0.5 ${tone === "bull" ? "text-bull" : tone === "bear" ? "text-bear" : ""}`}>{value}</div>
+      {sub && <div className="text-[10.5px] md:text-[11px] text-muted-foreground mt-0.5 font-mono truncate">{sub}</div>}
     </div>
   );
 }
@@ -401,12 +401,12 @@ function Stat({ label, value, sub, tone, title }: { label: string; value: string
 function RiskCard({ icon, label, value, tone, hint }: { icon: React.ReactNode; label: string; value: string; tone: "bull" | "bear" | "warn"; hint: string }) {
   const cls = tone === "bull" ? "text-bull" : tone === "bear" ? "text-bear" : "text-amber-400";
   return (
-    <div className="panel p-4">
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span className="flex items-center gap-1">{icon} {label}</span>
+    <div className="panel p-3 md:p-4">
+      <div className="flex items-center justify-between text-[10.5px] md:text-xs uppercase tracking-wider text-muted-foreground">
+        <span className="flex items-center gap-1 truncate">{icon} {label}</span>
       </div>
-      <div className={`font-mono text-xl mt-1 ${cls}`}>{value}</div>
-      <div className="text-[11px] text-muted-foreground mt-1">{hint}</div>
+      <div className={`font-mono text-[17px] md:text-xl mt-0.5 ${cls}`}>{value}</div>
+      <div className="text-[10.5px] md:text-[11px] text-muted-foreground mt-0.5 truncate">{hint}</div>
     </div>
   );
 }
