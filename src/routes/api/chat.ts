@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getAIAppContext } from "@/lib/ai-app-context.server";
+import { GLOBAL_FUNDAMENTAL_GUARD } from "@/lib/ai-fundamental-guard";
 
 // Extract IDX-style tickers (3-4 uppercase letters, optional .JK) from text.
 function extractTickers(text: string): string[] {
