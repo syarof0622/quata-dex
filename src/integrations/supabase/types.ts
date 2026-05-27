@@ -1225,6 +1225,75 @@ export type Database = {
           },
         ]
       }
+      corporate_actions: {
+        Row: {
+          action_type: string
+          amount: number | null
+          announcement_date: string | null
+          created_at: string
+          cum_date: string | null
+          currency: string | null
+          description: string | null
+          ex_date: string | null
+          id: string
+          impact_score: number
+          payment_date: string | null
+          ratio: string | null
+          raw_payload: Json | null
+          recording_date: string | null
+          source: string
+          source_url: string | null
+          status: string
+          symbol: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          action_type: string
+          amount?: number | null
+          announcement_date?: string | null
+          created_at?: string
+          cum_date?: string | null
+          currency?: string | null
+          description?: string | null
+          ex_date?: string | null
+          id?: string
+          impact_score?: number
+          payment_date?: string | null
+          ratio?: string | null
+          raw_payload?: Json | null
+          recording_date?: string | null
+          source: string
+          source_url?: string | null
+          status?: string
+          symbol: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          action_type?: string
+          amount?: number | null
+          announcement_date?: string | null
+          created_at?: string
+          cum_date?: string | null
+          currency?: string | null
+          description?: string | null
+          ex_date?: string | null
+          id?: string
+          impact_score?: number
+          payment_date?: string | null
+          ratio?: string | null
+          raw_payload?: Json | null
+          recording_date?: string | null
+          source?: string
+          source_url?: string | null
+          status?: string
+          symbol?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       data_quality_snapshots: {
         Row: {
           created_at: string
@@ -1273,6 +1342,216 @@ export type Database = {
           symbol?: string
           technical_quality?: string
           warnings?: Json
+        }
+        Relationships: []
+      }
+      fundamental_quality_scores: {
+        Row: {
+          as_of: string
+          completeness_score: number
+          confidence_score: number
+          consistency_score: number
+          created_at: string
+          freshness_score: number
+          id: string
+          missing_fields: Json
+          stale_fields: Json
+          status: string
+          symbol: string
+          updated_at: string
+          warnings: Json
+        }
+        Insert: {
+          as_of?: string
+          completeness_score?: number
+          confidence_score?: number
+          consistency_score?: number
+          created_at?: string
+          freshness_score?: number
+          id?: string
+          missing_fields?: Json
+          stale_fields?: Json
+          status?: string
+          symbol: string
+          updated_at?: string
+          warnings?: Json
+        }
+        Update: {
+          as_of?: string
+          completeness_score?: number
+          confidence_score?: number
+          consistency_score?: number
+          created_at?: string
+          freshness_score?: number
+          id?: string
+          missing_fields?: Json
+          stale_fields?: Json
+          status?: string
+          symbol?: string
+          updated_at?: string
+          warnings?: Json
+        }
+        Relationships: []
+      }
+      fundamental_signal_snapshots: {
+        Row: {
+          as_of: string
+          confidence: number
+          created_at: string
+          dividend_score: number
+          explanation: string | null
+          final_fundamental_label: string
+          growth_score: number
+          id: string
+          key_metrics: Json
+          profitability_score: number
+          quality_score: number
+          reasons: Json
+          solvency_score: number
+          symbol: string
+          undervalue_score: number
+          updated_at: string
+          valuation_status: string
+          value_trap_level: string
+          value_trap_reasons: Json
+          value_trap_risk: number
+          warnings: Json
+        }
+        Insert: {
+          as_of?: string
+          confidence?: number
+          created_at?: string
+          dividend_score?: number
+          explanation?: string | null
+          final_fundamental_label?: string
+          growth_score?: number
+          id?: string
+          key_metrics?: Json
+          profitability_score?: number
+          quality_score?: number
+          reasons?: Json
+          solvency_score?: number
+          symbol: string
+          undervalue_score?: number
+          updated_at?: string
+          valuation_status?: string
+          value_trap_level?: string
+          value_trap_reasons?: Json
+          value_trap_risk?: number
+          warnings?: Json
+        }
+        Update: {
+          as_of?: string
+          confidence?: number
+          created_at?: string
+          dividend_score?: number
+          explanation?: string | null
+          final_fundamental_label?: string
+          growth_score?: number
+          id?: string
+          key_metrics?: Json
+          profitability_score?: number
+          quality_score?: number
+          reasons?: Json
+          solvency_score?: number
+          symbol?: string
+          undervalue_score?: number
+          updated_at?: string
+          valuation_status?: string
+          value_trap_level?: string
+          value_trap_reasons?: Json
+          value_trap_risk?: number
+          warnings?: Json
+        }
+        Relationships: []
+      }
+      fundamental_snapshots: {
+        Row: {
+          book_value_per_share: number | null
+          capex: number | null
+          cash: number | null
+          created_at: string
+          currency: string
+          eps: number | null
+          fiscal_quarter: number | null
+          fiscal_year: number
+          free_cashflow: number | null
+          gross_profit: number | null
+          id: string
+          net_income: number | null
+          operating_cashflow: number | null
+          operating_profit: number | null
+          period: string
+          raw_payload: Json | null
+          report_date: string | null
+          revenue: number | null
+          shares_outstanding: number | null
+          source: string
+          source_url: string | null
+          symbol: string
+          total_assets: number | null
+          total_debt: number | null
+          total_equity: number | null
+          total_liabilities: number | null
+          updated_at: string
+        }
+        Insert: {
+          book_value_per_share?: number | null
+          capex?: number | null
+          cash?: number | null
+          created_at?: string
+          currency?: string
+          eps?: number | null
+          fiscal_quarter?: number | null
+          fiscal_year: number
+          free_cashflow?: number | null
+          gross_profit?: number | null
+          id?: string
+          net_income?: number | null
+          operating_cashflow?: number | null
+          operating_profit?: number | null
+          period: string
+          raw_payload?: Json | null
+          report_date?: string | null
+          revenue?: number | null
+          shares_outstanding?: number | null
+          source: string
+          source_url?: string | null
+          symbol: string
+          total_assets?: number | null
+          total_debt?: number | null
+          total_equity?: number | null
+          total_liabilities?: number | null
+          updated_at?: string
+        }
+        Update: {
+          book_value_per_share?: number | null
+          capex?: number | null
+          cash?: number | null
+          created_at?: string
+          currency?: string
+          eps?: number | null
+          fiscal_quarter?: number | null
+          fiscal_year?: number
+          free_cashflow?: number | null
+          gross_profit?: number | null
+          id?: string
+          net_income?: number | null
+          operating_cashflow?: number | null
+          operating_profit?: number | null
+          period?: string
+          raw_payload?: Json | null
+          report_date?: string | null
+          revenue?: number | null
+          shares_outstanding?: number | null
+          source?: string
+          source_url?: string | null
+          symbol?: string
+          total_assets?: number | null
+          total_debt?: number | null
+          total_equity?: number | null
+          total_liabilities?: number | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1603,47 +1882,68 @@ export type Database = {
       official_disclosures: {
         Row: {
           created_at: string
+          directness: string | null
           disclosure_type: string
+          duplicate_cluster_id: string | null
           extracted_summary: string | null
           id: string
           impact_level: string
+          impact_score: number
+          news_article_id: string | null
+          official_disclosure_linked: boolean
           published_at: string
           raw_payload: Json | null
           risk_flag: string | null
           sentiment: string
           source: string
+          source_priority: number
           symbol: string
           title: string
+          trading_relevance: string | null
           url: string | null
         }
         Insert: {
           created_at?: string
+          directness?: string | null
           disclosure_type: string
+          duplicate_cluster_id?: string | null
           extracted_summary?: string | null
           id?: string
           impact_level?: string
+          impact_score?: number
+          news_article_id?: string | null
+          official_disclosure_linked?: boolean
           published_at?: string
           raw_payload?: Json | null
           risk_flag?: string | null
           sentiment?: string
           source: string
+          source_priority?: number
           symbol: string
           title: string
+          trading_relevance?: string | null
           url?: string | null
         }
         Update: {
           created_at?: string
+          directness?: string | null
           disclosure_type?: string
+          duplicate_cluster_id?: string | null
           extracted_summary?: string | null
           id?: string
           impact_level?: string
+          impact_score?: number
+          news_article_id?: string | null
+          official_disclosure_linked?: boolean
           published_at?: string
           raw_payload?: Json | null
           risk_flag?: string | null
           sentiment?: string
           source?: string
+          source_priority?: number
           symbol?: string
           title?: string
+          trading_relevance?: string | null
           url?: string | null
         }
         Relationships: []
@@ -1988,44 +2288,107 @@ export type Database = {
         }
         Relationships: []
       }
+      regulatory_events: {
+        Row: {
+          created_at: string
+          description: string | null
+          event_type: string
+          id: string
+          impact_score: number
+          published_at: string
+          raw_payload: Json | null
+          severity: string
+          source: string
+          source_url: string | null
+          status: string
+          symbol: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          event_type: string
+          id?: string
+          impact_score?: number
+          published_at?: string
+          raw_payload?: Json | null
+          severity?: string
+          source: string
+          source_url?: string | null
+          status?: string
+          symbol: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          event_type?: string
+          id?: string
+          impact_score?: number
+          published_at?: string
+          raw_payload?: Json | null
+          severity?: string
+          source?: string
+          source_url?: string | null
+          status?: string
+          symbol?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sector_fundamental_benchmarks: {
         Row: {
+          as_of: string
           benchmark_confidence: string
+          created_at: string
           id: string
           median_der: number | null
           median_dividend_yield: number | null
+          median_eps_growth_yoy: number | null
           median_pbv: number | null
           median_per: number | null
           median_profit_growth: number | null
           median_revenue_growth: number | null
+          median_revenue_growth_yoy: number | null
           median_roe: number | null
           sample_size: number
           sector: string
           updated_at: string
         }
         Insert: {
+          as_of?: string
           benchmark_confidence?: string
+          created_at?: string
           id?: string
           median_der?: number | null
           median_dividend_yield?: number | null
+          median_eps_growth_yoy?: number | null
           median_pbv?: number | null
           median_per?: number | null
           median_profit_growth?: number | null
           median_revenue_growth?: number | null
+          median_revenue_growth_yoy?: number | null
           median_roe?: number | null
           sample_size?: number
           sector: string
           updated_at?: string
         }
         Update: {
+          as_of?: string
           benchmark_confidence?: string
+          created_at?: string
           id?: string
           median_der?: number | null
           median_dividend_yield?: number | null
+          median_eps_growth_yoy?: number | null
           median_pbv?: number | null
           median_per?: number | null
           median_profit_growth?: number | null
           median_revenue_growth?: number | null
+          median_revenue_growth_yoy?: number | null
           median_roe?: number | null
           sample_size?: number
           sector?: string
@@ -2599,6 +2962,99 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      valuation_metrics: {
+        Row: {
+          as_of: string
+          book_value_growth_yoy: number | null
+          created_at: string
+          current_ratio: number | null
+          debt_to_assets: number | null
+          der: number | null
+          dividend_yield: number | null
+          eps_growth_yoy: number | null
+          ev_ebitda: number | null
+          fcf_yield: number | null
+          gpm: number | null
+          id: string
+          market_cap: number | null
+          net_income_growth_yoy: number | null
+          npm: number | null
+          opm: number | null
+          payout_ratio: number | null
+          pbv: number | null
+          per: number | null
+          price: number | null
+          ps: number | null
+          quick_ratio: number | null
+          revenue_growth_yoy: number | null
+          roa: number | null
+          roe: number | null
+          source: string
+          symbol: string
+          updated_at: string
+        }
+        Insert: {
+          as_of?: string
+          book_value_growth_yoy?: number | null
+          created_at?: string
+          current_ratio?: number | null
+          debt_to_assets?: number | null
+          der?: number | null
+          dividend_yield?: number | null
+          eps_growth_yoy?: number | null
+          ev_ebitda?: number | null
+          fcf_yield?: number | null
+          gpm?: number | null
+          id?: string
+          market_cap?: number | null
+          net_income_growth_yoy?: number | null
+          npm?: number | null
+          opm?: number | null
+          payout_ratio?: number | null
+          pbv?: number | null
+          per?: number | null
+          price?: number | null
+          ps?: number | null
+          quick_ratio?: number | null
+          revenue_growth_yoy?: number | null
+          roa?: number | null
+          roe?: number | null
+          source: string
+          symbol: string
+          updated_at?: string
+        }
+        Update: {
+          as_of?: string
+          book_value_growth_yoy?: number | null
+          created_at?: string
+          current_ratio?: number | null
+          debt_to_assets?: number | null
+          der?: number | null
+          dividend_yield?: number | null
+          eps_growth_yoy?: number | null
+          ev_ebitda?: number | null
+          fcf_yield?: number | null
+          gpm?: number | null
+          id?: string
+          market_cap?: number | null
+          net_income_growth_yoy?: number | null
+          npm?: number | null
+          opm?: number | null
+          payout_ratio?: number | null
+          pbv?: number | null
+          per?: number | null
+          price?: number | null
+          ps?: number | null
+          quick_ratio?: number | null
+          revenue_growth_yoy?: number | null
+          roa?: number | null
+          roe?: number | null
+          source?: string
+          symbol?: string
+          updated_at?: string
         }
         Relationships: []
       }
