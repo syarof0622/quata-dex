@@ -1,7 +1,5 @@
-// Shared guard for /api/public/cron/* endpoints. Closes the previous
-// fall-through behavior (when CRON_SECRET was missing, anyone could hit
-// the endpoint). Now: if CRON_SECRET is unset → 503; if set and not
-// matched → 401.
+// Shared guard for /api/public/cron/* endpoints. Accepts the secret via
+// `x-cron-secret` header, `Authorization: Bearer <secret>`, or `?secret=` query.
 export function checkCronSecret(request: Request): Response | null {
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret) {
@@ -14,12 +12,21 @@ export function checkCronSecret(request: Request): Response | null {
       { status: 503, headers: { "Content-Type": "application/json" } },
     );
   }
+  const authHeader = request.headers.get("authorization") ?? "";
+  const bearer = authHeader.toLowerCase().startsWith("bearer ")
+    ? authHeader.slice(7).trim()
+    : null;
   const provided =
     request.headers.get("x-cron-secret") ??
+    bearer ??
     new URL(request.url).searchParams.get("secret");
   if (provided !== cronSecret) {
     return new Response(
-      JSON.stringify({ ok: false, error: "unauthorized", reason: "cron_secret_mismatch" }),
+      JSON.stringify({
+        ok: false,
+        error: "unauthorized_cron",
+        message: "Missing or invalid x-cron-secret header.",
+      }),
       { status: 401, headers: { "Content-Type": "application/json" } },
     );
   }

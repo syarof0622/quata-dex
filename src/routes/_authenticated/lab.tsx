@@ -17,6 +17,7 @@ import { Sparkles, X, Bot, Play, Pause, Square, AlertTriangle } from "lucide-rea
 import { JournalPanel } from "@/components/JournalPanel";
 import { ChatPanel } from "@/components/ChatPanel";
 import { startAgent, pauseAgent, stopAgent, emergencyStop, getAgentStatus, runAgentNow, updateAgentSymbols, listTradeMemory, setSelectionMode, runAutonomousScanNow, getLatestScan, setAutonomousRiskMode, backfillScanCandidateOutcomes, repairAITrainingEventLabels } from "@/lib/ai-trade-agent.functions";
+import { testAIAgentCronServer } from "@/lib/cron-test.functions";
 import { TickerSearch } from "@/components/TickerSearch";
 import { AiInsightsPanel } from "@/components/AiInsightsPanel";
 
@@ -584,20 +585,22 @@ function AutomationStatusPanel({ agent, session }: { agent: any; session: any })
 
   const testCron = async () => {
     try {
-      const res = await fetch(cronUrl, { method: "GET" });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        toast.error(`Cron returned ${res.status}: ${j?.error ?? j?.reason ?? "failed"}`);
-        if (j?.error === "cron_secret_not_configured") {
-          toast.info("Set CRON_SECRET in project secrets, then schedule the cron with that secret in the x-cron-secret header.");
-        } else if (j?.error === "unauthorized") {
-          toast.info("Endpoint reachable but rejected — supply x-cron-secret header from your scheduler.");
+      const j = await testAIAgentCronServer();
+      if (!j.ok) {
+        if (j.status === 401) {
+          toast.error("Cron returned 401: missing/invalid x-cron-secret");
+          toast.info("Cron endpoint reachable, but request was rejected because x-cron-secret is missing or invalid. Your scheduler must send header: x-cron-secret");
+        } else if (j.error === "cron_secret_not_configured") {
+          toast.error("CRON_SECRET not set");
+          toast.info("Add CRON_SECRET in project secrets, then schedule the cron with that secret in the x-cron-secret header.");
+        } else {
+          toast.error(`Cron failed (${j.status}): ${j.message ?? j.error}`);
         }
       } else {
-        toast.success(`Cron OK — ${j?.message ?? "worker pinged"}`);
+        toast.success(`Cron OK — decisions=${j.decisions} executed=${j.executed} blocked=${j.blocked}`);
       }
     } catch (e: any) {
-      toast.error(`Cron unreachable: ${e?.message ?? "network error"}`);
+      toast.error(`Test cron error: ${e?.message ?? "unknown"}`);
     }
   };
 
@@ -633,6 +636,11 @@ function AutomationStatusPanel({ agent, session }: { agent: any; session: any })
       <div className="flex flex-wrap gap-2 pt-1">
         <Button size="sm" variant="outline" onClick={testCron}>Test cron now</Button>
         <Button size="sm" variant="outline" onClick={copyCronUrl}>Copy cron URL</Button>
+      </div>
+      <div className="text-[11px] text-muted-foreground leading-relaxed border border-dashed rounded p-2 space-y-0.5">
+        <div><span className="font-semibold">Endpoint:</span> <code className="font-mono">{cronUrl}</code></div>
+        <div><span className="font-semibold">Required header:</span> <code className="font-mono">x-cron-secret: &lt;CRON_SECRET&gt;</code> (or <code className="font-mono">Authorization: Bearer &lt;CRON_SECRET&gt;</code>)</div>
+        <div>Schedule every 1 minute. Paper Trading only — no real-money execution.</div>
       </div>
       {workerStale && (
         <div className="text-[11px] text-amber-600 dark:text-amber-400 leading-relaxed border border-amber-500/30 bg-amber-500/5 rounded p-2">
