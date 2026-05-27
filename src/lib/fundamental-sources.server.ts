@@ -470,7 +470,7 @@ export async function upsertValuationMetrics(v: RawValuationMetrics) {
         operating_cashflow_margin: v.operating_cashflow_margin,
         payout_ratio: v.payout_ratio,
         calculation_method: v.calculation_method,
-        raw_payload: v.raw_payload,
+        raw_payload: v.raw_payload as any,
         as_of: new Date().toISOString(),
       },
       { onConflict: "symbol,as_of,source" }
