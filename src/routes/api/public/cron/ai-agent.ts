@@ -83,10 +83,13 @@ async function handler(request: Request) {
       const lastBlockedReason = reasons[0] ?? null;
 
       const nowIso = new Date().toISOString();
+      const workerMessage = !session.isOpen
+        ? `Worker active — market ${session.isBreak ? "break" : "closed"}, no new paper order.`
+        : `Worker active — decisions=${decisions.length} executed=${executedCount} blocked=${blocked.length}.`;
       const patch: any = {
         last_worker_run_at: nowIso,
         last_worker_status: "success",
-        last_worker_message: `decisions=${decisions.length} executed=${executedCount} blocked=${blocked.length} session=${session.state}`,
+        last_worker_message: workerMessage,
         next_expected_worker_run_at: new Date(Date.now() + 60_000).toISOString(),
         worker_error_count: 0,
         last_blocked_reason: lastBlockedReason,
