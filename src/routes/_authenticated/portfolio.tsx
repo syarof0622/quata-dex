@@ -124,7 +124,7 @@ function Portfolio() {
       )}
 
       {/* Row 1: P&L / equity stats */}
-      <div className="grid md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5 md:gap-3">
         <Stat label="Equity" value={money(equity)} title="Cash + holdings (mark-to-market)" />
         <Stat label="Cash" value={money(num(d.cash))} />
         <Stat label="Market Value" value={hasPositions ? money(num(d.totalValue)) : "—"} title="Current value of holdings" />
