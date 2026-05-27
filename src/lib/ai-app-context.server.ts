@@ -682,21 +682,44 @@ export async function getAIAppContext(userText: string) {
   } : { error: marketSafe.error };
 
   // ---------- DATA QUALITY & SOURCE HEALTH ----------
+  // Patch 2: distinguish Data Freshness (Fresh/Partial/Stale label shown in
+  // header) from Execution Quality Score (numeric 0–100 used as the AI Agent
+  // execution gate). The two are independent — fresh data can still fail the
+  // execution score threshold.
   const dqRes = await safe("dq", async () => {
     const { data } = await supabaseAdmin
       .from("data_quality_snapshots").select("*").order("created_at", { ascending: false }).limit(5);
     return data ?? [];
   });
-  const dataQuality: any = dqRes.ok && dqRes.data.length ? {
-    overallScore: dqRes.data[0].overall_data_quality_score,
-    priceFreshness: dqRes.data[0].price_quality,
-    technicalFreshness: dqRes.data[0].technical_quality,
-    newsFreshness: dqRes.data[0].news_quality,
-    sentimentFreshness: dqRes.data[0].sentiment_quality,
-    fundamentalFreshness: dqRes.data[0].fundamental_quality,
-    disclosureFreshness: dqRes.data[0].disclosure_quality,
-    warnings: dqRes.data[0].warnings,
-  } : { status: "unavailable", error: dqRes.ok ? null : dqRes.error };
+  const dataQuality: any = dqRes.ok && dqRes.data.length ? (() => {
+    const top = dqRes.data[0];
+    const score = Number(top.overall_data_quality_score ?? 0);
+    const freshLevels = new Set(["fresh", "available"]);
+    const partialLevels = new Set(["moderate", "partial"]);
+    const fields = [top.price_quality, top.technical_quality, top.news_quality, top.sentiment_quality];
+    const freshCount = fields.filter((f: string) => freshLevels.has(f)).length;
+    const partialCount = fields.filter((f: string) => partialLevels.has(f)).length;
+    let dataFreshnessStatus: "Fresh" | "Partial" | "Stale" | "Unavailable" = "Unavailable";
+    if (freshCount >= 3) dataFreshnessStatus = "Fresh";
+    else if (freshCount + partialCount >= 2) dataFreshnessStatus = "Partial";
+    else if (freshCount + partialCount >= 1) dataFreshnessStatus = "Stale";
+    const MIN_EXECUTION_SCORE = 70;
+    return {
+      overallScore: top.overall_data_quality_score,
+      dataFreshnessStatus,
+      executionQualityScore: score,
+      minExecutionScore: MIN_EXECUTION_SCORE,
+      executionEligible: score >= MIN_EXECUTION_SCORE,
+      priceFreshness: top.price_quality,
+      technicalFreshness: top.technical_quality,
+      newsFreshness: top.news_quality,
+      sentimentFreshness: top.sentiment_quality,
+      fundamentalFreshness: top.fundamental_quality,
+      disclosureFreshness: top.disclosure_quality,
+      warnings: top.warnings,
+      note: "dataFreshnessStatus describes data recency; executionQualityScore (0-100) is the AI execution gate. Both can disagree — fresh data may still score below minExecutionScore.",
+    };
+  })() : { status: "unavailable", dataFreshnessStatus: "Unavailable", executionQualityScore: null, error: dqRes.ok ? null : dqRes.error };
 
   const shRes = await safe("sourceHealth", async () => {
     const { data } = await supabaseAdmin
