@@ -1,13 +1,29 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowUpRight, Bot, LineChart, Newspaper, Shield, Sparkles, TrendingUp, ArrowRight } from "lucide-react";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  Bot,
+  LineChart,
+  Newspaper,
+  Shield,
+  Sparkles,
+  TrendingUp,
+  Activity,
+  Layers,
+  Gauge,
+  History,
+  ShieldCheck,
+  Database,
+  CircleDot,
+} from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Quanta Terminal — AI Stock Research for Smarter Paper Trading" },
-      { name: "description", content: "AI-powered stock research terminal: market, news, sentiment, portfolio, risk, and paper trading in one transparent, auditable dashboard." },
+      { title: "Quanta Terminal — AI Stock Research Terminal for Smarter Paper Trading" },
+      { name: "description", content: "AI-powered IDX stock research terminal: market pulse, news sentiment, portfolio risk, strategy intelligence, and autonomous paper trading in one transparent, auditable dashboard." },
       { property: "og:title", content: "Quanta Terminal — AI Stock Research Terminal" },
-      { property: "og:description", content: "Analisis market, berita, sentimen, portfolio, risk, dan paper trading dalam satu dashboard AI yang transparan dan bisa diaudit." },
+      { property: "og:description", content: "Research smarter. Trade safer in simulation. Paper trading only — no real-money execution." },
     ],
   }),
   component: Landing,
@@ -17,20 +33,23 @@ export const Route = createFileRoute("/")({
 // The authenticated dashboard keeps its dark institutional theme.
 const C = {
   bg: "#f6f2ea",
+  bg2: "#efeae1",
   surface: "#ffffff",
   surfaceMuted: "#fbf8f2",
-  border: "#e5dfd3",
+  border: "#ded8ce",
   borderSoft: "#ece6d8",
-  ink: "#15140f",
-  inkSoft: "#3a372f",
-  muted: "#7a7468",
-  accent: "#15140f",
+  ink: "#0b0b0a",
+  inkSoft: "#2a2822",
+  muted: "#6f6a61",
+  green: "#00c896",
+  amber: "#d99a00",
+  red: "#d8553f",
 };
 
 function Landing() {
   return (
     <div
-      className="min-h-screen w-full"
+      className="min-h-screen w-full relative overflow-x-hidden"
       style={{
         background: C.bg,
         color: C.ink,
@@ -38,421 +57,720 @@ function Landing() {
           'ui-sans-serif, -apple-system, "Inter", "Helvetica Neue", system-ui, sans-serif',
       }}
     >
-      {/* Dotted grid background */}
+      {/* Layer 1: dotted grid full viewport */}
       <div
         aria-hidden
-        className="fixed inset-0 pointer-events-none"
+        className="fixed inset-0 pointer-events-none z-0"
         style={{
-          backgroundImage: `radial-gradient(${C.border} 1px, transparent 1px)`,
+          backgroundImage:
+            "radial-gradient(circle, rgba(0,0,0,0.08) 1px, transparent 1px)",
           backgroundSize: "22px 22px",
-          maskImage:
-            "radial-gradient(ellipse 90% 70% at 50% 30%, black 40%, transparent 100%)",
-          WebkitMaskImage:
-            "radial-gradient(ellipse 90% 70% at 50% 30%, black 40%, transparent 100%)",
-          opacity: 0.55,
+        }}
+      />
+      {/* Layer 2: hero radial glow */}
+      <div
+        aria-hidden
+        className="absolute pointer-events-none z-0"
+        style={{
+          top: "-200px",
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: "1400px",
+          height: "900px",
+          background:
+            "radial-gradient(ellipse at center, rgba(255,255,255,0.95) 0%, rgba(246,242,234,0.5) 40%, transparent 70%)",
+          filter: "blur(20px)",
+        }}
+      />
+      {/* Layer 3: soft vignette */}
+      <div
+        aria-hidden
+        className="fixed inset-0 pointer-events-none z-0"
+        style={{
+          background:
+            "radial-gradient(ellipse 120% 80% at 50% 40%, transparent 50%, rgba(0,0,0,0.04) 100%)",
+        }}
+      />
+      {/* Layer 4: subtle gradient fade top to bottom */}
+      <div
+        aria-hidden
+        className="fixed inset-0 pointer-events-none z-0"
+        style={{
+          background:
+            "linear-gradient(180deg, rgba(255,255,255,0.4) 0%, transparent 30%, transparent 80%, rgba(239,234,225,0.6) 100%)",
         }}
       />
 
-      <div className="relative mx-auto max-w-[1240px] px-4 sm:px-6 pt-4 pb-16">
-        {/* Rounded outer container */}
-        <div
-          className="rounded-[28px] overflow-hidden"
-          style={{
-            background: C.surfaceMuted,
-            border: `1px solid ${C.borderSoft}`,
-            boxShadow:
-              "0 1px 0 rgba(255,255,255,0.7) inset, 0 30px 60px -40px rgba(20,20,15,0.18)",
-          }}
-        >
-          {/* ============ NAVBAR ============ */}
-          <header className="flex items-center justify-between px-5 sm:px-8 h-16">
-            <Link to="/" className="flex items-center gap-2.5">
-              <div
-                className="size-7 rounded-[8px] grid place-items-center"
-                style={{ background: C.ink }}
-              >
-                <span className="text-[13px] font-bold" style={{ color: C.bg }}>Q</span>
-              </div>
-              <span className="text-[15px] font-semibold tracking-tight" style={{ color: C.ink }}>
-                Quanta<span style={{ color: C.muted }}>.Terminal</span>
-              </span>
-            </Link>
-
-            <nav className="hidden md:flex items-center gap-7 text-[13.5px]" style={{ color: C.inkSoft }}>
-              <a href="#features" className="hover:opacity-70 transition-opacity">Features</a>
-              <a href="#ai-agent" className="hover:opacity-70 transition-opacity">AI Agent</a>
-              <a href="#paper-trading" className="hover:opacity-70 transition-opacity">Paper Trading</a>
-            </nav>
-
-            <div className="flex items-center gap-2">
-              <Link
-                to="/dashboard"
-                className="hidden sm:inline-flex text-[13.5px] px-3 py-2 rounded-full hover:opacity-70 transition-opacity"
-                style={{ color: C.inkSoft }}
-              >
-                Sign in
-              </Link>
-              <Link
-                to="/dashboard"
-                className="inline-flex items-center gap-1.5 text-[13.5px] font-medium px-4 py-2 rounded-full transition-transform hover:scale-[1.02]"
-                style={{ background: C.ink, color: C.bg }}
-              >
-                Get started
-                <ArrowRight className="size-3.5" />
-              </Link>
-            </div>
-          </header>
-
-          <div style={{ height: 1, background: C.borderSoft }} />
-
-          {/* ============ HERO ============ */}
-          <section className="px-5 sm:px-8 pt-16 sm:pt-24 pb-12 sm:pb-20 text-center">
-            <div
-              className="inline-flex items-center gap-2 text-[11.5px] uppercase tracking-[0.14em] px-3 py-1 rounded-full mb-8"
-              style={{ background: C.surface, border: `1px solid ${C.border}`, color: C.muted }}
-            >
-              <span
-                className="size-1.5 rounded-full inline-block"
-                style={{ background: "#16a34a", boxShadow: "0 0 0 3px rgba(22,163,74,0.18)" }}
-              />
-              Paper trading only — no real-money execution
-            </div>
-
-            <h1
-              className="mx-auto max-w-[920px] text-[40px] sm:text-[60px] lg:text-[76px] font-semibold tracking-[-0.035em]"
-              style={{ color: C.ink, lineHeight: 1.02 }}
-            >
-              AI Stock Research Terminal
-              <br />
-              <span style={{ color: C.muted }}>for Smarter Paper Trading</span>
-            </h1>
-
-            <p
-              className="mx-auto mt-6 max-w-[640px] text-[16px] sm:text-[17px]"
-              style={{ color: C.muted, lineHeight: 1.55 }}
-            >
-              Analisis market, berita, sentimen, portfolio, risk, dan paper trading
-              dalam satu dashboard AI yang transparan dan bisa diaudit.
-            </p>
-
-            <div className="mt-9 flex items-center justify-center gap-3 flex-wrap">
-              <Link
-                to="/dashboard"
-                className="inline-flex items-center gap-2 text-[14.5px] font-medium px-6 py-3 rounded-full transition-transform hover:scale-[1.02]"
-                style={{ background: C.ink, color: C.bg }}
-              >
-                Get started
-                <ArrowRight className="size-4" />
-              </Link>
-              <a
-                href="#mockup"
-                className="inline-flex items-center gap-2 text-[14.5px] font-medium px-6 py-3 rounded-full"
-                style={{
-                  background: C.surface,
-                  color: C.ink,
-                  border: `1px solid ${C.border}`,
-                }}
-              >
-                View demo
-                <ArrowUpRight className="size-4" />
-              </a>
-            </div>
-          </section>
-
-          {/* ============ PRODUCT MOCKUP ============ */}
-          <section id="mockup" className="px-3 sm:px-8 pb-16 sm:pb-24">
-            <div
-              className="mx-auto max-w-[1080px] rounded-[20px] overflow-hidden"
-              style={{
-                background: C.surface,
-                border: `1px solid ${C.border}`,
-                boxShadow:
-                  "0 1px 0 rgba(255,255,255,0.9) inset, 0 40px 80px -30px rgba(20,20,15,0.22), 0 8px 24px -12px rgba(20,20,15,0.10)",
-              }}
-            >
-              {/* Window chrome */}
-              <div
-                className="flex items-center gap-2 px-4 h-9"
-                style={{ background: C.surfaceMuted, borderBottom: `1px solid ${C.borderSoft}` }}
-              >
-                <span className="size-2.5 rounded-full" style={{ background: "#ff5f57" }} />
-                <span className="size-2.5 rounded-full" style={{ background: "#febc2e" }} />
-                <span className="size-2.5 rounded-full" style={{ background: "#28c840" }} />
-                <div
-                  className="ml-3 text-[11px] px-2.5 py-0.5 rounded-md font-mono"
-                  style={{ color: C.muted, background: C.surface, border: `1px solid ${C.borderSoft}` }}
-                >
-                  quanta.terminal / dashboard
-                </div>
-              </div>
-
-              {/* Dashboard preview */}
-              <div className="p-4 sm:p-6 grid grid-cols-12 gap-3 sm:gap-4" style={{ background: C.surface }}>
-                <MockCard className="col-span-12 md:col-span-7" title="AI Trade Agent" icon={<Bot className="size-3.5" />} badge={{ text: "AUTO RUNNING", tone: "bull" }}>
-                  <div className="flex items-end justify-between mb-3">
-                    <div>
-                      <div className="text-[11px]" style={{ color: C.muted }}>Equity Curve · WIB</div>
-                      <div className="text-[22px] font-semibold tracking-tight">Rp 12.847.500</div>
-                    </div>
-                    <div className="text-[12px] font-mono" style={{ color: "#16a34a" }}>+ 2.84%</div>
-                  </div>
-                  <Sparkline />
-                </MockCard>
-
-                <MockCard className="col-span-12 md:col-span-5" title="Portfolio Risk" icon={<Shield className="size-3.5" />}>
-                  <RiskBar label="Concentration" value={42} />
-                  <RiskBar label="Sector exposure" value={28} />
-                  <RiskBar label="Drawdown" value={11} tone="ok" />
-                  <RiskBar label="Liquidity" value={64} />
-                </MockCard>
-
-                <MockCard className="col-span-12 md:col-span-4" title="Market Pulse" icon={<TrendingUp className="size-3.5" />}>
-                  {[
-                    { sym: "BBCA", chg: "+1.24%", up: true },
-                    { sym: "BBRI", chg: "+0.62%", up: true },
-                    { sym: "TLKM", chg: "−0.31%", up: false },
-                    { sym: "BMRI", chg: "+0.94%", up: true },
-                  ].map((r) => (
-                    <div key={r.sym} className="flex items-center justify-between text-[12.5px] py-1">
-                      <span className="font-mono">{r.sym}.JK</span>
-                      <span className="font-mono" style={{ color: r.up ? "#16a34a" : "#dc2626" }}>{r.chg}</span>
-                    </div>
-                  ))}
-                </MockCard>
-
-                <MockCard className="col-span-12 md:col-span-4" title="News Sentiment" icon={<Newspaper className="size-3.5" />}>
-                  <SentimentDial />
-                  <div className="text-[11px] text-center mt-2" style={{ color: C.muted }}>
-                    24 articles · last 6h
-                  </div>
-                </MockCard>
-
-                <MockCard className="col-span-12 md:col-span-4" title="Strategy Intelligence" icon={<Sparkles className="size-3.5" />}>
-                  {[
-                    { name: "Momentum Breakout", wr: 68 },
-                    { name: "Mean Reversion", wr: 54 },
-                    { name: "Trend Follow EMA", wr: 61 },
-                  ].map((s) => (
-                    <div key={s.name} className="flex items-center justify-between text-[12.5px] py-1">
-                      <span style={{ color: C.inkSoft }}>{s.name}</span>
-                      <span className="font-mono" style={{ color: C.muted }}>{s.wr}% wr</span>
-                    </div>
-                  ))}
-                </MockCard>
-              </div>
-            </div>
-          </section>
-
-          {/* ============ FEATURE HIGHLIGHTS ============ */}
-          <section id="features" className="px-5 sm:px-8 pb-16 sm:pb-24">
-            <div className="max-w-[1080px] mx-auto">
-              <div className="mb-8 sm:mb-10 text-center">
-                <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: C.muted }}>
-                  Built for serious research
-                </div>
-                <h2 className="mt-3 text-[28px] sm:text-[36px] font-semibold tracking-[-0.02em]" style={{ color: C.ink }}>
-                  Everything you need in one workspace.
-                </h2>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                {FEATURES.map((f) => (
-                  <div
-                    key={f.title}
-                    id={f.id}
-                    className="p-5 rounded-[20px] transition-all hover:-translate-y-0.5"
-                    style={{
-                      background: C.surface,
-                      border: `1px solid ${C.border}`,
-                      boxShadow: "0 1px 0 rgba(255,255,255,0.9) inset",
-                    }}
-                  >
-                    <div
-                      className="size-9 rounded-[10px] grid place-items-center mb-4"
-                      style={{ background: C.bg, border: `1px solid ${C.borderSoft}` }}
-                    >
-                      <f.icon className="size-4" style={{ color: C.ink }} />
-                    </div>
-                    <h3 className="text-[15px] font-semibold tracking-tight" style={{ color: C.ink }}>
-                      {f.title}
-                    </h3>
-                    <p className="mt-1.5 text-[13.5px]" style={{ color: C.muted, lineHeight: 1.5 }}>
-                      {f.body}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          {/* ============ SAFETY / CTA STRIP ============ */}
-          <section className="px-5 sm:px-8 pb-12 sm:pb-16">
-            <div
-              className="max-w-[1080px] mx-auto rounded-[20px] p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5"
-              style={{ background: C.ink, color: C.bg }}
-            >
-              <div>
-                <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: "rgba(246,242,234,0.55)" }}>
-                  Paper trading only
-                </div>
-                <div className="mt-1.5 text-[18px] sm:text-[20px] font-medium tracking-tight">
-                  No real-money execution. All trades simulated for research.
-                </div>
-              </div>
-              <Link
-                to="/dashboard"
-                className="inline-flex items-center gap-2 text-[14px] font-medium px-5 py-2.5 rounded-full"
-                style={{ background: C.bg, color: C.ink }}
-              >
-                Open terminal
-                <ArrowRight className="size-4" />
-              </Link>
-            </div>
-          </section>
-
-          {/* ============ FOOTER ============ */}
-          <footer
-            className="px-5 sm:px-8 py-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-[12px]"
-            style={{ borderTop: `1px solid ${C.borderSoft}`, color: C.muted }}
-          >
-            <div>© {new Date().getFullYear()} Quanta Terminal — Educational platform. Not investment advice.</div>
-            <div className="flex items-center gap-4">
-              <a href="#features" className="hover:opacity-70">Features</a>
-              <a href="#ai-agent" className="hover:opacity-70">AI Agent</a>
-              <a href="#paper-trading" className="hover:opacity-70">Paper Trading</a>
-            </div>
-          </footer>
-        </div>
+      <div className="relative z-10">
+        <Nav />
+        <Hero />
+        <MockupSection />
+        <FeatureSection />
+        <AiAgentSection />
+        <RiskEngineSection />
+        <NewsSection />
+        <SafetySection />
+        <FinalCta />
+        <Footer />
       </div>
     </div>
   );
 }
 
-/* ---------------- helpers ---------------- */
-
-const FEATURES = [
-  {
-    id: "ai-agent",
-    icon: Bot,
-    title: "Autonomous AI Paper Trading",
-    body: "An always-on AI agent that scans, scores, and executes paper trades with auditable decision replays.",
-  },
-  {
-    id: "paper-trading",
-    icon: Shield,
-    title: "Portfolio Risk Analytics",
-    body: "Concentration, sector exposure, drawdown and liquidity guards before every simulated order.",
-  },
-  {
-    id: "news",
-    icon: Newspaper,
-    title: "News & Sentiment Intelligence",
-    body: "Real IDX news with sentiment scoring and freshness signals wired into the AI's reasoning.",
-  },
-  {
-    id: "backtest",
-    icon: LineChart,
-    title: "Strategy Backtest & Forward Test",
-    body: "Validate strategies on historical data, then forward-test live with paper capital.",
-  },
-];
-
-function MockCard({
-  className = "",
-  title,
-  icon,
-  badge,
-  children,
-}: {
-  className?: string;
-  title: string;
-  icon?: React.ReactNode;
-  badge?: { text: string; tone: "bull" | "bear" | "neutral" };
-  children: React.ReactNode;
-}) {
-  const toneColor =
-    badge?.tone === "bull" ? "#16a34a" : badge?.tone === "bear" ? "#dc2626" : C.muted;
+/* ---------------- Navbar ---------------- */
+function Nav() {
   return (
-    <div
-      className={`p-4 rounded-[14px] ${className}`}
-      style={{ background: C.surfaceMuted, border: `1px solid ${C.borderSoft}` }}
-    >
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-1.5 text-[11.5px] font-medium uppercase tracking-wider" style={{ color: C.muted }}>
-          {icon}
-          {title}
+    <header className="w-full">
+      <div
+        className="max-w-[1440px] mx-auto px-6 lg:px-10 flex items-center justify-between"
+        style={{ height: 68 }}
+      >
+        <Link to="/" className="flex items-center gap-2.5">
+          <div
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-[13px] font-bold"
+            style={{ background: C.ink, color: C.bg }}
+          >
+            Q
+          </div>
+          <span className="text-[15px] font-semibold tracking-tight">
+            Quanta<span style={{ color: C.muted }}>.Terminal</span>
+          </span>
+        </Link>
+
+        <nav className="hidden md:flex items-center gap-7 text-[13.5px]" style={{ color: C.inkSoft }}>
+          <a href="#features" className="hover:opacity-70 transition-opacity">Features</a>
+          <a href="#ai-agent" className="hover:opacity-70 transition-opacity">AI Agent</a>
+          <a href="#paper" className="hover:opacity-70 transition-opacity">Paper Trading</a>
+          <a href="#intelligence" className="hover:opacity-70 transition-opacity">Intelligence</a>
+          <a href="#risk" className="hover:opacity-70 transition-opacity">Risk Engine</a>
+        </nav>
+
+        <div className="flex items-center gap-3">
+          <Link to="/auth" className="hidden sm:inline text-[13.5px] hover:opacity-70" style={{ color: C.inkSoft }}>
+            Sign in
+          </Link>
+          <Link
+            to="/auth"
+            className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-medium transition-transform hover:scale-[1.02]"
+            style={{ background: C.ink, color: C.bg }}
+          >
+            Get started
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
         </div>
-        {badge && (
+      </div>
+      <div className="w-full" style={{ borderBottom: `1px solid ${C.borderSoft}` }} />
+    </header>
+  );
+}
+
+/* ---------------- Hero ---------------- */
+function Hero() {
+  return (
+    <section className="max-w-[1440px] mx-auto px-6 lg:px-10 pt-16 md:pt-24 pb-10 text-center">
+      <div className="max-w-[1100px] mx-auto">
+        {/* Badge */}
+        <div
+          className="inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[11px] font-medium tracking-[0.12em] uppercase"
+          style={{
+            background: C.surface,
+            border: `1px solid ${C.border}`,
+            color: C.inkSoft,
+          }}
+        >
           <span
-            className="text-[9.5px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
+            className="w-1.5 h-1.5 rounded-full"
+            style={{ background: C.green, boxShadow: `0 0 8px ${C.green}` }}
+          />
+          Paper Trading Only — No Real-Money Execution
+        </div>
+
+        {/* Headline */}
+        <h1
+          className="mt-7 font-semibold tracking-tight"
+          style={{
+            fontSize: "clamp(42px, 7.5vw, 88px)",
+            lineHeight: 1.02,
+            letterSpacing: "-0.035em",
+          }}
+        >
+          AI Stock Research Terminal
+          <br />
+          <span style={{ color: C.muted }}>for Smarter Paper Trading</span>
+        </h1>
+
+        {/* Subheadline */}
+        <p
+          className="mt-7 mx-auto text-[16px] md:text-[18px] leading-relaxed"
+          style={{ color: C.muted, maxWidth: 720 }}
+        >
+          Analyze market data, news, sentiment, portfolio risk, and paper trading decisions
+          inside one transparent AI research terminal — built for IDX research and simulation.
+        </p>
+
+        {/* CTAs */}
+        <div className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <Link
+            to="/auth"
+            className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-[14px] font-medium transition-transform hover:scale-[1.02]"
+            style={{ background: C.ink, color: C.bg }}
+          >
+            Get started
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+          <a
+            href="#mockup"
+            className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-[14px] font-medium"
             style={{
-              color: toneColor,
-              background: badge.tone === "bull" ? "rgba(22,163,74,0.10)" : "rgba(220,38,38,0.10)",
+              background: C.surface,
+              border: `1px solid ${C.border}`,
+              color: C.ink,
             }}
           >
-            {badge.text}
+            View demo
+            <ArrowUpRight className="w-4 h-4" />
+          </a>
+        </div>
+
+        {/* Trust line */}
+        <div className="mt-8 flex items-center justify-center gap-6 text-[12px]" style={{ color: C.muted }}>
+          <span className="inline-flex items-center gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5" /> No broker connection
           </span>
-        )}
+          <span className="hidden sm:inline-flex items-center gap-1.5">
+            <Database className="w-3.5 h-3.5" /> Auditable decisions
+          </span>
+          <span className="hidden md:inline-flex items-center gap-1.5">
+            <Activity className="w-3.5 h-3.5" /> IDX market focus
+          </span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------------- Dashboard Mockup ---------------- */
+function MockupSection() {
+  return (
+    <section id="mockup" className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 pb-24">
+      <div
+        className="mx-auto w-full overflow-hidden"
+        style={{
+          maxWidth: 1240,
+          borderRadius: 28,
+          background: C.surface,
+          border: `1px solid ${C.border}`,
+          boxShadow:
+            "0 1px 0 rgba(255,255,255,0.6) inset, 0 30px 80px -30px rgba(20,18,15,0.25), 0 8px 24px -12px rgba(20,18,15,0.1)",
+        }}
+      >
+        {/* Window chrome */}
+        <div
+          className="flex items-center gap-2 px-4 py-3"
+          style={{ borderBottom: `1px solid ${C.borderSoft}`, background: C.surfaceMuted }}
+        >
+          <div className="flex gap-1.5">
+            <span className="w-3 h-3 rounded-full" style={{ background: "#ff5f57" }} />
+            <span className="w-3 h-3 rounded-full" style={{ background: "#febc2e" }} />
+            <span className="w-3 h-3 rounded-full" style={{ background: "#28c840" }} />
+          </div>
+          <div
+            className="ml-4 text-[11px] font-medium px-3 py-1 rounded-md"
+            style={{ background: C.bg, color: C.muted, border: `1px solid ${C.borderSoft}` }}
+          >
+            quanta.terminal / dashboard
+          </div>
+        </div>
+
+        {/* Mockup body */}
+        <div className="p-4 sm:p-6 grid grid-cols-12 gap-4">
+          {/* Top row: 5 KPI cards */}
+          <MockCard title="AI Trade Agent" col="col-span-12 sm:col-span-6 lg:col-span-3 xl:col-span-3">
+            <div className="flex items-center gap-1.5 mb-2">
+              <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: C.green }} />
+              <span className="text-[10px] font-semibold tracking-wider uppercase" style={{ color: C.green }}>
+                Auto Running
+              </span>
+            </div>
+            <div className="text-[11px]" style={{ color: C.muted }}>Paper Trading Only</div>
+            <div className="text-[18px] font-semibold mt-2">5 decisions</div>
+            <div className="text-[10.5px] mt-0.5" style={{ color: C.muted }}>last decision 10:31 WIB</div>
+          </MockCard>
+
+          <MockCard title="Portfolio Risk" col="col-span-12 sm:col-span-6 lg:col-span-3">
+            <div className="grid grid-cols-2 gap-y-1.5 gap-x-3 text-[11px]">
+              <span style={{ color: C.muted }}>Equity</span>
+              <span className="text-right font-medium">Rp 102.4M</span>
+              <span style={{ color: C.muted }}>Cash buffer</span>
+              <span className="text-right font-medium">38%</span>
+              <span style={{ color: C.muted }}>Drawdown</span>
+              <span className="text-right font-medium" style={{ color: C.red }}>−2.1%</span>
+            </div>
+            <RiskBar label="Risk level" value={42} />
+          </MockCard>
+
+          <MockCard title="Market Pulse" col="col-span-12 sm:col-span-6 lg:col-span-3">
+            <div className="text-[11px] mb-1.5" style={{ color: C.muted }}>IDX Regime</div>
+            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium"
+              style={{ background: "#fff5e6", color: C.amber, border: `1px solid #f3e0bc` }}>
+              <CircleDot className="w-3 h-3" /> Neutral
+            </div>
+            <div className="mt-2.5 text-[11px]" style={{ color: C.muted }}>Breadth · 54% advancers</div>
+            <div className="mt-1 text-[11px]" style={{ color: C.muted }}>Rotation → Consumer, Bank</div>
+          </MockCard>
+
+          <MockCard title="News Sentiment" col="col-span-12 sm:col-span-6 lg:col-span-3">
+            <SentimentDial value={0.62} />
+            <div className="mt-2 text-[11px]" style={{ color: C.muted }}>3 high-impact today</div>
+            <div className="text-[11px]" style={{ color: C.muted }}>Source health · partial</div>
+          </MockCard>
+
+          {/* Bottom row */}
+          <MockCard title="Equity Curve" col="col-span-12 lg:col-span-5">
+            <Sparkline />
+            <div className="mt-2 flex items-center justify-between text-[11px]" style={{ color: C.muted }}>
+              <span>30D paper P/L</span>
+              <span style={{ color: C.green }} className="font-medium">+4.83%</span>
+            </div>
+          </MockCard>
+
+          <MockCard title="Strategy Intelligence" col="col-span-12 sm:col-span-6 lg:col-span-3">
+            <div className="text-[12px] font-medium">Momentum Mean-Revert</div>
+            <div className="text-[10.5px] mt-0.5" style={{ color: C.muted }}>fits Neutral regime</div>
+            <div className="grid grid-cols-2 gap-y-1 gap-x-3 mt-2 text-[11px]">
+              <span style={{ color: C.muted }}>Backtest</span>
+              <span className="text-right font-medium">+18.4%</span>
+              <span style={{ color: C.muted }}>Forward</span>
+              <span className="text-right font-medium">+6.1%</span>
+              <span style={{ color: C.muted }}>Sample</span>
+              <span className="text-right font-medium">good</span>
+            </div>
+          </MockCard>
+
+          <MockCard title="Decision Replay" col="col-span-12 sm:col-span-6 lg:col-span-4">
+            <DecisionRow ticker="CPIN.JK" intent="BUY" final="BLOCKED" reason="max active positions" tone="block" />
+            <DecisionRow ticker="JPFA.JK" intent="HOLD" final="HOLDING" reason="position open" tone="hold" />
+            <DecisionRow ticker="MAPI.JK" intent="WATCH" final="WATCH" reason="setup forming" tone="watch" />
+          </MockCard>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function MockCard({ title, col, children }: { title: string; col: string; children: React.ReactNode }) {
+  return (
+    <div
+      className={`${col} rounded-2xl p-4`}
+      style={{ background: C.surfaceMuted, border: `1px solid ${C.borderSoft}` }}
+    >
+      <div className="text-[10px] font-semibold tracking-[0.14em] uppercase mb-2" style={{ color: C.muted }}>
+        {title}
       </div>
       {children}
     </div>
   );
 }
 
-function Sparkline() {
-  // Static decorative path
-  const d =
-    "M0,42 L20,38 L40,40 L60,30 L80,33 L100,24 L120,28 L140,18 L160,22 L180,14 L200,16 L220,8 L240,12 L260,5";
+function RiskBar({ label, value }: { label: string; value: number }) {
   return (
-    <svg viewBox="0 0 260 50" className="w-full h-[60px]">
+    <div className="mt-2.5">
+      <div className="flex justify-between text-[10.5px] mb-1" style={{ color: C.muted }}>
+        <span>{label}</span>
+        <span>{value}%</span>
+      </div>
+      <div className="h-1.5 w-full rounded-full overflow-hidden" style={{ background: C.bg2 }}>
+        <div
+          className="h-full rounded-full"
+          style={{
+            width: `${value}%`,
+            background: `linear-gradient(90deg, ${C.green}, ${C.amber})`,
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function Sparkline() {
+  const pts = [38, 42, 36, 44, 41, 48, 45, 52, 49, 55, 51, 58, 56, 62, 60];
+  const w = 280, h = 60;
+  const max = Math.max(...pts), min = Math.min(...pts);
+  const d = pts
+    .map((p, i) => {
+      const x = (i / (pts.length - 1)) * w;
+      const y = h - ((p - min) / (max - min)) * h;
+      return `${i === 0 ? "M" : "L"} ${x.toFixed(1)} ${y.toFixed(1)}`;
+    })
+    .join(" ");
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-14">
       <defs>
-        <linearGradient id="sl" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#16a34a" stopOpacity="0.18" />
-          <stop offset="100%" stopColor="#16a34a" stopOpacity="0" />
+        <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={C.green} stopOpacity="0.25" />
+          <stop offset="100%" stopColor={C.green} stopOpacity="0" />
         </linearGradient>
       </defs>
-      <path d={`${d} L260,50 L0,50 Z`} fill="url(#sl)" />
-      <path d={d} fill="none" stroke="#16a34a" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" />
+      <path d={`${d} L ${w} ${h} L 0 ${h} Z`} fill="url(#sparkFill)" />
+      <path d={d} fill="none" stroke={C.green} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
-function RiskBar({ label, value, tone = "default" }: { label: string; value: number; tone?: "ok" | "default" }) {
-  const color = tone === "ok" ? "#16a34a" : value > 60 ? "#dc2626" : value > 35 ? "#d97706" : C.ink;
+function SentimentDial({ value }: { value: number }) {
+  const pct = Math.max(0, Math.min(1, value));
   return (
-    <div className="mb-2 last:mb-0">
-      <div className="flex items-center justify-between text-[11.5px] mb-1">
-        <span style={{ color: C.inkSoft }}>{label}</span>
-        <span className="font-mono" style={{ color: C.muted }}>{value}%</span>
+    <div className="flex items-center gap-3">
+      <div className="relative w-14 h-14">
+        <svg viewBox="0 0 36 36" className="w-14 h-14 -rotate-90">
+          <circle cx="18" cy="18" r="15" fill="none" stroke={C.borderSoft} strokeWidth="3" />
+          <circle
+            cx="18" cy="18" r="15" fill="none"
+            stroke={C.green} strokeWidth="3" strokeLinecap="round"
+            strokeDasharray={`${pct * 94.25} 94.25`}
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center text-[12px] font-semibold">
+          {Math.round(pct * 100)}
+        </div>
       </div>
-      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: C.bg }}>
-        <div className="h-full rounded-full" style={{ width: `${value}%`, background: color }} />
+      <div className="text-[11px]" style={{ color: C.muted }}>
+        Bullish<br />tone
       </div>
     </div>
   );
 }
 
-function SentimentDial() {
-  // 0..100 score → arc fill
-  const score = 64;
-  const angle = (score / 100) * 180;
-  const r = 38;
-  const cx = 60;
-  const cy = 50;
-  const rad = (deg: number) => (deg - 180) * (Math.PI / 180);
-  const x = cx + r * Math.cos(rad(angle));
-  const y = cy + r * Math.sin(rad(angle));
-  const largeArc = angle > 180 ? 1 : 0;
+function DecisionRow({ ticker, intent, final, reason, tone }:
+  { ticker: string; intent: string; final: string; reason: string; tone: "block" | "hold" | "watch" }) {
+  const palette = {
+    block: { bg: "#fdecea", fg: C.red, border: "#f5cfca" },
+    hold: { bg: "#eaf7f1", fg: C.green, border: "#c8eada" },
+    watch: { bg: "#fff5e6", fg: C.amber, border: "#f3e0bc" },
+  }[tone];
   return (
-    <div className="relative">
-      <svg viewBox="0 0 120 60" className="w-full h-[70px]">
-        <path d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`} fill="none" stroke={C.borderSoft} strokeWidth="6" strokeLinecap="round" />
-        <path d={`M ${cx - r} ${cy} A ${r} ${r} 0 ${largeArc} 1 ${x} ${y}`} fill="none" stroke="#16a34a" strokeWidth="6" strokeLinecap="round" />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-end pb-1">
-        <div className="text-[18px] font-semibold tracking-tight">{score}</div>
-        <div className="text-[10px] uppercase tracking-wider" style={{ color: C.muted }}>Bullish</div>
+    <div className="flex items-center justify-between py-1.5 text-[11px]" style={{ borderTop: `1px solid ${C.borderSoft}` }}>
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="font-mono font-medium">{ticker}</span>
+        <span style={{ color: C.muted }}>{intent}</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium"
+          style={{ background: palette.bg, color: palette.fg, border: `1px solid ${palette.border}` }}>
+          {final}
+        </span>
+        <span className="hidden sm:inline text-[10px]" style={{ color: C.muted }}>{reason}</span>
       </div>
     </div>
+  );
+}
+
+/* ---------------- Feature Section ---------------- */
+function FeatureSection() {
+  const features = [
+    { icon: Bot, title: "Autonomous AI Paper Trading", body: "AI Agent memindai market, memilih kandidat, menjalankan risk guard, dan membuat paper order secara otomatis." },
+    { icon: Shield, title: "Portfolio Risk Analytics", body: "Pantau equity, cash buffer, exposure, drawdown, sector concentration, dan unrealized P/L." },
+    { icon: TrendingUp, title: "Market Pulse & Sector Rotation", body: "Baca regime IDX, breadth, sector rotation, dan heatmap saham dalam satu tampilan." },
+    { icon: Newspaper, title: "News & Sentiment Intelligence", body: "Berita diproses dengan sentiment, impact, source health, dan relevansi ticker." },
+    { icon: Layers, title: "Strategy Intelligence", body: "Bandingkan strategi berdasarkan backtest, forward test, sample quality, dan market regime." },
+    { icon: History, title: "Decision Replay & Audit Trail", body: "Lihat kenapa AI BUY, HOLD, WATCH, atau BLOCKED berdasarkan snapshot data dan risk guard." },
+  ];
+  return (
+    <section id="features" className="max-w-[1440px] mx-auto px-6 lg:px-10 py-20 md:py-28">
+      <div className="max-w-[820px] mb-12">
+        <h2 className="font-semibold tracking-tight" style={{ fontSize: "clamp(28px, 4vw, 44px)", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
+          Everything your AI trading workflow needs.
+        </h2>
+        <p className="mt-4 text-[15px] md:text-[17px]" style={{ color: C.muted }}>
+          Dari market pulse sampai decision replay, Quanta Terminal membantu membaca peluang tanpa mengeksekusi dana asli.
+        </p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
+        {features.map((f) => (
+          <div
+            key={f.title}
+            className="p-6 rounded-3xl transition-transform hover:-translate-y-0.5"
+            style={{
+              background: C.surface,
+              border: `1px solid ${C.border}`,
+              boxShadow: "0 1px 2px rgba(20,18,15,0.04)",
+            }}
+          >
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center mb-4"
+              style={{ background: C.bg, border: `1px solid ${C.borderSoft}` }}
+            >
+              <f.icon className="w-4.5 h-4.5" style={{ color: C.ink, width: 18, height: 18 }} />
+            </div>
+            <div className="text-[15px] font-semibold mb-1.5">{f.title}</div>
+            <div className="text-[13.5px] leading-relaxed" style={{ color: C.muted }}>{f.body}</div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* ---------------- AI Agent Section ---------------- */
+function AiAgentSection() {
+  const steps = [
+    "Market Data", "AI Scanner", "Strategy Engine", "Risk Guard", "Paper Trade", "Learning",
+  ];
+  const bullets = [
+    "Scan market", "Rank candidates", "Check market regime", "Validate strategy",
+    "Run risk guard", "Size position", "Execute paper order", "Save decision replay",
+  ];
+  return (
+    <section id="ai-agent" className="py-20 md:py-28" style={{ background: C.bg2, borderTop: `1px solid ${C.borderSoft}`, borderBottom: `1px solid ${C.borderSoft}` }}>
+      <div className="max-w-[1440px] mx-auto px-6 lg:px-10">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+          <div className="lg:col-span-5">
+            <div className="text-[11px] uppercase tracking-[0.14em] font-semibold" style={{ color: C.muted }}>
+              <Bot className="w-3.5 h-3.5 inline mr-1.5" /> AI Trade Agent
+            </div>
+            <h2 className="mt-3 font-semibold tracking-tight" style={{ fontSize: "clamp(28px, 4vw, 44px)", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
+              Autonomous, but always auditable.
+            </h2>
+            <p className="mt-4 text-[15px] md:text-[16px]" style={{ color: C.muted }}>
+              AI tidak asal beli. Setiap keputusan melewati scanner, strategy engine, dan risk guard —
+              dan setiap keputusan punya audit trail.
+            </p>
+            <ul className="mt-6 grid grid-cols-2 gap-y-2 gap-x-4">
+              {bullets.map((b) => (
+                <li key={b} className="flex items-center gap-2 text-[13.5px]" style={{ color: C.inkSoft }}>
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: C.green }} />
+                  {b}
+                </li>
+              ))}
+            </ul>
+            <div className="mt-6 p-4 rounded-2xl text-[13px]"
+              style={{ background: C.surface, border: `1px solid ${C.border}`, color: C.inkSoft }}>
+              <div className="font-medium mb-1">Transparent by default.</div>
+              Every blocked decision has a reason. No broker connection. No real-money order.
+            </div>
+          </div>
+
+          <div className="lg:col-span-7">
+            <div className="rounded-3xl p-6 md:p-8" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
+              <div className="text-[11px] uppercase tracking-[0.14em] font-semibold mb-4" style={{ color: C.muted }}>
+                Decision Flow
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {steps.map((s, i) => (
+                  <div key={s} className="flex items-center gap-2">
+                    <div className="px-3 py-2 rounded-xl text-[12.5px] font-medium"
+                      style={{ background: C.bg, border: `1px solid ${C.borderSoft}` }}>
+                      {s}
+                    </div>
+                    {i < steps.length - 1 && <ArrowRight className="w-3.5 h-3.5" style={{ color: C.muted }} />}
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6">
+                <MiniStat label="Decisions / day" value="~ 40" />
+                <MiniStat label="Avg risk guard latency" value="< 1s" />
+                <MiniStat label="Audit trail retention" value="100%" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="p-4 rounded-2xl" style={{ background: C.surfaceMuted, border: `1px solid ${C.borderSoft}` }}>
+      <div className="text-[11px] uppercase tracking-wider" style={{ color: C.muted }}>{label}</div>
+      <div className="text-[20px] font-semibold mt-1 tracking-tight">{value}</div>
+    </div>
+  );
+}
+
+/* ---------------- Risk Engine Section ---------------- */
+function RiskEngineSection() {
+  const guards = [
+    { icon: Layers, label: "Max Active Positions" },
+    { icon: Gauge, label: "Cash Buffer" },
+    { icon: TrendingUp, label: "Sector Exposure" },
+    { icon: Activity, label: "Drawdown Guard" },
+    { icon: LineChart, label: "Volatility Sizing" },
+    { icon: Shield, label: "Stop Loss / Take Profit" },
+    { icon: CircleDot, label: "Market Closed Guard" },
+    { icon: Database, label: "Source/Data Quality Guard" },
+  ];
+  return (
+    <section id="risk" className="max-w-[1440px] mx-auto px-6 lg:px-10 py-20 md:py-28">
+      <div className="max-w-[820px] mb-12">
+        <div className="text-[11px] uppercase tracking-[0.14em] font-semibold" style={{ color: C.muted }}>
+          <Shield className="w-3.5 h-3.5 inline mr-1.5" /> Risk Engine
+        </div>
+        <h2 className="mt-3 font-semibold tracking-tight" style={{ fontSize: "clamp(28px, 4vw, 44px)", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
+          Risk-first by design.
+        </h2>
+        <p className="mt-4 text-[15px] md:text-[17px]" style={{ color: C.muted }}>
+          AI tidak hanya mencari saham yang naik. AI juga tahu kapan harus tidak masuk.
+        </p>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+        {guards.map((g) => (
+          <div key={g.label}
+            className="p-5 rounded-2xl flex flex-col gap-3"
+            style={{ background: C.surface, border: `1px solid ${C.border}` }}>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+              style={{ background: C.bg, border: `1px solid ${C.borderSoft}` }}>
+              <g.icon className="w-4 h-4" style={{ color: C.ink }} />
+            </div>
+            <div className="text-[13.5px] font-medium">{g.label}</div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* ---------------- News Intelligence Section ---------------- */
+function NewsSection() {
+  const items = [
+    "Source health monitoring",
+    "Ticker relevance scoring",
+    "High-impact news flagging",
+    "Duplicate headline filtering",
+    "Sentiment + tone analysis",
+    "Sector & macro context",
+    "Official disclosure readiness",
+  ];
+  return (
+    <section id="intelligence" className="py-20 md:py-28"
+      style={{ background: C.bg2, borderTop: `1px solid ${C.borderSoft}`, borderBottom: `1px solid ${C.borderSoft}` }}>
+      <div className="max-w-[1440px] mx-auto px-6 lg:px-10 grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+        <div className="lg:col-span-5">
+          <div className="text-[11px] uppercase tracking-[0.14em] font-semibold" style={{ color: C.muted }}>
+            <Newspaper className="w-3.5 h-3.5 inline mr-1.5" /> News Intelligence
+          </div>
+          <h2 className="mt-3 font-semibold tracking-tight" style={{ fontSize: "clamp(28px, 4vw, 44px)", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
+            News context, not noise.
+          </h2>
+          <p className="mt-4 text-[15px] md:text-[16px]" style={{ color: C.muted }}>
+            Berita tidak langsung dijadikan sinyal. Sistem membedakan direct ticker catalyst,
+            sector context, macro noise, dan duplicated headlines.
+          </p>
+        </div>
+        <div className="lg:col-span-7">
+          <div className="rounded-3xl p-2" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
+            {items.map((it, i) => (
+              <div key={it}
+                className="flex items-center justify-between px-5 py-3.5 text-[13.5px]"
+                style={{ borderTop: i === 0 ? "none" : `1px solid ${C.borderSoft}` }}>
+                <span style={{ color: C.inkSoft }}>{it}</span>
+                <span className="text-[11px] font-medium px-2 py-0.5 rounded"
+                  style={{ background: "#eaf7f1", color: C.green, border: `1px solid #c8eada` }}>
+                  active
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------------- Safety Section ---------------- */
+function SafetySection() {
+  return (
+    <section id="paper" className="max-w-[1440px] mx-auto px-6 lg:px-10 py-20 md:py-28">
+      <div
+        className="rounded-3xl p-8 md:p-12 grid grid-cols-1 md:grid-cols-12 gap-8 items-center"
+        style={{
+          background: "linear-gradient(135deg, #fbf5e6 0%, #fdf9ef 100%)",
+          border: `1px solid #f0e3c0`,
+        }}
+      >
+        <div className="md:col-span-2 flex md:justify-center">
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
+            style={{ background: C.surface, border: `1px solid #f0e3c0` }}>
+            <ShieldCheck className="w-6 h-6" style={{ color: C.amber }} />
+          </div>
+        </div>
+        <div className="md:col-span-10">
+          <h2 className="font-semibold tracking-tight" style={{ fontSize: "clamp(24px, 3vw, 34px)", letterSpacing: "-0.02em", lineHeight: 1.15 }}>
+            Built for simulation. Not real-money execution.
+          </h2>
+          <p className="mt-3 text-[15px] md:text-[16px]" style={{ color: C.inkSoft }}>
+            Quanta Terminal membantu riset dan simulasi. Semua keputusan AI dijalankan dalam
+            paper trading environment.
+          </p>
+          <ul className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-6 text-[13.5px]" style={{ color: C.inkSoft }}>
+            <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full" style={{ background: C.amber }} /> Tidak terhubung ke broker</li>
+            <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full" style={{ background: C.amber }} /> Tidak mengeksekusi order sekuritas</li>
+            <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full" style={{ background: C.amber }} /> Semua order adalah paper trading</li>
+            <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full" style={{ background: C.amber }} /> Cocok untuk riset & evaluasi strategi</li>
+          </ul>
+          <p className="mt-4 text-[12.5px]" style={{ color: C.muted }}>
+            Keputusan investasi riil tetap tanggung jawab pengguna.
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------------- Final CTA ---------------- */
+function FinalCta() {
+  return (
+    <section className="max-w-[1440px] mx-auto px-6 lg:px-10 pb-24">
+      <div className="text-center max-w-[760px] mx-auto py-10">
+        <h2 className="font-semibold tracking-tight" style={{ fontSize: "clamp(32px, 5vw, 56px)", letterSpacing: "-0.025em", lineHeight: 1.05 }}>
+          Start researching smarter.
+        </h2>
+        <p className="mt-5 text-[16px] md:text-[18px]" style={{ color: C.muted }}>
+          Bangun workflow trading yang lebih disiplin dengan AI, risk guard, dan paper trading yang bisa diaudit.
+        </p>
+        <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <Link to="/auth"
+            className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-[14px] font-medium transition-transform hover:scale-[1.02]"
+            style={{ background: C.ink, color: C.bg }}>
+            Get started <ArrowRight className="w-4 h-4" />
+          </Link>
+          <Link to="/auth"
+            className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-[14px] font-medium"
+            style={{ background: C.surface, border: `1px solid ${C.border}`, color: C.ink }}>
+            Sign in
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------------- Footer ---------------- */
+function Footer() {
+  return (
+    <footer style={{ borderTop: `1px solid ${C.borderSoft}`, background: C.bg2 }}>
+      <div className="max-w-[1440px] mx-auto px-6 lg:px-10 py-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center text-[12px] font-bold"
+              style={{ background: C.ink, color: C.bg }}>Q</div>
+            <span className="text-[14px] font-semibold tracking-tight">
+              Quanta<span style={{ color: C.muted }}>.Terminal</span>
+            </span>
+          </div>
+          <div className="mt-2 text-[12.5px]" style={{ color: C.muted }}>
+            AI Stock Research & Paper Trading Terminal · Paper Trading Only
+          </div>
+        </div>
+        <nav className="flex flex-wrap gap-x-6 gap-y-2 text-[13px]" style={{ color: C.inkSoft }}>
+          <a href="#features" className="hover:opacity-70">Features</a>
+          <a href="#ai-agent" className="hover:opacity-70">AI Agent</a>
+          <a href="#paper" className="hover:opacity-70">Paper Trading</a>
+          <a href="#risk" className="hover:opacity-70">Risk Engine</a>
+          <Link to="/auth" className="hover:opacity-70">Sign in</Link>
+        </nav>
+      </div>
+    </footer>
   );
 }
