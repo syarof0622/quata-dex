@@ -36,20 +36,20 @@ export async function selectUniverse(limit = 30): Promise<string[]> {
   // watchlist
   try {
     const { data } = await supabaseAdmin
-      .from("watchlist_items")
+      .from("watchlist")
       .select("symbol")
       .eq("user_id", HARDCODED_USER);
-    for (const r of data ?? []) if (r?.symbol) set.add(String(r.symbol).toUpperCase());
+    for (const r of (data ?? []) as any[]) if (r?.symbol) set.add(String(r.symbol).toUpperCase());
   } catch {}
 
   // recent scanner candidates
   try {
     const { data } = await supabaseAdmin
-      .from("scanner_results")
+      .from("ai_agent_scan_candidates")
       .select("symbol")
       .order("created_at", { ascending: false })
       .limit(50);
-    for (const r of data ?? []) if (r?.symbol) set.add(String(r.symbol).toUpperCase());
+    for (const r of (data ?? []) as any[]) if (r?.symbol) set.add(String(r.symbol).toUpperCase());
   } catch {}
 
   return Array.from(set).slice(0, limit);
