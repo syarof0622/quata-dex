@@ -9,6 +9,7 @@ import { useRouterState } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { TickerSearch } from "@/components/TickerSearch";
 import { OnboardingDialog } from "@/components/OnboardingDialog";
+import { MobileBottomNav } from "@/components/MobileBottomNav";
 
 export const Route = createFileRoute("/_authenticated")({
   component: AuthedLayout,
@@ -29,53 +30,73 @@ const NAV = [
   { to: "/settings", icon: Settings, label: "Settings" },
 ] as const;
 
+const PAGE_TITLES: Record<string, string> = {
+  "/dashboard": "Dashboard",
+  "/market": "Market Pulse",
+  "/screener": "Screener",
+  "/watchlist": "Watchlist",
+  "/portfolio": "Portfolio",
+  "/ai": "AI Analyst",
+  "/lab": "Simulation Lab",
+  "/expert": "Expert Tools",
+  "/news": "News & Sentiment",
+  "/alerts": "Alerts",
+  "/health": "System Health",
+  "/settings": "Settings",
+};
+
 function AuthedLayout() {
   const { signOut } = useAuth();
   const nav = useNavigate();
   const path = useRouterState({ select: s => s.location.pathname });
+  const pageTitle = Object.entries(PAGE_TITLES).find(([p]) => path.startsWith(p))?.[1] ?? "Quanta.Terminal";
 
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
-        <Sidebar collapsible="icon">
-          <SidebarHeader className="px-3 py-3">
-            <Link to="/dashboard" className="flex items-center gap-2">
-              <div className="size-7 rounded-md bg-primary/15 grid place-items-center neon-border shrink-0">
-                <Activity className="size-4 text-primary" />
-              </div>
-              <span className="font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
-                Quanta<span className="text-primary">.</span>Terminal
-              </span>
-            </Link>
-          </SidebarHeader>
-          <SidebarContent>
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {NAV.map(({ to, icon: Icon, label }) => (
-                    <SidebarMenuItem key={to}>
-                      <SidebarMenuButton asChild isActive={path.startsWith(to)} tooltip={label}>
-                        <Link to={to}><Icon className="size-4" /><span>{label}</span></Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </SidebarContent>
-          <SidebarFooter>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton onClick={() => { signOut(); nav({ to: "/auth" }); }} tooltip="Sign out">
-                  <LogOut className="size-4" /><span>Sign out</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarFooter>
-        </Sidebar>
+        {/* Sidebar — desktop/tablet only (hidden on mobile) */}
+        <div className="hidden md:contents">
+          <Sidebar collapsible="icon">
+            <SidebarHeader className="px-3 py-3">
+              <Link to="/dashboard" className="flex items-center gap-2">
+                <div className="size-7 rounded-md bg-primary/15 grid place-items-center neon-border shrink-0">
+                  <Activity className="size-4 text-primary" />
+                </div>
+                <span className="font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
+                  Quanta<span className="text-primary">.</span>Terminal
+                </span>
+              </Link>
+            </SidebarHeader>
+            <SidebarContent>
+              <SidebarGroup>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {NAV.map(({ to, icon: Icon, label }) => (
+                      <SidebarMenuItem key={to}>
+                        <SidebarMenuButton asChild isActive={path.startsWith(to)} tooltip={label}>
+                          <Link to={to}><Icon className="size-4" /><span>{label}</span></Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            </SidebarContent>
+            <SidebarFooter>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton onClick={() => { signOut(); nav({ to: "/auth" }); }} tooltip="Sign out">
+                    <LogOut className="size-4" /><span>Sign out</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarFooter>
+          </Sidebar>
+        </div>
 
-        <div className="flex-1 flex flex-col min-w-0">
-          <header className="h-14 border-b border-border flex items-center gap-3 px-3">
+        <div className="flex-1 flex flex-col min-w-0 w-full">
+          {/* Desktop / tablet header */}
+          <header className="hidden md:flex h-14 border-b border-border items-center gap-3 px-3">
             <SidebarTrigger />
             <TickerSearch className="flex-1 max-w-xl" />
             <div className="hidden md:flex items-center gap-3 ml-auto">
@@ -85,9 +106,43 @@ function AuthedLayout() {
               <Button size="sm" variant="outline" asChild><Link to="/ai"><Bot className="size-4" /> AI</Link></Button>
             </div>
           </header>
-          <main className="flex-1 min-w-0 overflow-auto"><Outlet /></main>
+
+          {/* Mobile header — compact, sticky, safe-area aware */}
+          <header
+            className="md:hidden sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur-xl flex items-center gap-2 px-3"
+            style={{
+              paddingTop: "max(env(safe-area-inset-top), 8px)",
+              paddingBottom: "8px",
+              minHeight: 56,
+            }}
+          >
+            <Link to="/dashboard" className="flex items-center gap-2 shrink-0">
+              <div className="size-7 rounded-md bg-primary/15 grid place-items-center neon-border">
+                <Activity className="size-4 text-primary" />
+              </div>
+            </Link>
+            <div className="flex-1 min-w-0">
+              <div className="text-[13.5px] font-semibold tracking-tight truncate">{pageTitle}</div>
+              <div className="text-[10px] text-muted-foreground leading-none flex items-center gap-1.5">
+                <span className="pulse-dot" style={{ width: 6, height: 6 }} /> Markets · live
+              </div>
+            </div>
+            <Button size="sm" variant="outline" asChild className="h-8 px-2.5">
+              <Link to="/ai"><Bot className="size-4" /></Link>
+            </Button>
+          </header>
+
+          <main
+            className="flex-1 min-w-0 overflow-auto"
+            style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 96px)" }}
+          >
+            <Outlet />
+          </main>
           <OnboardingDialog />
         </div>
+
+        {/* Mobile bottom navigation — hidden on md+ */}
+        <MobileBottomNav />
       </div>
     </SidebarProvider>
   );
