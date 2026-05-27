@@ -366,7 +366,7 @@ OUTPUT FORMAT — strict GitHub-Flavored Markdown (renderer supports tables, lis
             appContextBlock = `APP CONTEXT: unavailable (internal error). Tell the user app data could not be loaded right now.`;
           }
 
-          const sys = [baseSystem, marketContextBlock, appContextBlock].filter(Boolean).join("\n\n");
+          const sys = [GLOBAL_FUNDAMENTAL_GUARD, baseSystem, marketContextBlock, appContextBlock].filter(Boolean).join("\n\n");
 
           const upstream = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
             method: "POST",
