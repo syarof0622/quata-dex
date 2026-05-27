@@ -7,6 +7,7 @@ import { formatPct, formatCompact, colorForChange } from "@/lib/format";
 import { formatLocalPrice } from "@/lib/symbols";
 import { Button } from "@/components/ui/button";
 import { Activity, ArrowDownRight, ArrowUpRight, Newspaper } from "lucide-react";
+import { MobileEmptyState, MobileSkeletonRows } from "@/components/mobile-ui";
 
 export const Route = createFileRoute("/_authenticated/market")({
   head: () => ({ meta: [{ title: "Market — Quanta Terminal" }] }),
