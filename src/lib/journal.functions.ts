@@ -103,7 +103,7 @@ ${summary}`;
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: "You are an institutional trading coach. Be direct, specific, and actionable. Use markdown." },
+          { role: "system", content: `${GLOBAL_FUNDAMENTAL_GUARD}\n\nYou are an institutional trading coach. Be direct, specific, and actionable. Use markdown. Never invent fundamental ratios (PER/PBV/ROE/DER) or value-trap labels — follow the GLOBAL FUNDAMENTAL & DISCLOSURE GUARD above.` },
           { role: "user", content: prompt },
         ],
       }),
