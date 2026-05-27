@@ -17,6 +17,7 @@ import { Sparkles, X, Bot, Play, Pause, Square, AlertTriangle } from "lucide-rea
 import { JournalPanel } from "@/components/JournalPanel";
 import { ChatPanel } from "@/components/ChatPanel";
 import { startAgent, pauseAgent, stopAgent, emergencyStop, getAgentStatus, runAgentNow, updateAgentSymbols, listTradeMemory, setSelectionMode, runAutonomousScanNow, getLatestScan, setAutonomousRiskMode, backfillScanCandidateOutcomes, repairAITrainingEventLabels } from "@/lib/ai-trade-agent.functions";
+import { testAIAgentCronServer } from "@/lib/cron-test.functions";
 import { TickerSearch } from "@/components/TickerSearch";
 import { AiInsightsPanel } from "@/components/AiInsightsPanel";
 
