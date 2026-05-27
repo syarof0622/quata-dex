@@ -14,9 +14,9 @@ async function loadSectorBenchmark(sector: string | null): Promise<SectorBenchma
   if (!sector) return {};
   const { data } = await supabaseAdmin
     .from("sector_fundamental_benchmarks")
-    .select("median_per, median_pbv, median_roe, median_net_margin")
+    .select("median_per, median_pbv, median_roe")
     .eq("sector", sector)
-    .order("computed_at", { ascending: false })
+    .order("as_of", { ascending: false })
     .limit(1)
     .maybeSingle();
   if (!data) return {};
@@ -24,7 +24,6 @@ async function loadSectorBenchmark(sector: string | null): Promise<SectorBenchma
     per: data.median_per as number | null,
     pbv: data.median_pbv as number | null,
     roe: data.median_roe as number | null,
-    netMargin: data.median_net_margin as number | null,
   };
 }
 
