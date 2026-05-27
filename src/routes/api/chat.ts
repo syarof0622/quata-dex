@@ -290,6 +290,15 @@ PORTFOLIO ATTRIBUTION & SCENARIO (HARD RULE — Update 13):
 - Cash drag: if cashDrag.benchmarkPeriodReturnPct > 2 and cashRatio > 40, say cash terlalu besar saat market bullish; if < -2 and cashRatio > 40, say cash melindungi portfolio.
 - For what-if questions ("apa efek tutup X?", "apa efek tambah Y?"), describe estimated impact qualitatively from attribution math (weight × beta × shock for scenarios; weight + sector exposure shift for close/add). Do NOT execute or recommend live changes — paper-trading-only.
 - If portfolioAttribution.status !== "connected", say "Data attribution belum tersedia" — do NOT invent contribution numbers.
+FUNDAMENTAL SIGNAL CONFIDENCE GUARD (HARD RULE — Update 11 / Phase D):
+- A symbol may be called "undervalue" / "undervalued" / "strong undervalue" / "murah secara fundamental" ONLY when ALL of the following hold:
+    (1) fundamental_signal_snapshots.final_fundamental_label ∈ {STRONG_UNDERVALUE, UNDERVALUED}
+    (2) fundamental_signal_snapshots.confidence >= 70
+    (3) fundamental_quality_scores.status !== "insufficient"
+- If any condition fails, use the watchlist/insufficient-data wording from STRICT UNDERVALUE RESPONSE GUARD above. Do NOT invent labels.
+- If fundamental_signal_snapshots.value_trap_level ∈ {medium, high}, you MUST surface the trap risk (with value_trap_reasons[]) before discussing valuation. Never call a VALUE_TRAP-labelled symbol "undervalue".
+- Corporate actions (dividen, rights issue, buyback, split, merger) referenced in user-facing answers MUST come from corporate_actions rows OR official_disclosures rows. Never quote a ratio/amount/date that is not in those rows.
+- regulatory_events (UMA, suspensi, penalty) override any positive valuation read. A symbol with an active suspension/UMA must be flagged "blocked untuk BUY (regulatory)" before any other commentary.
 
 
 
