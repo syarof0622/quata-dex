@@ -175,7 +175,7 @@ function Portfolio() {
       </div>
 
       {/* Risk cards */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5 md:gap-3">
         <RiskCard icon={<Layers className="size-4" />} label="Exposure"
           value={hasPositions ? exposure.toFixed(1) + "%" : "N/A"}
           tone={!hasPositions ? "warn" : exposure > 60 ? "bear" : exposure >= 20 ? "warn" : "bull"}
