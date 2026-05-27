@@ -10,13 +10,14 @@ import { useNavigate } from "@tanstack/react-router";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 const PRIMARY = [
-  { to: "/dashboard", icon: LayoutDashboard, label: "Home" },
-  { to: "/ai", icon: Bot, label: "Analyst" },
-  { to: "/market", icon: TrendingUp, label: "Markets" },
-  { to: "/portfolio", icon: PieChart, label: "Portfolio" },
+  { to: "/dashboard", icon: LayoutDashboard, label: "Home", search: undefined as any },
+  { to: "/ai", icon: Bot, label: "Analyst", search: undefined as any },
+  { to: "/lab", icon: Sparkles, label: "Agent", search: { tab: "agent" } as any },
+  { to: "/portfolio", icon: PieChart, label: "Portfolio", search: undefined as any },
 ] as const;
 
 const MORE_ITEMS = [
+  { to: "/market", icon: TrendingUp, label: "Market Pulse" },
   { to: "/lab", icon: FlaskConical, label: "Simulation Lab" },
   { to: "/watchlist", icon: Star, label: "Watchlist" },
   { to: "/screener", icon: SlidersHorizontal, label: "Screener" },
