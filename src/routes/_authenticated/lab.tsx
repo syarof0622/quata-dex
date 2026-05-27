@@ -585,20 +585,22 @@ function AutomationStatusPanel({ agent, session }: { agent: any; session: any })
 
   const testCron = async () => {
     try {
-      const res = await fetch(cronUrl, { method: "GET" });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        toast.error(`Cron returned ${res.status}: ${j?.error ?? j?.reason ?? "failed"}`);
-        if (j?.error === "cron_secret_not_configured") {
-          toast.info("Set CRON_SECRET in project secrets, then schedule the cron with that secret in the x-cron-secret header.");
-        } else if (j?.error === "unauthorized") {
-          toast.info("Endpoint reachable but rejected — supply x-cron-secret header from your scheduler.");
+      const j = await testAIAgentCronServer();
+      if (!j.ok) {
+        if (j.status === 401) {
+          toast.error("Cron returned 401: missing/invalid x-cron-secret");
+          toast.info("Cron endpoint reachable, but request was rejected because x-cron-secret is missing or invalid. Your scheduler must send header: x-cron-secret");
+        } else if (j.error === "cron_secret_not_configured") {
+          toast.error("CRON_SECRET not set");
+          toast.info("Add CRON_SECRET in project secrets, then schedule the cron with that secret in the x-cron-secret header.");
+        } else {
+          toast.error(`Cron failed (${j.status}): ${j.message ?? j.error}`);
         }
       } else {
-        toast.success(`Cron OK — ${j?.message ?? "worker pinged"}`);
+        toast.success(`Cron OK — decisions=${j.decisions} executed=${j.executed} blocked=${j.blocked}`);
       }
     } catch (e: any) {
-      toast.error(`Cron unreachable: ${e?.message ?? "network error"}`);
+      toast.error(`Test cron error: ${e?.message ?? "unknown"}`);
     }
   };
 
