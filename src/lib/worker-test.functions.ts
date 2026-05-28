@@ -50,7 +50,7 @@ export const triggerWorker = createServerFn({ method: "POST" })
         message:
           "CRON_SECRET is not set. Add it in project secrets before testing workers.",
         ranAt,
-        payload: null as unknown,
+        payload: null as any,
       };
     }
 
@@ -86,7 +86,7 @@ export const triggerWorker = createServerFn({ method: "POST" })
               : payload?.message ?? `Worker returned HTTP ${res.status}.`,
           ranAt,
           durationMs,
-          payload,
+          payload: payload as any,
         };
       }
 
@@ -97,7 +97,7 @@ export const triggerWorker = createServerFn({ method: "POST" })
         message: payload?.message ?? "Worker triggered successfully.",
         ranAt,
         durationMs,
-        payload,
+        payload: payload as any,
       };
     } catch (e: any) {
       return {
@@ -108,7 +108,7 @@ export const triggerWorker = createServerFn({ method: "POST" })
         message: `Worker unreachable: ${e?.message ?? "network error"}`,
         ranAt,
         durationMs: Date.now() - startedAt,
-        payload: null as unknown,
+        payload: null as any,
       };
     }
   });
