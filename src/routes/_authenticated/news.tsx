@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import { listNews, getMarketSentiment, getSourcesStatus, refreshNewsNow } from "@/lib/news.functions";
+import { listNews, getMarketSentiment, getSourcesStatus, refreshNewsNow, getNewsPipelineState } from "@/lib/news.functions";
 import { serpapiStatus } from "@/lib/serpapi.functions";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
