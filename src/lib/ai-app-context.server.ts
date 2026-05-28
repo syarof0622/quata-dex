@@ -971,6 +971,7 @@ export async function getAIAppContext(userText: string) {
     aiInsights,
     aiAlerts,
     strategyIntelligence,
+    systemHealth,
     paperTradingOnly: true,
     generatedAt: new Date().toISOString(),
   };
