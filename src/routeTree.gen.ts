@@ -30,6 +30,7 @@ import { Route as AuthenticatedChartSymbolRouteImport } from './routes/_authenti
 import { Route as ApiSerpapiMarketContextSymbolRouteImport } from './routes/api/serpapi/market-context.$symbol'
 import { Route as ApiSerpapiGoogleFinanceSymbolRouteImport } from './routes/api/serpapi/google-finance.$symbol'
 import { Route as ApiPublicCronOrdersRouteImport } from './routes/api/public/cron/orders'
+import { Route as ApiPublicCronNewsIngestRouteImport } from './routes/api/public/cron/news-ingest'
 import { Route as ApiPublicCronNewsDisclosureLinkRouteImport } from './routes/api/public/cron/news-disclosure-link'
 import { Route as ApiPublicCronNewsRouteImport } from './routes/api/public/cron/news'
 import { Route as ApiPublicCronFundamentalsRouteImport } from './routes/api/public/cron/fundamentals'
@@ -143,6 +144,11 @@ const ApiPublicCronOrdersRoute = ApiPublicCronOrdersRouteImport.update({
   path: '/api/public/cron/orders',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCronNewsIngestRoute = ApiPublicCronNewsIngestRouteImport.update({
+  id: '/api/public/cron/news-ingest',
+  path: '/api/public/cron/news-ingest',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicCronNewsDisclosureLinkRoute =
   ApiPublicCronNewsDisclosureLinkRouteImport.update({
     id: '/api/public/cron/news-disclosure-link',
@@ -194,6 +200,7 @@ export interface FileRoutesByFullPath {
   '/api/public/cron/fundamentals': typeof ApiPublicCronFundamentalsRoute
   '/api/public/cron/news': typeof ApiPublicCronNewsRoute
   '/api/public/cron/news-disclosure-link': typeof ApiPublicCronNewsDisclosureLinkRoute
+  '/api/public/cron/news-ingest': typeof ApiPublicCronNewsIngestRoute
   '/api/public/cron/orders': typeof ApiPublicCronOrdersRoute
   '/api/serpapi/google-finance/$symbol': typeof ApiSerpapiGoogleFinanceSymbolRoute
   '/api/serpapi/market-context/$symbol': typeof ApiSerpapiMarketContextSymbolRoute
@@ -221,6 +228,7 @@ export interface FileRoutesByTo {
   '/api/public/cron/fundamentals': typeof ApiPublicCronFundamentalsRoute
   '/api/public/cron/news': typeof ApiPublicCronNewsRoute
   '/api/public/cron/news-disclosure-link': typeof ApiPublicCronNewsDisclosureLinkRoute
+  '/api/public/cron/news-ingest': typeof ApiPublicCronNewsIngestRoute
   '/api/public/cron/orders': typeof ApiPublicCronOrdersRoute
   '/api/serpapi/google-finance/$symbol': typeof ApiSerpapiGoogleFinanceSymbolRoute
   '/api/serpapi/market-context/$symbol': typeof ApiSerpapiMarketContextSymbolRoute
@@ -250,6 +258,7 @@ export interface FileRoutesById {
   '/api/public/cron/fundamentals': typeof ApiPublicCronFundamentalsRoute
   '/api/public/cron/news': typeof ApiPublicCronNewsRoute
   '/api/public/cron/news-disclosure-link': typeof ApiPublicCronNewsDisclosureLinkRoute
+  '/api/public/cron/news-ingest': typeof ApiPublicCronNewsIngestRoute
   '/api/public/cron/orders': typeof ApiPublicCronOrdersRoute
   '/api/serpapi/google-finance/$symbol': typeof ApiSerpapiGoogleFinanceSymbolRoute
   '/api/serpapi/market-context/$symbol': typeof ApiSerpapiMarketContextSymbolRoute
@@ -279,6 +288,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/fundamentals'
     | '/api/public/cron/news'
     | '/api/public/cron/news-disclosure-link'
+    | '/api/public/cron/news-ingest'
     | '/api/public/cron/orders'
     | '/api/serpapi/google-finance/$symbol'
     | '/api/serpapi/market-context/$symbol'
@@ -306,6 +316,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/fundamentals'
     | '/api/public/cron/news'
     | '/api/public/cron/news-disclosure-link'
+    | '/api/public/cron/news-ingest'
     | '/api/public/cron/orders'
     | '/api/serpapi/google-finance/$symbol'
     | '/api/serpapi/market-context/$symbol'
@@ -334,6 +345,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/fundamentals'
     | '/api/public/cron/news'
     | '/api/public/cron/news-disclosure-link'
+    | '/api/public/cron/news-ingest'
     | '/api/public/cron/orders'
     | '/api/serpapi/google-finance/$symbol'
     | '/api/serpapi/market-context/$symbol'
@@ -350,6 +362,7 @@ export interface RootRouteChildren {
   ApiPublicCronFundamentalsRoute: typeof ApiPublicCronFundamentalsRoute
   ApiPublicCronNewsRoute: typeof ApiPublicCronNewsRoute
   ApiPublicCronNewsDisclosureLinkRoute: typeof ApiPublicCronNewsDisclosureLinkRoute
+  ApiPublicCronNewsIngestRoute: typeof ApiPublicCronNewsIngestRoute
   ApiPublicCronOrdersRoute: typeof ApiPublicCronOrdersRoute
   ApiSerpapiGoogleFinanceSymbolRoute: typeof ApiSerpapiGoogleFinanceSymbolRoute
   ApiSerpapiMarketContextSymbolRoute: typeof ApiSerpapiMarketContextSymbolRoute
@@ -504,6 +517,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronOrdersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/news-ingest': {
+      id: '/api/public/cron/news-ingest'
+      path: '/api/public/cron/news-ingest'
+      fullPath: '/api/public/cron/news-ingest'
+      preLoaderRoute: typeof ApiPublicCronNewsIngestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cron/news-disclosure-link': {
       id: '/api/public/cron/news-disclosure-link'
       path: '/api/public/cron/news-disclosure-link'
@@ -589,6 +609,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCronFundamentalsRoute: ApiPublicCronFundamentalsRoute,
   ApiPublicCronNewsRoute: ApiPublicCronNewsRoute,
   ApiPublicCronNewsDisclosureLinkRoute: ApiPublicCronNewsDisclosureLinkRoute,
+  ApiPublicCronNewsIngestRoute: ApiPublicCronNewsIngestRoute,
   ApiPublicCronOrdersRoute: ApiPublicCronOrdersRoute,
   ApiSerpapiGoogleFinanceSymbolRoute: ApiSerpapiGoogleFinanceSymbolRoute,
   ApiSerpapiMarketContextSymbolRoute: ApiSerpapiMarketContextSymbolRoute,
