@@ -1840,6 +1840,75 @@ export type Database = {
         }
         Relationships: []
       }
+      news_pipeline_runs: {
+        Row: {
+          created_at: string
+          duplicate_count: number
+          duration_ms: number | null
+          error_message: string | null
+          failed_count: number
+          failed_sources: number
+          fallback_sources: number
+          fetched_count: number
+          finished_at: string | null
+          id: string
+          inserted_count: number
+          quota_protected_sources: number
+          run_type: string
+          skipped_count: number
+          source_results: Json
+          started_at: string
+          status: string
+          successful_sources: number
+          total_sources: number
+          trigger_source: string | null
+        }
+        Insert: {
+          created_at?: string
+          duplicate_count?: number
+          duration_ms?: number | null
+          error_message?: string | null
+          failed_count?: number
+          failed_sources?: number
+          fallback_sources?: number
+          fetched_count?: number
+          finished_at?: string | null
+          id?: string
+          inserted_count?: number
+          quota_protected_sources?: number
+          run_type?: string
+          skipped_count?: number
+          source_results?: Json
+          started_at?: string
+          status: string
+          successful_sources?: number
+          total_sources?: number
+          trigger_source?: string | null
+        }
+        Update: {
+          created_at?: string
+          duplicate_count?: number
+          duration_ms?: number | null
+          error_message?: string | null
+          failed_count?: number
+          failed_sources?: number
+          fallback_sources?: number
+          fetched_count?: number
+          finished_at?: string | null
+          id?: string
+          inserted_count?: number
+          quota_protected_sources?: number
+          run_type?: string
+          skipped_count?: number
+          source_results?: Json
+          started_at?: string
+          status?: string
+          successful_sources?: number
+          total_sources?: number
+          trigger_source?: string | null
+        }
+        Relationships: []
+      }
       news_price_alignment: {
         Row: {
           alignment: string
@@ -1915,6 +1984,117 @@ export type Database = {
         }
         Relationships: []
       }
+      news_sentiment_snapshots: {
+        Row: {
+          article_count: number
+          created_at: string
+          freshness: string
+          high_impact_count: number
+          id: string
+          negative_count: number
+          neutral_count: number
+          positive_count: number
+          sentiment_score: number
+          source_breakdown: Json
+          top_bearish: Json
+          top_bullish: Json
+          window_key: string
+        }
+        Insert: {
+          article_count?: number
+          created_at?: string
+          freshness?: string
+          high_impact_count?: number
+          id?: string
+          negative_count?: number
+          neutral_count?: number
+          positive_count?: number
+          sentiment_score?: number
+          source_breakdown?: Json
+          top_bearish?: Json
+          top_bullish?: Json
+          window_key: string
+        }
+        Update: {
+          article_count?: number
+          created_at?: string
+          freshness?: string
+          high_impact_count?: number
+          id?: string
+          negative_count?: number
+          neutral_count?: number
+          positive_count?: number
+          sentiment_score?: number
+          source_breakdown?: Json
+          top_bearish?: Json
+          top_bullish?: Json
+          window_key?: string
+        }
+        Relationships: []
+      }
+      news_source_health: {
+        Row: {
+          consecutive_failures: number
+          disabled: boolean
+          fallback_active: boolean
+          fetched_count_24h: number
+          http_status: number | null
+          id: string
+          inserted_count_24h: number
+          last_attempt_at: string | null
+          last_error: string | null
+          last_failed_at: string | null
+          last_message: string | null
+          last_success_at: string | null
+          quota_protected: boolean
+          source_key: string
+          source_name: string
+          source_type: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          consecutive_failures?: number
+          disabled?: boolean
+          fallback_active?: boolean
+          fetched_count_24h?: number
+          http_status?: number | null
+          id?: string
+          inserted_count_24h?: number
+          last_attempt_at?: string | null
+          last_error?: string | null
+          last_failed_at?: string | null
+          last_message?: string | null
+          last_success_at?: string | null
+          quota_protected?: boolean
+          source_key: string
+          source_name: string
+          source_type?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          consecutive_failures?: number
+          disabled?: boolean
+          fallback_active?: boolean
+          fetched_count_24h?: number
+          http_status?: number | null
+          id?: string
+          inserted_count_24h?: number
+          last_attempt_at?: string | null
+          last_error?: string | null
+          last_failed_at?: string | null
+          last_message?: string | null
+          last_success_at?: string | null
+          quota_protected?: boolean
+          source_key?: string
+          source_name?: string
+          source_type?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       news_sources: {
         Row: {
           articles_today: number
@@ -1966,6 +2146,42 @@ export type Database = {
           type?: string
           updated_at?: string
           url?: string
+        }
+        Relationships: []
+      }
+      news_worker_state: {
+        Row: {
+          id: string
+          last_news_worker_message: string | null
+          last_news_worker_run_at: string | null
+          last_successful_news_run_at: string | null
+          news_worker_error_count: number
+          news_worker_status: string | null
+          next_expected_news_worker_run_at: string | null
+          singleton: boolean
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          last_news_worker_message?: string | null
+          last_news_worker_run_at?: string | null
+          last_successful_news_run_at?: string | null
+          news_worker_error_count?: number
+          news_worker_status?: string | null
+          next_expected_news_worker_run_at?: string | null
+          singleton?: boolean
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          last_news_worker_message?: string | null
+          last_news_worker_run_at?: string | null
+          last_successful_news_run_at?: string | null
+          news_worker_error_count?: number
+          news_worker_status?: string | null
+          next_expected_news_worker_run_at?: string | null
+          singleton?: boolean
+          updated_at?: string
         }
         Relationships: []
       }
