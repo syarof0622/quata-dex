@@ -188,8 +188,8 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
       .maybeSingle();
     const newsMins = minutesAgo(news?.fetched_at ?? null);
     cards.push({
-      key: "news_pipeline",
-      label: "News Pipeline",
+      key: "news_freshness",
+      label: "News Freshness",
       status: freshnessStatus(newsMins, 30, 120),
       detail: newsMins == null ? "Belum ada berita." : `Artikel terakhir ${newsMins} menit lalu.`,
       lastUpdatedAt: news?.fetched_at ?? null,
