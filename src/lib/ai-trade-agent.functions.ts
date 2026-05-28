@@ -254,7 +254,7 @@ async function executePaperFill(opts: {
   agentId: string; paperAccountId: string; symbol: string; side: "buy" | "sell";
   shares: number; price: number; existing?: Position; reason: string;
   decision?: AgentDecision; decisionId?: string | null;
-  closeReason?: "stop_loss_triggered" | "take_profit_triggered" | null;
+  closeReason?: "stop_loss_triggered" | "take_profit_triggered" | "trailing_stop_triggered" | "risk_exit" | "disclosure_exit" | null;
   explorationTrade?: boolean; researchTrade?: boolean;
 }) {
   const { agentId, paperAccountId, symbol, side, shares, price, existing, reason, decision, decisionId, closeReason } = opts;
