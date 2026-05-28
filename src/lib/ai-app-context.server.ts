@@ -5,6 +5,7 @@ import { getIDXMarketSession, canExecutePaperTrade } from "@/lib/idx-market-sess
 import { buildStrategyIntelligence } from "@/lib/strategy-intelligence.functions";
 import { summarizeSourceHealth } from "@/lib/source-health";
 import { getPortfolioAnalytics } from "@/lib/analytics.functions";
+import { getSystemHealth } from "@/lib/system-health.functions";
 
 const USER_ID = "00000000-0000-0000-0000-000000000001";
 
