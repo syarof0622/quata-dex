@@ -93,6 +93,51 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
       },
     });
 
+    // 1c) News Pipeline
+    const [{ data: newsState }, { data: newsLastRun }, { data: newsSnap }, { data: newsSources }] = await Promise.all([
+      supabaseAdmin.from("news_worker_state").select("*").eq("singleton", true).maybeSingle(),
+      supabaseAdmin.from("news_pipeline_runs").select("status,started_at,finished_at,fetched_count,inserted_count,successful_sources,failed_sources,quota_protected_sources,fallback_sources,error_message").order("started_at", { ascending: false }).limit(1).maybeSingle(),
+      supabaseAdmin.from("news_sentiment_snapshots").select("freshness,article_count,sentiment_score,created_at").eq("window_key","24h").order("created_at",{ascending:false}).limit(1).maybeSingle(),
+      supabaseAdmin.from("news_source_health").select("source_key,status,quota_protected"),
+    ]);
+    const newsRunMins = minutesAgo((newsState as any)?.last_news_worker_run_at ?? null);
+    const allSources = (newsSources ?? []) as any[];
+    const activeSources = allSources.filter((s) => s.status === "healthy" || s.status === "fallback").length;
+    const failedSourcesCount = allSources.filter((s) => s.status === "failed").length;
+    const quotaSourcesCount = allSources.filter((s) => s.quota_protected).length;
+    let newsStatus: HealthStatus;
+    const lastStatus = (newsState as any)?.news_worker_status;
+    if (!newsState || newsRunMins == null) newsStatus = "unknown";
+    else if (lastStatus === "unauthorized") newsStatus = "failed";
+    else if (newsRunMins > 60) newsStatus = "partial";
+    else if (lastStatus === "failed") newsStatus = "failed";
+    else if (lastStatus === "partial" || lastStatus === "no_new_articles") newsStatus = "partial";
+    else newsStatus = "healthy";
+    cards.push({
+      key: "news_pipeline",
+      label: "News Pipeline",
+      status: newsStatus,
+      detail:
+        newsRunMins == null
+          ? "News worker belum pernah dijalankan. Konfigurasikan scheduler untuk memanggil /api/public/cron/news-ingest setiap 5–15 menit dengan header x-cron-secret."
+          : `Run terakhir ${newsRunMins} menit lalu — status ${lastStatus ?? "unknown"}. ${activeSources}/${allSources.length} sumber aktif${quotaSourcesCount ? `, ${quotaSourcesCount} quota-protected` : ""}${failedSourcesCount ? `, ${failedSourcesCount} gagal` : ""}.`,
+      lastUpdatedAt: (newsState as any)?.last_news_worker_run_at ?? null,
+      metrics: {
+        lastRunWIB: formatWIB((newsState as any)?.last_news_worker_run_at ?? null),
+        lastSuccessfulRunWIB: formatWIB((newsState as any)?.last_successful_news_run_at ?? null),
+        nextExpectedWIB: formatWIB((newsState as any)?.next_expected_news_worker_run_at ?? null),
+        fetchedLastRun: (newsLastRun as any)?.fetched_count ?? 0,
+        insertedLastRun: (newsLastRun as any)?.inserted_count ?? 0,
+        activeSources,
+        failedSources: failedSourcesCount,
+        quotaProtectedSources: quotaSourcesCount,
+        aggregateFreshness: (newsSnap as any)?.freshness ?? "unavailable",
+        articleCount24h: (newsSnap as any)?.article_count ?? 0,
+        sentimentScore24h: (newsSnap as any)?.sentiment_score ?? 0,
+        lastError: (newsLastRun as any)?.error_message ?? null,
+      },
+    });
+
     // 1b) Next expected worker run / last auto decision / last auto execution
     const nextRunMins = minutesAgo((agent as any)?.next_expected_worker_run_at ?? null);
     cards.push({
