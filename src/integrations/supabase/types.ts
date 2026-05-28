@@ -1354,6 +1354,63 @@ export type Database = {
         }
         Relationships: []
       }
+      disclosure_pipeline_runs: {
+        Row: {
+          corporate_action_count: number
+          created_at: string
+          duplicate_count: number
+          duration_ms: number | null
+          error_message: string | null
+          fetched_count: number
+          finished_at: string | null
+          high_impact_count: number
+          id: string
+          inserted_count: number
+          official_count: number
+          regulatory_event_count: number
+          source_results: Json
+          started_at: string
+          status: string
+          trigger_source: string | null
+        }
+        Insert: {
+          corporate_action_count?: number
+          created_at?: string
+          duplicate_count?: number
+          duration_ms?: number | null
+          error_message?: string | null
+          fetched_count?: number
+          finished_at?: string | null
+          high_impact_count?: number
+          id?: string
+          inserted_count?: number
+          official_count?: number
+          regulatory_event_count?: number
+          source_results?: Json
+          started_at?: string
+          status?: string
+          trigger_source?: string | null
+        }
+        Update: {
+          corporate_action_count?: number
+          created_at?: string
+          duplicate_count?: number
+          duration_ms?: number | null
+          error_message?: string | null
+          fetched_count?: number
+          finished_at?: string | null
+          high_impact_count?: number
+          id?: string
+          inserted_count?: number
+          official_count?: number
+          regulatory_event_count?: number
+          source_results?: Json
+          started_at?: string
+          status?: string
+          trigger_source?: string | null
+        }
+        Relationships: []
+      }
       fundamental_quality_scores: {
         Row: {
           as_of: string
@@ -1642,6 +1699,63 @@ export type Database = {
           total_equity?: number | null
           total_liabilities?: number | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      market_data_quality_snapshots: {
+        Row: {
+          created_at: string
+          data_quality_score: number
+          errors: string[]
+          fresh_symbols: number
+          id: string
+          ihsg_updated_at: string | null
+          ihsg_value: number | null
+          latest_price_at: string | null
+          market_session: string | null
+          source_summary: Json
+          stale_symbols: number
+          status: string
+          symbols_checked: number
+          symbols_missing_price: number
+          symbols_with_price: number
+          warnings: string[]
+        }
+        Insert: {
+          created_at?: string
+          data_quality_score?: number
+          errors?: string[]
+          fresh_symbols?: number
+          id?: string
+          ihsg_updated_at?: string | null
+          ihsg_value?: number | null
+          latest_price_at?: string | null
+          market_session?: string | null
+          source_summary?: Json
+          stale_symbols?: number
+          status?: string
+          symbols_checked?: number
+          symbols_missing_price?: number
+          symbols_with_price?: number
+          warnings?: string[]
+        }
+        Update: {
+          created_at?: string
+          data_quality_score?: number
+          errors?: string[]
+          fresh_symbols?: number
+          id?: string
+          ihsg_updated_at?: string | null
+          ihsg_value?: number | null
+          latest_price_at?: string | null
+          market_session?: string | null
+          source_summary?: Json
+          stale_symbols?: number
+          status?: string
+          symbols_checked?: number
+          symbols_missing_price?: number
+          symbols_with_price?: number
+          warnings?: string[]
         }
         Relationships: []
       }

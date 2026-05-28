@@ -5,7 +5,18 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { summarizeSourceHealth, overallStatusLabel, type OverallStatus } from "./source-health";
 import { formatWIB } from "./idx-market-session";
 
-export type HealthStatus = "healthy" | "partial" | "degraded" | "failed" | "unknown";
+export type HealthStatus =
+  | "healthy"
+  | "partial"
+  | "stale"
+  | "degraded"
+  | "failed"
+  | "unauthorized"
+  | "not_configured"
+  | "not_run_yet"
+  | "no_recent_event"
+  | "no_new_data"
+  | "unknown";
 
 export type HealthCard = {
   key: string;
@@ -105,27 +116,44 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
     const activeSources = allSources.filter((s) => s.status === "healthy" || s.status === "fallback").length;
     const failedSourcesCount = allSources.filter((s) => s.status === "failed").length;
     const quotaSourcesCount = allSources.filter((s) => s.quota_protected).length;
+    const cronSecretSet = !!process.env.CRON_SECRET;
     let newsStatus: HealthStatus;
+    let newsDetail: string;
     const lastStatus = (newsState as any)?.news_worker_status;
-    if (!newsState || newsRunMins == null) newsStatus = "unknown";
-    else if (lastStatus === "unauthorized") newsStatus = "failed";
-    else if (newsRunMins > 60) newsStatus = "partial";
-    else if (lastStatus === "failed") newsStatus = "failed";
-    else if (lastStatus === "partial" || lastStatus === "no_new_articles") newsStatus = "partial";
-    else newsStatus = "healthy";
+    const nextNewsAt = (newsState as any)?.next_expected_news_worker_run_at as string | null;
+    const nextNewsMins = minutesAgo(nextNewsAt);
+    if (!newsState || newsRunMins == null) {
+      newsStatus = cronSecretSet ? "not_run_yet" : "not_configured";
+      newsDetail = cronSecretSet
+        ? "News worker belum pernah menerima panggilan scheduler. Konfigurasikan scheduler /api/public/cron/news-ingest setiap 5–15 menit dengan header x-cron-secret."
+        : "CRON_SECRET belum dikonfigurasi — news worker tidak dapat dipanggil scheduler.";
+    } else if (lastStatus === "unauthorized") {
+      newsStatus = "unauthorized";
+      newsDetail = "Scheduler memanggil /api/public/cron/news-ingest tanpa x-cron-secret yang valid.";
+    } else if (lastStatus === "failed" && allSources.length > 0 && activeSources === 0) {
+      newsStatus = "failed";
+      newsDetail = `Semua ${allSources.length} sumber gagal pada run terakhir.`;
+    } else if (nextNewsMins != null && nextNewsMins < -15) {
+      // expected run > 15 menit lewat
+      newsStatus = "stale";
+      newsDetail = `Worker terlambat ${Math.abs(nextNewsMins)} menit dari jadwal berikutnya.`;
+    } else if (failedSourcesCount > 0 || quotaSourcesCount > 0 || lastStatus === "partial" || lastStatus === "no_new_articles") {
+      newsStatus = "partial";
+      newsDetail = `Run terakhir ${newsRunMins} menit lalu — ${activeSources}/${allSources.length} sumber aktif${quotaSourcesCount ? `, ${quotaSourcesCount} quota-protected` : ""}${failedSourcesCount ? `, ${failedSourcesCount} gagal` : ""}.`;
+    } else {
+      newsStatus = "healthy";
+      newsDetail = `Run terakhir ${newsRunMins} menit lalu — ${activeSources}/${allSources.length} sumber aktif.`;
+    }
     cards.push({
       key: "news_pipeline",
       label: "News Pipeline",
       status: newsStatus,
-      detail:
-        newsRunMins == null
-          ? "News worker belum pernah dijalankan. Konfigurasikan scheduler untuk memanggil /api/public/cron/news-ingest setiap 5–15 menit dengan header x-cron-secret."
-          : `Run terakhir ${newsRunMins} menit lalu — status ${lastStatus ?? "unknown"}. ${activeSources}/${allSources.length} sumber aktif${quotaSourcesCount ? `, ${quotaSourcesCount} quota-protected` : ""}${failedSourcesCount ? `, ${failedSourcesCount} gagal` : ""}.`,
+      detail: newsDetail,
       lastUpdatedAt: (newsState as any)?.last_news_worker_run_at ?? null,
       metrics: {
         lastRunWIB: formatWIB((newsState as any)?.last_news_worker_run_at ?? null),
         lastSuccessfulRunWIB: formatWIB((newsState as any)?.last_successful_news_run_at ?? null),
-        nextExpectedWIB: formatWIB((newsState as any)?.next_expected_news_worker_run_at ?? null),
+        nextExpectedWIB: formatWIB(nextNewsAt),
         fetchedLastRun: (newsLastRun as any)?.fetched_count ?? 0,
         insertedLastRun: (newsLastRun as any)?.inserted_count ?? 0,
         activeSources,
@@ -144,11 +172,13 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
       key: "next_worker_run",
       label: "Next Expected Worker Run",
       status: (agent as any)?.next_expected_worker_run_at
-        ? (nextRunMins != null && nextRunMins > 0 ? "partial" : "healthy")
-        : "unknown",
+        ? (nextRunMins != null && nextRunMins > 0 ? "stale" : "healthy")
+        : (cronSecretSet ? "not_run_yet" : "not_configured"),
       detail: (agent as any)?.next_expected_worker_run_at
         ? `Dijadwalkan: ${formatWIB((agent as any).next_expected_worker_run_at)}`
-        : "Jadwal next run belum tercatat.",
+        : (cronSecretSet
+            ? "AI worker belum dijadwalkan ulang oleh scheduler."
+            : "CRON_SECRET belum dikonfigurasi."),
       lastUpdatedAt: (agent as any)?.next_expected_worker_run_at ?? null,
     });
 
@@ -162,20 +192,28 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
     cards.push({
       key: "last_auto_decision",
       label: "Last Auto Decision",
-      status: agentTimes?.last_auto_decision_at ? freshnessStatus(decMinsAuto, 60, 240) : "unknown",
+      status: agentTimes?.last_auto_decision_at
+        ? freshnessStatus(decMinsAuto, 60, 240)
+        : (workerMins != null ? "no_recent_event" : (cronSecretSet ? "not_run_yet" : "not_configured")),
       detail: agentTimes?.last_auto_decision_at
         ? `${formatWIB(agentTimes.last_auto_decision_at)} (${decMinsAuto} menit lalu)`
-        : "Belum ada keputusan otomatis.",
+        : (workerMins != null
+            ? "AI worker aktif, namun belum menghasilkan keputusan otomatis."
+            : "AI worker belum pernah berjalan."),
       lastUpdatedAt: agentTimes?.last_auto_decision_at ?? null,
     });
     const exMinsAuto = minutesAgo(agentTimes?.last_auto_execution_at ?? null);
     cards.push({
       key: "last_auto_execution",
       label: "Last Auto Execution",
-      status: agentTimes?.last_auto_execution_at ? freshnessStatus(exMinsAuto, 240, 1440) : "unknown",
+      status: agentTimes?.last_auto_execution_at
+        ? freshnessStatus(exMinsAuto, 240, 1440)
+        : (workerMins != null ? "no_recent_event" : (cronSecretSet ? "not_run_yet" : "not_configured")),
       detail: agentTimes?.last_auto_execution_at
         ? `${formatWIB(agentTimes.last_auto_execution_at)} (${exMinsAuto} menit lalu)`
-        : "Belum ada eksekusi otomatis.",
+        : (workerMins != null
+            ? "Belum ada paper order otomatis yang dieksekusi. AI worker tetap aktif dan mengevaluasi kandidat."
+            : "AI worker belum pernah berjalan."),
       lastUpdatedAt: agentTimes?.last_auto_execution_at ?? null,
     });
 
@@ -195,29 +233,56 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
       lastUpdatedAt: news?.fetched_at ?? null,
     });
 
-    // 3) Market Data (data_quality_snapshots most recent)
+    // 3) Market Data — prefer market_data_quality_snapshots, fallback to data_quality_snapshots
+    const { data: mdq } = await supabaseAdmin
+      .from("market_data_quality_snapshots")
+      .select("created_at, status, data_quality_score, latest_price_at, symbols_checked, symbols_with_price, symbols_missing_price, stale_symbols, fresh_symbols, market_session, ihsg_value, ihsg_updated_at")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
     const { data: dq } = await supabaseAdmin
       .from("data_quality_snapshots")
       .select("created_at, overall_data_quality_score, price_quality")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
+    const mdqMins = minutesAgo((mdq as any)?.created_at ?? null);
     const dqMins = minutesAgo(dq?.created_at ?? null);
-    const dqStatus: HealthStatus = !dq
-      ? "unknown"
-      : (dq.overall_data_quality_score ?? 0) >= 70
-      ? "healthy"
-      : (dq.overall_data_quality_score ?? 0) >= 40
-      ? "partial"
-      : "degraded";
+    let mdStatus: HealthStatus;
+    let mdDetail: string;
+    let mdLastAt: string | null = null;
+    let mdMetrics: Record<string, string | number | null> | undefined;
+    if (mdq) {
+      const score = Number((mdq as any).data_quality_score ?? 0);
+      mdStatus = score >= 70 ? "healthy" : score >= 40 ? "partial" : "degraded";
+      mdDetail = `Skor ${Math.round(score)} · ${(mdq as any).fresh_symbols}/${(mdq as any).symbols_checked} fresh${(mdq as any).market_session ? ` · ${(mdq as any).market_session}` : ""}. ${mdqMins ?? "?"} menit lalu.`;
+      mdLastAt = (mdq as any).created_at;
+      mdMetrics = {
+        score: Math.round(score),
+        symbolsChecked: (mdq as any).symbols_checked ?? 0,
+        fresh: (mdq as any).fresh_symbols ?? 0,
+        stale: (mdq as any).stale_symbols ?? 0,
+        missing: (mdq as any).symbols_missing_price ?? 0,
+        session: (mdq as any).market_session ?? "—",
+        ihsg: (mdq as any).ihsg_value ?? null,
+        latestPriceWIB: formatWIB((mdq as any).latest_price_at ?? null),
+      };
+    } else if (dq) {
+      const score = Number(dq.overall_data_quality_score ?? 0);
+      mdStatus = score >= 70 ? "healthy" : score >= 40 ? "partial" : "degraded";
+      mdDetail = `Skor kualitas ${Math.round(score)} (price: ${dq.price_quality ?? "?"}). ${dqMins ?? "?"} menit lalu.`;
+      mdLastAt = dq.created_at;
+    } else {
+      mdStatus = "not_run_yet";
+      mdDetail = "Snapshot kualitas market data belum pernah dibuat. Jalankan Test Market Snapshot atau tunggu worker berikutnya.";
+    }
     cards.push({
       key: "market_data",
       label: "Market Data",
-      status: dqStatus,
-      detail: !dq
-        ? "Belum ada snapshot kualitas data."
-        : `Skor kualitas ${Math.round(dq.overall_data_quality_score ?? 0)} (price: ${dq.price_quality ?? "?"}). ${dqMins ?? "?"} menit lalu.`,
-      lastUpdatedAt: dq?.created_at ?? null,
+      status: mdStatus,
+      detail: mdDetail,
+      lastUpdatedAt: mdLastAt,
+      metrics: mdMetrics,
     });
 
     // 4) Source Health — normalized via summarizeSourceHealth so the Health
@@ -313,7 +378,7 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
       lastUpdatedAt: lastDec?.created_at ?? null,
     });
 
-    // 7) Cron Status — read audit logs
+    // 7) Cron Status — derive from CRON_SECRET presence + worker run signals + audit logs
     const { data: cronAudit } = await supabaseAdmin
       .from("system_audit_logs")
       .select("created_at, status, message")
@@ -321,19 +386,54 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
+    const { data: cronUnauth } = await supabaseAdmin
+      .from("system_audit_logs")
+      .select("created_at, message")
+      .eq("module", "cron")
+      .eq("status", "unauthorized")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
     const cronMins = minutesAgo(cronAudit?.created_at ?? null);
+    const aiWorkerRan = workerMins != null;
+    const newsWorkerRan = newsRunMins != null;
+    let cronStatus: HealthStatus;
+    let cronDetail: string;
+    if (!cronSecretSet) {
+      cronStatus = "not_configured";
+      cronDetail = "CRON_SECRET belum dikonfigurasi.";
+    } else if (cronUnauth && (!cronAudit || cronUnauth.created_at >= cronAudit.created_at)) {
+      cronStatus = "unauthorized";
+      cronDetail = "Scheduler memanggil endpoint tanpa x-cron-secret yang valid.";
+    } else if (!aiWorkerRan && !newsWorkerRan && !cronAudit) {
+      cronStatus = "not_run_yet";
+      cronDetail = "CRON_SECRET tersedia, tetapi belum ada scheduler yang memanggil endpoint.";
+    } else if (aiWorkerRan && !newsWorkerRan) {
+      cronStatus = "partial";
+      cronDetail = "AI worker aktif, tetapi news worker belum berjalan.";
+    } else if (cronAudit) {
+      cronStatus = cronAudit.status === "error" ? "degraded" : freshnessStatus(cronMins, 15, 60);
+      cronDetail = `Run ${cronMins} menit lalu — ${cronAudit.status}.`;
+    } else {
+      cronStatus = "healthy";
+      cronDetail = "Worker aktif sesuai jadwal.";
+    }
     cards.push({
       key: "cron",
       label: "Cron Status",
-      status: cronAudit
-        ? cronAudit.status === "error"
-          ? "degraded"
-          : freshnessStatus(cronMins, 15, 60)
-        : "unknown",
-      detail: cronAudit
-        ? `Run ${cronMins} menit lalu — ${cronAudit.status}.`
-        : "Belum ada log cron (set CRON_SECRET & jadwal cron).",
+      status: cronStatus,
+      detail: cronDetail,
       lastUpdatedAt: cronAudit?.created_at ?? null,
+      metrics: {
+        aiAgentCronStatus: aiWorkerRan ? "active" : "not_run_yet",
+        newsCronStatus: newsWorkerRan ? "active" : "not_run_yet",
+        marketDataCronStatus: mdq ? "active" : "not_run_yet",
+        disclosureCronStatus: "not_configured",
+        lastCronCall: formatWIB(cronAudit?.created_at ?? null),
+        lastUnauthorizedCall: formatWIB(cronUnauth?.created_at ?? null),
+        configuredEndpoints:
+          "/api/public/cron/ai-agent (1m) · /api/public/cron/news-ingest (5–15m) · /api/public/cron/disclosure-ingest (30–60m)",
+      },
     });
 
     // 8) Database Consistency — scoped to active account.
@@ -390,39 +490,60 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
       lastUpdatedAt: lastError?.created_at ?? null,
     });
 
-    // 10) Disclosure / Corporate Action / Regulatory pipeline (PATCH 19)
+    // 10) Disclosure / Corporate Action / Regulatory pipeline
     try {
       const since24 = new Date(Date.now() - 24 * 3600_000).toISOString();
       const since7d = new Date(Date.now() - 7 * 24 * 3600_000).toISOString();
-      const [d24, d7, c7, r7, hiNeg] = await Promise.all([
+      const [d24, d7, c7, r7, hiNeg, lastRun, lastSuccessRun] = await Promise.all([
         supabaseAdmin.from("official_disclosures").select("id", { count: "exact", head: true }).gte("published_at", since24),
         supabaseAdmin.from("official_disclosures").select("id", { count: "exact", head: true }).gte("published_at", since7d),
         supabaseAdmin.from("corporate_actions").select("id", { count: "exact", head: true }).gte("announcement_date", since7d.slice(0, 10)),
         supabaseAdmin.from("regulatory_events").select("id", { count: "exact", head: true }).gte("published_at", since7d),
         supabaseAdmin.from("official_disclosures").select("id", { count: "exact", head: true }).gte("published_at", since7d).eq("sentiment", "negative").gte("impact_score", 70),
+        supabaseAdmin.from("disclosure_pipeline_runs").select("status,started_at,finished_at,error_message,fetched_count,inserted_count").order("started_at", { ascending: false }).limit(1).maybeSingle(),
+        supabaseAdmin.from("disclosure_pipeline_runs").select("started_at").eq("status", "success").order("started_at", { ascending: false }).limit(1).maybeSingle(),
       ]);
       const d24Count = d24.count ?? 0;
       const d7Count = d7.count ?? 0;
       const c7Count = c7.count ?? 0;
       const r7Count = r7.count ?? 0;
-      const noSources = d7Count + c7Count + r7Count === 0;
-      const status: HealthStatus = noSources
-        ? "degraded"
-        : d24Count > 0 ? "healthy" : "partial";
+      const noEvents7d = d7Count + c7Count + r7Count === 0;
+      const run = lastRun.data as any;
+      let status: HealthStatus;
+      let detail: string;
+      if (!run) {
+        status = cronSecretSet ? "not_run_yet" : "not_configured";
+        detail = cronSecretSet
+          ? "Disclosure worker belum pernah dijalankan. Konfigurasikan scheduler /api/public/cron/disclosure-ingest setiap 30–60 menit."
+          : "CRON_SECRET belum dikonfigurasi — disclosure worker tidak dapat dipanggil scheduler.";
+      } else if (run.status === "failed") {
+        status = "failed";
+        detail = `Run terakhir gagal: ${run.error_message ?? "unknown error"}.`;
+      } else if (run.status === "partial") {
+        status = "partial";
+        detail = `Run terakhir partial — ${run.inserted_count ?? 0} inserted dari ${run.fetched_count ?? 0} fetched.`;
+      } else if (noEvents7d) {
+        status = "no_recent_event";
+        detail = "Tidak ada official disclosure / corporate action / regulatory event yang terdeteksi dalam 7 hari terakhir.";
+      } else {
+        status = d24Count > 0 ? "healthy" : "partial";
+        detail = `${d24Count} disclosure (24h) · ${d7Count + c7Count + r7Count} event (7d) · ${hiNeg.count ?? 0} high-impact negatif.`;
+      }
       cards.push({
         key: "disclosure_pipeline",
         label: "Disclosure / Corporate Action Pipeline",
         status,
-        detail: noSources
-          ? "Belum ada disclosure / corporate action / regulatory event terdeteksi dalam 7 hari terakhir."
-          : `${d24Count} disclosure (24h) · ${d7Count + c7Count + r7Count} event (7d) · ${hiNeg.count ?? 0} high-impact negatif.`,
-        lastUpdatedAt: new Date().toISOString(),
+        detail,
+        lastUpdatedAt: run?.started_at ?? new Date().toISOString(),
         metrics: {
           official_24h: d24Count,
           official_7d: d7Count,
           corporate_actions_7d: c7Count,
           regulatory_events_7d: r7Count,
           high_impact_negative_7d: hiNeg.count ?? 0,
+          lastRunWIB: formatWIB(run?.started_at ?? null),
+          lastSuccessfulRunWIB: formatWIB((lastSuccessRun.data as any)?.started_at ?? null),
+          lastError: run?.error_message ?? null,
         },
       });
     } catch (e: any) {

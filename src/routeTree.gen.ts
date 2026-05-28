@@ -34,6 +34,7 @@ import { Route as ApiPublicCronNewsIngestRouteImport } from './routes/api/public
 import { Route as ApiPublicCronNewsDisclosureLinkRouteImport } from './routes/api/public/cron/news-disclosure-link'
 import { Route as ApiPublicCronNewsRouteImport } from './routes/api/public/cron/news'
 import { Route as ApiPublicCronFundamentalsRouteImport } from './routes/api/public/cron/fundamentals'
+import { Route as ApiPublicCronDisclosureIngestRouteImport } from './routes/api/public/cron/disclosure-ingest'
 import { Route as ApiPublicCronAlertsRouteImport } from './routes/api/public/cron/alerts'
 import { Route as ApiPublicCronAiAgentRouteImport } from './routes/api/public/cron/ai-agent'
 
@@ -166,6 +167,12 @@ const ApiPublicCronFundamentalsRoute =
     path: '/api/public/cron/fundamentals',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCronDisclosureIngestRoute =
+  ApiPublicCronDisclosureIngestRouteImport.update({
+    id: '/api/public/cron/disclosure-ingest',
+    path: '/api/public/cron/disclosure-ingest',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicCronAlertsRoute = ApiPublicCronAlertsRouteImport.update({
   id: '/api/public/cron/alerts',
   path: '/api/public/cron/alerts',
@@ -197,6 +204,7 @@ export interface FileRoutesByFullPath {
   '/api/serpapi/news': typeof ApiSerpapiNewsRoute
   '/api/public/cron/ai-agent': typeof ApiPublicCronAiAgentRoute
   '/api/public/cron/alerts': typeof ApiPublicCronAlertsRoute
+  '/api/public/cron/disclosure-ingest': typeof ApiPublicCronDisclosureIngestRoute
   '/api/public/cron/fundamentals': typeof ApiPublicCronFundamentalsRoute
   '/api/public/cron/news': typeof ApiPublicCronNewsRoute
   '/api/public/cron/news-disclosure-link': typeof ApiPublicCronNewsDisclosureLinkRoute
@@ -225,6 +233,7 @@ export interface FileRoutesByTo {
   '/api/serpapi/news': typeof ApiSerpapiNewsRoute
   '/api/public/cron/ai-agent': typeof ApiPublicCronAiAgentRoute
   '/api/public/cron/alerts': typeof ApiPublicCronAlertsRoute
+  '/api/public/cron/disclosure-ingest': typeof ApiPublicCronDisclosureIngestRoute
   '/api/public/cron/fundamentals': typeof ApiPublicCronFundamentalsRoute
   '/api/public/cron/news': typeof ApiPublicCronNewsRoute
   '/api/public/cron/news-disclosure-link': typeof ApiPublicCronNewsDisclosureLinkRoute
@@ -255,6 +264,7 @@ export interface FileRoutesById {
   '/api/serpapi/news': typeof ApiSerpapiNewsRoute
   '/api/public/cron/ai-agent': typeof ApiPublicCronAiAgentRoute
   '/api/public/cron/alerts': typeof ApiPublicCronAlertsRoute
+  '/api/public/cron/disclosure-ingest': typeof ApiPublicCronDisclosureIngestRoute
   '/api/public/cron/fundamentals': typeof ApiPublicCronFundamentalsRoute
   '/api/public/cron/news': typeof ApiPublicCronNewsRoute
   '/api/public/cron/news-disclosure-link': typeof ApiPublicCronNewsDisclosureLinkRoute
@@ -285,6 +295,7 @@ export interface FileRouteTypes {
     | '/api/serpapi/news'
     | '/api/public/cron/ai-agent'
     | '/api/public/cron/alerts'
+    | '/api/public/cron/disclosure-ingest'
     | '/api/public/cron/fundamentals'
     | '/api/public/cron/news'
     | '/api/public/cron/news-disclosure-link'
@@ -313,6 +324,7 @@ export interface FileRouteTypes {
     | '/api/serpapi/news'
     | '/api/public/cron/ai-agent'
     | '/api/public/cron/alerts'
+    | '/api/public/cron/disclosure-ingest'
     | '/api/public/cron/fundamentals'
     | '/api/public/cron/news'
     | '/api/public/cron/news-disclosure-link'
@@ -342,6 +354,7 @@ export interface FileRouteTypes {
     | '/api/serpapi/news'
     | '/api/public/cron/ai-agent'
     | '/api/public/cron/alerts'
+    | '/api/public/cron/disclosure-ingest'
     | '/api/public/cron/fundamentals'
     | '/api/public/cron/news'
     | '/api/public/cron/news-disclosure-link'
@@ -359,6 +372,7 @@ export interface RootRouteChildren {
   ApiSerpapiNewsRoute: typeof ApiSerpapiNewsRoute
   ApiPublicCronAiAgentRoute: typeof ApiPublicCronAiAgentRoute
   ApiPublicCronAlertsRoute: typeof ApiPublicCronAlertsRoute
+  ApiPublicCronDisclosureIngestRoute: typeof ApiPublicCronDisclosureIngestRoute
   ApiPublicCronFundamentalsRoute: typeof ApiPublicCronFundamentalsRoute
   ApiPublicCronNewsRoute: typeof ApiPublicCronNewsRoute
   ApiPublicCronNewsDisclosureLinkRoute: typeof ApiPublicCronNewsDisclosureLinkRoute
@@ -545,6 +559,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronFundamentalsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/disclosure-ingest': {
+      id: '/api/public/cron/disclosure-ingest'
+      path: '/api/public/cron/disclosure-ingest'
+      fullPath: '/api/public/cron/disclosure-ingest'
+      preLoaderRoute: typeof ApiPublicCronDisclosureIngestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cron/alerts': {
       id: '/api/public/cron/alerts'
       path: '/api/public/cron/alerts'
@@ -606,6 +627,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSerpapiNewsRoute: ApiSerpapiNewsRoute,
   ApiPublicCronAiAgentRoute: ApiPublicCronAiAgentRoute,
   ApiPublicCronAlertsRoute: ApiPublicCronAlertsRoute,
+  ApiPublicCronDisclosureIngestRoute: ApiPublicCronDisclosureIngestRoute,
   ApiPublicCronFundamentalsRoute: ApiPublicCronFundamentalsRoute,
   ApiPublicCronNewsRoute: ApiPublicCronNewsRoute,
   ApiPublicCronNewsDisclosureLinkRoute: ApiPublicCronNewsDisclosureLinkRoute,
