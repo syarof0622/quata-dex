@@ -2363,6 +2363,165 @@ export type Database = {
         }
         Relationships: []
       }
+      position_exit_plans: {
+        Row: {
+          account_id: string
+          agent_id: string | null
+          avg_entry: number | null
+          confidence: number
+          created_at: string
+          current_price: number | null
+          entry_price: number | null
+          exit_condition: string | null
+          highest_price_since_entry: number | null
+          hold_condition: string | null
+          id: string
+          invalidation_level: number | null
+          last_evaluated_at: string | null
+          lot: number | null
+          management_status: string
+          max_loss_amount: number | null
+          position_id: string | null
+          quantity: number | null
+          reason: string | null
+          reduce_condition: string | null
+          risk_reward_ratio: number | null
+          stop_loss: number | null
+          strategy_name: string | null
+          symbol: string
+          take_profit: number | null
+          target_profit_amount: number | null
+          trailing_stop: number | null
+          trailing_stop_pct: number | null
+          updated_at: string
+          warnings: string[]
+        }
+        Insert: {
+          account_id: string
+          agent_id?: string | null
+          avg_entry?: number | null
+          confidence?: number
+          created_at?: string
+          current_price?: number | null
+          entry_price?: number | null
+          exit_condition?: string | null
+          highest_price_since_entry?: number | null
+          hold_condition?: string | null
+          id?: string
+          invalidation_level?: number | null
+          last_evaluated_at?: string | null
+          lot?: number | null
+          management_status?: string
+          max_loss_amount?: number | null
+          position_id?: string | null
+          quantity?: number | null
+          reason?: string | null
+          reduce_condition?: string | null
+          risk_reward_ratio?: number | null
+          stop_loss?: number | null
+          strategy_name?: string | null
+          symbol: string
+          take_profit?: number | null
+          target_profit_amount?: number | null
+          trailing_stop?: number | null
+          trailing_stop_pct?: number | null
+          updated_at?: string
+          warnings?: string[]
+        }
+        Update: {
+          account_id?: string
+          agent_id?: string | null
+          avg_entry?: number | null
+          confidence?: number
+          created_at?: string
+          current_price?: number | null
+          entry_price?: number | null
+          exit_condition?: string | null
+          highest_price_since_entry?: number | null
+          hold_condition?: string | null
+          id?: string
+          invalidation_level?: number | null
+          last_evaluated_at?: string | null
+          lot?: number | null
+          management_status?: string
+          max_loss_amount?: number | null
+          position_id?: string | null
+          quantity?: number | null
+          reason?: string | null
+          reduce_condition?: string | null
+          risk_reward_ratio?: number | null
+          stop_loss?: number | null
+          strategy_name?: string | null
+          symbol?: string
+          take_profit?: number | null
+          target_profit_amount?: number | null
+          trailing_stop?: number | null
+          trailing_stop_pct?: number | null
+          updated_at?: string
+          warnings?: string[]
+        }
+        Relationships: []
+      }
+      position_monitoring_snapshots: {
+        Row: {
+          account_id: string
+          action: string | null
+          agent_id: string | null
+          created_at: string
+          current_price: number | null
+          exit_score: number | null
+          hold_score: number | null
+          id: string
+          management_status: string | null
+          market_session: string | null
+          position_id: string | null
+          reasons: Json
+          reduce_score: number | null
+          symbol: string
+          unrealized_pnl: number | null
+          unrealized_pnl_pct: number | null
+          warnings: Json
+        }
+        Insert: {
+          account_id: string
+          action?: string | null
+          agent_id?: string | null
+          created_at?: string
+          current_price?: number | null
+          exit_score?: number | null
+          hold_score?: number | null
+          id?: string
+          management_status?: string | null
+          market_session?: string | null
+          position_id?: string | null
+          reasons?: Json
+          reduce_score?: number | null
+          symbol: string
+          unrealized_pnl?: number | null
+          unrealized_pnl_pct?: number | null
+          warnings?: Json
+        }
+        Update: {
+          account_id?: string
+          action?: string | null
+          agent_id?: string | null
+          created_at?: string
+          current_price?: number | null
+          exit_score?: number | null
+          hold_score?: number | null
+          id?: string
+          management_status?: string | null
+          market_session?: string | null
+          position_id?: string | null
+          reasons?: Json
+          reduce_score?: number | null
+          symbol?: string
+          unrealized_pnl?: number | null
+          unrealized_pnl_pct?: number | null
+          warnings?: Json
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
