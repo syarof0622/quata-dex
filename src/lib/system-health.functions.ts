@@ -378,7 +378,7 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
       lastUpdatedAt: lastDec?.created_at ?? null,
     });
 
-    // 7) Cron Status — read audit logs
+    // 7) Cron Status — derive from CRON_SECRET presence + worker run signals + audit logs
     const { data: cronAudit } = await supabaseAdmin
       .from("system_audit_logs")
       .select("created_at, status, message")
@@ -386,19 +386,54 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
+    const { data: cronUnauth } = await supabaseAdmin
+      .from("system_audit_logs")
+      .select("created_at, message")
+      .eq("module", "cron")
+      .eq("status", "unauthorized")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
     const cronMins = minutesAgo(cronAudit?.created_at ?? null);
+    const aiWorkerRan = workerMins != null;
+    const newsWorkerRan = newsRunMins != null;
+    let cronStatus: HealthStatus;
+    let cronDetail: string;
+    if (!cronSecretSet) {
+      cronStatus = "not_configured";
+      cronDetail = "CRON_SECRET belum dikonfigurasi.";
+    } else if (cronUnauth && (!cronAudit || cronUnauth.created_at >= cronAudit.created_at)) {
+      cronStatus = "unauthorized";
+      cronDetail = "Scheduler memanggil endpoint tanpa x-cron-secret yang valid.";
+    } else if (!aiWorkerRan && !newsWorkerRan && !cronAudit) {
+      cronStatus = "not_run_yet";
+      cronDetail = "CRON_SECRET tersedia, tetapi belum ada scheduler yang memanggil endpoint.";
+    } else if (aiWorkerRan && !newsWorkerRan) {
+      cronStatus = "partial";
+      cronDetail = "AI worker aktif, tetapi news worker belum berjalan.";
+    } else if (cronAudit) {
+      cronStatus = cronAudit.status === "error" ? "degraded" : freshnessStatus(cronMins, 15, 60);
+      cronDetail = `Run ${cronMins} menit lalu — ${cronAudit.status}.`;
+    } else {
+      cronStatus = "healthy";
+      cronDetail = "Worker aktif sesuai jadwal.";
+    }
     cards.push({
       key: "cron",
       label: "Cron Status",
-      status: cronAudit
-        ? cronAudit.status === "error"
-          ? "degraded"
-          : freshnessStatus(cronMins, 15, 60)
-        : "unknown",
-      detail: cronAudit
-        ? `Run ${cronMins} menit lalu — ${cronAudit.status}.`
-        : "Belum ada log cron (set CRON_SECRET & jadwal cron).",
+      status: cronStatus,
+      detail: cronDetail,
       lastUpdatedAt: cronAudit?.created_at ?? null,
+      metrics: {
+        aiAgentCronStatus: aiWorkerRan ? "active" : "not_run_yet",
+        newsCronStatus: newsWorkerRan ? "active" : "not_run_yet",
+        marketDataCronStatus: mdq ? "active" : "not_run_yet",
+        disclosureCronStatus: "not_configured",
+        lastCronCall: formatWIB(cronAudit?.created_at ?? null),
+        lastUnauthorizedCall: formatWIB(cronUnauth?.created_at ?? null),
+        configuredEndpoints:
+          "/api/public/cron/ai-agent (1m) · /api/public/cron/news-ingest (5–15m) · /api/public/cron/disclosure-ingest (30–60m)",
+      },
     });
 
     // 8) Database Consistency — scoped to active account.
