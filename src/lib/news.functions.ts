@@ -142,81 +142,35 @@ export const getSourcesStatus = createServerFn({ method: "POST" })
 
 export const refreshNewsNow = createServerFn({ method: "POST" })
   .handler(async () => {
-    const { NEWS_SOURCES } = await import("@/lib/news-sources");
-    const { fetchRssWithFallback } = await import("@/lib/news-rss.server");
-    const { normalize, normalizeSerpApiItem, dedupeBatch } = await import("@/lib/news-pipeline.server");
-    const { fetchSerpApiGoogleNews } = await import("@/lib/serpapi.server");
-    const { fetchSpecialSource } = await import("@/lib/news-special-sources.server");
+    const { runNewsIngest } = await import("@/lib/news-pipeline-runner.server");
+    const result = await runNewsIngest({ trigger: "manual" });
+    return {
+      ok: result.status !== "failed",
+      total: result.fetched_count,
+      deduped: result.fetched_count - result.duplicate_count,
+      inserted: result.inserted_count,
+      duplicates: result.duplicate_count,
+      statuses: result.source_results,
+      pipelineStatus: result.status,
+      errorMessage: result.error_message,
+    };
+  });
 
-    const all: any[] = [];
-    const statuses: any[] = [];
-    for (const src of NEWS_SOURCES.filter((s) => s.enabled)) {
-      try {
-        if (src.type === "special_source" && src.special) {
-          const res = await fetchSpecialSource(src);
-          all.push(...res.items);
-          statuses.push({
-            id: src.id,
-            ok: res.items.length > 0,
-            count: res.items.length,
-            used_url: res.usedUrl,
-            mode: res.mode,
-            status: res.status,
-            reason: res.reason,
-            error: res.items.length === 0 ? (res.fallbackError ?? res.directError) : undefined,
-          });
-          continue;
-        }
-        const { url, items } = await fetchRssWithFallback(src.url, src.fallbackUrls ?? []);
-        const normalized = items.map((it) => normalize(it, { id: src.id, priority: src.priority, category: src.category })).filter(Boolean) as any[];
-        all.push(...normalized);
-        statuses.push({ id: src.id, ok: true, count: normalized.length, used_url: url, mode: "direct", status: "active" });
-      } catch (e: any) {
-        statuses.push({ id: src.id, ok: false, error: String(e?.message ?? e), status: "failed" });
-      }
-    }
-
-    if (process.env.SERPAPI_API_KEY) {
-      const SERP_QUERY = "IHSG OR saham OR emiten OR BEI";
-      for (const job of [
-        { id: "serpapi_google_news", priority: 2, light: false },
-        { id: "serpapi_google_news_light", priority: 3, light: true },
-      ]) {
-        try {
-          const items = await fetchSerpApiGoogleNews({ query: SERP_QUERY, light: job.light, limit: 20 });
-          const normalized = items
-            .map((it) => normalizeSerpApiItem(it, { id: job.id, priority: job.priority, category: "serpapi" }))
-            .filter(Boolean) as any[];
-          all.push(...normalized);
-          statuses.push({ id: job.id, ok: true, count: normalized.length });
-        } catch (e: any) {
-          statuses.push({ id: job.id, ok: false, error: String(e?.message ?? e) });
-        }
-      }
-      statuses.push({ id: "serpapi_google_finance", ok: true, count: 0 });
-    }
-
-    const deduped = dedupeBatch(all);
-    const now = new Date().toISOString();
-    let upsertErrors: string[] = [];
-    for (let i = 0; i < deduped.length; i += 100) {
-      const chunk = deduped.slice(i, i + 100);
-      const { error } = await supabaseAdmin
-        .from("news_articles")
-        .upsert(chunk as any, { onConflict: "source,source_id", ignoreDuplicates: true });
-      if (error) {
-        console.error("[news] upsert error:", error.message);
-        upsertErrors.push(error.message);
-      }
-    }
-    for (const s of statuses) {
-      await supabaseAdmin.from("news_sources").update(
-        s.ok
-          ? { last_success_at: now, status: s.status ?? "active", fail_count: 0, last_error: s.reason ?? null, articles_today: s.count, updated_at: now }
-          : { last_failed_at: now, status: s.status ?? "failed", last_error: s.reason ? `${s.reason} | ${s.error ?? ""}` : (s.error ?? "unknown"), updated_at: now }
-      ).eq("id", s.id);
-    }
-    return { ok: upsertErrors.length === 0, total: all.length, deduped: deduped.length, statuses, upsertErrors };
+export const getNewsPipelineState = createServerFn({ method: "POST" })
+  .handler(async () => {
+    const [{ data: state }, { data: lastRun }, { data: sources }, { data: snap }] =
+      await Promise.all([
+        supabaseAdmin.from("news_worker_state").select("*").eq("singleton", true).maybeSingle(),
+        supabaseAdmin.from("news_pipeline_runs").select("*").order("started_at", { ascending: false }).limit(1).maybeSingle(),
+        supabaseAdmin.from("news_source_health").select("*").order("source_key"),
+        supabaseAdmin.from("news_sentiment_snapshots").select("*").eq("window_key", "24h").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      ]);
+    return {
+      worker: state ?? null,
+      lastRun: lastRun ?? null,
+      sources: sources ?? [],
+      snapshot: snap ?? null,
+    };
   });
 
 // Per-ticker SerpApi enrichment: fetches Google News + Finance for one symbol,
