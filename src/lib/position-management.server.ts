@@ -208,8 +208,8 @@ export async function evaluatePositionWithEngine(input: EvaluatePositionInput) {
     market_session: input.marketSession ?? null,
     unrealized_pnl: unrealizedPnl,
     unrealized_pnl_pct: unrealizedPnlPct,
-    reasons: combined.reasons as unknown as Record<string, unknown>,
-    warnings: combined.warnings as unknown as Record<string, unknown>,
+    reasons: combined.reasons as unknown as never,
+    warnings: combined.warnings as unknown as never,
   });
 
   // Update plan with latest evaluation state (trailing stop ratchets up).
