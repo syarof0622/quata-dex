@@ -2621,6 +2621,102 @@ export type Database = {
         }
         Relationships: []
       }
+      portfolio_intelligence_snapshots: {
+        Row: {
+          account_id: string
+          cash: number
+          cash_drag_score: number
+          cash_ratio: number
+          concentration_score: number
+          created_at: string
+          critical_issues: Json
+          daily_pnl: number
+          disclosure_risk_exposure_pct: number
+          diversification_score: number
+          equity: number
+          exposure_score: number
+          holdings_value: number
+          id: string
+          insufficient_fundamental_exposure_pct: number
+          invested_ratio: number
+          market_regime: string | null
+          max_drawdown: number
+          portfolio_health_score: number
+          positives: Json
+          realized_pnl: number
+          risk_level: string
+          sector_risk_score: number
+          summary: string | null
+          total_return_pct: number
+          unrealized_pnl: number
+          user_id: string
+          value_trap_exposure_pct: number
+          warnings: Json
+        }
+        Insert: {
+          account_id: string
+          cash?: number
+          cash_drag_score?: number
+          cash_ratio?: number
+          concentration_score?: number
+          created_at?: string
+          critical_issues?: Json
+          daily_pnl?: number
+          disclosure_risk_exposure_pct?: number
+          diversification_score?: number
+          equity?: number
+          exposure_score?: number
+          holdings_value?: number
+          id?: string
+          insufficient_fundamental_exposure_pct?: number
+          invested_ratio?: number
+          market_regime?: string | null
+          max_drawdown?: number
+          portfolio_health_score?: number
+          positives?: Json
+          realized_pnl?: number
+          risk_level?: string
+          sector_risk_score?: number
+          summary?: string | null
+          total_return_pct?: number
+          unrealized_pnl?: number
+          user_id: string
+          value_trap_exposure_pct?: number
+          warnings?: Json
+        }
+        Update: {
+          account_id?: string
+          cash?: number
+          cash_drag_score?: number
+          cash_ratio?: number
+          concentration_score?: number
+          created_at?: string
+          critical_issues?: Json
+          daily_pnl?: number
+          disclosure_risk_exposure_pct?: number
+          diversification_score?: number
+          equity?: number
+          exposure_score?: number
+          holdings_value?: number
+          id?: string
+          insufficient_fundamental_exposure_pct?: number
+          invested_ratio?: number
+          market_regime?: string | null
+          max_drawdown?: number
+          portfolio_health_score?: number
+          positives?: Json
+          realized_pnl?: number
+          risk_level?: string
+          sector_risk_score?: number
+          summary?: string | null
+          total_return_pct?: number
+          unrealized_pnl?: number
+          user_id?: string
+          value_trap_exposure_pct?: number
+          warnings?: Json
+        }
+        Relationships: []
+      }
       portfolio_risk_snapshots: {
         Row: {
           agent_id: string | null
@@ -2690,6 +2786,138 @@ export type Database = {
           trades_today?: number
           unrealized_pnl_snapshot?: number | null
           warnings?: Json
+        }
+        Relationships: []
+      }
+      portfolio_scenario_results: {
+        Row: {
+          account_id: string
+          confidence: string
+          created_at: string
+          estimated_equity: number | null
+          estimated_pnl: number | null
+          estimated_pnl_pct: number | null
+          id: string
+          input_payload: Json
+          notes: Json
+          result_payload: Json
+          risk_level_after: string | null
+          risk_level_before: string | null
+          scenario_name: string
+          scenario_type: string
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          confidence?: string
+          created_at?: string
+          estimated_equity?: number | null
+          estimated_pnl?: number | null
+          estimated_pnl_pct?: number | null
+          id?: string
+          input_payload?: Json
+          notes?: Json
+          result_payload?: Json
+          risk_level_after?: string | null
+          risk_level_before?: string | null
+          scenario_name: string
+          scenario_type: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          confidence?: string
+          created_at?: string
+          estimated_equity?: number | null
+          estimated_pnl?: number | null
+          estimated_pnl_pct?: number | null
+          id?: string
+          input_payload?: Json
+          notes?: Json
+          result_payload?: Json
+          risk_level_after?: string | null
+          risk_level_before?: string | null
+          scenario_name?: string
+          scenario_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      position_attribution_snapshots: {
+        Row: {
+          account_id: string
+          avg_entry: number
+          beta_estimate: number | null
+          beta_source: string | null
+          contribution_to_return: number
+          contribution_to_risk: number
+          created_at: string
+          disclosure_risk_flags: string[]
+          fundamental_label: string | null
+          id: string
+          last_price: number
+          market_value: number
+          position_id: string | null
+          position_weight_pct: number
+          quantity: number
+          risk_level: string
+          sector: string | null
+          symbol: string
+          unrealized_pnl: number
+          unrealized_pnl_pct: number
+          user_id: string
+          value_trap_risk: string | null
+          volatility_estimate: number | null
+        }
+        Insert: {
+          account_id: string
+          avg_entry?: number
+          beta_estimate?: number | null
+          beta_source?: string | null
+          contribution_to_return?: number
+          contribution_to_risk?: number
+          created_at?: string
+          disclosure_risk_flags?: string[]
+          fundamental_label?: string | null
+          id?: string
+          last_price?: number
+          market_value?: number
+          position_id?: string | null
+          position_weight_pct?: number
+          quantity?: number
+          risk_level?: string
+          sector?: string | null
+          symbol: string
+          unrealized_pnl?: number
+          unrealized_pnl_pct?: number
+          user_id: string
+          value_trap_risk?: string | null
+          volatility_estimate?: number | null
+        }
+        Update: {
+          account_id?: string
+          avg_entry?: number
+          beta_estimate?: number | null
+          beta_source?: string | null
+          contribution_to_return?: number
+          contribution_to_risk?: number
+          created_at?: string
+          disclosure_risk_flags?: string[]
+          fundamental_label?: string | null
+          id?: string
+          last_price?: number
+          market_value?: number
+          position_id?: string | null
+          position_weight_pct?: number
+          quantity?: number
+          risk_level?: string
+          sector?: string | null
+          symbol?: string
+          unrealized_pnl?: number
+          unrealized_pnl_pct?: number
+          user_id?: string
+          value_trap_risk?: string | null
+          volatility_estimate?: number | null
         }
         Relationships: []
       }
