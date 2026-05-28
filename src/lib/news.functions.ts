@@ -83,6 +83,36 @@ export const getMarketSentiment = createServerFn({ method: "POST" })
       }
     }
     const total = pos + neg + neu;
+
+    // Fallback to last persisted snapshot when 24h is empty (worker failure / off-hours).
+    if (total === 0) {
+      const { data: snap } = await supabaseAdmin
+        .from("news_sentiment_snapshots")
+        .select("*")
+        .eq("window_key", "24h")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (snap) {
+        const s = snap as any;
+        return {
+          counts: {
+            positive: s.positive_count ?? 0,
+            neutral: s.neutral_count ?? 0,
+            negative: s.negative_count ?? 0,
+            total: (s.positive_count ?? 0) + (s.neutral_count ?? 0) + (s.negative_count ?? 0),
+          },
+          sentimentScore: Math.round(Number(s.sentiment_score ?? 0)),
+          label: (s.label as string) ?? "Stale",
+          highImpactCount: s.high_impact_count ?? 0,
+          topPositive: (s.top_bullish ?? []) as { symbol: string; score: number; count: number }[],
+          topNegative: (s.top_bearish ?? []) as { symbol: string; score: number; count: number }[],
+          stale: true as const,
+          snapshotAt: s.created_at as string,
+        };
+      }
+    }
+
     const avg = total ? sumScore / total : 0;
     const scaled = Math.round(avg * 100);
     const label = scaled > 30 ? "Bullish" : scaled > 10 ? "Mildly Bullish" : scaled < -30 ? "Bearish" : scaled < -10 ? "Mildly Bearish" : "Neutral";
@@ -100,6 +130,36 @@ export const getMarketSentiment = createServerFn({ method: "POST" })
       highImpactCount: highImpact,
       topPositive,
       topNegative,
+      stale: false as const,
+    };
+  });
+
+/** Compact news context for AI Analyst — explains freshness & worker health. */
+export const getNewsContextForAI = createServerFn({ method: "POST" })
+  .handler(async () => {
+    const [{ data: lastRun }, { data: sources }, { data: snap }] = await Promise.all([
+      supabaseAdmin.from("news_pipeline_runs").select("status, finished_at, inserted_count, failed_sources, successful_sources, error_message").order("started_at", { ascending: false }).limit(1).maybeSingle(),
+      supabaseAdmin.from("news_source_health").select("source_key, status, last_success_at, last_error, http_status").order("source_key"),
+      supabaseAdmin.from("news_sentiment_snapshots").select("created_at, sentiment_score, label, positive_count, neutral_count, negative_count, high_impact_count").eq("window_key", "24h").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+    ]);
+    const lr = lastRun as any;
+    const srcs = (sources ?? []) as any[];
+    const failing = srcs.filter((s) => s.status !== "ok" && s.status !== "active");
+    const lastSuccessAt = srcs.reduce<string | null>((m, s) => (s.last_success_at && (!m || s.last_success_at > m) ? s.last_success_at : m), null);
+    const minSince = lastSuccessAt ? Math.round((Date.now() - new Date(lastSuccessAt).getTime()) / 60000) : null;
+    return {
+      lastRun: lr ?? null,
+      lastRunStatus: lr?.status ?? "unknown",
+      lastSuccessAt,
+      minutesSinceLastSuccess: minSince,
+      activeSources: srcs.filter((s) => s.status === "ok" || s.status === "active").map((s) => s.source_key),
+      failingSources: failing.map((s) => ({ key: s.source_key, error: s.last_error, http: s.http_status })),
+      snapshot: snap ?? null,
+      freshness:
+        minSince == null ? "unknown" :
+        minSince < 60 ? "fresh" :
+        minSince < 6 * 60 ? "recent" :
+        minSince < 24 * 60 ? "aging" : "stale",
     };
   });
 
