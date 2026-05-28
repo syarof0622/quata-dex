@@ -1,15 +1,30 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { getSystemHealth, type HealthStatus } from "@/lib/system-health.functions";
+import { triggerWorker, type WorkerKey } from "@/lib/worker-test.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Activity, AlertTriangle, CheckCircle2, CircleSlash, Loader2 } from "lucide-react";
+import { Activity, AlertTriangle, CheckCircle2, CircleSlash, Loader2, PlayCircle } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/health")({
   component: HealthPage,
   head: () => ({ meta: [{ title: "System Health · Quanta Terminal" }] }),
 });
+
+type RunResult = { ok: boolean; status: number; message?: string; ranAt?: string; durationMs?: number };
+
+const WORKERS: { key: WorkerKey; label: string; hint: string }[] = [
+  { key: "news-ingest", label: "News Ingest", hint: "Fetch + dedupe artikel berita." },
+  { key: "disclosure-ingest", label: "Disclosure Ingest", hint: "Snapshot disclosure, corp action, regulatory." },
+  { key: "fundamentals", label: "Fundamentals Backfill", hint: "Refresh fundamental & sektor benchmark." },
+  { key: "ai-agent", label: "AI Agent Worker", hint: "Jalankan auto-decision engine 1 siklus." },
+  { key: "alerts", label: "Alerts Engine", hint: "Evaluasi semua rule alerts aktif." },
+  { key: "news-disclosure-link", label: "News ↔ Disclosure", hint: "Linker korelasi berita & disclosure." },
+  { key: "orders", label: "Orders Queue", hint: "Proses queued paper-trade orders." },
+];
 
 const STATUS_STYLES: Record<HealthStatus, { label: string; cls: string }> = {
   healthy: { label: "Healthy", cls: "bg-emerald-500/15 text-emerald-300 border-emerald-500/40" },
