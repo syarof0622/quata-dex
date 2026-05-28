@@ -106,6 +106,7 @@ function NewsHub() {
       qc.invalidateQueries({ queryKey: ["news-list"] });
       qc.invalidateQueries({ queryKey: ["market-sentiment"] });
       qc.invalidateQueries({ queryKey: ["news-sources-status"] });
+      qc.invalidateQueries({ queryKey: ["news-pipeline-state"] });
     },
   });
 
