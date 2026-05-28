@@ -233,29 +233,56 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
       lastUpdatedAt: news?.fetched_at ?? null,
     });
 
-    // 3) Market Data (data_quality_snapshots most recent)
+    // 3) Market Data — prefer market_data_quality_snapshots, fallback to data_quality_snapshots
+    const { data: mdq } = await supabaseAdmin
+      .from("market_data_quality_snapshots")
+      .select("created_at, status, data_quality_score, latest_price_at, symbols_checked, symbols_with_price, symbols_missing_price, stale_symbols, fresh_symbols, market_session, ihsg_value, ihsg_updated_at")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
     const { data: dq } = await supabaseAdmin
       .from("data_quality_snapshots")
       .select("created_at, overall_data_quality_score, price_quality")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
+    const mdqMins = minutesAgo((mdq as any)?.created_at ?? null);
     const dqMins = minutesAgo(dq?.created_at ?? null);
-    const dqStatus: HealthStatus = !dq
-      ? "unknown"
-      : (dq.overall_data_quality_score ?? 0) >= 70
-      ? "healthy"
-      : (dq.overall_data_quality_score ?? 0) >= 40
-      ? "partial"
-      : "degraded";
+    let mdStatus: HealthStatus;
+    let mdDetail: string;
+    let mdLastAt: string | null = null;
+    let mdMetrics: Record<string, string | number | null> | undefined;
+    if (mdq) {
+      const score = Number((mdq as any).data_quality_score ?? 0);
+      mdStatus = score >= 70 ? "healthy" : score >= 40 ? "partial" : "degraded";
+      mdDetail = `Skor ${Math.round(score)} · ${(mdq as any).fresh_symbols}/${(mdq as any).symbols_checked} fresh${(mdq as any).market_session ? ` · ${(mdq as any).market_session}` : ""}. ${mdqMins ?? "?"} menit lalu.`;
+      mdLastAt = (mdq as any).created_at;
+      mdMetrics = {
+        score: Math.round(score),
+        symbolsChecked: (mdq as any).symbols_checked ?? 0,
+        fresh: (mdq as any).fresh_symbols ?? 0,
+        stale: (mdq as any).stale_symbols ?? 0,
+        missing: (mdq as any).symbols_missing_price ?? 0,
+        session: (mdq as any).market_session ?? "—",
+        ihsg: (mdq as any).ihsg_value ?? null,
+        latestPriceWIB: formatWIB((mdq as any).latest_price_at ?? null),
+      };
+    } else if (dq) {
+      const score = Number(dq.overall_data_quality_score ?? 0);
+      mdStatus = score >= 70 ? "healthy" : score >= 40 ? "partial" : "degraded";
+      mdDetail = `Skor kualitas ${Math.round(score)} (price: ${dq.price_quality ?? "?"}). ${dqMins ?? "?"} menit lalu.`;
+      mdLastAt = dq.created_at;
+    } else {
+      mdStatus = "not_run_yet";
+      mdDetail = "Snapshot kualitas market data belum pernah dibuat. Jalankan Test Market Snapshot atau tunggu worker berikutnya.";
+    }
     cards.push({
       key: "market_data",
       label: "Market Data",
-      status: dqStatus,
-      detail: !dq
-        ? "Belum ada snapshot kualitas data."
-        : `Skor kualitas ${Math.round(dq.overall_data_quality_score ?? 0)} (price: ${dq.price_quality ?? "?"}). ${dqMins ?? "?"} menit lalu.`,
-      lastUpdatedAt: dq?.created_at ?? null,
+      status: mdStatus,
+      detail: mdDetail,
+      lastUpdatedAt: mdLastAt,
+      metrics: mdMetrics,
     });
 
     // 4) Source Health — normalized via summarizeSourceHealth so the Health
