@@ -300,42 +300,83 @@ function Portfolio() {
                 <th className="text-left p-2">Symbol</th>
                 <th className="text-left p-2">Sector</th>
                 <th className="text-right p-2">Lot</th>
-                <th className="text-right p-2">Shares</th>
                 <th className="text-right p-2">Avg Entry</th>
                 <th className="text-right p-2">Last</th>
-                <th className="text-right p-2">Market Value</th>
                 <th className="text-right p-2">Unrealized P/L</th>
+                <th className="text-right p-2">Stop Loss</th>
+                <th className="text-right p-2">Take Profit</th>
+                <th className="text-right p-2">Trailing</th>
+                <th className="text-left p-2">AI Status</th>
                 <th className="text-right p-2">Weight</th>
-                <th className="text-right p-2">Realized</th>
               </tr>
             </thead>
             <tbody>
               {positions.map((p: any) => {
                 const weight = equity ? (num(p.value) / equity) * 100 : 0;
-                const realized = d.perSymbol?.[p.symbol]?.realized ?? 0;
+                const sl = p.stopLoss;
+                const tp = p.takeProfit;
+                const trailing = p.trailingStop;
+                const ms = p.managementStatus ?? null;
+                const msTone =
+                  ms == null ? "text-amber-400"
+                  : /EXIT|TRIGGER/i.test(ms) ? "text-rose-400"
+                  : /TRAILING/i.test(ms) ? "text-sky-400"
+                  : /NEAR/i.test(ms) ? "text-amber-400"
+                  : "text-emerald-400";
                 return (
-                  <tr key={p.symbol} className="border-t border-border">
+                  <tr key={p.symbol} className="border-t border-border align-top">
                     <td className="p-2 font-medium">
                       <Link to="/chart/$symbol" params={{ symbol: p.symbol }} className="hover:text-primary">{p.symbol}</Link>
                       {p.stale && <span className="ml-1 text-[9px] text-amber-400">(stale)</span>}
                     </td>
                     <td className="p-2 text-xs text-muted-foreground">{p.sector}</td>
                     <td className="p-2 text-right font-mono text-xs">{num(p.lot).toFixed(0)}</td>
-                    <td className="p-2 text-right font-mono">{p.qty}</td>
                     <td className="p-2 text-right font-mono">{priceFmt(p.symbol, p.avg)}</td>
                     <td className="p-2 text-right font-mono">{priceFmt(p.symbol, p.last)}</td>
-                    <td className="p-2 text-right font-mono">{money(p.value)}</td>
                     <td className={`p-2 text-right font-mono ${colorForChange(p.pnl)}`}>
                       <div>{money(p.pnl)}</div>
                       <div className="text-[10px] opacity-80">{formatPct(p.pnlPct)}</div>
                     </td>
+                    <td className="p-2 text-right font-mono text-xs">
+                      {sl != null ? (
+                        <>
+                          <div className="text-rose-400">{priceFmt(p.symbol, sl)}</div>
+                          {p.distanceToStopPct != null && (
+                            <div className="text-[10px] text-muted-foreground">{p.distanceToStopPct.toFixed(1)}%</div>
+                          )}
+                        </>
+                      ) : <span className="text-amber-400">—</span>}
+                    </td>
+                    <td className="p-2 text-right font-mono text-xs">
+                      {tp != null ? (
+                        <>
+                          <div className="text-emerald-400">{priceFmt(p.symbol, tp)}</div>
+                          {p.distanceToTakeProfitPct != null && (
+                            <div className="text-[10px] text-muted-foreground">{p.distanceToTakeProfitPct.toFixed(1)}%</div>
+                          )}
+                        </>
+                      ) : <span className="text-amber-400">—</span>}
+                    </td>
+                    <td className="p-2 text-right font-mono text-xs">
+                      {trailing != null ? (
+                        <div className="text-sky-400">{priceFmt(p.symbol, trailing)}</div>
+                      ) : <span className="text-muted-foreground">—</span>}
+                    </td>
+                    <td className={`p-2 text-xs ${msTone}`}>
+                      {ms ?? "NO PLAN"}
+                      {!p.hasExitPlan && (
+                        <div className="text-[10px] text-amber-400 mt-0.5">No exit plan — will be generated on next worker run.</div>
+                      )}
+                      {p.exitPlanReason && p.hasExitPlan && (
+                        <div className="text-[10px] text-muted-foreground mt-0.5 truncate max-w-[180px]" title={p.exitPlanReason}>{p.exitPlanReason}</div>
+                      )}
+                    </td>
                     <td className="p-2 text-right font-mono text-xs text-muted-foreground">{weight.toFixed(1)}%</td>
-                    <td className={`p-2 text-right font-mono text-xs ${colorForChange(realized)}`}>{money(realized)}</td>
                   </tr>
                 );
               })}
               {positions.length === 0 && (
-                <tr><td colSpan={10} className="p-6 text-center text-muted-foreground">
+                <tr><td colSpan={11} className="p-6 text-center text-muted-foreground">
                   Belum ada open position. AI belum mengeksekusi paper BUY atau semua posisi sudah ditutup.
                 </td></tr>
               )}
