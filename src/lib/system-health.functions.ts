@@ -5,7 +5,18 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { summarizeSourceHealth, overallStatusLabel, type OverallStatus } from "./source-health";
 import { formatWIB } from "./idx-market-session";
 
-export type HealthStatus = "healthy" | "partial" | "degraded" | "failed" | "unknown";
+export type HealthStatus =
+  | "healthy"
+  | "partial"
+  | "stale"
+  | "degraded"
+  | "failed"
+  | "unauthorized"
+  | "not_configured"
+  | "not_run_yet"
+  | "no_recent_event"
+  | "no_new_data"
+  | "unknown";
 
 export type HealthCard = {
   key: string;
