@@ -405,6 +405,39 @@ async function executePaperFill(opts: {
     pnl: realizedPnl, model_version: "agent-v1.2", strategy_version: "real-data-v2",
   });
 
+  // Update 14 Phase 2: lifecycle hooks (paper trading only).
+  try {
+    if (side === "buy") {
+      // Auto-create / refresh the exit plan so monitoring has stop/TP/trailing
+      // levels from the very first tick after the BUY fills.
+      const { upsertExitPlanAfterBuy } = await import("./position-management.server");
+      const { data: posRow } = await supabaseAdmin
+        .from("paper_positions").select("id, qty, avg_price")
+        .eq("account_id", paperAccountId).eq("symbol", symbol).maybeSingle();
+      const { data: agentRow } = await supabaseAdmin
+        .from("ai_trade_agents").select("autonomous_risk_mode, risk_level")
+        .eq("id", agentId).maybeSingle();
+      await upsertExitPlanAfterBuy({
+        agentId,
+        accountId: paperAccountId,
+        positionId: (posRow as any)?.id ?? null,
+        symbol,
+        entryPrice: fillPrice,
+        quantity: Number((posRow as any)?.qty ?? shares),
+        riskMode: ((agentRow as any)?.autonomous_risk_mode ?? (agentRow as any)?.risk_level ?? "balanced"),
+        strategyName: decision?.strategy ?? null,
+        confidence: decision?.confidence ?? null,
+      });
+    } else if (closeReason) {
+      // Closed-trade event → run post-trade review immediately so the lesson
+      // label / forward-test record lands before the next worker tick.
+      const { runPostTradeReviewCore } = await import("./post-trade-review.functions");
+      await runPostTradeReviewCore(5);
+    }
+  } catch (e) {
+    console.error("[agent] position lifecycle hook failed", e);
+  }
+
   return { order, realizedPnl, fillPrice, slipPct, fee, cashBefore, cashAfter };
 }
 
