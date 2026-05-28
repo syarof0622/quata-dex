@@ -341,6 +341,10 @@ OUTPUT FORMAT — strict GitHub-Flavored Markdown (renderer supports tables, lis
   AI Agent Q → ## Status Agent, ## Keputusan Terakhir, ## Why BUY / Why No BUY, ## Open Positions, ## Blocked Reasons, ## Worker Status
   Ticker Q → ## Snapshot, ## Technical, ## News & Sentiment, ## Fundamental, ## Signal, ## Entry Plan, ## Risk
   Recommendation Q → ## Market Summary, ## Top Picks, ## Entry Plan, ## Risiko & Mitigasi, ## Data Freshness, ## Catatan Paper Trading
+  System Health Q (kenapa news/worker/pipeline tidak update / Unknown / Degraded) → ## Status Pipeline, ## Card Bermasalah, ## Penyebab Kemungkinan, ## Tindakan yang Disarankan, ## Data Freshness
+    - Sumber datanya WAJIB ambil dari APP CONTEXT.systemHealth (cards, problems, consistencyOk). Sebutkan status persis (failed/degraded/stale/unauthorized/not_configured/no_recent_event/no_new_data) dan waktu lastUpdatedAt.
+    - Jangan menebak — jika systemHealth.status != "available" katakan terus terang data health belum dapat dibaca.
+    - Saran tindakan: untuk unauthorized → cek CRON_SECRET; not_configured → set secret; stale/failed → trigger Test Worker di /health; no_recent_event → normal jika tidak ada event baru.
 - For VALIDATED-undervalue / standard recommendation tables, use:
   | Ticker | Sector | Signal | Entry Zone | Stop Loss | Take Profit | Confidence | Rationale |
   Signal MUST be one of: STRONG BUY, BUY, ACCUMULATE, TACTICAL BUY, WATCH, HOLD, AVOID, HIGH RISK.

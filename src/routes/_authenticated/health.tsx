@@ -1,15 +1,30 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { getSystemHealth, type HealthStatus } from "@/lib/system-health.functions";
+import { triggerWorker, type WorkerKey } from "@/lib/worker-test.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Activity, AlertTriangle, CheckCircle2, CircleSlash, Loader2 } from "lucide-react";
+import { Activity, AlertTriangle, CheckCircle2, CircleSlash, Loader2, PlayCircle } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/health")({
   component: HealthPage,
   head: () => ({ meta: [{ title: "System Health · Quanta Terminal" }] }),
 });
+
+type RunResult = { ok: boolean; status: number; message?: string; ranAt?: string; durationMs?: number };
+
+const WORKERS: { key: WorkerKey; label: string; hint: string }[] = [
+  { key: "news-ingest", label: "News Ingest", hint: "Fetch + dedupe artikel berita." },
+  { key: "disclosure-ingest", label: "Disclosure Ingest", hint: "Snapshot disclosure, corp action, regulatory." },
+  { key: "fundamentals", label: "Fundamentals Backfill", hint: "Refresh fundamental & sektor benchmark." },
+  { key: "ai-agent", label: "AI Agent Worker", hint: "Jalankan auto-decision engine 1 siklus." },
+  { key: "alerts", label: "Alerts Engine", hint: "Evaluasi semua rule alerts aktif." },
+  { key: "news-disclosure-link", label: "News ↔ Disclosure", hint: "Linker korelasi berita & disclosure." },
+  { key: "orders", label: "Orders Queue", hint: "Proses queued paper-trade orders." },
+];
 
 const STATUS_STYLES: Record<HealthStatus, { label: string; cls: string }> = {
   healthy: { label: "Healthy", cls: "bg-emerald-500/15 text-emerald-300 border-emerald-500/40" },
@@ -37,11 +52,33 @@ function fmtWIB(iso: string | null | undefined): string {
 
 function HealthPage() {
   const fetchHealth = useServerFn(getSystemHealth);
+  const runWorker = useServerFn(triggerWorker);
+  const [running, setRunning] = useState<WorkerKey | null>(null);
+  const [results, setResults] = useState<Partial<Record<WorkerKey, RunResult>>>({});
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ["system-health"],
     queryFn: () => fetchHealth(),
     refetchInterval: 30_000,
   });
+
+  async function handleRun(key: WorkerKey) {
+    setRunning(key);
+    try {
+      const r = await runWorker({ data: { worker: key } });
+      setResults((prev) => ({
+        ...prev,
+        [key]: { ok: r.ok, status: r.status, message: r.message, ranAt: r.ranAt, durationMs: (r as any).durationMs },
+      }));
+      if (r.ok) toast.success(`${key}: ${r.message ?? "ok"}`);
+      else toast.error(`${key}: ${r.message ?? r.error ?? "failed"}`);
+      refetch();
+    } catch (e: any) {
+      toast.error(`${key}: ${e?.message ?? "error"}`);
+      setResults((prev) => ({ ...prev, [key]: { ok: false, status: 0, message: e?.message ?? "error" } }));
+    } finally {
+      setRunning(null);
+    }
+  }
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -107,6 +144,66 @@ function HealthPage() {
               );
             })}
           </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm flex items-center gap-2">
+                <PlayCircle className="size-4 text-primary" /> Test Workers
+              </CardTitle>
+              <p className="text-[11px] text-muted-foreground">
+                Trigger pipeline manual untuk verifikasi. CRON_SECRET dipakai server-side dan tidak pernah dikirim ke browser.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {WORKERS.map((w) => {
+                  const r = results[w.key];
+                  const busy = running === w.key;
+                  return (
+                    <div key={w.key} className="border border-border rounded-md p-3 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="text-sm font-medium">{w.label}</div>
+                          <div className="text-[11px] text-muted-foreground">{w.hint}</div>
+                        </div>
+                        <button
+                          onClick={() => handleRun(w.key)}
+                          disabled={busy || running !== null}
+                          className="text-[11px] px-2 py-1 rounded border border-border hover:bg-muted disabled:opacity-50 flex items-center gap-1 shrink-0"
+                        >
+                          {busy ? <Loader2 className="size-3 animate-spin" /> : <PlayCircle className="size-3" />}
+                          {busy ? "Running…" : "Run"}
+                        </button>
+                      </div>
+                      {r && (
+                        <div className="text-[11px] flex flex-wrap items-center gap-2">
+                          <Badge
+                            variant="outline"
+                            className={r.ok
+                              ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/40"
+                              : "bg-rose-500/15 text-rose-300 border-rose-500/40"}
+                          >
+                            {r.ok ? "OK" : "Failed"} · {r.status || "—"}
+                          </Badge>
+                          {typeof r.durationMs === "number" && (
+                            <span className="text-muted-foreground">{r.durationMs}ms</span>
+                          )}
+                          <span className="text-muted-foreground">{fmtWIB(r.ranAt)}</span>
+                          {r.message && (
+                            <span className="text-muted-foreground basis-full truncate" title={r.message}>
+                              {r.message}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+
 
           <Card>
             <CardHeader>

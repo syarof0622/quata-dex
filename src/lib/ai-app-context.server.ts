@@ -5,6 +5,7 @@ import { getIDXMarketSession, canExecutePaperTrade } from "@/lib/idx-market-sess
 import { buildStrategyIntelligence } from "@/lib/strategy-intelligence.functions";
 import { summarizeSourceHealth } from "@/lib/source-health";
 import { getPortfolioAnalytics } from "@/lib/analytics.functions";
+import { getSystemHealth } from "@/lib/system-health.functions";
 
 const USER_ID = "00000000-0000-0000-0000-000000000001";
 
@@ -921,6 +922,34 @@ export async function getAIAppContext(userText: string) {
     portfolioAttribution = { status: "error" as Status, error: String(e?.message ?? e).slice(0, 200) };
   }
 
+  // System health snapshot — lets the AI Analyst explain pipeline/worker issues.
+  let systemHealth: any = { status: "unavailable" as Status };
+  try {
+    const sh = await getSystemHealth();
+    const cards = (sh?.cards ?? []).map((c: any) => ({
+      key: c.key,
+      label: c.label,
+      status: c.status,
+      detail: c.detail,
+      lastUpdatedAt: c.lastUpdatedAt,
+      metrics: c.metrics ?? null,
+    }));
+    const problems = cards.filter((c: any) =>
+      ["failed", "degraded", "stale", "unauthorized", "not_configured"].includes(c.status),
+    );
+    systemHealth = {
+      status: "available" as Status,
+      generatedAt: sh.generatedAt,
+      cards,
+      problems,
+      consistencyOk: sh.consistency?.ok ?? true,
+      consistencyWarnings: sh.consistency?.warnings ?? [],
+    };
+  } catch (e: any) {
+    systemHealth = { status: "error" as Status, error: String(e?.message ?? e).slice(0, 200) };
+  }
+
+
   return {
     intent,
     contextStatus,
@@ -942,6 +971,7 @@ export async function getAIAppContext(userText: string) {
     aiInsights,
     aiAlerts,
     strategyIntelligence,
+    systemHealth,
     paperTradingOnly: true,
     generatedAt: new Date().toISOString(),
   };
