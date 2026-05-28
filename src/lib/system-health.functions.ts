@@ -345,7 +345,51 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
       lastUpdatedAt: lastError?.created_at ?? null,
     });
 
-    // Recent audit feed
+    // 10) Disclosure / Corporate Action / Regulatory pipeline (PATCH 19)
+    try {
+      const since24 = new Date(Date.now() - 24 * 3600_000).toISOString();
+      const since7d = new Date(Date.now() - 7 * 24 * 3600_000).toISOString();
+      const [d24, d7, c7, r7, hiNeg] = await Promise.all([
+        supabaseAdmin.from("official_disclosures").select("id", { count: "exact", head: true }).gte("published_at", since24),
+        supabaseAdmin.from("official_disclosures").select("id", { count: "exact", head: true }).gte("published_at", since7d),
+        supabaseAdmin.from("corporate_actions").select("id", { count: "exact", head: true }).gte("announcement_date", since7d.slice(0, 10)),
+        supabaseAdmin.from("regulatory_events").select("id", { count: "exact", head: true }).gte("published_at", since7d),
+        supabaseAdmin.from("official_disclosures").select("id", { count: "exact", head: true }).gte("published_at", since7d).eq("sentiment", "negative").gte("impact_score", 70),
+      ]);
+      const d24Count = d24.count ?? 0;
+      const d7Count = d7.count ?? 0;
+      const c7Count = c7.count ?? 0;
+      const r7Count = r7.count ?? 0;
+      const noSources = d7Count + c7Count + r7Count === 0;
+      const status: HealthStatus = noSources
+        ? "degraded"
+        : d24Count > 0 ? "healthy" : "partial";
+      cards.push({
+        key: "disclosure_pipeline",
+        label: "Disclosure / Corporate Action Pipeline",
+        status,
+        detail: noSources
+          ? "Belum ada disclosure / corporate action / regulatory event terdeteksi dalam 7 hari terakhir."
+          : `${d24Count} disclosure (24h) · ${d7Count + c7Count + r7Count} event (7d) · ${hiNeg.count ?? 0} high-impact negatif.`,
+        lastUpdatedAt: new Date().toISOString(),
+        metrics: {
+          official_24h: d24Count,
+          official_7d: d7Count,
+          corporate_actions_7d: c7Count,
+          regulatory_events_7d: r7Count,
+          high_impact_negative_7d: hiNeg.count ?? 0,
+        },
+      });
+    } catch (e: any) {
+      cards.push({
+        key: "disclosure_pipeline",
+        label: "Disclosure / Corporate Action Pipeline",
+        status: "unknown",
+        detail: `Tidak bisa membaca disclosure pipeline: ${e?.message ?? String(e)}`,
+        lastUpdatedAt: new Date().toISOString(),
+      });
+    }
+
     const { data: auditFeed } = await supabaseAdmin
       .from("system_audit_logs")
       .select("id, module, action, status, message, entity_type, entity_id, metadata, created_at")
