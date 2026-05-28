@@ -3449,6 +3449,53 @@ export type Database = {
         }
         Relationships: []
       }
+      system_audit_checks: {
+        Row: {
+          audit_report_id: string | null
+          check_key: string
+          created_at: string
+          details: Json
+          id: string
+          message: string | null
+          module: string
+          recommended_fix: string | null
+          severity: string
+          status: string
+        }
+        Insert: {
+          audit_report_id?: string | null
+          check_key: string
+          created_at?: string
+          details?: Json
+          id?: string
+          message?: string | null
+          module: string
+          recommended_fix?: string | null
+          severity?: string
+          status?: string
+        }
+        Update: {
+          audit_report_id?: string | null
+          check_key?: string
+          created_at?: string
+          details?: Json
+          id?: string
+          message?: string | null
+          module?: string
+          recommended_fix?: string | null
+          severity?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "system_audit_checks_audit_report_id_fkey"
+            columns: ["audit_report_id"]
+            isOneToOne: false
+            referencedRelation: "system_audit_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       system_audit_logs: {
         Row: {
           action: string
@@ -3482,6 +3529,57 @@ export type Database = {
           metadata?: Json
           module?: string
           status?: string
+        }
+        Relationships: []
+      }
+      system_audit_reports: {
+        Row: {
+          auto_fix_available: Json
+          created_at: string
+          critical_issues: Json
+          duration_ms: number | null
+          error_message: string | null
+          failed_checks: Json
+          id: string
+          modules: Json
+          overall_score: number
+          passed_checks: Json
+          recommended_fixes: Json
+          status: string
+          trigger_source: string
+          warnings: Json
+        }
+        Insert: {
+          auto_fix_available?: Json
+          created_at?: string
+          critical_issues?: Json
+          duration_ms?: number | null
+          error_message?: string | null
+          failed_checks?: Json
+          id?: string
+          modules?: Json
+          overall_score?: number
+          passed_checks?: Json
+          recommended_fixes?: Json
+          status?: string
+          trigger_source?: string
+          warnings?: Json
+        }
+        Update: {
+          auto_fix_available?: Json
+          created_at?: string
+          critical_issues?: Json
+          duration_ms?: number | null
+          error_message?: string | null
+          failed_checks?: Json
+          id?: string
+          modules?: Json
+          overall_score?: number
+          passed_checks?: Json
+          recommended_fixes?: Json
+          status?: string
+          trigger_source?: string
+          warnings?: Json
         }
         Relationships: []
       }
