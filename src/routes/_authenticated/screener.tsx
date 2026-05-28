@@ -466,3 +466,74 @@ export function Sparkline({ values, bull, width = 80, height = 24 }: { values: n
     </svg>
   );
 }
+
+function DisclosurePanel() {
+  const [filter, setFilter] = useState<"all" | "high_impact" | "uma_suspension" | "dividend_buyback" | "rights_issue">("all");
+  const q = useQuery({
+    queryKey: ["disclosure-screener"],
+    queryFn: () => listDisclosureIntel({ data: { limit: 60 } }),
+    refetchInterval: 5 * 60_000,
+  });
+  const data = q.data ?? { disclosures: [], corporateActions: [], regulatoryEvents: [] };
+  const all = [
+    ...data.disclosures.map((d: any) => ({ ...d, _bucket: "official" })),
+    ...data.corporateActions.map((d: any) => ({ ...d, _bucket: "corporate_action" })),
+    ...data.regulatoryEvents.map((d: any) => ({ ...d, _bucket: "regulatory" })),
+  ];
+  const rows = all.filter((d: any) => {
+    if (filter === "all") return true;
+    const kind = (d.disclosure_type || d.action_type || d.event_type || "").toLowerCase();
+    if (filter === "high_impact") return d.is_high_impact || (d.impact_score ?? 0) >= 70;
+    if (filter === "uma_suspension") return /uma|suspen|delist/.test(kind);
+    if (filter === "dividend_buyback") return /dividend|dividen|buyback/.test(kind);
+    if (filter === "rights_issue") return /right|dilut/.test(kind);
+    return true;
+  }).sort((a: any, b: any) => {
+    const ad = a.published_at || a.announcement_date || "";
+    const bd = b.published_at || b.announcement_date || "";
+    return bd.localeCompare(ad);
+  });
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        {([
+          ["all", "All"],
+          ["high_impact", "High Impact"],
+          ["uma_suspension", "UMA / Suspension"],
+          ["dividend_buyback", "Dividend / Buyback"],
+          ["rights_issue", "Rights Issue"],
+        ] as const).map(([key, label]) => (
+          <Button key={key} size="sm" variant={filter === key ? "default" : "outline"} onClick={() => setFilter(key)}>
+            {label}
+          </Button>
+        ))}
+      </div>
+
+      {q.isLoading && <div className="text-sm text-muted-foreground">Loading…</div>}
+      {!q.isLoading && rows.length === 0 && (
+        <div className="panel p-6 text-center text-sm text-muted-foreground">
+          Tidak ada disclosure / corporate action / regulatory event yang cocok.
+        </div>
+      )}
+
+      <div className="grid gap-2 md:grid-cols-2">
+        {rows.map((d: any) => (
+          <div key={`${d._bucket}-${d.id}`} className="panel p-3 space-y-2">
+            <div className="flex items-start justify-between gap-2">
+              <div className="font-mono text-sm">{d.symbol}</div>
+              <DisclosureBadge disclosure={d} compact />
+            </div>
+            <div className="text-sm font-medium line-clamp-2">{d.title}</div>
+            <div className="text-xs text-muted-foreground flex flex-wrap gap-2">
+              <span>{d._bucket}</span>
+              <span>·</span>
+              <span>{(d.published_at || d.announcement_date || "").slice(0, 10)}</span>
+              {d.source ? (<><span>·</span><span>{d.source}</span></>) : null}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
