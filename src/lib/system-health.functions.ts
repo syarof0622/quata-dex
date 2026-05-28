@@ -172,11 +172,13 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
       key: "next_worker_run",
       label: "Next Expected Worker Run",
       status: (agent as any)?.next_expected_worker_run_at
-        ? (nextRunMins != null && nextRunMins > 0 ? "partial" : "healthy")
-        : "unknown",
+        ? (nextRunMins != null && nextRunMins > 0 ? "stale" : "healthy")
+        : (cronSecretSet ? "not_run_yet" : "not_configured"),
       detail: (agent as any)?.next_expected_worker_run_at
         ? `Dijadwalkan: ${formatWIB((agent as any).next_expected_worker_run_at)}`
-        : "Jadwal next run belum tercatat.",
+        : (cronSecretSet
+            ? "AI worker belum dijadwalkan ulang oleh scheduler."
+            : "CRON_SECRET belum dikonfigurasi."),
       lastUpdatedAt: (agent as any)?.next_expected_worker_run_at ?? null,
     });
 
@@ -190,20 +192,28 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
     cards.push({
       key: "last_auto_decision",
       label: "Last Auto Decision",
-      status: agentTimes?.last_auto_decision_at ? freshnessStatus(decMinsAuto, 60, 240) : "unknown",
+      status: agentTimes?.last_auto_decision_at
+        ? freshnessStatus(decMinsAuto, 60, 240)
+        : (workerMins != null ? "no_recent_event" : (cronSecretSet ? "not_run_yet" : "not_configured")),
       detail: agentTimes?.last_auto_decision_at
         ? `${formatWIB(agentTimes.last_auto_decision_at)} (${decMinsAuto} menit lalu)`
-        : "Belum ada keputusan otomatis.",
+        : (workerMins != null
+            ? "AI worker aktif, namun belum menghasilkan keputusan otomatis."
+            : "AI worker belum pernah berjalan."),
       lastUpdatedAt: agentTimes?.last_auto_decision_at ?? null,
     });
     const exMinsAuto = minutesAgo(agentTimes?.last_auto_execution_at ?? null);
     cards.push({
       key: "last_auto_execution",
       label: "Last Auto Execution",
-      status: agentTimes?.last_auto_execution_at ? freshnessStatus(exMinsAuto, 240, 1440) : "unknown",
+      status: agentTimes?.last_auto_execution_at
+        ? freshnessStatus(exMinsAuto, 240, 1440)
+        : (workerMins != null ? "no_recent_event" : (cronSecretSet ? "not_run_yet" : "not_configured")),
       detail: agentTimes?.last_auto_execution_at
         ? `${formatWIB(agentTimes.last_auto_execution_at)} (${exMinsAuto} menit lalu)`
-        : "Belum ada eksekusi otomatis.",
+        : (workerMins != null
+            ? "Belum ada paper order otomatis yang dieksekusi. AI worker tetap aktif dan mengevaluasi kandidat."
+            : "AI worker belum pernah berjalan."),
       lastUpdatedAt: agentTimes?.last_auto_execution_at ?? null,
     });
 
