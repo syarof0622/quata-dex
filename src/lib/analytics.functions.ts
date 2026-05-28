@@ -106,10 +106,16 @@ export const getPortfolioAnalytics = createServerFn({ method: "GET" })
       accountAny.initial_balance = seed;
     }
 
-    const [{ data: positions }, { data: orders }] = await Promise.all([
+    const [{ data: positions }, { data: orders }, { data: exitPlans }] = await Promise.all([
       supabaseAdmin.from("paper_positions").select("*").eq("account_id", account.id),
       supabaseAdmin.from("paper_orders").select("*").eq("account_id", account.id).eq("status", "filled").order("filled_at"),
+      supabaseAdmin
+        .from("position_exit_plans")
+        .select("symbol, stop_loss, take_profit, trailing_stop, trailing_stop_pct, risk_reward_ratio, management_status, reason")
+        .eq("account_id", account.id),
     ]);
+    const planBySymbol = new Map<string, any>();
+    for (const p of (exitPlans ?? [])) planBySymbol.set((p as any).symbol, p);
 
     const symbols = (positions ?? []).map((p: any) => p.symbol);
     let quotes: any[] = [];
@@ -143,6 +149,10 @@ export const getPortfolioAnalytics = createServerFn({ method: "GET" })
       const cost = avg * qty;
       const pnl = value - cost;
       totalValue += value; totalCost += cost; unrealized += pnl;
+      const plan = planBySymbol.get(p.symbol);
+      const stopLoss = plan?.stop_loss != null ? Number(plan.stop_loss) : null;
+      const takeProfit = plan?.take_profit != null ? Number(plan.take_profit) : null;
+      const trailingStop = plan?.trailing_stop != null ? Number(plan.trailing_stop) : null;
       return {
         symbol: p.symbol, qty, avg, last, value, cost, pnl,
         pnlPct: cost ? (pnl / cost) * 100 : 0,
@@ -150,6 +160,16 @@ export const getPortfolioAnalytics = createServerFn({ method: "GET" })
         lot: qty / 100,
         openedAt: p.opened_at,
         stale,
+        stopLoss,
+        takeProfit,
+        trailingStop,
+        trailingStopPct: plan?.trailing_stop_pct != null ? Number(plan.trailing_stop_pct) : null,
+        riskRewardRatio: plan?.risk_reward_ratio != null ? Number(plan.risk_reward_ratio) : null,
+        managementStatus: (plan?.management_status as string | undefined) ?? null,
+        exitPlanReason: (plan?.reason as string | undefined) ?? null,
+        distanceToStopPct: stopLoss != null && last > 0 ? ((last - stopLoss) / last) * 100 : null,
+        distanceToTakeProfitPct: takeProfit != null && last > 0 ? ((takeProfit - last) / last) * 100 : null,
+        hasExitPlan: !!plan,
       };
     });
 
