@@ -13,8 +13,8 @@ export const Route = createFileRoute("/api/public/cron/news-disclosure-link")({
 });
 
 async function handle(request: Request) {
-  const auth = checkCronSecret(request);
-  if (!auth.ok) return new Response(auth.message, { status: 401 });
+  const denied = checkCronSecret(request);
+  if (denied) return denied;
   try {
     const url = new URL(request.url);
     const hours = Number(url.searchParams.get("hours") ?? 48);
