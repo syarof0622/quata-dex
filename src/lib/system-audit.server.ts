@@ -826,25 +826,23 @@ export async function runSafeFix(key: SafeFixKey): Promise<SafeFixResult> {
         return { key, ok: true, message: `News ingest dijalankan (fetched=${(r as any).fetched ?? 0}).`, details: r as any };
       }
       case "create_market_snapshot": {
-        const { count: symbolsChecked } = await supabaseAdmin
-          .from("price_cache")
-          .select("symbol", { count: "exact", head: true });
         await supabaseAdmin.from("market_data_quality_snapshots").insert({
           status: "ok",
-          symbols_checked: symbolsChecked ?? 0,
-          symbols_with_price: symbolsChecked ?? 0,
-          fresh_symbols: symbolsChecked ?? 0,
+          symbols_checked: 0,
+          symbols_with_price: 0,
+          fresh_symbols: 0,
           stale_symbols: 0,
           symbols_missing_price: 0,
-          data_quality_score: 80,
+          data_quality_score: 0,
           source_summary: { source: "safe_fix_manual" } as any,
-        });
+          warnings: ["manual snapshot — no price source wired"],
+        } as any);
         return { key, ok: true, message: "Market data snapshot manual dibuat." };
       }
       case "recalc_portfolio": {
         const { data: acc } = await supabaseAdmin
           .from("paper_accounts")
-          .select("id, cash_balance")
+          .select("id, cash")
           .eq("user_id", USER_ID)
           .order("created_at", { ascending: false })
           .limit(1)
@@ -858,11 +856,11 @@ export async function runSafeFix(key: SafeFixKey): Promise<SafeFixResult> {
           (sum, p: any) => sum + Number(p.qty ?? 0) * Number(p.avg_price ?? 0),
           0,
         );
-        const cash = Number((acc as any).cash_balance ?? 0);
+        const cash = Number((acc as any).cash ?? 0);
         const equity = cash + holdings;
         await supabaseAdmin
           .from("paper_accounts")
-          .update({ holdings_value: holdings, equity_value: equity })
+          .update({ equity })
           .eq("id", (acc as any).id);
         return { key, ok: true, message: `Portfolio direcalc: cash=${cash}, holdings=${holdings}, equity=${equity}.` };
       }
