@@ -1230,6 +1230,7 @@ export type Database = {
           action_type: string
           amount: number | null
           announcement_date: string | null
+          company_name: string | null
           created_at: string
           cum_date: string | null
           currency: string | null
@@ -1241,6 +1242,8 @@ export type Database = {
           ratio: string | null
           raw_payload: Json | null
           recording_date: string | null
+          risk_flags: string[]
+          sentiment: string
           source: string
           source_url: string | null
           status: string
@@ -1252,6 +1255,7 @@ export type Database = {
           action_type: string
           amount?: number | null
           announcement_date?: string | null
+          company_name?: string | null
           created_at?: string
           cum_date?: string | null
           currency?: string | null
@@ -1263,6 +1267,8 @@ export type Database = {
           ratio?: string | null
           raw_payload?: Json | null
           recording_date?: string | null
+          risk_flags?: string[]
+          sentiment?: string
           source: string
           source_url?: string | null
           status?: string
@@ -1274,6 +1280,7 @@ export type Database = {
           action_type?: string
           amount?: number | null
           announcement_date?: string | null
+          company_name?: string | null
           created_at?: string
           cum_date?: string | null
           currency?: string | null
@@ -1285,6 +1292,8 @@ export type Database = {
           ratio?: string | null
           raw_payload?: Json | null
           recording_date?: string | null
+          risk_flags?: string[]
+          sentiment?: string
           source?: string
           source_url?: string | null
           status?: string
@@ -1962,69 +1971,99 @@ export type Database = {
       }
       official_disclosures: {
         Row: {
+          category: string | null
+          company_name: string | null
           created_at: string
           directness: string | null
           disclosure_type: string
           duplicate_cluster_id: string | null
+          extracted_data: Json | null
           extracted_summary: string | null
           id: string
           impact_level: string
           impact_score: number
+          is_high_impact: boolean
           news_article_id: string | null
           official_disclosure_linked: boolean
           published_at: string
           raw_payload: Json | null
+          raw_text: string | null
+          received_at: string | null
+          related_news_ids: string[]
           risk_flag: string | null
+          risk_flags: string[]
           sentiment: string
           source: string
           source_priority: number
+          summary: string | null
           symbol: string
           title: string
           trading_relevance: string | null
+          updated_at: string
           url: string | null
         }
         Insert: {
+          category?: string | null
+          company_name?: string | null
           created_at?: string
           directness?: string | null
           disclosure_type: string
           duplicate_cluster_id?: string | null
+          extracted_data?: Json | null
           extracted_summary?: string | null
           id?: string
           impact_level?: string
           impact_score?: number
+          is_high_impact?: boolean
           news_article_id?: string | null
           official_disclosure_linked?: boolean
           published_at?: string
           raw_payload?: Json | null
+          raw_text?: string | null
+          received_at?: string | null
+          related_news_ids?: string[]
           risk_flag?: string | null
+          risk_flags?: string[]
           sentiment?: string
           source: string
           source_priority?: number
+          summary?: string | null
           symbol: string
           title: string
           trading_relevance?: string | null
+          updated_at?: string
           url?: string | null
         }
         Update: {
+          category?: string | null
+          company_name?: string | null
           created_at?: string
           directness?: string | null
           disclosure_type?: string
           duplicate_cluster_id?: string | null
+          extracted_data?: Json | null
           extracted_summary?: string | null
           id?: string
           impact_level?: string
           impact_score?: number
+          is_high_impact?: boolean
           news_article_id?: string | null
           official_disclosure_linked?: boolean
           published_at?: string
           raw_payload?: Json | null
+          raw_text?: string | null
+          received_at?: string | null
+          related_news_ids?: string[]
           risk_flag?: string | null
+          risk_flags?: string[]
           sentiment?: string
           source?: string
           source_priority?: number
+          summary?: string | null
           symbol?: string
           title?: string
           trading_relevance?: string | null
+          updated_at?: string
           url?: string | null
         }
         Relationships: []
@@ -2371,6 +2410,7 @@ export type Database = {
       }
       regulatory_events: {
         Row: {
+          company_name: string | null
           created_at: string
           description: string | null
           event_type: string
@@ -2378,6 +2418,7 @@ export type Database = {
           impact_score: number
           published_at: string
           raw_payload: Json | null
+          risk_flags: string[]
           severity: string
           source: string
           source_url: string | null
@@ -2387,6 +2428,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          company_name?: string | null
           created_at?: string
           description?: string | null
           event_type: string
@@ -2394,6 +2436,7 @@ export type Database = {
           impact_score?: number
           published_at?: string
           raw_payload?: Json | null
+          risk_flags?: string[]
           severity?: string
           source: string
           source_url?: string | null
@@ -2403,6 +2446,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          company_name?: string | null
           created_at?: string
           description?: string | null
           event_type?: string
@@ -2410,6 +2454,7 @@ export type Database = {
           impact_score?: number
           published_at?: string
           raw_payload?: Json | null
+          risk_flags?: string[]
           severity?: string
           source?: string
           source_url?: string | null
