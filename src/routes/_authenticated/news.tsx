@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import { listNews, getMarketSentiment, getSourcesStatus, refreshNewsNow } from "@/lib/news.functions";
+import { listNews, getMarketSentiment, getSourcesStatus, refreshNewsNow, getNewsPipelineState } from "@/lib/news.functions";
 import { serpapiStatus } from "@/lib/serpapi.functions";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -93,6 +93,12 @@ function NewsHub() {
     refetchInterval: 120_000,
   });
 
+  const pipeline = useQuery({
+    queryKey: ["news-pipeline-state"],
+    queryFn: () => getNewsPipelineState({ data: undefined as any }),
+    refetchInterval: 60_000,
+  });
+
   const refreshFn = useServerFn(refreshNewsNow);
   const refresh = useMutation({
     mutationFn: () => refreshFn({ data: undefined as any }),
@@ -100,6 +106,7 @@ function NewsHub() {
       qc.invalidateQueries({ queryKey: ["news-list"] });
       qc.invalidateQueries({ queryKey: ["market-sentiment"] });
       qc.invalidateQueries({ queryKey: ["news-sources-status"] });
+      qc.invalidateQueries({ queryKey: ["news-pipeline-state"] });
     },
   });
 
@@ -139,8 +146,51 @@ function NewsHub() {
         </div>
       </div>
 
+      {/* Pipeline status */}
+      {pipeline.data && (() => {
+        const lr: any = pipeline.data.lastRun;
+        const snap: any = pipeline.data.snapshot;
+        const stale = (sentimentQ.data as any)?.stale === true;
+        const finishedAt = lr?.finished_at ?? lr?.started_at ?? null;
+        const minsAgo = finishedAt ? Math.round((Date.now() - new Date(finishedAt).getTime()) / 60000) : null;
+        const status = (lr?.status as string) ?? "unknown";
+        const tone =
+          status === "success" ? "border-bull/40 bg-bull-soft text-bull" :
+          status === "partial" ? "border-amber-500/40 bg-amber-500/10 text-amber-500" :
+          status === "failed" ? "border-bear/40 bg-bear-soft text-bear" :
+          "border-border text-muted-foreground";
+        return (
+          <div className="panel p-3 flex flex-wrap items-center gap-3 text-xs">
+            <span className={`px-2 py-0.5 rounded border font-medium ${tone}`}>Pipeline: {status}</span>
+            <span className="text-muted-foreground">
+              Last run: <span className="font-mono text-foreground">{finishedAt ? formatDateTimeWIB(finishedAt) : "—"}</span>
+              {minsAgo != null && <span className="ml-1">({minsAgo}m ago)</span>}
+            </span>
+            <span className="text-muted-foreground">
+              Sources: <span className="text-bull font-mono">{lr?.successful_sources ?? 0} ok</span>
+              {" · "}
+              <span className="text-bear font-mono">{lr?.failed_sources ?? 0} failed</span>
+              {(lr?.fallback_sources ?? 0) > 0 && <> · <span className="text-amber-500 font-mono">{lr.fallback_sources} fallback</span></>}
+              {(lr?.quota_protected_sources ?? 0) > 0 && <> · <span className="text-muted-foreground font-mono">{lr.quota_protected_sources} quota-protected</span></>}
+            </span>
+            <span className="text-muted-foreground">
+              Inserted last run: <span className="font-mono text-foreground">{lr?.inserted_count ?? 0}</span>
+            </span>
+            {stale && snap?.created_at && (
+              <span className="px-2 py-0.5 rounded border border-amber-500/40 bg-amber-500/10 text-amber-500 font-medium">
+                Showing snapshot from {formatDateTimeWIB(snap.created_at)} — no fresh 24h articles
+              </span>
+            )}
+            {lr?.error_message && (
+              <span className="text-bear truncate max-w-[420px]" title={lr.error_message}>⚠ {lr.error_message}</span>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Sentiment overview */}
       <div className="grid md:grid-cols-3 gap-3">
+
         <ScoreCard
           title="Market Sentiment (24h)"
           value={sentimentQ.data?.sentimentScore ?? 0}
