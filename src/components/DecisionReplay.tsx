@@ -274,6 +274,33 @@ export function DecisionReplayPanel({ defaultOpen = false, compactCount = 5 }: {
           </SheetHeader>
           {selected && (
             <div className="space-y-4 mt-4 text-sm">
+              {(() => {
+                const snap: any = selected.decision_replay_snapshot?.finalDecision ?? {};
+                const sl = (selected as any).stop_loss ?? snap.stopLoss ?? snap.stop_loss ?? null;
+                const tp = (selected as any).take_profit ?? snap.takeProfit ?? snap.take_profit ?? null;
+                const rr = (selected as any).risk_reward_ratio ?? snap.riskRewardRatio ?? null;
+                const lot = (selected as any).suggested_lot ?? snap.lot ?? null;
+                const shares = (selected as any).suggested_shares ?? snap.shares ?? null;
+                const realized = snap.realizedPnl ?? snap.realized_pnl ?? null;
+                const exitReason = snap.exitReason ?? snap.reason ?? null;
+                const fields: Array<[string, string | number | null]> = [
+                  ["Stop Loss", sl], ["Take Profit", tp], ["R/R", rr],
+                  ["Lot", lot], ["Shares", shares],
+                  ["Realized P/L", realized], ["Exit Reason", exitReason],
+                ];
+                const has = fields.some(([, v]) => v != null);
+                if (!has) return null;
+                return (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                    {fields.filter(([, v]) => v != null).map(([k, v]) => (
+                      <div key={k} className="rounded border border-border/40 bg-muted/20 px-2 py-1">
+                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{k}</div>
+                        <div className="text-xs font-mono truncate">{String(v)}</div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
               <Section title="Reasoning">
                 <p className="whitespace-pre-wrap text-muted-foreground">{selected.reasoning ?? "—"}</p>
               </Section>
