@@ -328,9 +328,13 @@ async function executePaperFill(opts: {
       ? "stop_loss_exit"
       : closeReason === "take_profit_triggered"
         ? "take_profit_exit"
-        : closeReason
-          ? "risk_exit"
-          : "closed_trade";
+        : closeReason === "trailing_stop_triggered"
+          ? "trailing_stop_exit"
+          : closeReason === "disclosure_exit"
+            ? "disclosure_exit"
+            : closeReason
+              ? "risk_exit"
+              : "closed_trade";
   const tradeLifecycle = isOpenTrade ? "open" : "closed";
 
   // Synthetic decision wrapper for risk exits without an upstream AgentDecision.
