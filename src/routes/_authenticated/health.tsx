@@ -148,6 +148,66 @@ function HealthPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-sm flex items-center gap-2">
+                <PlayCircle className="size-4 text-primary" /> Test Workers
+              </CardTitle>
+              <p className="text-[11px] text-muted-foreground">
+                Trigger pipeline manual untuk verifikasi. CRON_SECRET dipakai server-side dan tidak pernah dikirim ke browser.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {WORKERS.map((w) => {
+                  const r = results[w.key];
+                  const busy = running === w.key;
+                  return (
+                    <div key={w.key} className="border border-border rounded-md p-3 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="text-sm font-medium">{w.label}</div>
+                          <div className="text-[11px] text-muted-foreground">{w.hint}</div>
+                        </div>
+                        <button
+                          onClick={() => handleRun(w.key)}
+                          disabled={busy || running !== null}
+                          className="text-[11px] px-2 py-1 rounded border border-border hover:bg-muted disabled:opacity-50 flex items-center gap-1 shrink-0"
+                        >
+                          {busy ? <Loader2 className="size-3 animate-spin" /> : <PlayCircle className="size-3" />}
+                          {busy ? "Running…" : "Run"}
+                        </button>
+                      </div>
+                      {r && (
+                        <div className="text-[11px] flex flex-wrap items-center gap-2">
+                          <Badge
+                            variant="outline"
+                            className={r.ok
+                              ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/40"
+                              : "bg-rose-500/15 text-rose-300 border-rose-500/40"}
+                          >
+                            {r.ok ? "OK" : "Failed"} · {r.status || "—"}
+                          </Badge>
+                          {typeof r.durationMs === "number" && (
+                            <span className="text-muted-foreground">{r.durationMs}ms</span>
+                          )}
+                          <span className="text-muted-foreground">{fmtWIB(r.ranAt)}</span>
+                          {r.message && (
+                            <span className="text-muted-foreground basis-full truncate" title={r.message}>
+                              {r.message}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm flex items-center gap-2">
                 {data.consistency.ok ? (
                   <><CheckCircle2 className="size-4 text-emerald-400" /> Data Consistency OK</>
                 ) : (
