@@ -93,6 +93,12 @@ function NewsHub() {
     refetchInterval: 120_000,
   });
 
+  const pipeline = useQuery({
+    queryKey: ["news-pipeline-state"],
+    queryFn: () => getNewsPipelineState({ data: undefined as any }),
+    refetchInterval: 60_000,
+  });
+
   const refreshFn = useServerFn(refreshNewsNow);
   const refresh = useMutation({
     mutationFn: () => refreshFn({ data: undefined as any }),
