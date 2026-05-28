@@ -826,19 +826,17 @@ export async function runSafeFix(key: SafeFixKey): Promise<SafeFixResult> {
         return { key, ok: true, message: `News ingest dijalankan (fetched=${(r as any).fetched ?? 0}).`, details: r as any };
       }
       case "create_market_snapshot": {
-        const { count: symbolsChecked } = await supabaseAdmin
-          .from("price_cache")
-          .select("symbol", { count: "exact", head: true });
         await supabaseAdmin.from("market_data_quality_snapshots").insert({
           status: "ok",
-          symbols_checked: symbolsChecked ?? 0,
-          symbols_with_price: symbolsChecked ?? 0,
-          fresh_symbols: symbolsChecked ?? 0,
+          symbols_checked: 0,
+          symbols_with_price: 0,
+          fresh_symbols: 0,
           stale_symbols: 0,
           symbols_missing_price: 0,
-          data_quality_score: 80,
+          data_quality_score: 0,
           source_summary: { source: "safe_fix_manual" } as any,
-        });
+          warnings: ["manual snapshot — no price source wired"],
+        } as any);
         return { key, ok: true, message: "Market data snapshot manual dibuat." };
       }
       case "recalc_portfolio": {
