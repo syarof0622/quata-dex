@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { ChatPanel } from "@/components/ChatPanel";
 import { RiskEnginePanel } from "@/components/RiskEnginePanel";
 import { DecisionReplayPanel } from "@/components/DecisionReplay";
+import { AutonomousAgentPanel } from "@/components/AutonomousAgentPanel";
 import { getAIContextSummaryServer } from "@/lib/ai-context-summary.server";
 import { Activity, Database, Newspaper, BarChart3, ShieldCheck, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
