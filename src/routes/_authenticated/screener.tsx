@@ -11,7 +11,9 @@ import { UndervalueBadge } from "@/components/UndervalueBadge";
 import { formatPct, colorForChange } from "@/lib/format";
 import { formatLocalPrice } from "@/lib/symbols";
 import { ALL_SECTORS, type Sector } from "@/lib/sectors";
-import { Filter, Gem } from "lucide-react";
+import { Filter, Gem, ShieldAlert } from "lucide-react";
+import { listDisclosureIntel } from "@/lib/disclosure-intel.functions";
+import { DisclosureBadge } from "@/components/DisclosureBadge";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/screener")({
@@ -98,6 +100,7 @@ function Screener() {
         <TabsList>
           <TabsTrigger value="technical"><Filter className="size-3.5 mr-1" /> Technical</TabsTrigger>
           <TabsTrigger value="undervalued"><Gem className="size-3.5 mr-1" /> Undervalued (Fundamental)</TabsTrigger>
+          <TabsTrigger value="disclosure"><ShieldAlert className="size-3.5 mr-1" /> Disclosure / Corporate Action</TabsTrigger>
         </TabsList>
 
         <TabsContent value="technical" className="space-y-4">
@@ -244,6 +247,10 @@ function Screener() {
 
         <TabsContent value="undervalued" className="space-y-4">
           <UndervaluedPanel />
+        </TabsContent>
+
+        <TabsContent value="disclosure" className="space-y-4">
+          <DisclosurePanel />
         </TabsContent>
       </Tabs>
     </div>
