@@ -254,7 +254,7 @@ async function executePaperFill(opts: {
   agentId: string; paperAccountId: string; symbol: string; side: "buy" | "sell";
   shares: number; price: number; existing?: Position; reason: string;
   decision?: AgentDecision; decisionId?: string | null;
-  closeReason?: "stop_loss_triggered" | "take_profit_triggered" | null;
+  closeReason?: "stop_loss_triggered" | "take_profit_triggered" | "trailing_stop_triggered" | "risk_exit" | "disclosure_exit" | null;
   explorationTrade?: boolean; researchTrade?: boolean;
 }) {
   const { agentId, paperAccountId, symbol, side, shares, price, existing, reason, decision, decisionId, closeReason } = opts;
@@ -328,9 +328,13 @@ async function executePaperFill(opts: {
       ? "stop_loss_exit"
       : closeReason === "take_profit_triggered"
         ? "take_profit_exit"
-        : closeReason
-          ? "risk_exit"
-          : "closed_trade";
+        : closeReason === "trailing_stop_triggered"
+          ? "trailing_stop_exit"
+          : closeReason === "disclosure_exit"
+            ? "disclosure_exit"
+            : closeReason
+              ? "risk_exit"
+              : "closed_trade";
   const tradeLifecycle = isOpenTrade ? "open" : "closed";
 
   // Synthetic decision wrapper for risk exits without an upstream AgentDecision.
@@ -400,6 +404,39 @@ async function executePaperFill(opts: {
     paper_pnl_percent: paperPnlPercent,
     pnl: realizedPnl, model_version: "agent-v1.2", strategy_version: "real-data-v2",
   });
+
+  // Update 14 Phase 2: lifecycle hooks (paper trading only).
+  try {
+    if (side === "buy") {
+      // Auto-create / refresh the exit plan so monitoring has stop/TP/trailing
+      // levels from the very first tick after the BUY fills.
+      const { upsertExitPlanAfterBuy } = await import("./position-management.server");
+      const { data: posRow } = await supabaseAdmin
+        .from("paper_positions").select("id, qty, avg_price")
+        .eq("account_id", paperAccountId).eq("symbol", symbol).maybeSingle();
+      const { data: agentRow } = await supabaseAdmin
+        .from("ai_trade_agents").select("autonomous_risk_mode, risk_level")
+        .eq("id", agentId).maybeSingle();
+      await upsertExitPlanAfterBuy({
+        agentId,
+        accountId: paperAccountId,
+        positionId: (posRow as any)?.id ?? null,
+        symbol,
+        entryPrice: fillPrice,
+        quantity: Number((posRow as any)?.qty ?? shares),
+        riskMode: ((agentRow as any)?.autonomous_risk_mode ?? (agentRow as any)?.risk_level ?? "balanced"),
+        strategyName: decision?.strategy ?? null,
+        confidence: decision?.confidence ?? null,
+      });
+    } else if (closeReason) {
+      // Closed-trade event → run post-trade review immediately so the lesson
+      // label / forward-test record lands before the next worker tick.
+      const { runPostTradeReviewCore } = await import("./post-trade-review.functions");
+      await runPostTradeReviewCore(5);
+    }
+  } catch (e) {
+    console.error("[agent] position lifecycle hook failed", e);
+  }
 
   return { order, realizedPnl, fillPrice, slipPct, fee, cashBefore, cashAfter };
 }
@@ -812,50 +849,72 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
   }
 
 
-  // Stop-loss / take-profit guard on open positions (only when IDX market open)
+  // Update 14 Phase 2 — Position management loop.
+  // Run on EVERY tick when market is open. Uses the position-management engine
+  // (stop / take-profit / trailing / hold-exit scoring) and persists monitoring
+  // snapshots for the decision-replay UI. SELL signals here bypass buy-side
+  // risk pauses by contract — the engine is the sole authority for exits.
   if (session.isOpen) {
     metrics.openPositionsMonitored = posList.length;
+    const { evaluatePositionWithEngine } = await import("./position-management.server");
     const sinceGuard = new Date(Date.now() - 5 * 60_000).toISOString();
+    const riskMode = (agent.autonomous_risk_mode ?? agent.risk_level ?? "balanced") as string;
+
     for (const pos of posList) {
       try {
-        // 5-min duplicate guard: skip if a SL/TP event already fired recently
-        // for this symbol (prevents repeat exits from cron oscillation).
+        // 5-min duplicate guard: skip if any exit-class event already fired
+        // recently for this symbol (prevents repeat exits from cron oscillation).
         const { count: recentGuard } = await supabaseAdmin
           .from("ai_agent_training_events")
           .select("id", { count: "exact", head: true })
           .eq("agent_id", agent.id).eq("symbol", pos.symbol)
-          .in("close_reason", ["stop_loss_triggered", "take_profit_triggered"])
+          .in("close_reason", [
+            "stop_loss_triggered",
+            "take_profit_triggered",
+            "trailing_stop_triggered",
+            "risk_exit",
+            "disclosure_exit",
+          ])
           .gte("created_at", sinceGuard);
         if ((recentGuard ?? 0) > 0) continue;
 
-        // find the most recent BUY decision for this symbol to know SL/TP
-        const { data: lastBuy } = await supabaseAdmin.from("ai_agent_decisions")
-          .select("stop_loss, take_profit").eq("agent_id", agent.id)
-          .eq("symbol", pos.symbol).eq("action", "BUY")
-          .order("created_at", { ascending: false }).limit(1).maybeSingle();
-        if (!lastBuy) continue;
         const q: any = await getQuote({ data: { symbol: pos.symbol } });
         const px = Number(q?.price);
         if (!px) continue;
-        const sl = lastBuy.stop_loss ? Number(lastBuy.stop_loss) : null;
-        const tp = lastBuy.take_profit ? Number(lastBuy.take_profit) : null;
-        let trigger: "stop_loss_triggered" | "take_profit_triggered" | null = null;
-        if (sl && px <= sl) trigger = "stop_loss_triggered";
-        else if (tp && px >= tp) trigger = "take_profit_triggered";
-        if (!trigger) continue;
+
+        const result = await evaluatePositionWithEngine({
+          agentId: agent.id,
+          accountId: agent.paper_account_id,
+          symbol: pos.symbol,
+          quantity: pos.qty,
+          avgEntry: pos.avg_price,
+          currentPrice: px,
+          riskMode,
+          marketSession: session.state,
+        });
+        if (!result) continue;
+
+        const { combined } = result;
+        if (!combined.triggered || combined.intent !== "SELL") continue;
+
+        const trigger = combined.exitReason ?? "risk_exit";
         await executePaperFill({
           agentId: agent.id, paperAccountId: agent.paper_account_id,
           symbol: pos.symbol, side: "sell", shares: pos.qty, price: px,
-          existing: pos, reason: trigger, closeReason: trigger,
+          existing: pos, reason: trigger, closeReason: trigger as any,
         });
         await supabaseAdmin.from("ai_agent_risk_logs").insert({
           agent_id: agent.id, symbol: pos.symbol, risk_type: trigger,
-          risk_level: "info", message: `Triggered at ${px}`, action_taken: "close_position",
+          risk_level: "info",
+          message: `Engine exit (${trigger}) at ${px}: ${combined.reasons.slice(0, 3).join("; ")}`,
+          action_taken: "close_position",
         });
         executed += 1;
         if (trigger === "stop_loss_triggered") metrics.stopLossTriggered += 1;
-        else metrics.takeProfitTriggered += 1;
-      } catch { /* tolerate */ }
+        else if (trigger === "take_profit_triggered") metrics.takeProfitTriggered += 1;
+      } catch (e) {
+        console.error("[agent] position management eval failed", pos.symbol, e);
+      }
     }
   }
 

@@ -48,11 +48,15 @@ const VALID_REVIEW_EVENT_TYPES = new Set([
   "manual_sell",
 ]);
 
-export const runPostTradeReview = createServerFn({ method: "POST" })
-  .inputValidator((input: { limit?: number }) => ({
-    limit: Math.min(Math.max(input?.limit ?? 25, 1), 100),
-  }))
-  .handler(async ({ data }) => {
+/**
+ * Core review runner — plain async function so server-side callers (e.g. the
+ * AI Agent worker, after a closed trade) can invoke it without an RPC roundtrip.
+ * The serverFn `runPostTradeReview` is a thin wrapper around this.
+ */
+export async function runPostTradeReviewCore(limit = 25): Promise<{ reviewed: number }> {
+  const safeLimit = Math.min(Math.max(limit, 1), 100);
+  const data = { limit: safeLimit };
+  {
     // Closed paper trades = filled SELL orders. realized_pnl on the SELL order
     // is the SOURCE OF TRUTH. If it's missing/null, mark the review as
     // pending_review_data — NEVER default to breakeven.
@@ -223,7 +227,15 @@ export const runPostTradeReview = createServerFn({ method: "POST" })
       count += 1;
     }
     return { reviewed: count };
-  });
+  }
+}
+
+export const runPostTradeReview = createServerFn({ method: "POST" })
+  .inputValidator((input: { limit?: number }) => ({
+    limit: Math.min(Math.max(input?.limit ?? 25, 1), 100),
+  }))
+  .handler(async ({ data }) => runPostTradeReviewCore(data.limit));
+
 
 export const listRecentTradeReviews = createServerFn({ method: "GET" })
   .inputValidator((input: { limit?: number }) => ({
