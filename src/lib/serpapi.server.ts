@@ -13,7 +13,7 @@ const NEWS_TTL_MS = 20 * 60_000;     // 20 min
 const FINANCE_TTL_MS = 10 * 60_000;  // 10 min
 
 // Soft monthly cap to protect quota. Override with env SERPAPI_MONTHLY_LIMIT.
-const MONTHLY_LIMIT = Number(process.env.SERPAPI_MONTHLY_LIMIT ?? 200);
+const MONTHLY_LIMIT = Number(process.env.SERPAPI_MONTHLY_LIMIT ?? 500);
 
 export class SerpApiError extends Error {
   constructor(message: string, public code: "NO_KEY" | "QUOTA" | "TIMEOUT" | "UPSTREAM" | "EMPTY") {
