@@ -116,27 +116,44 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
     const activeSources = allSources.filter((s) => s.status === "healthy" || s.status === "fallback").length;
     const failedSourcesCount = allSources.filter((s) => s.status === "failed").length;
     const quotaSourcesCount = allSources.filter((s) => s.quota_protected).length;
+    const cronSecretSet = !!process.env.CRON_SECRET;
     let newsStatus: HealthStatus;
+    let newsDetail: string;
     const lastStatus = (newsState as any)?.news_worker_status;
-    if (!newsState || newsRunMins == null) newsStatus = "unknown";
-    else if (lastStatus === "unauthorized") newsStatus = "failed";
-    else if (newsRunMins > 60) newsStatus = "partial";
-    else if (lastStatus === "failed") newsStatus = "failed";
-    else if (lastStatus === "partial" || lastStatus === "no_new_articles") newsStatus = "partial";
-    else newsStatus = "healthy";
+    const nextNewsAt = (newsState as any)?.next_expected_news_worker_run_at as string | null;
+    const nextNewsMins = minutesAgo(nextNewsAt);
+    if (!newsState || newsRunMins == null) {
+      newsStatus = cronSecretSet ? "not_run_yet" : "not_configured";
+      newsDetail = cronSecretSet
+        ? "News worker belum pernah menerima panggilan scheduler. Konfigurasikan scheduler /api/public/cron/news-ingest setiap 5–15 menit dengan header x-cron-secret."
+        : "CRON_SECRET belum dikonfigurasi — news worker tidak dapat dipanggil scheduler.";
+    } else if (lastStatus === "unauthorized") {
+      newsStatus = "unauthorized";
+      newsDetail = "Scheduler memanggil /api/public/cron/news-ingest tanpa x-cron-secret yang valid.";
+    } else if (lastStatus === "failed" && allSources.length > 0 && activeSources === 0) {
+      newsStatus = "failed";
+      newsDetail = `Semua ${allSources.length} sumber gagal pada run terakhir.`;
+    } else if (nextNewsMins != null && nextNewsMins < -15) {
+      // expected run > 15 menit lewat
+      newsStatus = "stale";
+      newsDetail = `Worker terlambat ${Math.abs(nextNewsMins)} menit dari jadwal berikutnya.`;
+    } else if (failedSourcesCount > 0 || quotaSourcesCount > 0 || lastStatus === "partial" || lastStatus === "no_new_articles") {
+      newsStatus = "partial";
+      newsDetail = `Run terakhir ${newsRunMins} menit lalu — ${activeSources}/${allSources.length} sumber aktif${quotaSourcesCount ? `, ${quotaSourcesCount} quota-protected` : ""}${failedSourcesCount ? `, ${failedSourcesCount} gagal` : ""}.`;
+    } else {
+      newsStatus = "healthy";
+      newsDetail = `Run terakhir ${newsRunMins} menit lalu — ${activeSources}/${allSources.length} sumber aktif.`;
+    }
     cards.push({
       key: "news_pipeline",
       label: "News Pipeline",
       status: newsStatus,
-      detail:
-        newsRunMins == null
-          ? "News worker belum pernah dijalankan. Konfigurasikan scheduler untuk memanggil /api/public/cron/news-ingest setiap 5–15 menit dengan header x-cron-secret."
-          : `Run terakhir ${newsRunMins} menit lalu — status ${lastStatus ?? "unknown"}. ${activeSources}/${allSources.length} sumber aktif${quotaSourcesCount ? `, ${quotaSourcesCount} quota-protected` : ""}${failedSourcesCount ? `, ${failedSourcesCount} gagal` : ""}.`,
+      detail: newsDetail,
       lastUpdatedAt: (newsState as any)?.last_news_worker_run_at ?? null,
       metrics: {
         lastRunWIB: formatWIB((newsState as any)?.last_news_worker_run_at ?? null),
         lastSuccessfulRunWIB: formatWIB((newsState as any)?.last_successful_news_run_at ?? null),
-        nextExpectedWIB: formatWIB((newsState as any)?.next_expected_news_worker_run_at ?? null),
+        nextExpectedWIB: formatWIB(nextNewsAt),
         fetchedLastRun: (newsLastRun as any)?.fetched_count ?? 0,
         insertedLastRun: (newsLastRun as any)?.inserted_count ?? 0,
         activeSources,
