@@ -52,11 +52,33 @@ function fmtWIB(iso: string | null | undefined): string {
 
 function HealthPage() {
   const fetchHealth = useServerFn(getSystemHealth);
+  const runWorker = useServerFn(triggerWorker);
+  const [running, setRunning] = useState<WorkerKey | null>(null);
+  const [results, setResults] = useState<Partial<Record<WorkerKey, RunResult>>>({});
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ["system-health"],
     queryFn: () => fetchHealth(),
     refetchInterval: 30_000,
   });
+
+  async function handleRun(key: WorkerKey) {
+    setRunning(key);
+    try {
+      const r = await runWorker({ data: { worker: key } });
+      setResults((prev) => ({
+        ...prev,
+        [key]: { ok: r.ok, status: r.status, message: r.message, ranAt: r.ranAt, durationMs: (r as any).durationMs },
+      }));
+      if (r.ok) toast.success(`${key}: ${r.message ?? "ok"}`);
+      else toast.error(`${key}: ${r.message ?? r.error ?? "failed"}`);
+      refetch();
+    } catch (e: any) {
+      toast.error(`${key}: ${e?.message ?? "error"}`);
+      setResults((prev) => ({ ...prev, [key]: { ok: false, status: 0, message: e?.message ?? "error" } }));
+    } finally {
+      setRunning(null);
+    }
+  }
 
   return (
     <div className="p-4 md:p-6 space-y-6">
