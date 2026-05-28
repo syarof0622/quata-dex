@@ -227,7 +227,15 @@ export async function runPostTradeReviewCore(limit = 25): Promise<{ reviewed: nu
       count += 1;
     }
     return { reviewed: count };
-  });
+  }
+}
+
+export const runPostTradeReview = createServerFn({ method: "POST" })
+  .inputValidator((input: { limit?: number }) => ({
+    limit: Math.min(Math.max(input?.limit ?? 25, 1), 100),
+  }))
+  .handler(async ({ data }) => runPostTradeReviewCore(data.limit));
+
 
 export const listRecentTradeReviews = createServerFn({ method: "GET" })
   .inputValidator((input: { limit?: number }) => ({
