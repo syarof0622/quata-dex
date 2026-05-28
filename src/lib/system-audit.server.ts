@@ -842,7 +842,7 @@ export async function runSafeFix(key: SafeFixKey): Promise<SafeFixResult> {
       case "recalc_portfolio": {
         const { data: acc } = await supabaseAdmin
           .from("paper_accounts")
-          .select("id, cash_balance")
+          .select("id, cash")
           .eq("user_id", USER_ID)
           .order("created_at", { ascending: false })
           .limit(1)
@@ -856,11 +856,11 @@ export async function runSafeFix(key: SafeFixKey): Promise<SafeFixResult> {
           (sum, p: any) => sum + Number(p.qty ?? 0) * Number(p.avg_price ?? 0),
           0,
         );
-        const cash = Number((acc as any).cash_balance ?? 0);
+        const cash = Number((acc as any).cash ?? 0);
         const equity = cash + holdings;
         await supabaseAdmin
           .from("paper_accounts")
-          .update({ holdings_value: holdings, equity_value: equity })
+          .update({ equity })
           .eq("id", (acc as any).id);
         return { key, ok: true, message: `Portfolio direcalc: cash=${cash}, holdings=${holdings}, equity=${equity}.` };
       }
