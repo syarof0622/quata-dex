@@ -490,39 +490,60 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
       lastUpdatedAt: lastError?.created_at ?? null,
     });
 
-    // 10) Disclosure / Corporate Action / Regulatory pipeline (PATCH 19)
+    // 10) Disclosure / Corporate Action / Regulatory pipeline
     try {
       const since24 = new Date(Date.now() - 24 * 3600_000).toISOString();
       const since7d = new Date(Date.now() - 7 * 24 * 3600_000).toISOString();
-      const [d24, d7, c7, r7, hiNeg] = await Promise.all([
+      const [d24, d7, c7, r7, hiNeg, lastRun, lastSuccessRun] = await Promise.all([
         supabaseAdmin.from("official_disclosures").select("id", { count: "exact", head: true }).gte("published_at", since24),
         supabaseAdmin.from("official_disclosures").select("id", { count: "exact", head: true }).gte("published_at", since7d),
         supabaseAdmin.from("corporate_actions").select("id", { count: "exact", head: true }).gte("announcement_date", since7d.slice(0, 10)),
         supabaseAdmin.from("regulatory_events").select("id", { count: "exact", head: true }).gte("published_at", since7d),
         supabaseAdmin.from("official_disclosures").select("id", { count: "exact", head: true }).gte("published_at", since7d).eq("sentiment", "negative").gte("impact_score", 70),
+        supabaseAdmin.from("disclosure_pipeline_runs").select("status,started_at,finished_at,error_message,fetched_count,inserted_count").order("started_at", { ascending: false }).limit(1).maybeSingle(),
+        supabaseAdmin.from("disclosure_pipeline_runs").select("started_at").eq("status", "success").order("started_at", { ascending: false }).limit(1).maybeSingle(),
       ]);
       const d24Count = d24.count ?? 0;
       const d7Count = d7.count ?? 0;
       const c7Count = c7.count ?? 0;
       const r7Count = r7.count ?? 0;
-      const noSources = d7Count + c7Count + r7Count === 0;
-      const status: HealthStatus = noSources
-        ? "degraded"
-        : d24Count > 0 ? "healthy" : "partial";
+      const noEvents7d = d7Count + c7Count + r7Count === 0;
+      const run = lastRun.data as any;
+      let status: HealthStatus;
+      let detail: string;
+      if (!run) {
+        status = cronSecretSet ? "not_run_yet" : "not_configured";
+        detail = cronSecretSet
+          ? "Disclosure worker belum pernah dijalankan. Konfigurasikan scheduler /api/public/cron/disclosure-ingest setiap 30–60 menit."
+          : "CRON_SECRET belum dikonfigurasi — disclosure worker tidak dapat dipanggil scheduler.";
+      } else if (run.status === "failed") {
+        status = "failed";
+        detail = `Run terakhir gagal: ${run.error_message ?? "unknown error"}.`;
+      } else if (run.status === "partial") {
+        status = "partial";
+        detail = `Run terakhir partial — ${run.inserted_count ?? 0} inserted dari ${run.fetched_count ?? 0} fetched.`;
+      } else if (noEvents7d) {
+        status = "no_recent_event";
+        detail = "Tidak ada official disclosure / corporate action / regulatory event yang terdeteksi dalam 7 hari terakhir.";
+      } else {
+        status = d24Count > 0 ? "healthy" : "partial";
+        detail = `${d24Count} disclosure (24h) · ${d7Count + c7Count + r7Count} event (7d) · ${hiNeg.count ?? 0} high-impact negatif.`;
+      }
       cards.push({
         key: "disclosure_pipeline",
         label: "Disclosure / Corporate Action Pipeline",
         status,
-        detail: noSources
-          ? "Belum ada disclosure / corporate action / regulatory event terdeteksi dalam 7 hari terakhir."
-          : `${d24Count} disclosure (24h) · ${d7Count + c7Count + r7Count} event (7d) · ${hiNeg.count ?? 0} high-impact negatif.`,
-        lastUpdatedAt: new Date().toISOString(),
+        detail,
+        lastUpdatedAt: run?.started_at ?? new Date().toISOString(),
         metrics: {
           official_24h: d24Count,
           official_7d: d7Count,
           corporate_actions_7d: c7Count,
           regulatory_events_7d: r7Count,
           high_impact_negative_7d: hiNeg.count ?? 0,
+          lastRunWIB: formatWIB(run?.started_at ?? null),
+          lastSuccessfulRunWIB: formatWIB((lastSuccessRun.data as any)?.started_at ?? null),
+          lastError: run?.error_message ?? null,
         },
       });
     } catch (e: any) {
