@@ -98,6 +98,46 @@ async function refreshAll() {
   // Refresh ticker_sentiment_summary (24h window)
   await refreshTickerSummary();
 
+  // Worker heartbeat so System Health "News Pipeline" card stops showing Unknown.
+  const okCount = sourceStatus.filter((s) => s.ok).length;
+  const failCount = sourceStatus.filter((s) => !s.ok).length;
+  const workerStatus = failCount === 0 ? "success" : okCount === 0 ? "failed" : "partial";
+  const nowIso = new Date().toISOString();
+  const nextRun = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+  try {
+    await supabaseAdmin.from("news_worker_state").upsert(
+      {
+        singleton: true,
+        last_news_worker_run_at: nowIso,
+        last_successful_news_run_at: workerStatus === "failed" ? undefined : nowIso,
+        next_expected_news_worker_run_at: nextRun,
+        news_worker_status: workerStatus,
+        last_news_worker_message: `legacy cron: ${okCount}/${sourceStatus.length} sources ok · inserted ${inserted}`,
+        news_worker_error_count: failCount,
+        updated_at: nowIso,
+      } as any,
+      { onConflict: "singleton" },
+    );
+    await supabaseAdmin.from("news_pipeline_runs").insert({
+      run_type: "cron",
+      trigger_source: "legacy_cron_news",
+      status: workerStatus,
+      started_at: nowIso,
+      finished_at: nowIso,
+      total_sources: sourceStatus.length,
+      successful_sources: okCount,
+      failed_sources: failCount,
+      fallback_sources: sourceStatus.filter((s) => s.mode === "fallback").length,
+      quota_protected_sources: sourceStatus.filter((s) => s.status === "quota_protected").length,
+      fetched_count: allNew.length,
+      inserted_count: inserted,
+      duplicate_count: Math.max(0, allNew.length - deduped.length),
+      source_results: sourceStatus as any,
+    } as any);
+  } catch {
+    /* heartbeat is best-effort */
+  }
+
   return { sources: sourceStatus, total_normalized: allNew.length, deduped: deduped.length, inserted };
 }
 
