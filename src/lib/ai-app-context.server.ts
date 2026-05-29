@@ -1005,7 +1005,6 @@ export async function getAIAppContext(userText: string) {
     aiAlerts,
     systemHealth,
     portfolioIntelligence,
-    systemHealth,
     paperTradingOnly: true,
     generatedAt: new Date().toISOString(),
   };
