@@ -14,8 +14,13 @@ import {
 } from "./portfolio-scenarios.server";
 
 export const getPortfolioHealth = createServerFn({ method: "GET" }).handler(
+export const getPortfolioHealth = createServerFn({ method: "GET" }).handler(
   async () => {
     const { health } = await calculatePortfolioHealth();
+    // Fire-and-forget snapshot so System Health card stays fresh.
+    snapshotPortfolioIntelligence().catch((e) =>
+      console.error("[portfolio-intel] snapshot failed:", e?.message ?? e),
+    );
     return health;
   },
 );
