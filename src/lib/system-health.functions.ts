@@ -65,6 +65,9 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
   async (): Promise<SystemHealthPayload> => {
     const cards: HealthCard[] = [];
     const warnings: string[] = [];
+    const marketSession = getIDXMarketSession();
+    const marketClosed = !marketSession.isOpen;
+
 
     // 1) AI Worker
     const { data: agent } = await supabaseAdmin
