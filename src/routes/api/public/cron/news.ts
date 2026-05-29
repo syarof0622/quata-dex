@@ -8,6 +8,18 @@ import { normalize, normalizeSerpApiItem, dedupeBatch, type NormalizedArticle } 
 import { fetchSerpApiGoogleNews } from "@/lib/serpapi.server";
 import { fetchSpecialSource } from "@/lib/news-special-sources.server";
 
+function prepareArticleForWrite(article: NormalizedArticle): NormalizedArticle {
+  return {
+    ...article,
+    tickers: article.tickers ?? [],
+    sectors: article.sectors ?? [],
+    keywords: article.keywords ?? [],
+    related_symbols: article.related_symbols ?? [],
+    duplicate_sources: article.duplicate_sources ?? [],
+    raw_payload: article.raw_payload ?? {},
+  };
+}
+
 async function refreshAll() {
   const allNew: NormalizedArticle[] = [];
   const sourceStatus: { id: string; ok: boolean; count: number; error?: string; used_url?: string; mode?: string; status?: string; reason?: string }[] = [];
@@ -72,7 +84,7 @@ async function refreshAll() {
   for (const chunk of chunks(deduped, 100)) {
     const { error } = await supabaseAdmin
       .from("news_articles")
-      .upsert(chunk as any, { onConflict: "source,source_id", ignoreDuplicates: true });
+      .upsert(chunk.map(prepareArticleForWrite) as any, { onConflict: "source,source_id", ignoreDuplicates: true });
     if (!error) inserted += chunk.length;
     else console.error("[news cron] upsert error:", error.message);
   }
