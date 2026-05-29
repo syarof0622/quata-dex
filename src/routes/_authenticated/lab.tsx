@@ -733,6 +733,7 @@ function AIAgentPanel() {
       allocationAmount: Number(alloc) || 1_000_000,
       riskLevel: risk, minConfidenceToTrade: Number(conf) || 0.7,
       strategyMode: "hybrid", maxPositionPerSymbol: 0.25, maxDailyTrades: 5,
+      maxActivePositions: 10,
       maxDailyLoss: 0.02, maxDrawdown: 0.05, autoStopLoss: true, autoTakeProfit: true,
       trailingStop: false, tradingHoursOnly: true, requireFreshData: true,
       allowBuy: true, allowSell: true,

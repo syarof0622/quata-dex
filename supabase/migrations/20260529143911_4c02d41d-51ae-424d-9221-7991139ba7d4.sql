@@ -1,0 +1,1 @@
+UPDATE public.ai_trade_agents SET max_active_positions = 10 WHERE status <> 'stopped';
