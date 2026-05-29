@@ -96,7 +96,7 @@ export async function runPortfolioScenario(input: ScenarioInput): Promise<Scenar
     });
     const estimatedPnl = computed?.estimatedPortfolioChange ?? 0;
     const estimatedEquity = computed?.estimatedEquity ?? equity + estimatedPnl;
-    const newHoldings = positionImpact.reduce((s, p) => s + p.estimatedValue, 0);
+    const newHoldings = positionImpact.reduce((s: number, p: { estimatedValue: number }) => s + p.estimatedValue, 0);
     const sectorAfter: Record<string, number> = {};
     for (const p of positionImpact) {
       const sec = sectorOf(p.symbol);
@@ -132,7 +132,7 @@ export async function runPortfolioScenario(input: ScenarioInput): Promise<Scenar
         const estValue = p.marketValue * (1 + input.movePct / 100);
         return { symbol: p.symbol, currentValue: p.marketValue, estimatedValue: estValue, deltaPct: input.movePct };
       });
-    const estimatedPnl = positionImpact.reduce((s, p) => s + (p.estimatedValue - p.currentValue), 0);
+    const estimatedPnl = positionImpact.reduce((s: number, p: { estimatedValue: number; currentValue: number }) => s + (p.estimatedValue - p.currentValue), 0);
     const estimatedEquity = equity + estimatedPnl;
     result = {
       scenarioType: "SECTOR_DROP",
@@ -295,7 +295,7 @@ export async function runPortfolioScenario(input: ScenarioInput): Promise<Scenar
       cons: [], notes: ["Simulasi rebalance — tidak otomatis."],
       recommendation: "Cocok untuk defensive posture menjelang stress event.",
     };
-  } else {
+  } else if (input.type === "CUSTOM_PRICE_MOVE") {
     // CUSTOM_PRICE_MOVE
     const pos = positions.find((p: any) => p.symbol === input.symbol);
     if (!pos) {
