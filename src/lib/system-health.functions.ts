@@ -383,13 +383,21 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
       .limit(1)
       .maybeSingle();
     const decMins = minutesAgo(lastDec?.created_at ?? null);
+    const aiCtxFreshness = freshnessStatus(decMins, 60, 240);
+    const aiCtxStatus: HealthStatus =
+      marketClosed && (aiCtxFreshness === "stale" || aiCtxFreshness === "partial")
+        ? "healthy"
+        : aiCtxFreshness;
     cards.push({
       key: "ai_app_context",
       label: "AI App Context",
-      status: freshnessStatus(decMins, 60, 240),
-      detail: lastDec ? `Keputusan AI terakhir ${decMins} menit lalu.` : "Belum ada keputusan AI.",
+      status: aiCtxStatus,
+      detail: lastDec
+        ? `Keputusan AI terakhir ${decMins} menit lalu.${marketClosed ? ` IDX ${marketSession.isBreak ? "break" : "closed"} — konteks tetap aktif (read-only).` : ""}`
+        : "Belum ada keputusan AI.",
       lastUpdatedAt: lastDec?.created_at ?? null,
     });
+
 
     // 7) Cron Status — derive from CRON_SECRET presence + worker run signals + audit logs
     const { data: cronAudit } = await supabaseAdmin
