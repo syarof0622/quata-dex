@@ -556,6 +556,42 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
       });
     }
 
+
+    // Portfolio Intelligence Engine card — surfaces health score + snapshot freshness.
+    try {
+      const { data: lastSnap } = await supabaseAdmin
+        .from("portfolio_intelligence_snapshots")
+        .select("created_at, portfolio_health_score, risk_level")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const lastAt = lastSnap?.created_at ? new Date(lastSnap.created_at).getTime() : 0;
+      const ageH = lastAt ? (Date.now() - lastAt) / 3_600_000 : Infinity;
+      const status: HealthStatus = !lastSnap ? "not_run_yet" : ageH > 24 ? "stale" : "healthy";
+      cards.push({
+        key: "portfolio_intelligence",
+        label: "Portfolio Intelligence Engine",
+        status,
+        detail: lastSnap
+          ? `Last health score ${lastSnap.portfolio_health_score} (${lastSnap.risk_level}). Snapshot age ${ageH.toFixed(1)}h.`
+          : "Belum ada snapshot portfolio intelligence. Buka Portfolio untuk men-trigger pertama kali.",
+        lastUpdatedAt: lastSnap?.created_at ?? new Date().toISOString(),
+        metrics: lastSnap
+          ? { healthScore: lastSnap.portfolio_health_score, riskLevel: lastSnap.risk_level, snapshotAgeH: Number(ageH.toFixed(1)) }
+          : undefined,
+      });
+    } catch (e: any) {
+      cards.push({
+        key: "portfolio_intelligence",
+        label: "Portfolio Intelligence Engine",
+        status: "unknown",
+        detail: `Tidak bisa membaca portfolio intelligence: ${e?.message ?? String(e)}`,
+        lastUpdatedAt: new Date().toISOString(),
+      });
+    }
+
+
+
     const { data: auditFeed } = await supabaseAdmin
       .from("system_audit_logs")
       .select("id, module, action, status, message, entity_type, entity_id, metadata, created_at")

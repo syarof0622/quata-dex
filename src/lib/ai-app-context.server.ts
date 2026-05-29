@@ -6,6 +6,7 @@ import { buildStrategyIntelligence } from "@/lib/strategy-intelligence.functions
 import { summarizeSourceHealth } from "@/lib/source-health";
 import { getPortfolioAnalytics } from "@/lib/analytics.functions";
 import { getSystemHealth } from "@/lib/system-health.functions";
+import { calculatePortfolioHealth, generatePortfolioInsights } from "@/lib/portfolio-intelligence.server";
 
 const USER_ID = "00000000-0000-0000-0000-000000000001";
 
@@ -950,6 +951,38 @@ export async function getAIAppContext(userText: string) {
   }
 
 
+  // ---------- PORTFOLIO INTELLIGENCE (health + insights) ----------
+  let portfolioIntelligence: any = { status: "unavailable" as Status };
+  try {
+    const { health } = await calculatePortfolioHealth();
+    let insights: any = null;
+    try { insights = await generatePortfolioInsights(); } catch { /* non-fatal */ }
+    portfolioIntelligence = {
+      status: "available" as Status,
+      healthScore: health.portfolioHealthScore,
+      riskLevel: health.riskLevel,
+      summary: health.summary,
+      marketRegime: health.marketRegime,
+      cashRatio: health.cashRatio,
+      investedRatio: health.investedRatio,
+      concentrationScore: health.concentrationScore,
+      diversificationScore: health.diversificationScore,
+      cashDragScore: health.cashDragScore,
+      sectorRiskScore: health.sectorRiskScore,
+      valueTrapExposurePct: health.valueTrapExposurePct,
+      disclosureRiskExposurePct: health.disclosureRiskExposurePct,
+      criticalIssues: health.criticalIssues,
+      warnings: health.warnings,
+      positives: health.positives,
+      suggestedActions: insights?.suggestedActions ?? [],
+      monitorList: insights?.monitorList ?? [],
+    };
+  } catch (e: any) {
+    portfolioIntelligence = { status: "error" as Status, error: String(e?.message ?? e).slice(0, 200) };
+  }
+
+
+
   return {
     intent,
     contextStatus,
@@ -972,6 +1005,7 @@ export async function getAIAppContext(userText: string) {
     aiAlerts,
     strategyIntelligence,
     systemHealth,
+    portfolioIntelligence,
     paperTradingOnly: true,
     generatedAt: new Date().toISOString(),
   };
