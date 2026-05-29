@@ -98,7 +98,11 @@ export function RiskEnginePanel() {
           <div className="font-semibold">Risk pause active</div>
           <div className="text-[11px] opacity-90">
             {BLOCKED_REASON_LABELS[state.riskPauseReason ?? ""] ?? state.riskPauseReason ?? "—"} ·
-            {" "}berlaku hingga {state.riskPauseUntil ? new Date(state.riskPauseUntil).toLocaleString("id-ID", { timeZone: "Asia/Jakarta" }) + " WIB" : "—"}
+            {" "}berlaku hingga {(() => {
+              if (!state.riskPauseUntil) return "—";
+              const d = new Date(state.riskPauseUntil);
+              return isNaN(d.getTime()) ? "—" : d.toLocaleString("id-ID", { timeZone: "Asia/Jakarta" }) + " WIB";
+            })()}
           </div>
           <div className="text-[10px] opacity-75 mt-1">SL/TP exits tetap aktif. Hanya BUY baru yang diblokir.</div>
         </div>
