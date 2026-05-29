@@ -322,6 +322,8 @@ export async function runPortfolioScenario(input: ScenarioInput): Promise<Scenar
         notes: [], recommendation: "",
       };
     }
+  } else {
+    throw new Error(`Unknown scenario type: ${(input as { type: string }).type}`);
   }
 
   // Persist
