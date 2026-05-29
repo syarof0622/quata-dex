@@ -229,8 +229,14 @@ export const getCandles = createServerFn({ method: "POST" })
           out.push({ time: ts[i], open: o, high: h, low: l, close: c, volume: v ?? 0 });
         }
         return out;
-      } catch (e) {
-        console.error("getCandles error", e);
+      } catch (e: any) {
+        // Yahoo 404 = symbol not listed there (common for some IDX tickers); log quietly.
+        const msg = String(e?.message ?? e);
+        if (/Yahoo 404/.test(msg)) {
+          console.warn(`getCandles: symbol unavailable on Yahoo: ${data.symbol}`);
+        } else {
+          console.error("getCandles error", e);
+        }
         return [];
       }
     });
