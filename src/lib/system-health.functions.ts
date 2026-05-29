@@ -3,7 +3,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { summarizeSourceHealth, overallStatusLabel, type OverallStatus } from "./source-health";
-import { formatWIB } from "./idx-market-session";
+import { formatWIB, getIDXMarketSession } from "./idx-market-session";
 
 export type HealthStatus =
   | "healthy"
@@ -65,6 +65,9 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
   async (): Promise<SystemHealthPayload> => {
     const cards: HealthCard[] = [];
     const warnings: string[] = [];
+    const marketSession = getIDXMarketSession();
+    const marketClosed = !marketSession.isOpen;
+
 
     // 1) AI Worker
     const { data: agent } = await supabaseAdmin
@@ -189,19 +192,29 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
       .limit(1)
       .maybeSingle();
     const decMinsAuto = minutesAgo(agentTimes?.last_auto_decision_at ?? null);
+    const autoDecisionFreshness = agentTimes?.last_auto_decision_at
+      ? freshnessStatus(decMinsAuto, 60, 240)
+      : (workerMins != null ? "no_recent_event" : (cronSecretSet ? "not_run_yet" : "not_configured"));
+    // When IDX is closed/break, agent is designed to skip new decisions —
+    // downgrade "stale/partial" to "healthy" so the dashboard reflects expected idle state.
+    const autoDecisionStatus: HealthStatus =
+      marketClosed && (autoDecisionFreshness === "stale" || autoDecisionFreshness === "partial" || autoDecisionFreshness === "no_recent_event")
+        ? "healthy"
+        : autoDecisionFreshness;
     cards.push({
       key: "last_auto_decision",
       label: "Last Auto Decision",
-      status: agentTimes?.last_auto_decision_at
-        ? freshnessStatus(decMinsAuto, 60, 240)
-        : (workerMins != null ? "no_recent_event" : (cronSecretSet ? "not_run_yet" : "not_configured")),
+      status: autoDecisionStatus,
       detail: agentTimes?.last_auto_decision_at
-        ? `${formatWIB(agentTimes.last_auto_decision_at)} (${decMinsAuto} menit lalu)`
+        ? `${formatWIB(agentTimes.last_auto_decision_at)} (${decMinsAuto} menit lalu)${marketClosed ? ` — IDX ${marketSession.isBreak ? "break" : "closed"}, worker idle by design.` : ""}`
         : (workerMins != null
-            ? "AI worker aktif, namun belum menghasilkan keputusan otomatis."
+            ? (marketClosed
+              ? `AI worker aktif — IDX ${marketSession.isBreak ? "break" : "closed"}, tidak ada keputusan baru sesuai desain.`
+              : "AI worker aktif, namun belum menghasilkan keputusan otomatis.")
             : "AI worker belum pernah berjalan."),
       lastUpdatedAt: agentTimes?.last_auto_decision_at ?? null,
     });
+
     const exMinsAuto = minutesAgo(agentTimes?.last_auto_execution_at ?? null);
     cards.push({
       key: "last_auto_execution",
@@ -370,13 +383,21 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
       .limit(1)
       .maybeSingle();
     const decMins = minutesAgo(lastDec?.created_at ?? null);
+    const aiCtxFreshness = freshnessStatus(decMins, 60, 240);
+    const aiCtxStatus: HealthStatus =
+      marketClosed && (aiCtxFreshness === "stale" || aiCtxFreshness === "partial")
+        ? "healthy"
+        : aiCtxFreshness;
     cards.push({
       key: "ai_app_context",
       label: "AI App Context",
-      status: freshnessStatus(decMins, 60, 240),
-      detail: lastDec ? `Keputusan AI terakhir ${decMins} menit lalu.` : "Belum ada keputusan AI.",
+      status: aiCtxStatus,
+      detail: lastDec
+        ? `Keputusan AI terakhir ${decMins} menit lalu.${marketClosed ? ` IDX ${marketSession.isBreak ? "break" : "closed"} — konteks tetap aktif (read-only).` : ""}`
+        : "Belum ada keputusan AI.",
       lastUpdatedAt: lastDec?.created_at ?? null,
     });
+
 
     // 7) Cron Status — derive from CRON_SECRET presence + worker run signals + audit logs
     const { data: cronAudit } = await supabaseAdmin
