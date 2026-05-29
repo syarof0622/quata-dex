@@ -66,7 +66,7 @@ function asArray<T>(x: T | T[] | undefined): T[] {
 
 export async function fetchRss(url: string): Promise<RawItem[]> {
   let lastErr: unknown;
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const r = await fetchWithTimeout(url);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
