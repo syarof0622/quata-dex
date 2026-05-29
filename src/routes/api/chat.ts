@@ -84,14 +84,27 @@ ${headlines || "(no recent headlines)"}${perTicker}`;
 // Lovable AI credits and leaking APP CONTEXT data via this endpoint.
 function checkChatAccess(request: Request): Response | null {
   const host = request.headers.get("host");
-  if (!host) return new Response("Forbidden", { status: 403 });
-  const matches = (val: string | null) => {
-    if (!val) return false;
-    try { return new URL(val).host === host; } catch { return false; }
-  };
   const origin = request.headers.get("origin");
   const referer = request.headers.get("referer");
-  if (matches(origin) || matches(referer)) return null;
+
+  const allowedHost = (h: string | null) => {
+    if (!h) return false;
+    if (host && h === host) return true;
+    return (
+      h.endsWith(".lovableproject.com") ||
+      h.endsWith(".lovable.app") ||
+      h.endsWith(".lovable.dev") ||
+      h === "localhost" ||
+      h.startsWith("localhost:") ||
+      h === "127.0.0.1" ||
+      h.startsWith("127.0.0.1:")
+    );
+  };
+  const hostOf = (val: string | null) => {
+    if (!val) return null;
+    try { return new URL(val).host; } catch { return null; }
+  };
+  if (allowedHost(hostOf(origin)) || allowedHost(hostOf(referer))) return null;
   return new Response(JSON.stringify({ error: "Forbidden" }), {
     status: 403, headers: { "Content-Type": "application/json" },
   });
