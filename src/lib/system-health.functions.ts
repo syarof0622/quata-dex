@@ -554,6 +554,8 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
         detail: `Tidak bisa membaca disclosure pipeline: ${e?.message ?? String(e)}`,
         lastUpdatedAt: new Date().toISOString(),
       });
+    }
+
 
     // Portfolio Intelligence Engine card — surfaces health score + snapshot freshness.
     try {
