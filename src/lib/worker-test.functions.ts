@@ -2,8 +2,15 @@
 // server and calls each public cron endpoint with `x-cron-secret`. The secret
 // never leaves the server. Used by System Health → "Test Worker" buttons.
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHost, getRequestHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { runNewsIngest } from "./news-pipeline-runner.server";
+import { runFundamentalBackfill } from "./fundamental-backfill.server";
+import { runNewsDisclosureLinker } from "./news-disclosure-linker.server";
+import { runAgentOnce } from "./ai-trade-agent.functions";
+import { getIDXMarketSession } from "./idx-market-session";
+import { getQuote, getCandles } from "./market.functions";
+import { ema, rsi, type Candle } from "./indicators";
 
 export type WorkerKey =
   | "news-ingest"
@@ -13,16 +20,6 @@ export type WorkerKey =
   | "alerts"
   | "news-disclosure-link"
   | "orders";
-
-const WORKER_PATHS: Record<WorkerKey, string> = {
-  "news-ingest": "/api/public/cron/news-ingest",
-  "disclosure-ingest": "/api/public/cron/disclosure-ingest",
-  "fundamentals": "/api/public/cron/fundamentals",
-  "ai-agent": "/api/public/cron/ai-agent",
-  "alerts": "/api/public/cron/alerts",
-  "news-disclosure-link": "/api/public/cron/news-disclosure-link",
-  "orders": "/api/public/cron/orders",
-};
 
 const InputSchema = z.object({
   worker: z.enum([
