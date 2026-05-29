@@ -136,7 +136,7 @@ html:not(.dark) body {
   * { border-color: var(--color-border); }
   html, body { background-color: var(--color-background); color: var(--color-foreground); }
   body {
-    font-feature-settings: "cv11", "ss01", "ss03";
+    font-feature-settings: normal;
     background-image:
       radial-gradient(1200px 600px at 10% -10%, oklch(0.86 0.18 168 / 0.06), transparent 60%),
       radial-gradient(1000px 500px at 100% 0%, oklch(0.55 0.2 280 / 0.05), transparent 60%);
