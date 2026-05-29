@@ -576,9 +576,10 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
         detail: lastSnap
           ? `Last health score ${lastSnap.portfolio_health_score} (${lastSnap.risk_level}). Snapshot age ${ageH.toFixed(1)}h.`
           : "Belum ada snapshot portfolio intelligence. Buka Portfolio untuk men-trigger pertama kali.",
-        lastUpdatedAt: lastSnap?.created_at ?? new Date().toISOString(),
         metrics: lastSnap
           ? { healthScore: lastSnap.portfolio_health_score, riskLevel: lastSnap.risk_level, snapshotAgeH: Number(ageH.toFixed(1)) }
+          : undefined,
+      });
           : null,
       });
     } catch (e: any) {
