@@ -72,6 +72,18 @@ export type SnapshotResult = {
 
 const NEXT_RUN_GAP_MIN = 15;
 
+function prepareArticleForWrite(article: NormalizedArticle): NormalizedArticle {
+  return {
+    ...article,
+    tickers: article.tickers ?? [],
+    sectors: article.sectors ?? [],
+    keywords: article.keywords ?? [],
+    related_symbols: article.related_symbols ?? [],
+    duplicate_sources: article.duplicate_sources ?? [],
+    raw_payload: article.raw_payload ?? {},
+  };
+}
+
 export async function runNewsIngest(opts?: {
   trigger?: "cron" | "manual";
 }): Promise<PipelineRunResult> {
@@ -243,7 +255,7 @@ export async function runNewsIngest(opts?: {
   const upsertErrors: string[] = [];
 
   for (let i = 0; i < deduped.length; i += 100) {
-    const chunk = deduped.slice(i, i + 100);
+    const chunk = deduped.slice(i, i + 100).map(prepareArticleForWrite);
     const { error, count } = await supabaseAdmin
       .from("news_articles")
       .upsert(chunk as any, {
