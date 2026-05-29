@@ -135,8 +135,16 @@ html:not(.dark) body {
 @layer base {
   * { border-color: var(--color-border); }
   html, body { background-color: var(--color-background); color: var(--color-foreground); }
+  html, body, button, input, textarea, select {
+    font-variant: normal;
+    font-variant-position: normal;
+    font-feature-settings:
+      "subs" 0, "sups" 0, "ordn" 0, "sinf" 0,
+      "numr" 0, "dnom" 0, "salt" 0,
+      "ss01" 0, "ss02" 0, "ss03" 0, "ss04" 0,
+      "ss05" 0, "ss06" 0, "ss07" 0, "ss08" 0;
+  }
   body {
-    font-feature-settings: normal;
     background-image:
       radial-gradient(1200px 600px at 10% -10%, oklch(0.86 0.18 168 / 0.06), transparent 60%),
       radial-gradient(1000px 500px at 100% 0%, oklch(0.55 0.2 280 / 0.05), transparent 60%);
