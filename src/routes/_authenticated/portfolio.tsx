@@ -282,9 +282,12 @@ function Portfolio() {
           )}
         </div>
       </div>
+      {/* Portfolio Intelligence — health, insights, scenarios */}
+      <PortfolioIntelligencePanel />
 
       {/* Attribution, Scenarios, What-If */}
       {hasActivity && <PortfolioAttributionPanel data={d} />}
+
 
       {/* Open Positions table */}
       <div className="panel p-2">
