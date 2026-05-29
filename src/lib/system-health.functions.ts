@@ -567,8 +567,6 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
         .maybeSingle();
       const lastAt = lastSnap?.created_at ? new Date(lastSnap.created_at).getTime() : 0;
       const ageH = lastAt ? (Date.now() - lastAt) / 3_600_000 : Infinity;
-      const status: HealthStatus =
-        !lastSnap ? "not_run_yet" : ageH > 24 ? "stale" : "healthy";
       cards.push({
         key: "portfolio_intelligence",
         label: "Portfolio Intelligence Engine",
@@ -576,11 +574,10 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
         detail: lastSnap
           ? `Last health score ${lastSnap.portfolio_health_score} (${lastSnap.risk_level}). Snapshot age ${ageH.toFixed(1)}h.`
           : "Belum ada snapshot portfolio intelligence. Buka Portfolio untuk men-trigger pertama kali.",
+        lastUpdatedAt: lastSnap?.created_at ?? new Date().toISOString(),
         metrics: lastSnap
           ? { healthScore: lastSnap.portfolio_health_score, riskLevel: lastSnap.risk_level, snapshotAgeH: Number(ageH.toFixed(1)) }
           : undefined,
-      });
-          : null,
       });
     } catch (e: any) {
       cards.push({
