@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { getSystemHealth, type HealthStatus } from "@/lib/system-health.functions";
 import { triggerWorker, type WorkerKey } from "@/lib/worker-test.functions";
+import { formatDateTimeShortWIB } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Activity, AlertTriangle, CheckCircle2, CircleSlash, Loader2, PlayCircle } from "lucide-react";
@@ -41,15 +42,7 @@ const STATUS_STYLES: Record<HealthStatus, { label: string; cls: string }> = {
 };
 
 function fmtWIB(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  try {
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return "—";
-    return d.toLocaleString("id-ID", {
-      timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit", day: "2-digit",
-      hour: "2-digit", minute: "2-digit",
-    }) + " WIB";
-  } catch { return "—"; }
+  return formatDateTimeShortWIB(iso);
 }
 
 
@@ -73,7 +66,7 @@ function HealthPage() {
         [key]: { ok: r.ok, status: r.status, message: r.message, ranAt: r.ranAt, durationMs: (r as any).durationMs },
       }));
       if (r.ok) toast.success(`${key}: ${r.message ?? "ok"}`);
-      else toast.error(`${key}: ${r.message ?? r.error ?? "failed"}`);
+      else toast.error(`${key}: ${r.message ?? "failed"}`);
       refetch();
     } catch (e: any) {
       toast.error(`${key}: ${e?.message ?? "error"}`);

@@ -1,4 +1,5 @@
 // IDX market session guard. Timezone: Asia/Jakarta. Pure functions, no I/O.
+import { toDateOrNull, WIB_SUFFIX } from "./format";
 
 export type IDXSessionState =
   | "open_session_1"
@@ -111,14 +112,13 @@ export function getEndOfCurrentIDXTradingDayWIB(d: Date = new Date()): Date {
 
 /** Human label in WIB. Renders "26 Mei 2026, 15:49 WIB" — never UTC/Z. */
 export function formatWIB(d: Date | string | null | undefined): string {
-  if (!d) return "—";
-  const date = typeof d === "string" ? new Date(d) : d;
-  if (!(date instanceof Date) || isNaN(date.getTime())) return "—";
+  const date = toDateOrNull(d);
+  if (!date) return "—";
   try {
     return date.toLocaleString("id-ID", {
       timeZone: "Asia/Jakarta",
       day: "2-digit", month: "short", year: "numeric",
       hour: "2-digit", minute: "2-digit",
-    }) + " WIB";
+    }) + ` ${WIB_SUFFIX}`;
   } catch { return "—"; }
 }
