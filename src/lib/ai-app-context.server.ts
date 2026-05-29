@@ -1003,6 +1003,7 @@ export async function getAIAppContext(userText: string) {
     sourceHealth,
     aiInsights,
     aiAlerts,
+    strategyIntelligence,
     systemHealth,
     portfolioIntelligence,
     paperTradingOnly: true,
