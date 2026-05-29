@@ -948,6 +948,8 @@ export async function getAIAppContext(userText: string) {
     };
   } catch (e: any) {
     systemHealth = { status: "error" as Status, error: String(e?.message ?? e).slice(0, 200) };
+  }
+
 
   // ---------- PORTFOLIO INTELLIGENCE (health + insights) ----------
   let portfolioIntelligence: any = { status: "unavailable" as Status };
