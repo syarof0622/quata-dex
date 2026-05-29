@@ -3,7 +3,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { summarizeSourceHealth, overallStatusLabel, type OverallStatus } from "./source-health";
-import { formatWIB } from "./idx-market-session";
+import { formatWIB, getIDXMarketSession } from "./idx-market-session";
 
 export type HealthStatus =
   | "healthy"
