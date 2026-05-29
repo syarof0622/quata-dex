@@ -335,7 +335,7 @@ export const triggerWorker = createServerFn({ method: "POST" })
         worker: data.worker,
         status: 0,
         error: "network_error",
-        message: `Worker unreachable: ${e?.message ?? "network error"}`,
+        message: `Worker failed: ${e?.message ?? "unknown error"}`,
         ranAt,
         durationMs: Date.now() - startedAt,
         payload: null as any,
