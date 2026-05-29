@@ -43,12 +43,15 @@ const STATUS_STYLES: Record<HealthStatus, { label: string; cls: string }> = {
 function fmtWIB(iso: string | null | undefined): string {
   if (!iso) return "—";
   try {
-    return new Date(iso).toLocaleString("id-ID", {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "—";
+    return d.toLocaleString("id-ID", {
       timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit", day: "2-digit",
       hour: "2-digit", minute: "2-digit",
     }) + " WIB";
   } catch { return "—"; }
 }
+
 
 function HealthPage() {
   const fetchHealth = useServerFn(getSystemHealth);
