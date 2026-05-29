@@ -82,83 +82,90 @@ export async function runNewsIngest(opts?: {
   const collected: NormalizedArticle[] = [];
   const results: SourceResult[] = [];
 
-  // 1) Standard configured sources
-  for (const src of NEWS_SOURCES.filter((s) => s.enabled)) {
-    const base = {
-      source_key: src.id,
-      source_name: src.name,
-      source_type: src.type,
-      fallback_active: false,
-      quota_protected: false,
-      inserted: 0,
-    };
-    try {
-      if (src.type === "special_source" && src.special) {
-        const res = await fetchSpecialSource(src);
-        collected.push(...res.items);
-        const ok = res.items.length > 0;
-        const usedFallback = res.mode === "fallback";
-        results.push({
-          ...base,
-          ok,
-          status: ok ? (usedFallback ? "fallback" : "healthy") : "failed",
-          fetched: res.items.length,
-          used_url: res.usedUrl ?? null,
-          mode: res.mode ?? null,
-          message: res.reason ?? null,
-          error: ok ? null : (res.fallbackError ?? res.directError ?? "no items"),
-          fallback_active: usedFallback,
-          quota_protected: false,
-        });
-        continue;
-      }
-      const { url, items } = await fetchRssWithFallback(
-        src.url,
-        src.fallbackUrls ?? [],
-      );
-      const normalized = items
-        .map((it) =>
-          normalize(it, {
-            id: src.id,
-            priority: src.priority,
-            category: src.category,
-          }),
-        )
-        .filter((x): x is NormalizedArticle => x !== null);
-      collected.push(...normalized);
-      const usedFallback = url !== src.url;
-      results.push({
-        ...base,
-        ok: true,
-        status: usedFallback ? "fallback" : "healthy",
-        fetched: normalized.length,
-        used_url: url,
-        mode: usedFallback ? "fallback" : "direct",
-        message: null,
-        error: null,
-        fallback_active: usedFallback,
-        quota_protected: false,
-      });
-    } catch (e: any) {
-      const msg = String(e?.message ?? e);
-      // Extract HTTP status if available
-      const httpMatch = msg.match(/HTTP\s+(\d{3})/i);
-      const httpStatus = httpMatch ? Number(httpMatch[1]) : null;
-      results.push({
-        ...base,
-        ok: false,
-        status: httpStatus === 429 ? "rate_limited" : "failed",
-        fetched: 0,
-        message: null,
-        error: msg.slice(0, 400),
-        http_status: httpStatus,
+  // 1) Standard configured sources — run in parallel so total time ≈ slowest source.
+  const sourceTasks: Promise<{ items: NormalizedArticle[]; result: SourceResult }>[] =
+    NEWS_SOURCES.filter((s) => s.enabled).map(async (src) => {
+      const base = {
+        source_key: src.id,
+        source_name: src.name,
+        source_type: src.type,
         fallback_active: false,
         quota_protected: false,
-      });
-    }
-  }
+        inserted: 0,
+      };
+      try {
+        if (src.type === "special_source" && src.special) {
+          const res = await fetchSpecialSource(src);
+          const ok = res.items.length > 0;
+          const usedFallback = res.mode === "fallback";
+          return {
+            items: res.items,
+            result: {
+              ...base,
+              ok,
+              status: ok ? (usedFallback ? "fallback" : "healthy") : "failed",
+              fetched: res.items.length,
+              used_url: res.usedUrl ?? null,
+              mode: res.mode ?? null,
+              message: res.reason ?? null,
+              error: ok ? null : (res.fallbackError ?? res.directError ?? "no items"),
+              fallback_active: usedFallback,
+              quota_protected: false,
+            } as SourceResult,
+          };
+        }
+        const { url, items } = await fetchRssWithFallback(
+          src.url,
+          src.fallbackUrls ?? [],
+        );
+        const normalized = items
+          .map((it) =>
+            normalize(it, {
+              id: src.id,
+              priority: src.priority,
+              category: src.category,
+            }),
+          )
+          .filter((x): x is NormalizedArticle => x !== null);
+        const usedFallback = url !== src.url;
+        return {
+          items: normalized,
+          result: {
+            ...base,
+            ok: true,
+            status: usedFallback ? "fallback" : "healthy",
+            fetched: normalized.length,
+            used_url: url,
+            mode: usedFallback ? "fallback" : "direct",
+            message: null,
+            error: null,
+            fallback_active: usedFallback,
+            quota_protected: false,
+          } as SourceResult,
+        };
+      } catch (e: any) {
+        const msg = String(e?.message ?? e);
+        const httpMatch = msg.match(/HTTP\s+(\d{3})/i);
+        const httpStatus = httpMatch ? Number(httpMatch[1]) : null;
+        return {
+          items: [],
+          result: {
+            ...base,
+            ok: false,
+            status: httpStatus === 429 ? "rate_limited" : "failed",
+            fetched: 0,
+            message: null,
+            error: msg.slice(0, 400),
+            http_status: httpStatus,
+            fallback_active: false,
+            quota_protected: false,
+          } as SourceResult,
+        };
+      }
+    });
 
-  // 2) SerpApi enrichment with quota protection
+  // 2) SerpApi enrichment — in parallel with the standard sources.
+  const serpTasks: Promise<{ items: NormalizedArticle[]; result: SourceResult }>[] = [];
   if (process.env.SERPAPI_API_KEY) {
     const SERP_QUERY = "IHSG OR saham OR emiten OR BEI";
     const jobs: { id: string; name: string; priority: number; light: boolean }[] = [
@@ -166,49 +173,66 @@ export async function runNewsIngest(opts?: {
       { id: "serpapi_google_news_light", name: "SerpApi Google News (light)", priority: 3, light: true },
     ];
     for (const job of jobs) {
-      try {
-        const items = await fetchSerpApiGoogleNews({
-          query: SERP_QUERY,
-          light: job.light,
-          limit: 20,
-        });
-        const normalized = items
-          .map((it) =>
-            normalizeSerpApiItem(it, {
-              id: job.id,
-              priority: job.priority,
-              category: "serpapi",
-            }),
-          )
-          .filter((x): x is NormalizedArticle => x !== null);
-        collected.push(...normalized);
-        results.push({
-          source_key: job.id,
-          source_name: job.name,
-          source_type: "serpapi",
-          ok: true,
-          status: "healthy",
-          fetched: normalized.length,
-          inserted: 0,
-          fallback_active: false,
-          quota_protected: false,
-        });
-      } catch (e: any) {
-        const isQuota = e instanceof SerpApiError && e.code === "QUOTA";
-        results.push({
-          source_key: job.id,
-          source_name: job.name,
-          source_type: "serpapi",
-          ok: isQuota ? true : false, // quota-protected does NOT count as hard failure
-          status: isQuota ? "quota_protected" : "failed",
-          fetched: 0,
-          inserted: 0,
-          message: isQuota ? "Skipped by quota protection" : null,
-          error: isQuota ? null : String(e?.message ?? e).slice(0, 400),
-          fallback_active: false,
-          quota_protected: isQuota,
-        });
-      }
+      serpTasks.push(
+        (async () => {
+          try {
+            const items = await fetchSerpApiGoogleNews({
+              query: SERP_QUERY,
+              light: job.light,
+              limit: 20,
+            });
+            const normalized = items
+              .map((it) =>
+                normalizeSerpApiItem(it, {
+                  id: job.id,
+                  priority: job.priority,
+                  category: "serpapi",
+                }),
+              )
+              .filter((x): x is NormalizedArticle => x !== null);
+            return {
+              items: normalized,
+              result: {
+                source_key: job.id,
+                source_name: job.name,
+                source_type: "serpapi",
+                ok: true,
+                status: "healthy",
+                fetched: normalized.length,
+                inserted: 0,
+                fallback_active: false,
+                quota_protected: false,
+              } as SourceResult,
+            };
+          } catch (e: any) {
+            const isQuota = e instanceof SerpApiError && e.code === "QUOTA";
+            return {
+              items: [],
+              result: {
+                source_key: job.id,
+                source_name: job.name,
+                source_type: "serpapi",
+                ok: isQuota,
+                status: isQuota ? "quota_protected" : "failed",
+                fetched: 0,
+                inserted: 0,
+                message: isQuota ? "Skipped by quota protection" : null,
+                error: isQuota ? null : String(e?.message ?? e).slice(0, 400),
+                fallback_active: false,
+                quota_protected: isQuota,
+              } as SourceResult,
+            };
+          }
+        })(),
+      );
+    }
+  }
+
+  const settled = await Promise.allSettled([...sourceTasks, ...serpTasks]);
+  for (const s of settled) {
+    if (s.status === "fulfilled") {
+      collected.push(...s.value.items);
+      results.push(s.value.result);
     }
   }
 
