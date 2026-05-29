@@ -10,13 +10,17 @@ import { ChevronDown, ChevronUp, Eye, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function fmtWIB(iso: string): string {
+  if (!iso) return "—";
   try {
-    return new Date(iso).toLocaleString("id-ID", {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "—";
+    return d.toLocaleString("id-ID", {
       timeZone: "Asia/Jakarta", month: "2-digit", day: "2-digit",
       hour: "2-digit", minute: "2-digit",
     }) + " WIB";
-  } catch { return iso; }
+  } catch { return "—"; }
 }
+
 
 const ACTION_CLS: Record<string, string> = {
   BUY: "bg-emerald-500/15 text-emerald-300 border-emerald-500/40",
