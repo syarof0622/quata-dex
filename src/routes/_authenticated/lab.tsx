@@ -25,12 +25,21 @@ const MAX_AGENT_SYMBOLS = 5;
 
 // IDX (saham Indonesia) selalu ditampilkan dalam WIB (Asia/Jakarta).
 const WIB_TZ = "Asia/Jakarta";
-const fmtWIBDateTime = (d: string | number | Date) =>
-  new Date(d).toLocaleString("id-ID", { timeZone: WIB_TZ, hour12: false }) + " WIB";
-const fmtWIBTime = (d: string | number | Date) =>
-  new Date(d).toLocaleTimeString("id-ID", { timeZone: WIB_TZ, hour12: false }) + " WIB";
-const fmtWIBDate = (d: string | number | Date) =>
-  new Date(d).toLocaleDateString("id-ID", { timeZone: WIB_TZ });
+const _toValidDate = (d: string | number | Date): Date | null => {
+  if (d == null || d === "") return null;
+  const dt = d instanceof Date ? d : new Date(d);
+  return isNaN(dt.getTime()) ? null : dt;
+};
+const fmtWIBDateTime = (d: string | number | Date) => {
+  const dt = _toValidDate(d); return dt ? dt.toLocaleString("id-ID", { timeZone: WIB_TZ, hour12: false }) + " WIB" : "—";
+};
+const fmtWIBTime = (d: string | number | Date) => {
+  const dt = _toValidDate(d); return dt ? dt.toLocaleTimeString("id-ID", { timeZone: WIB_TZ, hour12: false }) + " WIB" : "—";
+};
+const fmtWIBDate = (d: string | number | Date) => {
+  const dt = _toValidDate(d); return dt ? dt.toLocaleDateString("id-ID", { timeZone: WIB_TZ }) : "—";
+};
+
 
 type LabSearch = { tab?: string };
 export const Route = createFileRoute("/_authenticated/lab")({
