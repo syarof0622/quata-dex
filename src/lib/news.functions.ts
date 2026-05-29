@@ -2,6 +2,18 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
+function prepareNewsArticleForWrite(article: any) {
+  return {
+    ...article,
+    tickers: article.tickers ?? [],
+    sectors: article.sectors ?? [],
+    keywords: article.keywords ?? [],
+    related_symbols: article.related_symbols ?? [],
+    duplicate_sources: article.duplicate_sources ?? [],
+    raw_payload: article.raw_payload ?? {},
+  };
+}
+
 const FilterSchema = z.object({
   limit: z.number().int().min(1).max(100).default(15),
   offset: z.number().int().min(0).max(1000).default(0),
@@ -263,7 +275,7 @@ export const ingestTickerSerpApi = createServerFn({ method: "POST" })
       }
       const deduped = dedupeBatch(normalized);
       if (deduped.length) {
-        const { error } = await supabaseAdmin.from("news_articles").upsert(deduped as any, { onConflict: "source,source_id", ignoreDuplicates: true });
+        const { error } = await supabaseAdmin.from("news_articles").upsert(deduped.map(prepareNewsArticleForWrite) as any, { onConflict: "source,source_id", ignoreDuplicates: true });
         if (error) errors.push(error.message);
         else inserted = deduped.length;
       }
