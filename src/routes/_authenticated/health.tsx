@@ -66,7 +66,7 @@ function HealthPage() {
         [key]: { ok: r.ok, status: r.status, message: r.message, ranAt: r.ranAt, durationMs: (r as any).durationMs },
       }));
       if (r.ok) toast.success(`${key}: ${r.message ?? "ok"}`);
-      else toast.error(`${key}: ${r.message ?? r.error ?? "failed"}`);
+      else toast.error(`${key}: ${r.message ?? "failed"}`);
       refetch();
     } catch (e: any) {
       toast.error(`${key}: ${e?.message ?? "error"}`);
