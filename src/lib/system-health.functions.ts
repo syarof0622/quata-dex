@@ -567,6 +567,7 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
         .maybeSingle();
       const lastAt = lastSnap?.created_at ? new Date(lastSnap.created_at).getTime() : 0;
       const ageH = lastAt ? (Date.now() - lastAt) / 3_600_000 : Infinity;
+      const status: HealthStatus = !lastSnap ? "not_run_yet" : ageH > 24 ? "stale" : "healthy";
       cards.push({
         key: "portfolio_intelligence",
         label: "Portfolio Intelligence Engine",
