@@ -355,6 +355,36 @@ export type FetchResult = {
   partial: boolean;
 };
 
+// ---------- audit logger ----------
+async function logSourceAttempt(
+  symbol: string,
+  source: string,
+  status: "success" | "empty" | "error",
+  detail: { http_status?: number | null; error_code?: string | null; error_message?: string | null } = {},
+) {
+  try {
+    await supabaseAdmin.from("fundamental_source_logs").insert({
+      symbol,
+      source,
+      status,
+      http_status: detail.http_status ?? null,
+      error_code: detail.error_code ?? null,
+      error_message: detail.error_message ?? null,
+    });
+  } catch {
+    // logging must never break ingest
+  }
+}
+
+// ---------- Multi-source orchestration ----------
+export type FetchResult = {
+  snapshot: RawFundamentalSnapshot | null;
+  valuation: RawValuationMetrics | null;
+  sourceTried: string[];
+  sourceUsed: string | null;
+  partial: boolean;
+};
+
 export async function fetchFundamentalFromSources(symbol: string): Promise<FetchResult> {
   const tried: string[] = [];
   const cfg = getFundamentalSourceConfig();
@@ -362,30 +392,46 @@ export async function fetchFundamentalFromSources(symbol: string): Promise<Fetch
   // 1. Twelve Data (richest)
   if (cfg.twelveDataEnabled) {
     tried.push("twelve_data");
-    const td = await fetchTwelveData(symbol);
-    if (td && (td.snapshot || td.valuation)) {
-      return {
-        snapshot: td.snapshot,
-        valuation: td.valuation,
-        sourceTried: tried,
-        sourceUsed: "twelve_data",
-        partial: !td.snapshot || !td.valuation,
-      };
+    try {
+      const td = await fetchTwelveData(symbol);
+      if (td && (td.snapshot || td.valuation)) {
+        await logSourceAttempt(symbol, "twelve_data", "success");
+        return {
+          snapshot: td.snapshot,
+          valuation: td.valuation,
+          sourceTried: tried,
+          sourceUsed: "twelve_data",
+          partial: !td.snapshot || !td.valuation,
+        };
+      }
+      await logSourceAttempt(symbol, "twelve_data", "empty", {
+        error_message: "no data (plan may not cover IDX or symbol unsupported)",
+      });
+    } catch (e: any) {
+      await logSourceAttempt(symbol, "twelve_data", "error", { error_message: String(e?.message ?? e) });
     }
   }
 
   // 2. SerpApi fallback — valuation only
   if (cfg.serpapiEnabled) {
     tried.push("serpapi_google_finance");
-    const sg = await fetchSerpApiGoogleFinance(symbol);
-    if (sg) {
-      return {
-        snapshot: null,
-        valuation: sg,
-        sourceTried: tried,
-        sourceUsed: "serpapi_google_finance",
-        partial: true,
-      };
+    try {
+      const sg = await fetchSerpApiGoogleFinance(symbol);
+      if (sg) {
+        await logSourceAttempt(symbol, "serpapi_google_finance", "success");
+        return {
+          snapshot: null,
+          valuation: sg,
+          sourceTried: tried,
+          sourceUsed: "serpapi_google_finance",
+          partial: true,
+        };
+      }
+      await logSourceAttempt(symbol, "serpapi_google_finance", "empty", {
+        error_message: "no data (quota exhausted or symbol not found)",
+      });
+    } catch (e: any) {
+      await logSourceAttempt(symbol, "serpapi_google_finance", "error", { error_message: String(e?.message ?? e) });
     }
   }
 
@@ -397,6 +443,7 @@ export async function fetchFundamentalFromSources(symbol: string): Promise<Fetch
     partial: true,
   };
 }
+
 
 // ---------- Upsert helpers ----------
 export async function upsertFundamentalSnapshot(s: RawFundamentalSnapshot) {
