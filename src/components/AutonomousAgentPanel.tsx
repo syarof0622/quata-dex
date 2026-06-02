@@ -1,8 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getAutonomousAgentStatus } from "@/lib/autonomous-status.functions";
+import { setAgentAggressionMode, getProfitDiagnostics } from "@/lib/ai-trade-agent.functions";
+import { AGGRESSION_PRESETS, type AggressionMode } from "@/lib/agent-aggression-modes";
 import { cn } from "@/lib/utils";
-import { Bot, ShieldCheck, AlertTriangle, Activity, Target, TrendingDown, TrendingUp, Pause } from "lucide-react";
+import { Bot, ShieldCheck, AlertTriangle, Activity, Target, TrendingDown, TrendingUp, Pause, Zap } from "lucide-react";
 
 const TONE: Record<string, string> = {
   emerald: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
