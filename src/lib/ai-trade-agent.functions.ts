@@ -8,6 +8,7 @@ import { isIDXSymbol, convertSharesToLot, sizeOrder } from "./lot-sizing";
 import { getQuote } from "./market.functions";
 import { canExecutePaperTrade, getIDXMarketSession } from "./idx-market-session";
 import { runAutonomousScan } from "./ai-autonomous-scanner.server";
+import { resolveAgentKnobs, toLegacyRiskMode, getPreset, type AggressionMode } from "./agent-aggression-modes";
 
 const USER_ID = "00000000-0000-0000-0000-000000000001";
 const COOLDOWN_MS = { BUY: 15 * 60_000, SELL: 10 * 60_000, EXIT: 10 * 60_000 };
@@ -529,18 +530,24 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
     .update({ equity: mtmEquity }).eq("id", agent.paper_account_id);
   const account = { cash: Number(acct!.cash), equity: mtmEquity };
 
+  // Resolve aggression-mode preset (single source of truth for knobs).
+  const knobs = resolveAgentKnobs(agent);
+  const aggressionMode = String(agent.aggression_mode ?? "balanced");
+  const effectiveLegacyRiskMode = toLegacyRiskMode(aggressionMode as AggressionMode);
+
   const cfg: AgentConfig = {
     id: agent.id, riskLevel: agent.risk_level, strategyMode: agent.strategy_mode,
     allocationAmount: Number(agent.allocation_amount ?? 1_000_000),
-    maxPositionPerSymbol: Number(agent.max_position_per_symbol ?? 0.25),
-    minConfidenceToTrade: Number(agent.min_confidence_to_trade ?? 0.7),
+    maxPositionPerSymbol: knobs.maxPositionWeightPct,
+    minConfidenceToTrade: knobs.minBuyConfidence,
     autoStopLoss: !!agent.auto_stop_loss, autoTakeProfit: !!agent.auto_take_profit,
     allowBuy: !!agent.allow_buy, allowSell: !!agent.allow_sell,
     tradingHoursOnly: !!agent.trading_hours_only, requireFreshData: !!agent.require_fresh_data,
     minUndervalueScore: Number(agent.min_undervalue_score ?? 65),
     maxValueTrapRisk: Number(agent.max_value_trap_risk ?? 40),
-    autonomousRiskMode: String(agent.autonomous_risk_mode ?? "balanced"),
-    agentRow: agent as any,
+    // Use aggression-mode-derived risk mode so AUTO_GATES picks expert_paper/research_max generosity.
+    autonomousRiskMode: effectiveLegacyRiskMode,
+    agentRow: { ...agent, aggression_mode: aggressionMode } as any,
   };
 
   // Risk pause check (BUY-only). SL/TP exits still run below.
@@ -549,6 +556,41 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
   if (riskPauseActive) {
     cfg.allowBuy = false;
   }
+
+  // ---- MARKET-BREAK / CLOSED SHORT-CIRCUIT (Patch 6) ----
+  // Do not iterate symbols and create a BLOCKED row per symbol per tick during
+  // lunch break / pre-open / post-close. Instead upsert ONE MARKET_PAUSED
+  // summary row per agent every 10 minutes. Position management (SL/TP) still
+  // runs below — it's gated by `if (session.isOpen)` and skipped naturally.
+  if (!session.isOpen) {
+    const dedupAt = (agent as any).market_break_dedup_at ? new Date((agent as any).market_break_dedup_at).getTime() : 0;
+    const dedupWindowMs = 10 * 60_000;
+    if (Date.now() - dedupAt >= dedupWindowMs) {
+      const label = session.isBreak ? "MARKET_BREAK" : "MARKET_CLOSED";
+      const msg = `${label}: ${session.label}. Eksekusi BUY/SELL dijeda — manajemen posisi (SL/TP/Trailing) tetap berjalan saat market buka.`;
+      await supabaseAdmin.from("ai_agent_decisions").insert({
+        agent_id: agent.id, paper_account_id: agent.paper_account_id,
+        symbol: "_MARKET_", action: "BLOCKED", confidence: 0,
+        raw_confidence: 0, calibrated_confidence: 0,
+        calibration_reason: "market_session_paused",
+        strategy: "session_guard",
+        allocation_amount: 0, suggested_lot: 0, suggested_shares: 0,
+        entry_price: null, stop_loss: null, take_profit: null, risk_reward_ratio: null,
+        reasoning: msg,
+        data_snapshot: { session: session.state, label: session.label, dedupWindowMin: 10 } as any,
+        decision_status: "blocked",
+        selection_mode: (agent.symbol_selection_mode ?? "manual"),
+        autonomous_risk_mode: effectiveLegacyRiskMode,
+        candidate_classification: "session_guard",
+        idempotency_key: `${agent.id}:_MARKET_:${label}:${Math.floor(Date.now() / dedupWindowMs)}`,
+      });
+      await supabaseAdmin.from("ai_trade_agents")
+        .update({ market_break_dedup_at: new Date().toISOString(), last_blocked_reason: label })
+        .eq("id", agent.id);
+    }
+    return { decisions: [], executed: 0, metrics };
+  }
+
 
   const decisions: AgentDecision[] = [];
   let executed = 0;
@@ -638,11 +680,12 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
   }
 
   // Respect maxActivePositions for autonomous (existing positions count first).
-  const maxActive = Number(agent.max_active_positions ?? 3);
+  // Preset overrides legacy column so Expert Paper / Research Max get more slots.
+  const maxActive = knobs.maxActivePositions;
   const openSymbols = new Set(posList.map(p => p.symbol));
   const slotsLeft = isAutonomous ? Math.max(0, maxActive - openSymbols.size) : Number.MAX_SAFE_INTEGER;
   let newEntriesUsed = 0;
-  const maxNew = Number(agent.max_new_entries_per_day ?? 3);
+  const maxNew = Math.max(Number(agent.max_new_entries_per_day ?? 3), Math.ceil(knobs.maxActivePositions / 2));
 
   metrics.candidatesScanned = symbolsToEvaluate.length;
   metrics.candidatesSelected = symbolsToEvaluate.length;
@@ -1624,4 +1667,123 @@ export const clearRiskPause = createServerFn({ method: "POST" }).handler(async (
     .update({ risk_paused_until: null, risk_pause_reason: null, consecutive_losses: 0 })
     .eq("user_id", USER_ID);
   return { ok: true };
+});
+
+/** Set the aggression mode (Conservative/Balanced/Progressive/Expert Paper/Research Max). */
+export const setAgentAggressionMode = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({
+    id: z.string().uuid(),
+    mode: z.enum(["conservative", "balanced", "progressive", "expert_paper", "research_max"]),
+  }).parse(d))
+  .handler(async ({ data }) => {
+    const preset = getPreset(data.mode);
+    const legacy = toLegacyRiskMode(data.mode);
+    const { error } = await supabaseAdmin.from("ai_trade_agents").update({
+      aggression_mode: data.mode,
+      autonomous_risk_mode: legacy,
+      target_exposure_pct: preset.targetExposurePct,
+      min_position_weight_pct: preset.minPositionWeightPct,
+      max_position_per_symbol: preset.maxPositionWeightPct,
+      max_active_positions: preset.maxActivePositions,
+      min_confidence_to_trade: preset.minBuyConfidence,
+      min_autonomous_score: preset.minAutonomousScore,
+    }).eq("id", data.id).eq("user_id", USER_ID);
+    if (error) throw new Error(error.message);
+    return { ok: true, preset };
+  });
+
+/**
+ * "Why profit is low" diagnostic. Surface-level checks the agent can self-report.
+ * Pure SELECT — never blocks trading.
+ */
+export const getProfitDiagnostics = createServerFn({ method: "GET" }).handler(async () => {
+  const { data: agent } = await supabaseAdmin
+    .from("ai_trade_agents").select("*").eq("user_id", USER_ID)
+    .order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (!agent) return { checks: [], recommendation: "Agent belum dibuat." };
+
+  const knobs = resolveAgentKnobs(agent);
+  const { data: acct } = await supabaseAdmin
+    .from("paper_accounts").select("cash, equity").eq("id", (agent as any).paper_account_id).maybeSingle();
+  const cash = Number(acct?.cash ?? 0);
+  const equity = Number(acct?.equity ?? cash);
+  const cashRatio = equity > 0 ? cash / equity : 1;
+  const exposurePct = 1 - cashRatio;
+
+  const { data: positions } = await supabaseAdmin
+    .from("paper_positions").select("symbol, qty, avg_price").eq("user_id", USER_ID);
+  const posCount = positions?.length ?? 0;
+
+  const since = new Date(Date.now() - 24 * 3600_000).toISOString();
+  const { count: watchCount } = await supabaseAdmin.from("ai_agent_decisions")
+    .select("id", { count: "exact", head: true })
+    .eq("agent_id", agent.id).in("decision_status", ["watch_only", "research_only", "premarket_plan"])
+    .gte("created_at", since);
+  const { count: blockedCount } = await supabaseAdmin.from("ai_agent_decisions")
+    .select("id", { count: "exact", head: true })
+    .eq("agent_id", agent.id).eq("decision_status", "blocked").gte("created_at", since);
+  const { count: executedCount } = await supabaseAdmin.from("ai_agent_decisions")
+    .select("id", { count: "exact", head: true })
+    .eq("agent_id", agent.id).eq("decision_status", "executed").gte("created_at", since);
+
+  const checks: Array<{ key: string; label: string; ok: boolean; value: string; fix?: string }> = [];
+  const targetPct = knobs.targetExposurePct * 100;
+  const expPct = exposurePct * 100;
+  checks.push({
+    key: "cash_deployment",
+    label: `Cash deployment (target ${targetPct.toFixed(0)}%)`,
+    ok: expPct >= targetPct - 10,
+    value: `exposure ${expPct.toFixed(1)}%`,
+    fix: expPct < targetPct - 10
+      ? `Naikkan aggression mode atau turunkan min confidence agar AI deploy lebih banyak cash.`
+      : undefined,
+  });
+  checks.push({
+    key: "active_positions",
+    label: `Active positions (target s/d ${knobs.maxActivePositions})`,
+    ok: posCount >= Math.min(3, knobs.maxActivePositions),
+    value: `${posCount} terbuka`,
+    fix: posCount < 3 ? `Pertimbangkan Progressive / Expert Paper untuk lebih banyak entry.` : undefined,
+  });
+  checks.push({
+    key: "watch_vs_exec",
+    label: `WATCH/RESEARCH spam (24h)`,
+    ok: (watchCount ?? 0) <= Math.max(10, (executedCount ?? 0) * 3),
+    value: `${watchCount ?? 0} watch · ${executedCount ?? 0} exec`,
+    fix: (watchCount ?? 0) > Math.max(10, (executedCount ?? 0) * 3)
+      ? `Terlalu banyak WATCH — turunkan min_autonomous_score atau pakai Expert Paper.`
+      : undefined,
+  });
+  checks.push({
+    key: "blocked_volume",
+    label: `BLOCKED decisions (24h)`,
+    ok: (blockedCount ?? 0) < 50,
+    value: `${blockedCount ?? 0}`,
+    fix: (blockedCount ?? 0) >= 50
+      ? `Banyak block — cek lunch-break dedup, risk pause, atau soft warnings yang terlalu strict.`
+      : undefined,
+  });
+  checks.push({
+    key: "min_position_size",
+    label: `Min position size (preset ${(knobs.minPositionWeightPct * 100).toFixed(1)}%)`,
+    ok: true,
+    value: `${(knobs.minPositionWeightPct * 100).toFixed(1)}% – ${(knobs.maxPositionWeightPct * 100).toFixed(1)}%`,
+  });
+
+  const failing = checks.filter(c => !c.ok);
+  const recommendation = failing.length === 0
+    ? "Agent berjalan optimal sesuai mode. Pantau hasil paper trading."
+    : `Perbaiki: ${failing.map(f => f.label).join(" · ")}. Pertimbangkan ganti mode ke Expert Paper.`;
+
+  // Cache snapshot for the UI.
+  await supabaseAdmin.from("ai_trade_agents")
+    .update({ last_profit_diagnostic: { checks, recommendation, generatedAt: new Date().toISOString() } as any })
+    .eq("id", agent.id);
+
+  return {
+    mode: agent.aggression_mode ?? "balanced",
+    preset: knobs.preset,
+    cashRatio, exposurePct, posCount,
+    checks, recommendation,
+  };
 });

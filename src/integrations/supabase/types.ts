@@ -721,6 +721,7 @@ export type Database = {
       }
       ai_trade_agents: {
         Row: {
+          aggression_mode: string
           allocation_amount: number | null
           allocation_mode: string
           allocation_percent: number | null
@@ -757,12 +758,14 @@ export type Database = {
           last_blocked_reason: string | null
           last_error: string | null
           last_market_session_state: string | null
+          last_profit_diagnostic: Json | null
           last_risk_evaluation: Json | null
           last_run_at: string | null
           last_worker_message: string | null
           last_worker_run_at: string | null
           last_worker_status: string | null
           liquidity_risk_enabled: boolean
+          market_break_dedup_at: string | null
           max_active_positions: number
           max_autonomous_symbols: number
           max_daily_loss: number | null
@@ -780,6 +783,7 @@ export type Database = {
           min_confidence_to_trade: number | null
           min_data_quality_score: number
           min_liquidity_score: number
+          min_position_weight_pct: number | null
           min_research_candidate_score: number
           min_undervalue_score: number
           min_watch_candidate_score: number
@@ -809,6 +813,7 @@ export type Database = {
           stopped_at: string | null
           strategy_mode: string
           symbol_selection_mode: string
+          target_exposure_pct: number | null
           trading_enabled: boolean | null
           trading_hours_only: boolean | null
           trailing_stop: boolean | null
@@ -818,6 +823,7 @@ export type Database = {
           worker_error_count: number
         }
         Insert: {
+          aggression_mode?: string
           allocation_amount?: number | null
           allocation_mode?: string
           allocation_percent?: number | null
@@ -854,12 +860,14 @@ export type Database = {
           last_blocked_reason?: string | null
           last_error?: string | null
           last_market_session_state?: string | null
+          last_profit_diagnostic?: Json | null
           last_risk_evaluation?: Json | null
           last_run_at?: string | null
           last_worker_message?: string | null
           last_worker_run_at?: string | null
           last_worker_status?: string | null
           liquidity_risk_enabled?: boolean
+          market_break_dedup_at?: string | null
           max_active_positions?: number
           max_autonomous_symbols?: number
           max_daily_loss?: number | null
@@ -877,6 +885,7 @@ export type Database = {
           min_confidence_to_trade?: number | null
           min_data_quality_score?: number
           min_liquidity_score?: number
+          min_position_weight_pct?: number | null
           min_research_candidate_score?: number
           min_undervalue_score?: number
           min_watch_candidate_score?: number
@@ -906,6 +915,7 @@ export type Database = {
           stopped_at?: string | null
           strategy_mode?: string
           symbol_selection_mode?: string
+          target_exposure_pct?: number | null
           trading_enabled?: boolean | null
           trading_hours_only?: boolean | null
           trailing_stop?: boolean | null
@@ -915,6 +925,7 @@ export type Database = {
           worker_error_count?: number
         }
         Update: {
+          aggression_mode?: string
           allocation_amount?: number | null
           allocation_mode?: string
           allocation_percent?: number | null
@@ -951,12 +962,14 @@ export type Database = {
           last_blocked_reason?: string | null
           last_error?: string | null
           last_market_session_state?: string | null
+          last_profit_diagnostic?: Json | null
           last_risk_evaluation?: Json | null
           last_run_at?: string | null
           last_worker_message?: string | null
           last_worker_run_at?: string | null
           last_worker_status?: string | null
           liquidity_risk_enabled?: boolean
+          market_break_dedup_at?: string | null
           max_active_positions?: number
           max_autonomous_symbols?: number
           max_daily_loss?: number | null
@@ -974,6 +987,7 @@ export type Database = {
           min_confidence_to_trade?: number | null
           min_data_quality_score?: number
           min_liquidity_score?: number
+          min_position_weight_pct?: number | null
           min_research_candidate_score?: number
           min_undervalue_score?: number
           min_watch_candidate_score?: number
@@ -1003,6 +1017,7 @@ export type Database = {
           stopped_at?: string | null
           strategy_mode?: string
           symbol_selection_mode?: string
+          target_exposure_pct?: number | null
           trading_enabled?: boolean | null
           trading_hours_only?: boolean | null
           trailing_stop?: boolean | null

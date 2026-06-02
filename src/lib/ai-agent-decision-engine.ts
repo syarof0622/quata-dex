@@ -86,11 +86,15 @@ export type AutonomousContext = {
 // Per risk-mode autonomous BUY gating (used only when AutonomousContext provided
 // and classification looks like a trade candidate). Scanner already filtered DQ
 // + liquidity, so we accept a lower confidence floor than manual mode.
+// Aggression modes (expert_paper, research_max) get the most generous gates so
+// they actually deploy cash on valid setups instead of defaulting to WATCH.
 const AUTO_GATES: Record<string, { minScore: number; minConfidence: number; minRR: number }> = {
-  conservative:    { minScore: 75, minConfidence: 0.55, minRR: 1.8 },
+  conservative:    { minScore: 75, minConfidence: 0.55, minRR: 1.5 },
   balanced:        { minScore: 70, minConfidence: 0.45, minRR: 1.5 },
   progressive:     { minScore: 60, minConfidence: 0.35, minRR: 1.2 },
   expert_research: { minScore: 55, minConfidence: 0.30, minRR: 1.0 },
+  expert_paper:    { minScore: 55, minConfidence: 0.28, minRR: 1.0 },
+  research_max:    { minScore: 50, minConfidence: 0.22, minRR: 0.9 },
 };
 
 export type Position = { symbol: string; qty: number; avg_price: number };
