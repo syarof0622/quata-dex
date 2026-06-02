@@ -334,10 +334,10 @@ function NewsHub() {
           </div>
         )}
         {rows.map((n: any) => (
-          <a key={n.id} href={n.url} target="_blank" rel="noopener noreferrer"
-             className="panel p-4 hover:border-primary/40 transition-colors block">
+          <div key={n.id} className="panel p-4 hover:border-primary/40 transition-colors">
             <div className="flex items-start justify-between gap-3">
-              <div className="text-sm font-medium leading-snug">{n.title}</div>
+              <a href={n.url} target="_blank" rel="noopener noreferrer"
+                 className="text-sm font-medium leading-snug hover:text-primary">{n.title}</a>
               <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-semibold ${
                 n.sentiment === "positive" ? "bg-bull-soft text-bull" :
                 n.sentiment === "negative" ? "bg-bear-soft text-bear" :
@@ -374,7 +374,6 @@ function NewsHub() {
               </span>
               {(n.tickers ?? []).slice(0, 4).map((t: string) => (
                 <Link key={t} to="/chart/$symbol" params={{ symbol: t }}
-                      onClick={(e) => e.stopPropagation()}
                       className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-mono hover:bg-primary/20">
                   {t}
                 </Link>
@@ -383,7 +382,7 @@ function NewsHub() {
                 <span key={s} className="text-[10px] px-1.5 py-0.5 rounded bg-accent/40 text-muted-foreground">{s}</span>
               ))}
             </div>
-          </a>
+          </div>
         ))}
       </div>
 
