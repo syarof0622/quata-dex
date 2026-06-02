@@ -17,6 +17,8 @@ import {
   type SectorBenchmark,
 } from "./fundamental-signal.server";
 import type { FundamentalDTO } from "./fundamentals.functions";
+import { calculateFundamentalConfidence } from "./fundamental-confidence.server";
+import { linkFundamentalToNews } from "./fundamental-news-linker.server";
 
 const HARDCODED_USER = "00000000-0000-0000-0000-000000000001";
 
