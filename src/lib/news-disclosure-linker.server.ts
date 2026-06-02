@@ -69,10 +69,12 @@ export async function runNewsDisclosureLinker(opts: {
 
   for (const table of ["official_disclosures", "corporate_actions", "regulatory_events"] as const) {
     try {
-      const dateCol = table === "official_disclosures" ? "published_at" : "announcement_date";
+      const dateCol = table === "corporate_actions" ? "announcement_date" : "published_at";
+      const hasSentiment = table !== "regulatory_events";
+      const selectCols = `id, symbol, title, ${dateCol}, impact_score${hasSentiment ? ", sentiment" : ""}`;
       const { data, error } = await supabaseAdmin
         .from(table)
-        .select(`id, symbol, title, ${dateCol}, impact_score, sentiment`)
+        .select(selectCols)
         .gte(dateCol, since)
         .order(dateCol, { ascending: false })
         .limit(200);
@@ -90,13 +92,14 @@ export async function runNewsDisclosureLinker(opts: {
           title: String(row.title),
           publishedAt: typeof pub === "string" ? pub : new Date(pub).toISOString(),
           impact: row.impact_score != null ? String(row.impact_score) : null,
-          sentiment: row.sentiment ?? null,
+          sentiment: hasSentiment ? (row.sentiment ?? null) : null,
         });
       }
     } catch (e: any) {
       result.errors.push(`${table}: ${e?.message ?? String(e)}`);
     }
   }
+
   result.scannedDisclosures = events.length;
   if (!events.length) return result;
 
