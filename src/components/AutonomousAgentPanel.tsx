@@ -28,11 +28,30 @@ function rel(iso: string | null | undefined) {
 
 export function AutonomousAgentPanel() {
   const fetchStatus = useServerFn(getAutonomousAgentStatus);
+  const fetchDiag = useServerFn(getProfitDiagnostics);
+  const setMode = useServerFn(setAgentAggressionMode);
+  const qc = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ["autonomous-agent-status"],
     queryFn: () => fetchStatus(),
     refetchInterval: 30_000,
     staleTime: 15_000,
+  });
+  const { data: diag } = useQuery({
+    queryKey: ["agent-profit-diagnostics"],
+    queryFn: () => fetchDiag(),
+    refetchInterval: 60_000,
+  });
+  const modeMutation = useMutation({
+    mutationFn: async (mode: AggressionMode) => {
+      const agentId = (data as any)?.agent?.id;
+      if (!agentId) throw new Error("Agent belum aktif.");
+      return setMode({ data: { id: agentId, mode } });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["autonomous-agent-status"] });
+      qc.invalidateQueries({ queryKey: ["agent-profit-diagnostics"] });
+    },
   });
 
   if (isLoading || !data) {
@@ -41,6 +60,7 @@ export function AutonomousAgentPanel() {
 
   const a = data.agent;
   const tone = a?.worker.tone ?? "slate";
+  const currentMode = (diag?.mode ?? "balanced") as AggressionMode;
 
   return (
     <div className="space-y-3">
