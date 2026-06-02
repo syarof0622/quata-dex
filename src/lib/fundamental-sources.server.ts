@@ -346,15 +346,6 @@ async function fetchSerpApiGoogleFinance(symbol: string): Promise<RawValuationMe
   }
 }
 
-// ---------- Multi-source orchestration ----------
-export type FetchResult = {
-  snapshot: RawFundamentalSnapshot | null;
-  valuation: RawValuationMetrics | null;
-  sourceTried: string[];
-  sourceUsed: string | null;
-  partial: boolean;
-};
-
 // ---------- audit logger ----------
 async function logSourceAttempt(
   symbol: string,
@@ -384,6 +375,7 @@ export type FetchResult = {
   sourceUsed: string | null;
   partial: boolean;
 };
+
 
 export async function fetchFundamentalFromSources(symbol: string): Promise<FetchResult> {
   const tried: string[] = [];
