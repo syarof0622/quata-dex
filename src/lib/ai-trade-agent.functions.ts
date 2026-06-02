@@ -680,11 +680,12 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
   }
 
   // Respect maxActivePositions for autonomous (existing positions count first).
-  const maxActive = Number(agent.max_active_positions ?? 3);
+  // Preset overrides legacy column so Expert Paper / Research Max get more slots.
+  const maxActive = knobs.maxActivePositions;
   const openSymbols = new Set(posList.map(p => p.symbol));
   const slotsLeft = isAutonomous ? Math.max(0, maxActive - openSymbols.size) : Number.MAX_SAFE_INTEGER;
   let newEntriesUsed = 0;
-  const maxNew = Number(agent.max_new_entries_per_day ?? 3);
+  const maxNew = Math.max(Number(agent.max_new_entries_per_day ?? 3), Math.ceil(knobs.maxActivePositions / 2));
 
   metrics.candidatesScanned = symbolsToEvaluate.length;
   metrics.candidatesSelected = symbolsToEvaluate.length;
