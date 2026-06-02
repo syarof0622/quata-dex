@@ -80,8 +80,44 @@ Top headlines:
 ${headlines || "(no recent headlines)"}${perTicker}`;
 }
 
-// Same-origin guard — prevents anonymous internet callers from draining
-// Lovable AI credits and leaking APP CONTEXT data via this endpoint.
+// In-memory per-IP rate limiter. Bounds AI credit drain even if Origin/Referer
+// headers are spoofed by a non-browser caller. Limits are per worker instance.
+const RATE_WINDOW_MS = 60_000;
+const RATE_MAX_PER_MIN = 20;
+const RATE_HOUR_MS = 60 * 60_000;
+const RATE_MAX_PER_HOUR = 120;
+const rateBuckets = new Map<string, number[]>();
+
+function getClientIp(request: Request): string {
+  const xff = request.headers.get("x-forwarded-for");
+  if (xff) return xff.split(",")[0].trim();
+  return request.headers.get("cf-connecting-ip")
+    ?? request.headers.get("x-real-ip")
+    ?? "unknown";
+}
+
+function checkRateLimit(ip: string): Response | null {
+  const now = Date.now();
+  const hits = (rateBuckets.get(ip) ?? []).filter((t) => now - t < RATE_HOUR_MS);
+  const lastMinute = hits.filter((t) => now - t < RATE_WINDOW_MS).length;
+  if (lastMinute >= RATE_MAX_PER_MIN || hits.length >= RATE_MAX_PER_HOUR) {
+    return new Response(JSON.stringify({ error: "rate_limited" }), {
+      status: 429,
+      headers: { "Content-Type": "application/json", "Retry-After": "60" },
+    });
+  }
+  hits.push(now);
+  rateBuckets.set(ip, hits);
+  if (rateBuckets.size > 5000) {
+    // prune oldest entries to bound memory
+    const keys = [...rateBuckets.keys()].slice(0, 1000);
+    for (const k of keys) rateBuckets.delete(k);
+  }
+  return null;
+}
+
+// Same-origin guard (defense-in-depth) — final enforcement is rate limiting,
+// since Origin/Referer can be spoofed by non-browser HTTP clients.
 function checkChatAccess(request: Request): Response | null {
   const host = request.headers.get("host");
   const origin = request.headers.get("origin");
@@ -117,6 +153,8 @@ export const Route = createFileRoute("/api/chat")({
         try {
           const denied = checkChatAccess(request);
           if (denied) return denied;
+          const limited = checkRateLimit(getClientIp(request));
+          if (limited) return limited;
           const { messages, system } = await request.json() as {
             messages: { role: "user" | "assistant"; content: string }[];
             system?: string;
