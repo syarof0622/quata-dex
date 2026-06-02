@@ -158,6 +158,15 @@ export const getQuoteRealtime = createServerFn({ method: "POST" })
     z.object({ symbol: z.string().min(1), provider: z.enum(["twelvedata", "yahoo"]).optional().default("twelvedata") }).parse(d))
   .handler(async ({ data }) => {
     if (data.provider === "twelvedata") {
+      // Twelve Data is paid; cap direct RPC calls per IP. Cached results bypass
+      // the limiter implicitly (cached() short-circuits before this).
+      const { enforceRateLimit, RateLimitError } = await import("@/lib/rate-limit.server");
+      try {
+        enforceRateLimit("td_quote", 60, 60_000);
+      } catch (e) {
+        if (e instanceof RateLimitError) return null;
+        throw e;
+      }
       const key = `td:${data.symbol}`;
       return cached<Quote | null>(key, 2_000, () => fetchQuoteTwelveData(data.symbol));
     }

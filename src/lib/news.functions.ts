@@ -214,6 +214,20 @@ export const getSourcesStatus = createServerFn({ method: "POST" })
 
 export const refreshNewsNow = createServerFn({ method: "POST" })
   .handler(async () => {
+    const { enforceRateLimit, RateLimitError } = await import("@/lib/rate-limit.server");
+    try {
+      // Heavy pipeline: cap to 2/min and 10/hr per IP.
+      enforceRateLimit("refresh_news_min", 2, 60_000);
+      enforceRateLimit("refresh_news_hr", 10, 60 * 60_000);
+    } catch (e) {
+      if (e instanceof RateLimitError) {
+        return {
+          ok: false, total: 0, deduped: 0, inserted: 0, duplicates: 0,
+          statuses: [], pipelineStatus: "rate_limited", errorMessage: e.message,
+        };
+      }
+      throw e;
+    }
     const { runNewsIngest } = await import("@/lib/news-pipeline-runner.server");
     const result = await runNewsIngest({ trigger: "manual" });
     return {
@@ -252,6 +266,16 @@ export const ingestTickerSerpApi = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     if (!process.env.SERPAPI_API_KEY) {
       return { ok: false, reason: "no_key" as const, inserted: 0 };
+    }
+    const { enforceRateLimit, RateLimitError } = await import("@/lib/rate-limit.server");
+    try {
+      enforceRateLimit("serpapi_ticker_min", 5, 60_000);
+      enforceRateLimit("serpapi_ticker_hr", 30, 60 * 60_000);
+    } catch (e) {
+      if (e instanceof RateLimitError) {
+        return { ok: false, reason: "rate_limited" as const, inserted: 0, error: e.message };
+      }
+      throw e;
     }
     const sym = data.symbol.toUpperCase();
     const sqlSym = sym.endsWith(".JK") ? sym : `${sym}.JK`;

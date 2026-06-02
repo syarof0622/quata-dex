@@ -1,5 +1,18 @@
 // Shared guard for /api/public/cron/* endpoints. Accepts the secret via
 // `x-cron-secret` header, `Authorization: Bearer <secret>`, or `?secret=` query.
+import { timingSafeEqual } from "node:crypto";
+
+function safeEqual(a: string, b: string): boolean {
+  const ba = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ba.length !== bb.length) {
+    // Run a same-length comparison to keep timing flat.
+    timingSafeEqual(ba, ba);
+    return false;
+  }
+  return timingSafeEqual(ba, bb);
+}
+
 export function checkCronSecret(request: Request): Response | null {
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret) {
@@ -20,7 +33,7 @@ export function checkCronSecret(request: Request): Response | null {
     request.headers.get("x-cron-secret") ??
     bearer ??
     new URL(request.url).searchParams.get("secret");
-  if (provided !== cronSecret) {
+  if (!provided || !safeEqual(provided, cronSecret)) {
     return new Response(
       JSON.stringify({
         ok: false,

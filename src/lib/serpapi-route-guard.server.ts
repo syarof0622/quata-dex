@@ -2,6 +2,18 @@
 // (cron/webhooks). Origin/Referer headers are trivially spoofed by non-browser
 // clients, so we require a shared CRON_SECRET. Browser-side code must use the
 // server functions in serpapi.functions.ts instead of these HTTP routes.
+import { timingSafeEqual } from "node:crypto";
+
+function safeEqual(a: string, b: string): boolean {
+  const ba = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ba.length !== bb.length) {
+    timingSafeEqual(ba, ba);
+    return false;
+  }
+  return timingSafeEqual(ba, bb);
+}
+
 export function checkSerpApiAccess(request: Request): Response | null {
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret) {
@@ -18,6 +30,6 @@ export function checkSerpApiAccess(request: Request): Response | null {
     request.headers.get("x-cron-secret") ??
     bearer ??
     new URL(request.url).searchParams.get("secret");
-  if (provided === cronSecret) return null;
+  if (provided && safeEqual(provided, cronSecret)) return null;
   return new Response("Forbidden", { status: 403 });
 }
