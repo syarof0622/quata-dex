@@ -428,6 +428,28 @@ export async function fetchFundamentalFromSources(symbol: string): Promise<Fetch
     }
   }
 
+  // 3. News-mined fallback — regex over already-stored news_articles.
+  //    Independent of paid APIs / external quotas.
+  tried.push("news_mined");
+  try {
+    const nm = await fetchFundamentalFromNews(symbol);
+    if (nm) {
+      await logSourceAttempt(symbol, "news_mined", "success");
+      return {
+        snapshot: null,
+        valuation: nm,
+        sourceTried: tried,
+        sourceUsed: "news_mined",
+        partial: true,
+      };
+    }
+    await logSourceAttempt(symbol, "news_mined", "empty", {
+      error_message: "no ratios found in stored news within 120d window",
+    });
+  } catch (e: any) {
+    await logSourceAttempt(symbol, "news_mined", "error", { error_message: String(e?.message ?? e) });
+  }
+
   return {
     snapshot: null,
     valuation: null,
