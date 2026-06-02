@@ -16,6 +16,51 @@ function extractTickers(text: string): string[] {
   return [...found].slice(0, 4);
 }
 
+// Fetch realtime price from Yahoo chart endpoint (worker-safe, no key).
+async function fetchLivePrice(symbol: string): Promise<{
+  symbol: string;
+  price: number | null;
+  change: number | null;
+  changePct: number | null;
+  prevClose: number | null;
+  marketState: string | null;
+  currency: string | null;
+  asOf: string | null;
+} | null> {
+  try {
+    const r = await fetch(
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1m&range=1d&includePrePost=true`,
+      {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+          Accept: "application/json,text/plain,*/*",
+        },
+      },
+    );
+    if (!r.ok) return null;
+    const j: any = await r.json();
+    const meta = j?.chart?.result?.[0]?.meta;
+    if (!meta) return null;
+    const price = meta.regularMarketPrice ?? null;
+    const prev = meta.chartPreviousClose ?? meta.previousClose ?? null;
+    const change = price != null && prev != null ? price - prev : null;
+    const pct = change != null && prev ? (change / prev) * 100 : null;
+    const ts = meta.regularMarketTime ? new Date(meta.regularMarketTime * 1000).toISOString() : null;
+    return {
+      symbol,
+      price,
+      change,
+      changePct: pct,
+      prevClose: prev,
+      marketState: meta.marketState ?? null,
+      currency: meta.currency ?? null,
+      asOf: ts,
+    };
+  } catch {
+    return null;
+  }
+}
+
 // Build a compact, AI-friendly context block from public news + sentiment.
 async function buildMarketContext(userText: string): Promise<string> {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
@@ -71,7 +116,20 @@ async function buildMarketContext(userText: string): Promise<string> {
     const tLines = (tNews ?? [])
       .map((n: any) => `- [${n.source}|${n.sentiment}|${n.impact_level}] ${String(n.title).slice(0, 140)}`)
       .join("\n");
-    perTicker = `\n\nTICKER FOCUS (${tickers.join(", ")}):\n${sumLines || "(no 24h summary)"}\n${tLines || "(no recent ticker news)"}`;
+    // Live price snapshot per ticker (Yahoo chart, no key required).
+    const livePrices = await Promise.all(tickers.map((t) => fetchLivePrice(t)));
+    const priceLines = livePrices
+      .filter((p): p is NonNullable<typeof p> => !!p && p.price != null)
+      .map((p) => {
+        const chg = p.change != null ? p.change.toFixed(2) : "n/a";
+        const pct = p.changePct != null ? `${p.changePct >= 0 ? "+" : ""}${p.changePct.toFixed(2)}%` : "n/a";
+        const cur = p.currency ?? "";
+        const state = p.marketState ?? "";
+        const ts = p.asOf ?? "";
+        return `- ${p.symbol}: last=${p.price} ${cur} change=${chg} (${pct}) prevClose=${p.prevClose ?? "n/a"} state=${state} asOf=${ts}`;
+      })
+      .join("\n");
+    perTicker = `\n\nTICKER FOCUS (${tickers.join(", ")}):\nLIVE PRICE (Yahoo realtime):\n${priceLines || "(no live price available)"}\nSentiment summary (24h):\n${sumLines || "(no 24h summary)"}\nRecent ticker news:\n${tLines || "(no recent ticker news)"}`;
   }
 
   return `LIVE MARKET CONTEXT (public sources, last 24h)
@@ -188,6 +246,7 @@ You have two grounding blocks:
 Grounding rules (STRICT):
 - Treat APP CONTEXT as the source of truth for anything about THIS user. Never invent positions, orders, decisions, watchlist symbols, alerts, or PnL.
 - If a section is empty / stale / error / unavailable, say so plainly instead of guessing.
+- PRICE QUERIES: When the user asks "harga saham X" / "current price" / "berapa harga X sekarang", read LIVE PRICE from the LIVE MARKET CONTEXT TICKER FOCUS block (Yahoo realtime). Quote the price, change, %, and asOf timestamp. Do NOT say price is unavailable when LIVE PRICE shows a value — that block is the authoritative source. Only say "harga belum tersedia" when LIVE PRICE line is missing or all values are n/a.
 - Distinguish: executed paper order vs open position vs closed trade vs blocked buy intent vs watch candidate vs research snapshot vs no trade.
 - Say HOLD only when an open position for that symbol exists in portfolio.openPositions.
 - Say BUY only when a matching paper order shows status=filled. If a buy was blocked, call it "buy intent blocked" and cite the blocked reason.
