@@ -755,6 +755,27 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
                 if (sized.shares > 0 && sized.shares < plannedShares) plannedShares = sized.shares;
               }
 
+              // Cash deployment booster (Patch 2/3): when cash ratio is high and
+              // current exposure is below the aggression-mode target, bump tiny
+              // BUYs up to min_position_weight_pct so the agent actually deploys
+              // capital instead of producing watch-only snapshots.
+              if (side === "buy" && decision.entryPrice && decision.entryPrice > 0) {
+                const currentExposurePct = mtmEquity > 0 ? holdingsValue / mtmEquity : 0;
+                const cashRatio = mtmEquity > 0 ? Number(acct!.cash) / mtmEquity : 0;
+                if (currentExposurePct < knobs.targetExposurePct && cashRatio > 0.30) {
+                  const minAlloc = mtmEquity * knobs.minPositionWeightPct;
+                  const maxAlloc = mtmEquity * knobs.maxPositionWeightPct;
+                  const targetAlloc = Math.min(maxAlloc, Math.max(minAlloc, plannedShares * decision.entryPrice));
+                  const cashCap = Math.max(0, Number(acct!.cash) * 0.95);
+                  const finalAlloc = Math.min(targetAlloc, cashCap);
+                  if (finalAlloc > 0) {
+                    const sized = sizeOrder({ symbol: sym, allocationAmount: finalAlloc, price: decision.entryPrice });
+                    if (sized.shares > plannedShares) plannedShares = sized.shares;
+                  }
+                }
+              }
+
+
               if (plannedShares > 0 && decision.entryPrice) {
                 const res = await executePaperFill({
                   agentId: agent.id, paperAccountId: agent.paper_account_id,
