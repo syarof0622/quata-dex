@@ -17,6 +17,8 @@ import {
   type SectorBenchmark,
 } from "./fundamental-signal.server";
 import type { FundamentalDTO } from "./fundamentals.functions";
+import { calculateFundamentalConfidence } from "./fundamental-confidence.server";
+import { linkFundamentalToNews } from "./fundamental-news-linker.server";
 
 const HARDCODED_USER = "00000000-0000-0000-0000-000000000001";
 
@@ -379,7 +381,52 @@ async function upsertStockFundamentalsBridge(
     data_freshness: hasFresh ? new Date().toISOString() : ((prev as any)?.data_freshness ?? new Date().toISOString()),
   };
 
-  await supabaseAdmin.from("stock_fundamentals").upsert(row, { onConflict: "symbol" });
+  // --- News validation context (links + notes) ---
+  let validationNotes: string[] = [];
+  let relatedNewsCount = 0;
+  try {
+    const linkRes = await linkFundamentalToNews(symbol);
+    validationNotes = linkRes.validationNotes;
+    relatedNewsCount = linkRes.relatedNewsCount;
+  } catch {}
+
+  // --- Confidence / status engine ---
+  const conf = calculateFundamentalConfidence({
+    metrics: {
+      per: row.per, pbv: row.pbv, roe: row.roe, der: row.der,
+      dividend_yield: row.dividend_yield, market_cap: row.market_cap,
+      price: row.price, eps: row.eps,
+      eps_growth_yoy: row.eps_growth_yoy,
+      revenue_growth_yoy: row.revenue_growth_yoy,
+      net_profit_growth_yoy: row.net_profit_growth_yoy,
+      revenue: row.revenue, net_profit: row.net_profit,
+      total_equity: row.total_equity, total_debt: row.total_debt,
+      book_value_per_share: row.book_value_per_share,
+    },
+    sourcePrimary: sourceUsed,
+    sourcesUsed: [sourceUsed].filter(Boolean) as string[],
+    lastFundamentalFetchAt: hasFresh ? new Date().toISOString() : ((prev as any)?.last_fundamental_fetch_at ?? null),
+    relatedNewsCount,
+  });
+
+  const enriched = {
+    ...row,
+    price_last: row.price,
+    source_primary: sourceUsed ?? (prev as any)?.source_primary ?? null,
+    source_confidence: conf.sourceConfidence,
+    confidence_label: conf.confidenceLabel,
+    data_status: conf.dataStatus,
+    freshness_status: conf.freshnessStatus,
+    missing_fields: conf.missingFields,
+    missing_reason: conf.missingReason as any,
+    validation_notes: Array.from(new Set([...conf.validationNotes, ...validationNotes])),
+    last_fundamental_fetch_at: hasFresh ? new Date().toISOString() : ((prev as any)?.last_fundamental_fetch_at ?? null),
+    last_market_fetch_at: hasFresh && val ? new Date().toISOString() : ((prev as any)?.last_market_fetch_at ?? null),
+    reporting_period: snap?.period ?? (prev as any)?.reporting_period ?? null,
+    currency: snap?.currency ?? (prev as any)?.currency ?? "IDR",
+  };
+
+  await supabaseAdmin.from("stock_fundamentals").upsert(enriched, { onConflict: "symbol" });
 }
 
 export async function backfillSymbol(symbol: string): Promise<BackfillRow> {
