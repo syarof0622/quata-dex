@@ -1816,7 +1816,7 @@ export type Database = {
           created_at: string
           duplicate_group_id: string | null
           duplicate_of: string | null
-          duplicate_sources: string[]
+          duplicate_sources: string[] | null
           event_cluster_id: string | null
           fetched_at: string
           id: string
@@ -1826,13 +1826,13 @@ export type Database = {
           impact_score: number
           is_duplicate: boolean
           is_noise: boolean
-          keywords: string[]
+          keywords: string[] | null
           primary_ticker: string | null
           published_at: string
           raw_payload: Json | null
-          related_symbols: string[]
+          related_symbols: string[] | null
           relevance_class: string
-          sectors: string[]
+          sectors: string[] | null
           sentiment: string
           sentiment_score: number
           source: string
@@ -1840,7 +1840,7 @@ export type Database = {
           source_reliability_weight: number
           summary: string | null
           ticker_relevance_score: number
-          tickers: string[]
+          tickers: string[] | null
           title: string
           title_hash: string | null
           updated_at: string
@@ -1854,7 +1854,7 @@ export type Database = {
           created_at?: string
           duplicate_group_id?: string | null
           duplicate_of?: string | null
-          duplicate_sources?: string[]
+          duplicate_sources?: string[] | null
           event_cluster_id?: string | null
           fetched_at?: string
           id?: string
@@ -1864,13 +1864,13 @@ export type Database = {
           impact_score?: number
           is_duplicate?: boolean
           is_noise?: boolean
-          keywords?: string[]
+          keywords?: string[] | null
           primary_ticker?: string | null
           published_at?: string
           raw_payload?: Json | null
-          related_symbols?: string[]
+          related_symbols?: string[] | null
           relevance_class?: string
-          sectors?: string[]
+          sectors?: string[] | null
           sentiment?: string
           sentiment_score?: number
           source: string
@@ -1878,7 +1878,7 @@ export type Database = {
           source_reliability_weight?: number
           summary?: string | null
           ticker_relevance_score?: number
-          tickers?: string[]
+          tickers?: string[] | null
           title: string
           title_hash?: string | null
           updated_at?: string
@@ -1892,7 +1892,7 @@ export type Database = {
           created_at?: string
           duplicate_group_id?: string | null
           duplicate_of?: string | null
-          duplicate_sources?: string[]
+          duplicate_sources?: string[] | null
           event_cluster_id?: string | null
           fetched_at?: string
           id?: string
@@ -1902,13 +1902,13 @@ export type Database = {
           impact_score?: number
           is_duplicate?: boolean
           is_noise?: boolean
-          keywords?: string[]
+          keywords?: string[] | null
           primary_ticker?: string | null
           published_at?: string
           raw_payload?: Json | null
-          related_symbols?: string[]
+          related_symbols?: string[] | null
           relevance_class?: string
-          sectors?: string[]
+          sectors?: string[] | null
           sentiment?: string
           sentiment_score?: number
           source?: string
@@ -1916,7 +1916,7 @@ export type Database = {
           source_reliability_weight?: number
           summary?: string | null
           ticker_relevance_score?: number
-          tickers?: string[]
+          tickers?: string[] | null
           title?: string
           title_hash?: string | null
           updated_at?: string

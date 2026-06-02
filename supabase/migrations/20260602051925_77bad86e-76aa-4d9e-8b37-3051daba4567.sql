@@ -1,0 +1,1 @@
+ALTER FUNCTION public.news_articles_coerce_array_nulls() SET search_path = public;
