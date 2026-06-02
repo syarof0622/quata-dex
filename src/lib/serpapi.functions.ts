@@ -10,10 +10,6 @@ import {
 } from "./serpapi.server";
 import { enforceRateLimit, RateLimitError } from "./rate-limit.server";
 
-function rateLimited<T>(code: string, fallback: T): T & { ok: false; error: string; code: string } {
-  return { ...(fallback as any), ok: false as const, error: "Rate limit exceeded. Try again shortly.", code };
-}
-
 const tickerSchema = z.string().trim().min(1).max(20).regex(/^[A-Za-z0-9.:_-]+$/);
 
 export const serpapiNews = createServerFn({ method: "POST" })
