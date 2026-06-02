@@ -530,18 +530,24 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
     .update({ equity: mtmEquity }).eq("id", agent.paper_account_id);
   const account = { cash: Number(acct!.cash), equity: mtmEquity };
 
+  // Resolve aggression-mode preset (single source of truth for knobs).
+  const knobs = resolveAgentKnobs(agent);
+  const aggressionMode = String(agent.aggression_mode ?? "balanced");
+  const effectiveLegacyRiskMode = toLegacyRiskMode(aggressionMode as AggressionMode);
+
   const cfg: AgentConfig = {
     id: agent.id, riskLevel: agent.risk_level, strategyMode: agent.strategy_mode,
     allocationAmount: Number(agent.allocation_amount ?? 1_000_000),
-    maxPositionPerSymbol: Number(agent.max_position_per_symbol ?? 0.25),
-    minConfidenceToTrade: Number(agent.min_confidence_to_trade ?? 0.7),
+    maxPositionPerSymbol: knobs.maxPositionWeightPct,
+    minConfidenceToTrade: knobs.minBuyConfidence,
     autoStopLoss: !!agent.auto_stop_loss, autoTakeProfit: !!agent.auto_take_profit,
     allowBuy: !!agent.allow_buy, allowSell: !!agent.allow_sell,
     tradingHoursOnly: !!agent.trading_hours_only, requireFreshData: !!agent.require_fresh_data,
     minUndervalueScore: Number(agent.min_undervalue_score ?? 65),
     maxValueTrapRisk: Number(agent.max_value_trap_risk ?? 40),
-    autonomousRiskMode: String(agent.autonomous_risk_mode ?? "balanced"),
-    agentRow: agent as any,
+    // Use aggression-mode-derived risk mode so AUTO_GATES picks expert_paper/research_max generosity.
+    autonomousRiskMode: effectiveLegacyRiskMode,
+    agentRow: { ...agent, aggression_mode: aggressionMode } as any,
   };
 
   // Risk pause check (BUY-only). SL/TP exits still run below.
@@ -550,6 +556,41 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
   if (riskPauseActive) {
     cfg.allowBuy = false;
   }
+
+  // ---- MARKET-BREAK / CLOSED SHORT-CIRCUIT (Patch 6) ----
+  // Do not iterate symbols and create a BLOCKED row per symbol per tick during
+  // lunch break / pre-open / post-close. Instead upsert ONE MARKET_PAUSED
+  // summary row per agent every 10 minutes. Position management (SL/TP) still
+  // runs below — it's gated by `if (session.isOpen)` and skipped naturally.
+  if (!session.isOpen) {
+    const dedupAt = (agent as any).market_break_dedup_at ? new Date((agent as any).market_break_dedup_at).getTime() : 0;
+    const dedupWindowMs = 10 * 60_000;
+    if (Date.now() - dedupAt >= dedupWindowMs) {
+      const label = session.isBreak ? "MARKET_BREAK" : "MARKET_CLOSED";
+      const msg = `${label}: ${session.label}. Eksekusi BUY/SELL dijeda — manajemen posisi (SL/TP/Trailing) tetap berjalan saat market buka.`;
+      await supabaseAdmin.from("ai_agent_decisions").insert({
+        agent_id: agent.id, paper_account_id: agent.paper_account_id,
+        symbol: "_MARKET_", action: "BLOCKED", confidence: 0,
+        raw_confidence: 0, calibrated_confidence: 0,
+        calibration_reason: "market_session_paused",
+        strategy: "session_guard",
+        allocation_amount: 0, suggested_lot: 0, suggested_shares: 0,
+        entry_price: null, stop_loss: null, take_profit: null, risk_reward_ratio: null,
+        reasoning: msg,
+        data_snapshot: { session: session.state, label: session.label, dedupWindowMin: 10 } as any,
+        decision_status: "blocked",
+        selection_mode: (agent.symbol_selection_mode ?? "manual"),
+        autonomous_risk_mode: effectiveLegacyRiskMode,
+        candidate_classification: "session_guard",
+        idempotency_key: `${agent.id}:_MARKET_:${label}:${Math.floor(Date.now() / dedupWindowMs)}`,
+      });
+      await supabaseAdmin.from("ai_trade_agents")
+        .update({ market_break_dedup_at: new Date().toISOString(), last_blocked_reason: label })
+        .eq("id", agent.id);
+    }
+    return { decisions: [], executed: 0, metrics };
+  }
+
 
   const decisions: AgentDecision[] = [];
   let executed = 0;
