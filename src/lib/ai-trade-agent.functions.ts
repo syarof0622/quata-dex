@@ -1668,3 +1668,122 @@ export const clearRiskPause = createServerFn({ method: "POST" }).handler(async (
     .eq("user_id", USER_ID);
   return { ok: true };
 });
+
+/** Set the aggression mode (Conservative/Balanced/Progressive/Expert Paper/Research Max). */
+export const setAgentAggressionMode = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({
+    id: z.string().uuid(),
+    mode: z.enum(["conservative", "balanced", "progressive", "expert_paper", "research_max"]),
+  }).parse(d))
+  .handler(async ({ data }) => {
+    const preset = getPreset(data.mode);
+    const legacy = toLegacyRiskMode(data.mode);
+    const { error } = await supabaseAdmin.from("ai_trade_agents").update({
+      aggression_mode: data.mode,
+      autonomous_risk_mode: legacy,
+      target_exposure_pct: preset.targetExposurePct,
+      min_position_weight_pct: preset.minPositionWeightPct,
+      max_position_per_symbol: preset.maxPositionWeightPct,
+      max_active_positions: preset.maxActivePositions,
+      min_confidence_to_trade: preset.minBuyConfidence,
+      min_autonomous_score: preset.minAutonomousScore,
+    }).eq("id", data.id).eq("user_id", USER_ID);
+    if (error) throw new Error(error.message);
+    return { ok: true, preset };
+  });
+
+/**
+ * "Why profit is low" diagnostic. Surface-level checks the agent can self-report.
+ * Pure SELECT — never blocks trading.
+ */
+export const getProfitDiagnostics = createServerFn({ method: "GET" }).handler(async () => {
+  const { data: agent } = await supabaseAdmin
+    .from("ai_trade_agents").select("*").eq("user_id", USER_ID)
+    .order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (!agent) return { checks: [], recommendation: "Agent belum dibuat." };
+
+  const knobs = resolveAgentKnobs(agent);
+  const { data: acct } = await supabaseAdmin
+    .from("paper_accounts").select("cash, equity").eq("id", (agent as any).paper_account_id).maybeSingle();
+  const cash = Number(acct?.cash ?? 0);
+  const equity = Number(acct?.equity ?? cash);
+  const cashRatio = equity > 0 ? cash / equity : 1;
+  const exposurePct = 1 - cashRatio;
+
+  const { data: positions } = await supabaseAdmin
+    .from("paper_positions").select("symbol, qty, avg_price").eq("user_id", USER_ID);
+  const posCount = positions?.length ?? 0;
+
+  const since = new Date(Date.now() - 24 * 3600_000).toISOString();
+  const { count: watchCount } = await supabaseAdmin.from("ai_agent_decisions")
+    .select("id", { count: "exact", head: true })
+    .eq("agent_id", agent.id).in("decision_status", ["watch_only", "research_only", "premarket_plan"])
+    .gte("created_at", since);
+  const { count: blockedCount } = await supabaseAdmin.from("ai_agent_decisions")
+    .select("id", { count: "exact", head: true })
+    .eq("agent_id", agent.id).eq("decision_status", "blocked").gte("created_at", since);
+  const { count: executedCount } = await supabaseAdmin.from("ai_agent_decisions")
+    .select("id", { count: "exact", head: true })
+    .eq("agent_id", agent.id).eq("decision_status", "executed").gte("created_at", since);
+
+  const checks: Array<{ key: string; label: string; ok: boolean; value: string; fix?: string }> = [];
+  const targetPct = knobs.targetExposurePct * 100;
+  const expPct = exposurePct * 100;
+  checks.push({
+    key: "cash_deployment",
+    label: `Cash deployment (target ${targetPct.toFixed(0)}%)`,
+    ok: expPct >= targetPct - 10,
+    value: `exposure ${expPct.toFixed(1)}%`,
+    fix: expPct < targetPct - 10
+      ? `Naikkan aggression mode atau turunkan min confidence agar AI deploy lebih banyak cash.`
+      : undefined,
+  });
+  checks.push({
+    key: "active_positions",
+    label: `Active positions (target s/d ${knobs.maxActivePositions})`,
+    ok: posCount >= Math.min(3, knobs.maxActivePositions),
+    value: `${posCount} terbuka`,
+    fix: posCount < 3 ? `Pertimbangkan Progressive / Expert Paper untuk lebih banyak entry.` : undefined,
+  });
+  checks.push({
+    key: "watch_vs_exec",
+    label: `WATCH/RESEARCH spam (24h)`,
+    ok: (watchCount ?? 0) <= Math.max(10, (executedCount ?? 0) * 3),
+    value: `${watchCount ?? 0} watch · ${executedCount ?? 0} exec`,
+    fix: (watchCount ?? 0) > Math.max(10, (executedCount ?? 0) * 3)
+      ? `Terlalu banyak WATCH — turunkan min_autonomous_score atau pakai Expert Paper.`
+      : undefined,
+  });
+  checks.push({
+    key: "blocked_volume",
+    label: `BLOCKED decisions (24h)`,
+    ok: (blockedCount ?? 0) < 50,
+    value: `${blockedCount ?? 0}`,
+    fix: (blockedCount ?? 0) >= 50
+      ? `Banyak block — cek lunch-break dedup, risk pause, atau soft warnings yang terlalu strict.`
+      : undefined,
+  });
+  checks.push({
+    key: "min_position_size",
+    label: `Min position size (preset ${(knobs.minPositionWeightPct * 100).toFixed(1)}%)`,
+    ok: true,
+    value: `${(knobs.minPositionWeightPct * 100).toFixed(1)}% – ${(knobs.maxPositionWeightPct * 100).toFixed(1)}%`,
+  });
+
+  const failing = checks.filter(c => !c.ok);
+  const recommendation = failing.length === 0
+    ? "Agent berjalan optimal sesuai mode. Pantau hasil paper trading."
+    : `Perbaiki: ${failing.map(f => f.label).join(" · ")}. Pertimbangkan ganti mode ke Expert Paper.`;
+
+  // Cache snapshot for the UI.
+  await supabaseAdmin.from("ai_trade_agents")
+    .update({ last_profit_diagnostic: { checks, recommendation, generatedAt: new Date().toISOString() } as any })
+    .eq("id", agent.id);
+
+  return {
+    mode: agent.aggression_mode ?? "balanced",
+    preset: knobs.preset,
+    cashRatio, exposurePct, posCount,
+    checks, recommendation,
+  };
+});
