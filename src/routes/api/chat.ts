@@ -116,7 +116,20 @@ async function buildMarketContext(userText: string): Promise<string> {
     const tLines = (tNews ?? [])
       .map((n: any) => `- [${n.source}|${n.sentiment}|${n.impact_level}] ${String(n.title).slice(0, 140)}`)
       .join("\n");
-    perTicker = `\n\nTICKER FOCUS (${tickers.join(", ")}):\n${sumLines || "(no 24h summary)"}\n${tLines || "(no recent ticker news)"}`;
+    // Live price snapshot per ticker (Yahoo chart, no key required).
+    const livePrices = await Promise.all(tickers.map((t) => fetchLivePrice(t)));
+    const priceLines = livePrices
+      .filter((p): p is NonNullable<typeof p> => !!p && p.price != null)
+      .map((p) => {
+        const chg = p.change != null ? p.change.toFixed(2) : "n/a";
+        const pct = p.changePct != null ? `${p.changePct >= 0 ? "+" : ""}${p.changePct.toFixed(2)}%` : "n/a";
+        const cur = p.currency ?? "";
+        const state = p.marketState ?? "";
+        const ts = p.asOf ?? "";
+        return `- ${p.symbol}: last=${p.price} ${cur} change=${chg} (${pct}) prevClose=${p.prevClose ?? "n/a"} state=${state} asOf=${ts}`;
+      })
+      .join("\n");
+    perTicker = `\n\nTICKER FOCUS (${tickers.join(", ")}):\nLIVE PRICE (Yahoo realtime):\n${priceLines || "(no live price available)"}\nSentiment summary (24h):\n${sumLines || "(no 24h summary)"}\nRecent ticker news:\n${tLines || "(no recent ticker news)"}`;
   }
 
   return `LIVE MARKET CONTEXT (public sources, last 24h)
