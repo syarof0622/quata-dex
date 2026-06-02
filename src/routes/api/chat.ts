@@ -153,6 +153,8 @@ export const Route = createFileRoute("/api/chat")({
         try {
           const denied = checkChatAccess(request);
           if (denied) return denied;
+          const limited = checkRateLimit(getClientIp(request));
+          if (limited) return limited;
           const { messages, system } = await request.json() as {
             messages: { role: "user" | "assistant"; content: string }[];
             system?: string;
