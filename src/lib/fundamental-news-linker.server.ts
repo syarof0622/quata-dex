@@ -102,7 +102,15 @@ export async function linkFundamentalToNews(symbol: string): Promise<LinkResult>
     .limit(50);
 
   const noteSet = new Set<string>();
-  const rows: Array<Record<string, unknown>> = [];
+  const rows: Array<{
+    symbol: string;
+    news_article_id: string | null;
+    disclosure_id: string | null;
+    link_type: string;
+    relevance_score: number;
+    validation_effect: string;
+    note: string;
+  }> = [];
   let latest: string | null = null;
   let relatedCount = 0;
 
