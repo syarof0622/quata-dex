@@ -13,6 +13,48 @@
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { fetchFundamentalFromNews } from "./fundamental-news-extractor.server";
+import { fetchFundamentalsFromYahoo } from "./fundamentals-fetcher.server";
+
+// ---------- Yahoo Finance fallback (free, no key) ----------
+// Wraps fetchFundamentalsFromYahoo() and projects into RawValuationMetrics.
+async function fetchYahooValuation(symbol: string): Promise<RawValuationMetrics | null> {
+  const y = await fetchFundamentalsFromYahoo(symbol);
+  if (!y) return null;
+  const hasAny =
+    y.per != null || y.pbv != null || y.roe != null || y.der != null || y.dividend_yield != null;
+  if (!hasAny) return null;
+  return {
+    symbol: y.symbol,
+    sector: y.sector,
+    price: null,
+    market_cap: y.market_cap,
+    shares_outstanding: null,
+    source: "yahoo_quote_summary",
+    source_url: `https://finance.yahoo.com/quote/${encodeURIComponent(y.symbol)}`,
+    per: y.per,
+    pbv: y.pbv,
+    ps: null,
+    ev_ebitda: null,
+    dividend_yield: y.dividend_yield,
+    dividend_per_share: null,
+    roe: y.roe,
+    roa: y.roa,
+    npm: y.net_margin,
+    gpm: y.gross_margin,
+    opm: null,
+    der: y.der,
+    debt_to_assets: null,
+    eps_growth_yoy: null,
+    revenue_growth_yoy: y.revenue_growth_yoy,
+    net_income_growth_yoy: y.net_profit_growth_yoy,
+    fcf_yield: null,
+    operating_cashflow_margin:
+      y.operating_cash_flow != null && y.revenue ? y.operating_cash_flow / y.revenue : null,
+    payout_ratio: y.dividend_payout_ratio,
+    calculation_method: "yahoo_quote_summary_v1",
+    raw_payload: y.raw_payload,
+  };
+}
 
 // ---------- shared helpers ----------
 const num = (v: unknown): number | null => {
@@ -405,7 +447,28 @@ export async function fetchFundamentalFromSources(symbol: string): Promise<Fetch
     }
   }
 
-  // 2. SerpApi fallback — valuation only
+  // 2a. Yahoo Finance fallback (free, no key) — full valuation + profitability + DER.
+  tried.push("yahoo_quote_summary");
+  try {
+    const yv = await fetchYahooValuation(symbol);
+    if (yv) {
+      await logSourceAttempt(symbol, "yahoo_quote_summary", "success");
+      return {
+        snapshot: null,
+        valuation: yv,
+        sourceTried: tried,
+        sourceUsed: "yahoo_quote_summary",
+        partial: true,
+      };
+    }
+    await logSourceAttempt(symbol, "yahoo_quote_summary", "empty", {
+      error_message: "no data (symbol not found or Yahoo blocked request)",
+    });
+  } catch (e: any) {
+    await logSourceAttempt(symbol, "yahoo_quote_summary", "error", { error_message: String(e?.message ?? e) });
+  }
+
+  // 2b. SerpApi fallback — valuation only
   if (cfg.serpapiEnabled) {
     tried.push("serpapi_google_finance");
     try {
