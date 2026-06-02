@@ -16,6 +16,51 @@ function extractTickers(text: string): string[] {
   return [...found].slice(0, 4);
 }
 
+// Fetch realtime price from Yahoo chart endpoint (worker-safe, no key).
+async function fetchLivePrice(symbol: string): Promise<{
+  symbol: string;
+  price: number | null;
+  change: number | null;
+  changePct: number | null;
+  prevClose: number | null;
+  marketState: string | null;
+  currency: string | null;
+  asOf: string | null;
+} | null> {
+  try {
+    const r = await fetch(
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1m&range=1d&includePrePost=true`,
+      {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+          Accept: "application/json,text/plain,*/*",
+        },
+      },
+    );
+    if (!r.ok) return null;
+    const j: any = await r.json();
+    const meta = j?.chart?.result?.[0]?.meta;
+    if (!meta) return null;
+    const price = meta.regularMarketPrice ?? null;
+    const prev = meta.chartPreviousClose ?? meta.previousClose ?? null;
+    const change = price != null && prev != null ? price - prev : null;
+    const pct = change != null && prev ? (change / prev) * 100 : null;
+    const ts = meta.regularMarketTime ? new Date(meta.regularMarketTime * 1000).toISOString() : null;
+    return {
+      symbol,
+      price,
+      change,
+      changePct: pct,
+      prevClose: prev,
+      marketState: meta.marketState ?? null,
+      currency: meta.currency ?? null,
+      asOf: ts,
+    };
+  } catch {
+    return null;
+  }
+}
+
 // Build a compact, AI-friendly context block from public news + sentiment.
 async function buildMarketContext(userText: string): Promise<string> {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
