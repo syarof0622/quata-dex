@@ -171,14 +171,6 @@ export function AutonomousAgentPanel() {
           </div>
         )}
       </div>
-                <span key={r.reason} className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-400 px-2 py-0.5 text-[10.5px]">
-                  {r.reason} <span className="opacity-70">×{r.count}</span>
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
 
       {/* Open Position Management */}
       <div className="rounded-2xl border border-border/60 bg-card/50 p-3 sm:p-4">
