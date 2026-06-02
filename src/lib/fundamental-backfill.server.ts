@@ -316,10 +316,80 @@ async function persistSignal(
   return sig;
 }
 
+async function upsertStockFundamentalsBridge(
+  symbol: string,
+  snap: RawFundamentalSnapshot | null,
+  val: RawValuationMetrics | null,
+  sourceUsed: string | null,
+) {
+  if (!snap && !val) return;
+
+  // Fetch existing row so we PRESERVE last-known-good values when a source
+  // returns a partial payload (rule 14: "do not wipe previously valid data").
+  const { data: prev } = await supabaseAdmin
+    .from("stock_fundamentals")
+    .select("*")
+    .eq("symbol", symbol)
+    .maybeSingle();
+
+  const pick = <K extends keyof any>(fresh: number | null | undefined, key: string): number | null => {
+    if (fresh != null && Number.isFinite(Number(fresh))) return Number(fresh);
+    const p = (prev as any)?.[key];
+    return p != null && Number.isFinite(Number(p)) ? Number(p) : null;
+  };
+  const pickStr = (fresh: string | null | undefined, key: string): string | null => {
+    if (fresh) return fresh;
+    return ((prev as any)?.[key] as string | null) ?? null;
+  };
+
+  const hasFresh = !!val || !!snap;
+  const row = {
+    symbol,
+    company_name: pickStr(snap?.company_name ?? null, "company_name"),
+    sector: pickStr(val?.sector ?? snap?.sector ?? null, "sector"),
+    industry: pickStr(null, "industry"),
+    price: pick(val?.price ?? null, "price"),
+    market_cap: pick(val?.market_cap ?? null, "market_cap"),
+    shares_outstanding: pick(val?.shares_outstanding ?? snap?.shares_outstanding ?? null, "shares_outstanding"),
+    per: pick(val?.per ?? null, "per"),
+    pbv: pick(val?.pbv ?? null, "pbv"),
+    eps: pick(snap?.eps ?? null, "eps"),
+    book_value_per_share: pick(snap?.book_value_per_share ?? null, "book_value_per_share"),
+    roe: pick(val?.roe ?? null, "roe"),
+    roa: pick(val?.roa ?? null, "roa"),
+    der: pick(val?.der ?? null, "der"),
+    revenue: pick(snap?.revenue ?? null, "revenue"),
+    revenue_growth_yoy: pick(val?.revenue_growth_yoy ?? null, "revenue_growth_yoy"),
+    net_profit: pick(snap?.net_income ?? null, "net_profit"),
+    net_profit_growth_yoy: pick(val?.net_income_growth_yoy ?? null, "net_profit_growth_yoy"),
+    eps_growth_yoy: pick(val?.eps_growth_yoy ?? null, "eps_growth_yoy"),
+    gross_margin: pick(val?.gpm ?? null, "gross_margin"),
+    net_margin: pick(val?.npm ?? null, "net_margin"),
+    operating_cash_flow: pick(snap?.operating_cashflow ?? null, "operating_cash_flow"),
+    free_cash_flow: pick(snap?.free_cashflow ?? null, "free_cash_flow"),
+    dividend_yield: pick(val?.dividend_yield ?? null, "dividend_yield"),
+    dividend_per_share: pick(val?.dividend_per_share ?? null, "dividend_per_share"),
+    total_equity: pick(snap?.total_equity ?? null, "total_equity"),
+    total_assets: pick(snap?.total_assets ?? null, "total_assets"),
+    total_debt: pick(snap?.total_debt ?? null, "total_debt"),
+    financial_report_date: snap?.report_date ?? (prev as any)?.financial_report_date ?? null,
+    data_source: sourceUsed ?? (prev as any)?.data_source ?? null,
+    raw_payload: { snapshot: snap, valuation: val, source: sourceUsed } as any,
+    status: hasFresh ? "ok" : ((prev as any)?.status ?? "stale"),
+    data_freshness: hasFresh ? new Date().toISOString() : ((prev as any)?.data_freshness ?? new Date().toISOString()),
+  };
+
+  await supabaseAdmin.from("stock_fundamentals").upsert(row, { onConflict: "symbol" });
+}
+
 export async function backfillSymbol(symbol: string): Promise<BackfillRow> {
   const res = await fetchFundamentalFromSources(symbol);
   if (res.snapshot) await upsertFundamentalSnapshot(res.snapshot);
   if (res.valuation) await upsertValuationMetrics(res.valuation);
+
+  // Bridge into stock_fundamentals so Portfolio + AI Analyst + Undervalue
+  // (which read from stock_fundamentals) see the same data as the signal layer.
+  await upsertStockFundamentalsBridge(symbol, res.snapshot, res.valuation, res.sourceUsed);
 
   const sector = res.valuation?.sector ?? res.snapshot?.sector ?? null;
   const bench = await loadSectorBenchmark(sector);
@@ -342,6 +412,7 @@ export async function backfillSymbol(symbol: string): Promise<BackfillRow> {
     partial: res.partial,
   };
 }
+
 
 export type BackfillReport = {
   ran_at: string;

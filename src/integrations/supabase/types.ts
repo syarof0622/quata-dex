@@ -1717,6 +1717,48 @@ export type Database = {
         }
         Relationships: []
       }
+      fundamental_source_logs: {
+        Row: {
+          attempt_time: string
+          created_at: string
+          error_code: string | null
+          error_message: string | null
+          freshness_detected: string | null
+          http_status: number | null
+          id: string
+          payload_hash: string | null
+          source: string
+          status: string
+          symbol: string
+        }
+        Insert: {
+          attempt_time?: string
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          freshness_detected?: string | null
+          http_status?: number | null
+          id?: string
+          payload_hash?: string | null
+          source: string
+          status: string
+          symbol: string
+        }
+        Update: {
+          attempt_time?: string
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          freshness_detected?: string | null
+          http_status?: number | null
+          id?: string
+          payload_hash?: string | null
+          source?: string
+          status?: string
+          symbol?: string
+        }
+        Relationships: []
+      }
       market_data_quality_snapshots: {
         Row: {
           created_at: string
