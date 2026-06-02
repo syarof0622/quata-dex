@@ -106,14 +106,6 @@ export function AutonomousAgentPanel() {
         <SumCard icon={Pause} label="Exit Pending" value={data.summary.exitPending} tone="amber" />
       </div>
 
-      {/* Why AI Did Not Trade */}
-      <div className="rounded-2xl border border-border/60 bg-card/50 p-3 sm:p-4">
-        <div className="flex items-center justify-between gap-2 mb-2">
-          <h3 className="text-sm font-semibold flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-amber-400" /> Why AI Did Not Trade</h3>
-          <span className="text-[10.5px] text-muted-foreground">
-            24h: {data.decisions.executed24h} exec · {data.decisions.blocked24h} blocked
-          </span>
-        </div>
       {/* Aggression mode selector — paper trading only */}
       <div className="rounded-2xl border border-border/60 bg-card/50 p-3 sm:p-4">
         <div className="flex items-center justify-between gap-2 mb-2">
@@ -163,14 +155,6 @@ export function AutonomousAgentPanel() {
             <div className="text-[10.5px] uppercase tracking-wider text-muted-foreground mb-1">Top blocked reasons</div>
             <div className="flex flex-wrap gap-1.5">
               {data.decisions.topBlockedReasons.map((r) => (
-                <span key={r.reason} className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-400 px-2 py-0.5 text-[10.5px]">
-                  {r.reason} <span className="opacity-70">×{r.count}</span>
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
                 <span key={r.reason} className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-400 px-2 py-0.5 text-[10.5px]">
                   {r.reason} <span className="opacity-70">×{r.count}</span>
                 </span>
