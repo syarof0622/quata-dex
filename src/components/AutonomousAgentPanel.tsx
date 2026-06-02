@@ -114,8 +114,44 @@ export function AutonomousAgentPanel() {
             24h: {data.decisions.executed24h} exec · {data.decisions.blocked24h} blocked
           </span>
         </div>
+      {/* Aggression mode selector — paper trading only */}
+      <div className="rounded-2xl border border-border/60 bg-card/50 p-3 sm:p-4">
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <h3 className="text-sm font-semibold flex items-center gap-2"><Zap className="h-4 w-4 text-amber-400" /> Aggression Mode</h3>
+          <span className="text-[10.5px] text-muted-foreground">Paper trading only — no real money</span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+          {(Object.keys(AGGRESSION_PRESETS) as AggressionMode[]).map((m) => {
+            const p = AGGRESSION_PRESETS[m];
+            const active = currentMode === m;
+            return (
+              <button key={m} disabled={modeMutation.isPending}
+                onClick={() => modeMutation.mutate(m)}
+                className={cn("rounded-lg border px-2.5 py-2 text-left text-[11px] transition",
+                  active ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-300" : "border-border/40 bg-card/40 hover:border-border")}>
+                <div className="font-semibold">{p.label}</div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">
+                  Exp {(p.targetExposurePct*100).toFixed(0)}% · Pos {(p.maxPositionWeightPct*100).toFixed(0)}% · {p.maxActivePositions} slots
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        {diag?.recommendation && (
+          <div className="mt-2 text-[11px] text-muted-foreground border-t border-border/40 pt-2">{diag.recommendation}</div>
+        )}
+      </div>
+
+      {/* Why AI Did Not Trade + profit diagnostics */}
+      <div className="rounded-2xl border border-border/60 bg-card/50 p-3 sm:p-4">
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <h3 className="text-sm font-semibold flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-amber-400" /> Why Profit Is Low</h3>
+          <span className="text-[10.5px] text-muted-foreground">
+            24h: {data.decisions.executed24h} exec · {data.decisions.blocked24h} blocked
+          </span>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-          {data.diagnostic.map((d) => (
+          {(diag?.checks ?? data.diagnostic).map((d: any) => (
             <div key={d.key} className="flex items-center justify-between gap-2 rounded-lg border border-border/40 bg-card/40 px-2.5 py-1.5">
               <span className="text-[11.5px] text-muted-foreground">{d.label}</span>
               <span className={cn("text-[11.5px] font-mono truncate ml-2", d.ok ? "text-emerald-400" : "text-amber-400")}>{d.value}</span>
@@ -127,6 +163,14 @@ export function AutonomousAgentPanel() {
             <div className="text-[10.5px] uppercase tracking-wider text-muted-foreground mb-1">Top blocked reasons</div>
             <div className="flex flex-wrap gap-1.5">
               {data.decisions.topBlockedReasons.map((r) => (
+                <span key={r.reason} className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-400 px-2 py-0.5 text-[10.5px]">
+                  {r.reason} <span className="opacity-70">×{r.count}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
                 <span key={r.reason} className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-400 px-2 py-0.5 text-[10.5px]">
                   {r.reason} <span className="opacity-70">×{r.count}</span>
                 </span>
