@@ -8,6 +8,11 @@ import {
   getMonthlyUsage,
   SerpApiError,
 } from "./serpapi.server";
+import { enforceRateLimit, RateLimitError } from "./rate-limit.server";
+
+function rateLimited<T>(code: string, fallback: T): T & { ok: false; error: string; code: string } {
+  return { ...(fallback as any), ok: false as const, error: "Rate limit exceeded. Try again shortly.", code };
+}
 
 const tickerSchema = z.string().trim().min(1).max(20).regex(/^[A-Za-z0-9.:_-]+$/);
 
@@ -21,9 +26,11 @@ export const serpapiNews = createServerFn({ method: "POST" })
     }).parse(d))
   .handler(async ({ data }) => {
     try {
+      enforceRateLimit("serpapi_news", 10, 60_000);
       const items = await fetchSerpApiGoogleNews(data);
       return { ok: true as const, items };
     } catch (e: any) {
+      if (e instanceof RateLimitError) return { ok: false as const, error: e.message, code: "RATE_LIMITED", items: [] };
       const code = e instanceof SerpApiError ? e.code : "UPSTREAM";
       return { ok: false as const, error: String(e?.message ?? e), code, items: [] };
     }
@@ -33,9 +40,11 @@ export const serpapiGoogleFinance = createServerFn({ method: "POST" })
   .inputValidator((d: { symbol: string }) => z.object({ symbol: tickerSchema }).parse(d))
   .handler(async ({ data }) => {
     try {
+      enforceRateLimit("serpapi_gf", 15, 60_000);
       const quote = await fetchSerpApiGoogleFinance(data.symbol);
       return { ok: true as const, quote };
     } catch (e: any) {
+      if (e instanceof RateLimitError) return { ok: false as const, error: e.message, code: "RATE_LIMITED", quote: null };
       const code = e instanceof SerpApiError ? e.code : "UPSTREAM";
       return { ok: false as const, error: String(e?.message ?? e), code, quote: null };
     }
@@ -45,9 +54,11 @@ export const serpapiMarketContext = createServerFn({ method: "POST" })
   .inputValidator((d: { symbol: string }) => z.object({ symbol: tickerSchema }).parse(d))
   .handler(async ({ data }) => {
     try {
+      enforceRateLimit("serpapi_ctx", 15, 60_000);
       const ctx = await computeAlignment(data.symbol);
       return { ok: true as const, ...ctx };
     } catch (e: any) {
+      if (e instanceof RateLimitError) return { ok: false as const, error: e.message, code: "RATE_LIMITED" };
       const code = e instanceof SerpApiError ? e.code : "UPSTREAM";
       return { ok: false as const, error: String(e?.message ?? e), code };
     }
