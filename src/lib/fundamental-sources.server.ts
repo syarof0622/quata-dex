@@ -447,7 +447,28 @@ export async function fetchFundamentalFromSources(symbol: string): Promise<Fetch
     }
   }
 
-  // 2. SerpApi fallback — valuation only
+  // 2a. Yahoo Finance fallback (free, no key) — full valuation + profitability + DER.
+  tried.push("yahoo_quote_summary");
+  try {
+    const yv = await fetchYahooValuation(symbol);
+    if (yv) {
+      await logSourceAttempt(symbol, "yahoo_quote_summary", "success");
+      return {
+        snapshot: null,
+        valuation: yv,
+        sourceTried: tried,
+        sourceUsed: "yahoo_quote_summary",
+        partial: true,
+      };
+    }
+    await logSourceAttempt(symbol, "yahoo_quote_summary", "empty", {
+      error_message: "no data (symbol not found or Yahoo blocked request)",
+    });
+  } catch (e: any) {
+    await logSourceAttempt(symbol, "yahoo_quote_summary", "error", { error_message: String(e?.message ?? e) });
+  }
+
+  // 2b. SerpApi fallback — valuation only
   if (cfg.serpapiEnabled) {
     tried.push("serpapi_google_finance");
     try {
