@@ -1,125 +1,106 @@
-## Update 15 — Portfolio Intelligence + What-If Scenario Engine
+# AI Trade Agent — Aggression, Deployment & Profit Patch
 
-This is a large, mostly additive update on top of existing Portfolio / AI Agent / AI Analyst / System Health. Nothing existing gets removed. Paper-trading-only. No broker, no order execution from What-If.
+Scope: paper trading only. No broker, no real money. No rebuild — surgical edits to the existing agent engine, decision pipeline, UI, and a small schema extension.
 
-### 1. Database (single migration)
+## 1. Aggression Modes (Patch 1, 2, 10, 16)
 
-Two new tables + indexes:
+Extend `ai_trade_agents` with a single source of truth for mode tuning. Add column `aggression_mode` (`conservative | balanced | progressive | expert_paper | research_max`, default `balanced`) plus `target_exposure_pct`, `min_position_weight_pct`, and rename usage of existing `max_position_per_symbol` as max cap per mode.
 
-- `portfolio_intelligence_snapshots` — health score, risk level, cash/invested ratio, concentration / diversification / cash drag / sector / fundamental / disclosure exposure scores.
-- `position_attribution_snapshots` — per-position weight, contribution to return, contribution to risk, volatility/beta estimate, fundamental + disclosure context.
-- `portfolio_scenario_results` — stores every scenario the user runs (IHSG ±%, close / reduce / add / deploy cash, custom move).
+Mode preset table (applied in engine, overridable in UI):
 
-All three:
-- GRANT SELECT to `authenticated`, GRANT ALL to `service_role` (no anon).
-- RLS enabled. Read policy scoped to hardcoded user UUID (matches existing single-tenant pattern). All writes server-side via service role.
-- Standard `id uuid pk default gen_random_uuid()`, `created_at timestamptz default now()`, indexes on `account_id`, `symbol`, `created_at`.
+```text
+mode            target_exp  min_pos  max_pos  max_active  min_conf  min_RR
+conservative    0.20        0.015    0.04     5           0.75      1.5
+balanced        0.40        0.030    0.07     8           0.65      1.8
+progressive     0.60        0.050    0.10     12          0.55      2.0
+expert_paper    0.75        0.060    0.12     15          0.50      2.2
+research_max    0.85        0.070    0.15     20          0.45      2.5
+```
 
-### 2. Server-side engine (`src/lib/portfolio-intelligence.server.ts`)
+UI: Settings page + AutonomousAgentPanel gets a mode selector + sliders for the six knobs above, plus toggles for `allow_rotation`, `allow_trailing_stop`, `allow_partial_tp`, `allow_technical_without_fundamental`, `watch_spam_dedup`. Banner: "Paper trading only — no real money."
 
-Pure server module, never imported by client. Functions:
+## 2. Cash Deployment Engine (Patch 2, 3)
 
-- `calculatePortfolioHealth(accountId)` — 10-component scoring → score 0-100 + level (Healthy / Stable / Caution / Risky / Critical). Cash-high logic is regime-aware (defensive vs cash drag).
-- `calculatePositionAttribution(accountId)` — weight, contributionToReturn = unrealizedPnl/equity, riskContribution = weight × volatility (fallback to sector risk factor with `confidence: low`).
-- `calculateSectorAttribution(accountId)` — sector roll-up with risk + fundamental confidence + disclosure risk count.
-- `calculateCashDrag(accountId, marketRegime)` — regime-aware status + opportunity cost estimate + recommendation.
-- `generatePortfolioInsights(accountId)` — summary, top risks, top opportunities, suggested actions, monitor list, what-if highlights.
-- `snapshotPortfolioIntelligence(accountId)` — persists into the two snapshot tables.
+In `ai-trade-agent.functions.ts` decision loop:
+1. Compute `equity`, `cashRatio`, `currentExposurePct`.
+2. `deploymentGap = target_exposure_pct - currentExposurePct`.
+3. If `deploymentGap > 0` and session valid, raise BUY priority and allow up to `min(deploymentGap, max_position_weight_pct)` per candidate.
+4. Round to IDX lot via existing `sizeOrder`. If lot < min meaningful, bump to `min_position_weight_pct` when cash allows; otherwise downgrade to WATCH with reason `cash_insufficient_for_min_lot` (not generic block).
+5. Surface `cashUnderDeployed` diagnostic on agent state.
 
-Scenario engine (`src/lib/portfolio-scenarios.server.ts`):
+## 3. Decision Hierarchy (Patch 4, 5)
 
-- `runPortfolioScenario(accountId, scenario)` dispatcher for: `IHSG_DOWN_2 / 5 / 10`, `IHSG_UP_2`, `SECTOR_DROP`, `CLOSE_POSITION`, `REDUCE_POSITION`, `ADD_POSITION`, `DEPLOY_CASH`, `CASH_TO_50`, `CUSTOM_PRICE_MOVE`.
-- IHSG sims use per-position beta if available, else sector sensitivity fallback (confidence low + caveat).
-- `simulateClosePosition / simulateReducePosition / simulateAddPosition / simulateDeployCash` — all return before/after equity, cash, exposure, sector exposure, risk level, pros/cons, recommendation. **All read-only — never insert paper orders.**
-- Every run persists into `portfolio_scenario_results`.
+Rewrite final action selector in `ai-agent-decision-engine.ts`:
 
-### 3. Server functions (`src/lib/portfolio-intelligence.functions.ts`)
+```text
+hardBlocks  → BLOCKED   (market closed/break, no cash, lot<1, max positions,
+                         suspension, UMA high, no price, no SL, no TP,
+                         daily loss / drawdown limit hit)
+softWarnings → reduce confidence, do NOT block in expert_paper / research_max
+passes all gates + confidence ≥ mode buy threshold → BUY
+confidence between watch and buy threshold → WATCH
+data insufficient / not actionable → RESEARCH
+```
 
-Thin `createServerFn` wrappers for the UI + AI:
+Remove the current bias that defaults passing candidates to WATCH.
 
-- `getPortfolioIntelligence` — latest snapshot + live recompute.
-- `getPositionAttribution`, `getSectorAttribution`, `getCashDragAnalysis`.
-- `runScenario` (input-validated discriminated union for the 10 scenario types).
-- `getScenarioHistory`.
-- `getPortfolioInsights`.
+## 4. Market-Break Dedup + Pending Queue (Patch 6, 7, 13)
 
-All called from components via `useServerFn` + `useQuery` (never from public-route loaders).
+- Add table `ai_agent_pending_executions` (agent_id, symbol, plan jsonb, created_at, expires_at, status). One row per symbol per session.
+- In cron: when session is `lunch_break | pre_open | post_close | closed`, do NOT insert per-symbol `BLOCKED` rows. Instead upsert a single session-level decision row `MARKET_PAUSED` per agent (dedup window 10 min) and stash top candidates in `ai_agent_pending_executions` with `PENDING_REVALIDATION_AFTER_BREAK`.
+- On first tick where `session.isOpen` flips true: load pending rows, revalidate price + risk + lot, execute BUY if still valid, else mark `expired`.
 
-### 4. AI integration
+## 5. Profit-Oriented Exits (Patch 8, 14)
 
-- Extend `src/lib/ai-app-context.server.ts` to inject portfolio health + attribution + sector + cash-drag + latest scenarios into the AI context, so AI Analyst can answer all 10 acceptance questions.
-- Add a `run_portfolio_scenario` tool to `src/routes/api/chat.ts` so AI Analyst can simulate ad-hoc "what if I close KAEF" / "what if IHSG drops 5%" directly.
-- Extend AI Trade Agent's pre-BUY guard (in the existing agent worker) to call `calculatePortfolioHealth` + add-position scenario; if health/concentration/sector/cash-buffer fails, block with `blockedReason`: `portfolio_risk_too_high` / `sector_concentration_risk` / `cash_buffer_required` / `scenario_risk_too_high`.
+Every BUY decision must populate `stop_loss`, `take_profit`, `risk_reward_ratio`, plus a new `exit_plan` jsonb: `{ sl, tp1, tp2, trailing_activate_pct, trailing_distance_pct, partial_tp_enabled }`. Reject the candidate if RR < mode min.
 
-### 5. UI — Portfolio page
+Open-position manager (`position-management-engine.ts`): every tick, for each open paper position with missing SL/TP, synthesize from ATR (1.5× for SL, mode RR for TP) and persist. Compute `distance_to_sl_pct`, `distance_to_tp_pct`, `management_status` (`hold | trail | tp1_hit | sl_pending | exit_now`). Portfolio + AutonomousAgentPanel render these.
 
-Extend the existing portfolio route (no rebuild). Add sections in order:
+Risk-pause guard: pause blocks BUY/ROTATION_ENTRY only — SELL / EXIT / TP / SL always allowed.
 
-1. **Portfolio Health** card — score, risk level, summary, top positive, top warning.
-2. **Equity Curve** — responsive area chart (mobile 220–260px, desktop 320–380px) with empty state.
-3. **Allocation Visual** — cash vs invested bar + sector donut + position weight bars.
-4. **Attribution** — top contributor, worst contributor, highest risk, largest weight, sector contribution.
-5. **Scenario Analysis** — preset cards (IHSG -2/-5/-10, Close, Add, Deploy Cash).
-6. **What-If Analysis** — scenario chips + controls (bottom sheet on mobile) + before/after comparison cards + chart.
-7. **Open Positions** — kept from existing UI, augmented with attribution + risk badge + fundamental/disclosure context.
+## 6. Profit Optimization Score (Patch 9)
 
-Reusable chart components in `src/components/portfolio/charts/`:
-`PortfolioEquityCurve`, `AllocationDonut`, `SectorExposureBars`, `PositionContributionBars`, `ScenarioComparisonChart`, `CashVsInvestedBar`, `DrawdownChart`. All width:100%, responsive, mobile tooltips, elegant empty states.
+In scanner, after candidate scoring:
 
-What-If is **simulation only** — explicit "This is a simulation, no order is placed" note + "Open Paper Trade" CTA that just deep-links into the existing manual paper-order flow (still paper).
+```text
+executionScore = candidateScore
+  + momentumBonus + sectorRotationBonus + liquidityBonus + cashDeploymentBonus
+  - downsideRiskPenalty - concentrationPenalty - staleDataPenalty
+```
 
-### 6. System Health
+Persist into `ai_agent_scan_candidates.execution_score` (new column). Rank executable candidates by it.
 
-Add a `Portfolio Intelligence Engine` card to `src/routes/_authenticated/health.tsx` + extend `src/lib/system-health.functions.ts` and `src/lib/system-audit.server.ts` with:
-- latest snapshot time
-- positions analyzed
-- scenario engine status (last run / errors)
-- attribution status
-- chart data status
-- error list
+## 7. Rotation (Patch 11)
 
-Status mapped to Healthy / Partial / Stale / Error (same convention as other cards).
+When `openPositions ≥ max_active` and a new candidate's `executionScore` exceeds weakest open position's live score by ≥ 15 and that position's unrealized loss is within `-1R`, emit `ROTATION_EXIT` then `ROTATION_ENTRY` decisions. Modes `progressive | expert_paper | research_max` only. Always log reason.
 
-### 7. Mobile
+## 8. Trade Memory Feedback (Patch 12)
 
-- Hero compact, KPI grid 2 columns
-- What-If controls in bottom sheet
-- Scenario result cards stacked
-- No table overflow (cards on mobile)
-- Bottom nav clearance preserved
+Extend `ai_agent_trade_memory` usage: when computing confidence, multiply by symbol/sector/strategy win-rate factor (clamped 0.7–1.15). If `sample_size < 10`, attach `low_sample_size` warning but still apply a damped factor (0.9–1.05).
 
-### Safety guardrails (explicit in code + UI)
+## 9. "Why Profit Is Low" Diagnostic (Patch 15)
 
-- No code path in scenario engine inserts into `paper_orders` / `paper_positions`.
-- `CRON_SECRET`, `SERVICE_ROLE_KEY`, etc. never read client-side.
-- All scenario writes happen via service-role server functions.
-- Paper-trading-only banner unchanged.
+New server fn `getProfitDiagnostics(agentId)` returns checks + recommended fixes (cash too high, positions too small, watch spam, market break, slot saturated, RR too tight, stale data, etc.). Renders in AutonomousAgentPanel as a new card.
 
-### Files to create
+## 10. Acceptance Verification
 
-- `supabase/migrations/<ts>_portfolio_intelligence.sql`
-- `src/lib/portfolio-intelligence.server.ts`
-- `src/lib/portfolio-scenarios.server.ts`
-- `src/lib/portfolio-intelligence.functions.ts`
-- `src/components/portfolio/PortfolioHealthCard.tsx`
-- `src/components/portfolio/AttributionSection.tsx`
-- `src/components/portfolio/ScenarioPresets.tsx`
-- `src/components/portfolio/WhatIfPanel.tsx`
-- `src/components/portfolio/charts/{PortfolioEquityCurve,AllocationDonut,SectorExposureBars,PositionContributionBars,ScenarioComparisonChart,CashVsInvestedBar,DrawdownChart}.tsx`
+After implementation: run `bunx tsc --noEmit`, trigger one manual cron tick during open session via existing "Manual run" button, confirm decisions are BUY (not WATCH spam), one `MARKET_PAUSED` row during break instead of per-minute blocks, every BUY has SL/TP/RR, Expert Paper visibly deploys more cash than Conservative.
 
-### Files to edit (surgical)
+---
 
-- `src/routes/_authenticated/portfolio.tsx` (or current portfolio route) — add sections, keep existing.
-- `src/lib/ai-app-context.server.ts` — inject intelligence + scenarios.
-- `src/routes/api/chat.ts` — add `run_portfolio_scenario` tool.
-- AI Trade Agent worker file — add portfolio-risk pre-BUY guard.
-- `src/lib/system-health.functions.ts` + `src/routes/_authenticated/health.tsx` + `src/lib/system-audit.server.ts` — add Portfolio Intelligence Engine card.
+## Files touched (estimate)
 
-### Out of scope
+- `supabase/migrations/<new>.sql` — add columns + pending table
+- `src/lib/ai-trade-agent.functions.ts` — deployment loop, rotation, pending queue
+- `src/lib/ai-agent-decision-engine.ts` — new decision hierarchy, soft/hard split
+- `src/lib/ai-autonomous-scanner.server.ts` — execution score
+- `src/lib/position-management-engine.ts` — SL/TP synth + distances
+- `src/routes/api/public/cron/ai-agent.ts` — break dedup + resume hook
+- `src/lib/autonomous-status.functions.ts` — profit diagnostics fn
+- `src/components/AutonomousAgentPanel.tsx` — mode selector, diagnostics card, exit-plan display
+- `src/routes/_authenticated/portfolio.tsx` — SL/TP/trailing columns
+- `src/routes/_authenticated/settings.tsx` — full mode config UI
 
-- No broker integration.
-- No real-money execution.
-- No removal of AI Agent / Analyst / Risk Engine / Position Management / Decision Replay / Fundamental Guard / Disclosure / Strategy Intelligence.
-- No rebuild of existing portfolio code — only additive sections + lightweight integrations.
+## Out of scope (explicit)
 
-Approve to proceed and I'll start with the migration, then engine, then UI, then AI + health wiring.
+- No broker integration. No real-money path. No removal of existing features. No new auth. No schema deletions.
