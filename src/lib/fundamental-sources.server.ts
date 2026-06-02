@@ -12,6 +12,7 @@
 // existing project secrets.
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { fetchFundamentalFromNews } from "./fundamental-news-extractor.server";
 
 // ---------- shared helpers ----------
 const num = (v: unknown): number | null => {
