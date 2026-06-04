@@ -750,6 +750,9 @@ export type Database = {
           consecutive_losses: number
           correlation_risk_enabled: boolean
           created_at: string
+          diagnostic_status: string
+          diagnostic_summary: Json | null
+          diagnostic_updated_at: string | null
           expert_research_max_allocation_pct: number
           id: string
           last_auto_decision_at: string | null
@@ -768,25 +771,34 @@ export type Database = {
           market_break_dedup_at: string | null
           max_active_positions: number
           max_autonomous_symbols: number
+          max_consecutive_losses: number
           max_daily_loss: number | null
+          max_daily_loss_pct: number
           max_daily_trades: number | null
           max_drawdown: number | null
           max_losses_per_day: number
           max_new_entries_per_day: number
+          max_portfolio_drawdown_pct: number
           max_position_per_symbol: number | null
           max_position_weight_pct: number
           max_research_trades_per_day: number
           max_sector_exposure_pct: number
+          max_trades_per_symbol_per_day: number
           max_value_trap_risk: number
           min_autonomous_score: number
           min_cash_buffer_pct: number
           min_confidence_to_trade: number | null
           min_data_quality_score: number
+          min_hold_minutes: number
           min_liquidity_score: number
           min_position_weight_pct: number | null
+          min_profit_factor_threshold: number
           min_research_candidate_score: number
+          min_risk_reward: number
+          min_trade_quality_score: number
           min_undervalue_score: number
           min_watch_candidate_score: number
+          min_win_rate_threshold: number
           mode: string
           momentum_extended_allocation_pct: number
           momentum_hunter_enabled: boolean
@@ -797,13 +809,17 @@ export type Database = {
           name: string
           news_shock_risk_enabled: boolean
           next_expected_worker_run_at: string | null
+          overtrading_guard_enabled: boolean
           paper_account_id: string
           paper_trading_only: boolean
           paused_at: string | null
           progressive_max_allocation_pct: number
+          protection_mode_active: boolean
+          protection_mode_reason: string | null
           require_fresh_data: boolean | null
           require_fundamental_data: boolean
           risk_level: string
+          risk_off_filter_enabled: boolean
           risk_pause_reason: string | null
           risk_paused_until: string | null
           risk_per_trade_pct: number
@@ -811,7 +827,9 @@ export type Database = {
           started_at: string | null
           status: string
           stopped_at: string | null
+          strategy_kill_switch_enabled: boolean
           strategy_mode: string
+          symbol_cooldown_enabled: boolean
           symbol_selection_mode: string
           target_exposure_pct: number | null
           trading_enabled: boolean | null
@@ -852,6 +870,9 @@ export type Database = {
           consecutive_losses?: number
           correlation_risk_enabled?: boolean
           created_at?: string
+          diagnostic_status?: string
+          diagnostic_summary?: Json | null
+          diagnostic_updated_at?: string | null
           expert_research_max_allocation_pct?: number
           id?: string
           last_auto_decision_at?: string | null
@@ -870,25 +891,34 @@ export type Database = {
           market_break_dedup_at?: string | null
           max_active_positions?: number
           max_autonomous_symbols?: number
+          max_consecutive_losses?: number
           max_daily_loss?: number | null
+          max_daily_loss_pct?: number
           max_daily_trades?: number | null
           max_drawdown?: number | null
           max_losses_per_day?: number
           max_new_entries_per_day?: number
+          max_portfolio_drawdown_pct?: number
           max_position_per_symbol?: number | null
           max_position_weight_pct?: number
           max_research_trades_per_day?: number
           max_sector_exposure_pct?: number
+          max_trades_per_symbol_per_day?: number
           max_value_trap_risk?: number
           min_autonomous_score?: number
           min_cash_buffer_pct?: number
           min_confidence_to_trade?: number | null
           min_data_quality_score?: number
+          min_hold_minutes?: number
           min_liquidity_score?: number
           min_position_weight_pct?: number | null
+          min_profit_factor_threshold?: number
           min_research_candidate_score?: number
+          min_risk_reward?: number
+          min_trade_quality_score?: number
           min_undervalue_score?: number
           min_watch_candidate_score?: number
+          min_win_rate_threshold?: number
           mode?: string
           momentum_extended_allocation_pct?: number
           momentum_hunter_enabled?: boolean
@@ -899,13 +929,17 @@ export type Database = {
           name?: string
           news_shock_risk_enabled?: boolean
           next_expected_worker_run_at?: string | null
+          overtrading_guard_enabled?: boolean
           paper_account_id: string
           paper_trading_only?: boolean
           paused_at?: string | null
           progressive_max_allocation_pct?: number
+          protection_mode_active?: boolean
+          protection_mode_reason?: string | null
           require_fresh_data?: boolean | null
           require_fundamental_data?: boolean
           risk_level?: string
+          risk_off_filter_enabled?: boolean
           risk_pause_reason?: string | null
           risk_paused_until?: string | null
           risk_per_trade_pct?: number
@@ -913,7 +947,9 @@ export type Database = {
           started_at?: string | null
           status?: string
           stopped_at?: string | null
+          strategy_kill_switch_enabled?: boolean
           strategy_mode?: string
+          symbol_cooldown_enabled?: boolean
           symbol_selection_mode?: string
           target_exposure_pct?: number | null
           trading_enabled?: boolean | null
@@ -954,6 +990,9 @@ export type Database = {
           consecutive_losses?: number
           correlation_risk_enabled?: boolean
           created_at?: string
+          diagnostic_status?: string
+          diagnostic_summary?: Json | null
+          diagnostic_updated_at?: string | null
           expert_research_max_allocation_pct?: number
           id?: string
           last_auto_decision_at?: string | null
@@ -972,25 +1011,34 @@ export type Database = {
           market_break_dedup_at?: string | null
           max_active_positions?: number
           max_autonomous_symbols?: number
+          max_consecutive_losses?: number
           max_daily_loss?: number | null
+          max_daily_loss_pct?: number
           max_daily_trades?: number | null
           max_drawdown?: number | null
           max_losses_per_day?: number
           max_new_entries_per_day?: number
+          max_portfolio_drawdown_pct?: number
           max_position_per_symbol?: number | null
           max_position_weight_pct?: number
           max_research_trades_per_day?: number
           max_sector_exposure_pct?: number
+          max_trades_per_symbol_per_day?: number
           max_value_trap_risk?: number
           min_autonomous_score?: number
           min_cash_buffer_pct?: number
           min_confidence_to_trade?: number | null
           min_data_quality_score?: number
+          min_hold_minutes?: number
           min_liquidity_score?: number
           min_position_weight_pct?: number | null
+          min_profit_factor_threshold?: number
           min_research_candidate_score?: number
+          min_risk_reward?: number
+          min_trade_quality_score?: number
           min_undervalue_score?: number
           min_watch_candidate_score?: number
+          min_win_rate_threshold?: number
           mode?: string
           momentum_extended_allocation_pct?: number
           momentum_hunter_enabled?: boolean
@@ -1001,13 +1049,17 @@ export type Database = {
           name?: string
           news_shock_risk_enabled?: boolean
           next_expected_worker_run_at?: string | null
+          overtrading_guard_enabled?: boolean
           paper_account_id?: string
           paper_trading_only?: boolean
           paused_at?: string | null
           progressive_max_allocation_pct?: number
+          protection_mode_active?: boolean
+          protection_mode_reason?: string | null
           require_fresh_data?: boolean | null
           require_fundamental_data?: boolean
           risk_level?: string
+          risk_off_filter_enabled?: boolean
           risk_pause_reason?: string | null
           risk_paused_until?: string | null
           risk_per_trade_pct?: number
@@ -1015,7 +1067,9 @@ export type Database = {
           started_at?: string | null
           status?: string
           stopped_at?: string | null
+          strategy_kill_switch_enabled?: boolean
           strategy_mode?: string
+          symbol_cooldown_enabled?: boolean
           symbol_selection_mode?: string
           target_exposure_pct?: number | null
           trading_enabled?: boolean | null
@@ -1036,17 +1090,24 @@ export type Database = {
           decision_id: string | null
           entry_context: Json | null
           entry_price: number | null
+          entry_reason: string | null
           exit_context: Json | null
           exit_price: number | null
+          exit_reason: string | null
           holding_minutes: number | null
           id: string
           lesson_label: string | null
+          market_regime: string | null
+          mistake_category: string | null
           outcome: string
           paper_account_id: string
           pnl: number | null
           pnl_pct: number | null
           qty: number | null
+          recommended_adjustment: string | null
+          strategy: string | null
           symbol: string
+          trade_quality_score: number | null
           training_event_id: string | null
           what_went_right: string | null
           what_went_wrong: string | null
@@ -1058,17 +1119,24 @@ export type Database = {
           decision_id?: string | null
           entry_context?: Json | null
           entry_price?: number | null
+          entry_reason?: string | null
           exit_context?: Json | null
           exit_price?: number | null
+          exit_reason?: string | null
           holding_minutes?: number | null
           id?: string
           lesson_label?: string | null
+          market_regime?: string | null
+          mistake_category?: string | null
           outcome?: string
           paper_account_id: string
           pnl?: number | null
           pnl_pct?: number | null
           qty?: number | null
+          recommended_adjustment?: string | null
+          strategy?: string | null
           symbol: string
+          trade_quality_score?: number | null
           training_event_id?: string | null
           what_went_right?: string | null
           what_went_wrong?: string | null
@@ -1080,17 +1148,24 @@ export type Database = {
           decision_id?: string | null
           entry_context?: Json | null
           entry_price?: number | null
+          entry_reason?: string | null
           exit_context?: Json | null
           exit_price?: number | null
+          exit_reason?: string | null
           holding_minutes?: number | null
           id?: string
           lesson_label?: string | null
+          market_regime?: string | null
+          mistake_category?: string | null
           outcome?: string
           paper_account_id?: string
           pnl?: number | null
           pnl_pct?: number | null
           qty?: number | null
+          recommended_adjustment?: string | null
+          strategy?: string | null
           symbol?: string
+          trade_quality_score?: number | null
           training_event_id?: string | null
           what_went_right?: string | null
           what_went_wrong?: string | null
@@ -3836,6 +3911,108 @@ export type Database = {
           strategy_name?: string
           symbol?: string
           training_event_id?: string | null
+        }
+        Relationships: []
+      }
+      strategy_health: {
+        Row: {
+          agent_id: string
+          avg_return: number
+          consec_losses: number
+          created_at: string
+          gross_loss: number
+          gross_profit: number
+          id: string
+          last_trade_at: string | null
+          losses: number
+          paused_at: string | null
+          paused_reason: string | null
+          profit_factor: number
+          status: string
+          strategy: string
+          trades: number
+          updated_at: string
+          user_id: string
+          wins: number
+        }
+        Insert: {
+          agent_id: string
+          avg_return?: number
+          consec_losses?: number
+          created_at?: string
+          gross_loss?: number
+          gross_profit?: number
+          id?: string
+          last_trade_at?: string | null
+          losses?: number
+          paused_at?: string | null
+          paused_reason?: string | null
+          profit_factor?: number
+          status?: string
+          strategy: string
+          trades?: number
+          updated_at?: string
+          user_id: string
+          wins?: number
+        }
+        Update: {
+          agent_id?: string
+          avg_return?: number
+          consec_losses?: number
+          created_at?: string
+          gross_loss?: number
+          gross_profit?: number
+          id?: string
+          last_trade_at?: string | null
+          losses?: number
+          paused_at?: string | null
+          paused_reason?: string | null
+          profit_factor?: number
+          status?: string
+          strategy?: string
+          trades?: number
+          updated_at?: string
+          user_id?: string
+          wins?: number
+        }
+        Relationships: []
+      }
+      symbol_trade_cooldowns: {
+        Row: {
+          agent_id: string
+          cooldown_until: string | null
+          created_at: string
+          id: string
+          last_loss_at: string | null
+          loss_count: number
+          reason: string | null
+          symbol: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agent_id: string
+          cooldown_until?: string | null
+          created_at?: string
+          id?: string
+          last_loss_at?: string | null
+          loss_count?: number
+          reason?: string | null
+          symbol: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agent_id?: string
+          cooldown_until?: string | null
+          created_at?: string
+          id?: string
+          last_loss_at?: string | null
+          loss_count?: number
+          reason?: string | null
+          symbol?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

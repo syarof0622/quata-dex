@@ -429,11 +429,24 @@ async function executePaperFill(opts: {
         strategyName: decision?.strategy ?? null,
         confidence: decision?.confidence ?? null,
       });
-    } else if (closeReason) {
+    } else if (closeReason || side === "sell") {
       // Closed-trade event → run post-trade review immediately so the lesson
       // label / forward-test record lands before the next worker tick.
       const { runPostTradeReviewCore } = await import("./post-trade-review.functions");
       await runPostTradeReviewCore(5);
+      // Loss-protection: update cooldowns, strategy_health, agent diagnostic.
+      try {
+        const { recordTradeOutcome } = await import("./loss-protection.server");
+        const pnlPct = entryAvgPrice && entryAvgPrice > 0
+          ? +(((fillPrice - entryAvgPrice) / entryAvgPrice) * 100).toFixed(3)
+          : null;
+        await recordTradeOutcome({
+          agentId, userId: USER_ID, symbol,
+          strategy: decision?.strategy ?? "unknown",
+          realizedPnl, realizedPnlPct: pnlPct,
+          marketRegime: (decision as any)?.marketRegime ?? null,
+        });
+      } catch (e) { console.error("[loss-protection] recordTradeOutcome failed", e); }
     }
   } catch (e) {
     console.error("[agent] position lifecycle hook failed", e);
