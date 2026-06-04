@@ -772,10 +772,12 @@ export type Database = {
           max_active_positions: number
           max_autonomous_symbols: number
           max_consecutive_losses: number
+          max_correlated_sector_entries_per_day: number
           max_daily_loss: number | null
           max_daily_loss_pct: number
           max_daily_trades: number | null
           max_drawdown: number | null
+          max_holding_days: number
           max_losses_per_day: number
           max_new_entries_per_day: number
           max_portfolio_drawdown_pct: number
@@ -784,6 +786,7 @@ export type Database = {
           max_research_trades_per_day: number
           max_sector_exposure_pct: number
           max_trades_per_symbol_per_day: number
+          max_trades_per_symbol_per_week: number
           max_value_trap_risk: number
           min_autonomous_score: number
           min_cash_buffer_pct: number
@@ -829,9 +832,17 @@ export type Database = {
           stopped_at: string | null
           strategy_kill_switch_enabled: boolean
           strategy_mode: string
+          swing_min_hold_minutes: number
+          swing_mode_active: boolean
+          swing_protection_active: boolean
+          swing_protection_reason: string | null
+          swing_protection_until: string | null
+          swing_quality_threshold: number
           symbol_cooldown_enabled: boolean
           symbol_selection_mode: string
           target_exposure_pct: number | null
+          target_holding_days: number
+          time_stop_warning_days: number
           trading_enabled: boolean | null
           trading_hours_only: boolean | null
           trailing_stop: boolean | null
@@ -892,10 +903,12 @@ export type Database = {
           max_active_positions?: number
           max_autonomous_symbols?: number
           max_consecutive_losses?: number
+          max_correlated_sector_entries_per_day?: number
           max_daily_loss?: number | null
           max_daily_loss_pct?: number
           max_daily_trades?: number | null
           max_drawdown?: number | null
+          max_holding_days?: number
           max_losses_per_day?: number
           max_new_entries_per_day?: number
           max_portfolio_drawdown_pct?: number
@@ -904,6 +917,7 @@ export type Database = {
           max_research_trades_per_day?: number
           max_sector_exposure_pct?: number
           max_trades_per_symbol_per_day?: number
+          max_trades_per_symbol_per_week?: number
           max_value_trap_risk?: number
           min_autonomous_score?: number
           min_cash_buffer_pct?: number
@@ -949,9 +963,17 @@ export type Database = {
           stopped_at?: string | null
           strategy_kill_switch_enabled?: boolean
           strategy_mode?: string
+          swing_min_hold_minutes?: number
+          swing_mode_active?: boolean
+          swing_protection_active?: boolean
+          swing_protection_reason?: string | null
+          swing_protection_until?: string | null
+          swing_quality_threshold?: number
           symbol_cooldown_enabled?: boolean
           symbol_selection_mode?: string
           target_exposure_pct?: number | null
+          target_holding_days?: number
+          time_stop_warning_days?: number
           trading_enabled?: boolean | null
           trading_hours_only?: boolean | null
           trailing_stop?: boolean | null
@@ -1012,10 +1034,12 @@ export type Database = {
           max_active_positions?: number
           max_autonomous_symbols?: number
           max_consecutive_losses?: number
+          max_correlated_sector_entries_per_day?: number
           max_daily_loss?: number | null
           max_daily_loss_pct?: number
           max_daily_trades?: number | null
           max_drawdown?: number | null
+          max_holding_days?: number
           max_losses_per_day?: number
           max_new_entries_per_day?: number
           max_portfolio_drawdown_pct?: number
@@ -1024,6 +1048,7 @@ export type Database = {
           max_research_trades_per_day?: number
           max_sector_exposure_pct?: number
           max_trades_per_symbol_per_day?: number
+          max_trades_per_symbol_per_week?: number
           max_value_trap_risk?: number
           min_autonomous_score?: number
           min_cash_buffer_pct?: number
@@ -1069,9 +1094,17 @@ export type Database = {
           stopped_at?: string | null
           strategy_kill_switch_enabled?: boolean
           strategy_mode?: string
+          swing_min_hold_minutes?: number
+          swing_mode_active?: boolean
+          swing_protection_active?: boolean
+          swing_protection_reason?: string | null
+          swing_protection_until?: string | null
+          swing_quality_threshold?: number
           symbol_cooldown_enabled?: boolean
           symbol_selection_mode?: string
           target_exposure_pct?: number | null
+          target_holding_days?: number
+          time_stop_warning_days?: number
           trading_enabled?: boolean | null
           trading_hours_only?: boolean | null
           trailing_stop?: boolean | null
@@ -3974,6 +4007,117 @@ export type Database = {
           updated_at?: string
           user_id?: string
           wins?: number
+        }
+        Relationships: []
+      }
+      swing_trade_plans: {
+        Row: {
+          agent_id: string
+          blocked_reason: string | null
+          closed_at: string | null
+          created_at: string
+          decision_id: string | null
+          entry_price: number | null
+          entry_type: string
+          entry_zone_high: number | null
+          entry_zone_low: number | null
+          exit_reason: string | null
+          id: string
+          invalidation_level: number | null
+          market_regime: string | null
+          max_holding_days: number
+          min_holding_until: string | null
+          paper_account_id: string
+          position_id: string | null
+          realized_pnl: number | null
+          realized_pnl_pct: number | null
+          reasons: string[]
+          risk_reward_ratio: number | null
+          status: string
+          stop_loss: number | null
+          strategy: string | null
+          swing_quality_score: number | null
+          symbol: string
+          take_profit_1: number | null
+          take_profit_2: number | null
+          target_holding_days: number
+          time_stop_at: string | null
+          trailing_active: boolean
+          trailing_stop: number | null
+          updated_at: string
+          warnings: string[]
+        }
+        Insert: {
+          agent_id: string
+          blocked_reason?: string | null
+          closed_at?: string | null
+          created_at?: string
+          decision_id?: string | null
+          entry_price?: number | null
+          entry_type: string
+          entry_zone_high?: number | null
+          entry_zone_low?: number | null
+          exit_reason?: string | null
+          id?: string
+          invalidation_level?: number | null
+          market_regime?: string | null
+          max_holding_days?: number
+          min_holding_until?: string | null
+          paper_account_id: string
+          position_id?: string | null
+          realized_pnl?: number | null
+          realized_pnl_pct?: number | null
+          reasons?: string[]
+          risk_reward_ratio?: number | null
+          status?: string
+          stop_loss?: number | null
+          strategy?: string | null
+          swing_quality_score?: number | null
+          symbol: string
+          take_profit_1?: number | null
+          take_profit_2?: number | null
+          target_holding_days?: number
+          time_stop_at?: string | null
+          trailing_active?: boolean
+          trailing_stop?: number | null
+          updated_at?: string
+          warnings?: string[]
+        }
+        Update: {
+          agent_id?: string
+          blocked_reason?: string | null
+          closed_at?: string | null
+          created_at?: string
+          decision_id?: string | null
+          entry_price?: number | null
+          entry_type?: string
+          entry_zone_high?: number | null
+          entry_zone_low?: number | null
+          exit_reason?: string | null
+          id?: string
+          invalidation_level?: number | null
+          market_regime?: string | null
+          max_holding_days?: number
+          min_holding_until?: string | null
+          paper_account_id?: string
+          position_id?: string | null
+          realized_pnl?: number | null
+          realized_pnl_pct?: number | null
+          reasons?: string[]
+          risk_reward_ratio?: number | null
+          status?: string
+          stop_loss?: number | null
+          strategy?: string | null
+          swing_quality_score?: number | null
+          symbol?: string
+          take_profit_1?: number | null
+          take_profit_2?: number | null
+          target_holding_days?: number
+          time_stop_at?: string | null
+          trailing_active?: boolean
+          trailing_stop?: number | null
+          updated_at?: string
+          warnings?: string[]
         }
         Relationships: []
       }
