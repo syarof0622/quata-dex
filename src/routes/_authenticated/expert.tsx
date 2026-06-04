@@ -20,10 +20,10 @@ function ExpertPage() {
   return (
     <div className="p-4 md:p-6 space-y-4">
       <PageHero
-        eyebrow="Expert Tools"
+        eyebrow="Alat Ahli"
         icon={Sparkles}
-        title="Expert Tools"
-        subtitle="Multi-timeframe analysis · risk-managed position sizing · cross-asset correlation."
+        title="Alat Ahli"
+        subtitle="Analisis multi-timeframe · sizing posisi dengan kontrol risiko · korelasi lintas aset."
       />
 
       <Tabs defaultValue="mtf">
