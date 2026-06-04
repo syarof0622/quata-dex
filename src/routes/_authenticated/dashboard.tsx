@@ -46,6 +46,19 @@ function Dashboard() {
     staleTime: 45_000,
   });
 
+  // Live sparklines for the top indices row.
+  const indexSymbols = useMemo(
+    () => (indices.data ?? []).map((q: any) => q.symbol).filter(Boolean),
+    [indices.data],
+  );
+  const indexSparks = useQuery({
+    queryKey: ["index-sparks", indexSymbols.join(",")],
+    queryFn: () => fetchSparks({ data: { symbols: indexSymbols, range: "1d" } }),
+    enabled: indexSymbols.length > 0,
+    refetchInterval: 60_000,
+    staleTime: 45_000,
+  });
+
   const marketToggle = (
     <div className="inline-flex rounded-lg border border-border p-0.5 bg-card/40">
       {(["idx", "us", "global"] as const).map(m => (
@@ -70,14 +83,24 @@ function Dashboard() {
       {/* Indices — horizontal scroll on mobile, grid on md+ */}
       <div className="-mx-3 md:mx-0 px-3 md:px-0">
         <div className="flex md:grid md:grid-cols-3 lg:grid-cols-6 gap-2.5 md:gap-3 overflow-x-auto no-scrollbar pb-1">
-          {(indices.data ?? Array.from({ length: 6 })).map((q: any, i: number) => (
-            <Link key={q?.symbol ?? i} to={q ? "/chart/$symbol" : "/dashboard"} params={q ? { symbol: q.symbol } : undefined as any}
-                  className="panel p-3 hover:border-primary/40 transition-colors shrink-0 min-w-[44vw] md:min-w-0">
-              <div className="text-[10.5px] md:text-xs text-muted-foreground uppercase tracking-wider truncate">{q?.shortName ?? "—"}</div>
-              <div className="font-mono text-[15px] md:text-lg mt-1">{q ? formatPrice(q.price) : "—"}</div>
-              <div className={`text-[11px] md:text-xs font-mono ${colorForChange(q?.changePercent)}`}>{q ? formatPct(q.changePercent) : "—"}</div>
-            </Link>
-          ))}
+          {(indices.data ?? Array.from({ length: 6 })).map((q: any, i: number) => {
+            const closes = q ? indexSparks.data?.[q.symbol] ?? [] : [];
+            return (
+              <Link key={q?.symbol ?? i} to={q ? "/chart/$symbol" : "/dashboard"} params={q ? { symbol: q.symbol } : undefined as any}
+                    className="panel p-3 hover:border-primary/40 transition-colors shrink-0 min-w-[44vw] md:min-w-0">
+                <div className="flex items-start gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[10.5px] md:text-xs text-muted-foreground uppercase tracking-wider truncate">{q?.shortName ?? "—"}</div>
+                    <div className="font-mono text-[15px] md:text-lg mt-1">{q ? formatPrice(q.price) : "—"}</div>
+                    <div className={`text-[11px] md:text-xs font-mono ${colorForChange(q?.changePercent)}`}>{q ? formatPct(q.changePercent) : "—"}</div>
+                  </div>
+                  <div className="shrink-0 self-stretch flex items-center w-[72px] md:w-[84px]">
+                    <Sparkline values={closes} positive={(q?.changePercent ?? 0) >= 0} height={34} />
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       </div>
 
