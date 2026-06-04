@@ -311,7 +311,7 @@ function MockupSection() {
           <MockCard title="Market Pulse" col="col-span-12 sm:col-span-6 lg:col-span-3">
             <div className="text-[11px] mb-1.5" style={{ color: C.muted }}>IDX Regime</div>
             <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium"
-              style={{ background: "rgba(245,176,66,0.12)", color: C.amber, border: `1px solid #f3e0bc` }}>
+              style={{ background: "rgba(245,176,66,0.12)", color: C.amber, border: `1px solid rgba(245,176,66,0.35)` }}>
               <CircleDot className="w-3 h-3" /> Neutral
             </div>
             <div className="mt-2.5 text-[11px]" style={{ color: C.muted }}>Breadth · 54% advancers</div>
@@ -665,7 +665,7 @@ function NewsSection() {
                 style={{ borderTop: i === 0 ? "none" : `1px solid ${C.borderSoft}` }}>
                 <span style={{ color: C.inkSoft }}>{it}</span>
                 <span className="text-[11px] font-medium px-2 py-0.5 rounded"
-                  style={{ background: "rgba(0,255,178,0.10)", color: C.green, border: `1px solid #c8eada` }}>
+                  style={{ background: "rgba(0,255,178,0.10)", color: C.green, border: `1px solid rgba(0,255,178,0.30)` }}>
                   active
                 </span>
               </div>
