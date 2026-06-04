@@ -106,10 +106,10 @@ function MarketPage() {
                       {s.count} stocks · breadth {(s.breadth * 100).toFixed(0)}%
                     </div>
                     {s.topGainer && (
-                      <div className="text-[10px] mt-0.5 opacity-80 truncate">▲ {s.topGainer.symbol} {formatPct(s.topGainer.pct)}</div>
+                      <div className="text-[10px] mt-0.5 opacity-80 truncate">▲ {displaySymbol(s.topGainer.symbol)} {formatPct(s.topGainer.pct)}</div>
                     )}
                     {s.topLoser && s.topLoser.symbol !== s.topGainer?.symbol && (
-                      <div className="text-[10px] opacity-80 truncate">▼ {s.topLoser.symbol} {formatPct(s.topLoser.pct)}</div>
+                      <div className="text-[10px] opacity-80 truncate">▼ {displaySymbol(s.topLoser.symbol)} {formatPct(s.topLoser.pct)}</div>
                     )}
                   </div>
                 );
