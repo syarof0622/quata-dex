@@ -49,7 +49,7 @@ export function MobileBottomNav() {
           style={{ minHeight: 60 }}
         >
           {PRIMARY.map(({ to, icon: Icon, label, search }) => {
-            const active = path === to || path.startsWith(to + "/") || (to === "/lab" && label === "Agent" && path.startsWith("/lab"));
+            const active = path === to || path.startsWith(to + "/") || (to === "/lab" && label === L.agent && path.startsWith("/lab"));
             return (
               <Link
                 key={label}
