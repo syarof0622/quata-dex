@@ -197,7 +197,7 @@ function Screener() {
             {rows.map(q => (
               <tr key={q.symbol} className="border-t border-border hover:bg-accent/30">
                 <td className="p-2 font-medium">
-                  <Link to="/chart/$symbol" params={{ symbol: q.symbol }}>{q.symbol}</Link>
+                  <Link to="/chart/$symbol" params={{ symbol: q.symbol }}>{displaySymbol(q.symbol)}</Link>
                   <div className="text-[10px] text-muted-foreground truncate max-w-[16ch]">{q.shortName}</div>
                 </td>
                 <td className="p-2 text-xs text-muted-foreground">{q.sector}</td>
