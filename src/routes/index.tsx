@@ -100,7 +100,14 @@ function Landing() {
         }}
       />
 
-      <div className="relative z-10">
+      {/* Layer 5: animated drifting orbs */}
+      <div aria-hidden className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <div className="lp-orb lp-orb-1" />
+        <div className="lp-orb lp-orb-2" />
+        <div className="lp-orb lp-orb-3" />
+      </div>
+
+      <div className="relative z-10 lp-anim">
         <Nav />
         <Hero />
         <MockupSection />
