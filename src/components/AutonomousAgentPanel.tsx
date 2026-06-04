@@ -143,7 +143,13 @@ export function AutonomousAgentPanel() {
               </button>
             );
           })}
+        </div>
+        {diag?.recommendation && (
+          <div className="mt-2 text-[11px] text-muted-foreground border-t border-border/40 pt-2">{diag.recommendation}</div>
+        )}
       </div>
+
+
 
       {/* Swing Max panel */}
       {swing?.agent && (
