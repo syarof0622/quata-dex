@@ -100,17 +100,19 @@ export type SwingPlan = {
   stopLoss: number;
   takeProfit1: number;
   takeProfit2: number;
-  trailingActivation: number;                     // price at/after which trailing turns on
+  trailingActivation: number;
+  trailingActive: boolean;
+  trailingStop: number | null;
   invalidationLevel: number;
   riskRewardRatio: number;
   swingQualityScore: number;
   targetHoldingDays: number;
   maxHoldingDays: number;
-  minHoldingUntilISO: string;                     // T+1 trading day floor
-  timeStopAtISO: string;                          // soft warning timestamp
+  minHoldingUntilISO: string;
+  timeStopAtISO: string;
   reasons: string[];
   warnings: string[];
-  positionSizeIDR: number;                        // recommended notional
+  positionSizeIDR: number;
   status: SwingPlanStatus;
 };
 
