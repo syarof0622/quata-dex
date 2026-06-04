@@ -36,21 +36,23 @@ function MarketPage() {
 
   return (
     <div className="p-3 md:p-6 space-y-4 md:space-y-5">
-      <div className="flex items-end justify-between flex-wrap gap-2">
-        <div className="min-w-0">
-          <h1 className="hero-h1 text-2xl md:text-2xl font-semibold flex items-center gap-2 tracking-tight">
-            <Activity className="size-5" /> Market Pulse
-          </h1>
-          <p className="text-[12.5px] md:text-sm text-muted-foreground">Sector rotation, breadth &amp; risk regime</p>
-        </div>
-        <div className="inline-flex rounded-lg border border-border p-0.5 bg-card/40">
-          {(["idx", "us", "global"] as const).map(m => (
-            <Button key={m} size="sm" variant={market === m ? "default" : "ghost"} onClick={() => setMarket(m)} className="h-7 px-2.5 text-[11.5px]">
-              {m === "idx" ? "🇮🇩 IDX" : m === "us" ? "🇺🇸 US" : "🌐 Global"}
-            </Button>
-          ))}
-        </div>
-      </div>
+      <PageHero
+        eyebrow="Live Market Intelligence"
+        live
+        icon={Activity}
+        title="Market Pulse"
+        subtitle="Sector rotation, breadth & risk regime"
+        actions={
+          <div className="inline-flex rounded-lg border border-border p-0.5 bg-card/40">
+            {(["idx", "us", "global"] as const).map(m => (
+              <Button key={m} size="sm" variant={market === m ? "default" : "ghost"} onClick={() => setMarket(m)} className="h-7 px-2.5 text-[11.5px]">
+                {m === "idx" ? "🇮🇩 IDX" : m === "us" ? "🇺🇸 US" : "🌐 Global"}
+              </Button>
+            ))}
+          </div>
+        }
+      />
+
 
       {/* Breadth */}
       {breadth.data ? (
