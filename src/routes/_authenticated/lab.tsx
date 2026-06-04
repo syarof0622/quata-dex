@@ -135,7 +135,7 @@ function Lab() {
               <tbody>
                 {positions.map((p: any) => (
                   <tr key={p.id} className="border-t border-border">
-                    <td className="p-2 font-medium">{p.symbol}</td>
+                    <td className="p-2 font-medium">{displaySymbol(p.symbol)}</td>
                     <td className="p-2 text-right font-mono">{p.qty}</td>
                     <td className="p-2 text-right font-mono">{formatPrice(p.avg_price)}</td>
                     <td className="p-2 text-right font-mono">{p.mark != null ? formatPrice(p.mark) : "—"}</td>
