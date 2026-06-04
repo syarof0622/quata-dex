@@ -526,7 +526,7 @@ function DisclosurePanel() {
         {rows.map((d: any) => (
           <div key={`${d._bucket}-${d.id}`} className="panel p-3 space-y-2">
             <div className="flex items-start justify-between gap-2">
-              <div className="font-mono text-sm">{d.symbol}</div>
+              <div className="font-mono text-sm">{displaySymbol(d.symbol)}</div>
               <DisclosureBadge disclosure={d} compact />
             </div>
             <div className="text-sm font-medium line-clamp-2">{d.title}</div>
