@@ -195,7 +195,7 @@ export function AutonomousAgentPanel() {
                   const tone = closed ? (pnl >= 0 ? "emerald" : "rose") : "sky";
                   return (
                     <div key={`${p.symbol}-${p.created_at}`} className={cn("rounded-lg border px-2 py-1.5 text-[11px] flex flex-wrap items-center gap-2", TONE[tone])}>
-                      <span className="font-mono font-semibold">{p.symbol}</span>
+                      <span className="font-mono font-semibold">{displaySymbol(p.symbol)}</span>
                       <span className="opacity-70">{p.entry_type}</span>
                       <span className="opacity-70">Q{Number(p.swing_quality_score ?? 0).toFixed(0)}</span>
                       <span className="opacity-70">RR {Number(p.risk_reward_ratio ?? 0).toFixed(2)}</span>
