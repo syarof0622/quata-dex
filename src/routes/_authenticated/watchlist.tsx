@@ -65,11 +65,11 @@ function WL() {
   return (
     <div className="p-4 md:p-6 space-y-4">
       <PageHero
-        eyebrow="AI Signal v2"
+        eyebrow="Sinyal AI v2"
         live
         icon={Sparkles}
-        title="Watchlist Intelligence"
-        subtitle="Setiap saham di-ranking otomatis oleh AI Signal v2."
+        title="Intelijen Daftar Pantau"
+        subtitle="Setiap saham diperingkat otomatis oleh Sinyal AI v2."
         actions={
           <div className="inline-flex rounded-md border border-border p-0.5">
             {(["smart", "simple"] as const).map(v => (
