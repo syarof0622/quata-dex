@@ -10,6 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { UndervalueBadge } from "@/components/UndervalueBadge";
 import { formatPct, colorForChange } from "@/lib/format";
 import { formatLocalPrice } from "@/lib/symbols";
+import { displaySymbol } from "@/lib/display-symbol";
 import { ALL_SECTORS, type Sector } from "@/lib/sectors";
 import { Filter, Gem, ShieldAlert } from "lucide-react";
 import { listDisclosureIntel } from "@/lib/disclosure-intel.functions";
