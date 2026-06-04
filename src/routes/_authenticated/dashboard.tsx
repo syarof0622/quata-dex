@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
-import { getIndices, getMovers, getNews } from "@/lib/market.functions";
+import { useServerFn } from "@tanstack/react-start";
+import { useState, useMemo } from "react";
+import { getIndices, getMovers, getNews, getSparklines } from "@/lib/market.functions";
 import { motion } from "framer-motion";
 import { formatCompact, formatPct, formatPrice, colorForChange } from "@/lib/format";
 import { formatLocalPrice } from "@/lib/symbols";
@@ -9,6 +10,7 @@ import { ArrowDownRight, ArrowUpRight, Newspaper, TrendingUp } from "lucide-reac
 import { Button } from "@/components/ui/button";
 import { MobileEmptyState, MobileSkeletonRows } from "@/components/mobile-ui";
 import { PageHero } from "@/components/ui/page-hero";
+import { Sparkline } from "@/components/Sparkline";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — Quanta Terminal" }] }),
