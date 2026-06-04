@@ -1766,7 +1766,7 @@ export const clearRiskPause = createServerFn({ method: "POST" }).handler(async (
 export const setAgentAggressionMode = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({
     id: z.string().uuid(),
-    mode: z.enum(["conservative", "balanced", "progressive", "expert_paper", "research_max"]),
+    mode: z.enum(["conservative", "balanced", "progressive", "expert_paper", "research_max", "swing_max"]),
   }).parse(d))
   .handler(async ({ data }) => {
     const preset = getPreset(data.mode);
@@ -1780,6 +1780,7 @@ export const setAgentAggressionMode = createServerFn({ method: "POST" })
       max_active_positions: preset.maxActivePositions,
       min_confidence_to_trade: preset.minBuyConfidence,
       min_autonomous_score: preset.minAutonomousScore,
+      swing_mode_active: data.mode === "swing_max",
     }).eq("id", data.id).eq("user_id", USER_ID);
     if (error) throw new Error(error.message);
     return { ok: true, preset };
