@@ -80,6 +80,7 @@ export function toLegacyRiskMode(mode: AggressionMode): "conservative" | "balanc
   if (mode === "conservative") return "conservative";
   if (mode === "progressive") return "progressive";
   if (mode === "expert_paper" || mode === "research_max") return "expert_research";
+  if (mode === "swing_max") return "balanced"; // scanner stays balanced; swing engine adds its own gates
   return "balanced";
 }
 
