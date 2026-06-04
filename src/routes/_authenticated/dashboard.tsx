@@ -46,6 +46,19 @@ function Dashboard() {
     staleTime: 45_000,
   });
 
+  // Live sparklines for the top indices row.
+  const indexSymbols = useMemo(
+    () => (indices.data ?? []).map((q: any) => q.symbol).filter(Boolean),
+    [indices.data],
+  );
+  const indexSparks = useQuery({
+    queryKey: ["index-sparks", indexSymbols.join(",")],
+    queryFn: () => fetchSparks({ data: { symbols: indexSymbols, range: "1d" } }),
+    enabled: indexSymbols.length > 0,
+    refetchInterval: 60_000,
+    staleTime: 45_000,
+  });
+
   const marketToggle = (
     <div className="inline-flex rounded-lg border border-border p-0.5 bg-card/40">
       {(["idx", "us", "global"] as const).map(m => (
