@@ -213,7 +213,7 @@ function ChartPage() {
             <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Execution</span>
             <span className={`inline-flex px-2 py-0.5 rounded text-[11px] font-medium ${
               sig.executionStatus === "Ready to Trade" ? "bg-bull-soft text-bull" :
-              sig.executionStatus === "Tidak Ada Trade" ? "bg-accent/40 text-muted-foreground" :
+              sig.executionStatus === "No Trade" ? "bg-accent/40 text-muted-foreground" :
               "bg-yellow-500/20 text-yellow-500"
             }`}>{sig.executionStatus}</span>
             {sig.executionReason && (
