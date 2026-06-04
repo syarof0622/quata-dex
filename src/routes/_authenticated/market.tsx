@@ -37,11 +37,11 @@ function MarketPage() {
   return (
     <div className="p-3 md:p-6 space-y-4 md:space-y-5">
       <PageHero
-        eyebrow="Live Market Intelligence"
+        eyebrow="Intelijen Pasar Langsung"
         live
         icon={Activity}
-        title="Market Pulse"
-        subtitle="Sector rotation, breadth & risk regime"
+        title="Denyut Pasar"
+        subtitle="Rotasi sektor, keluasan pasar, dan rezim risiko"
         actions={
           <div className="inline-flex rounded-lg border border-border p-0.5 bg-card/40">
             {(["idx", "us", "global"] as const).map(m => (
