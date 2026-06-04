@@ -8,6 +8,7 @@ import { UndervalueBadge } from "@/components/UndervalueBadge";
 import { Button } from "@/components/ui/button";
 import { formatPct, colorForChange } from "@/lib/format";
 import { formatLocalPrice, IDX_LQ45, US_TOP } from "@/lib/symbols";
+import { displaySymbol } from "@/lib/display-symbol";
 import { X, Plus, Sparkles, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { Sparkline } from "./screener";
