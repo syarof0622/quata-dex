@@ -300,7 +300,7 @@ export function AutonomousAgentPanel() {
               <div className="flex flex-wrap gap-1.5">
                 {loss.cooldowns.map((c: any) => (
                   <span key={c.symbol} className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-300 px-2 py-0.5 text-[10.5px] font-mono">
-                    {c.symbol} ×{c.loss_count} · until {new Date(c.cooldown_until).toLocaleDateString()}
+                    {displaySymbol(c.symbol)} ×{c.loss_count} · until {new Date(c.cooldown_until).toLocaleDateString()}
                   </span>
                 ))}
               </div>
