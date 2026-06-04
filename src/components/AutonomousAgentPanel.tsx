@@ -6,6 +6,7 @@ import { getLossDiagnostics } from "@/lib/loss-diagnostics.functions";
 import { getSwingMaxStatus } from "@/lib/swing-status.functions";
 import { AGGRESSION_PRESETS, type AggressionMode } from "@/lib/agent-aggression-modes";
 import { cn } from "@/lib/utils";
+import { displaySymbol } from "@/lib/display-symbol";
 import { Bot, ShieldCheck, AlertTriangle, Activity, Target, TrendingDown, TrendingUp, Pause, Zap, ShieldAlert, Clock, Waves } from "lucide-react";
 
 
@@ -194,7 +195,7 @@ export function AutonomousAgentPanel() {
                   const tone = closed ? (pnl >= 0 ? "emerald" : "rose") : "sky";
                   return (
                     <div key={`${p.symbol}-${p.created_at}`} className={cn("rounded-lg border px-2 py-1.5 text-[11px] flex flex-wrap items-center gap-2", TONE[tone])}>
-                      <span className="font-mono font-semibold">{p.symbol}</span>
+                      <span className="font-mono font-semibold">{displaySymbol(p.symbol)}</span>
                       <span className="opacity-70">{p.entry_type}</span>
                       <span className="opacity-70">Q{Number(p.swing_quality_score ?? 0).toFixed(0)}</span>
                       <span className="opacity-70">RR {Number(p.risk_reward_ratio ?? 0).toFixed(2)}</span>
@@ -219,7 +220,7 @@ export function AutonomousAgentPanel() {
                   const label = d.tierLabel ?? (d.action === "BUY" ? "STARTER" : "REJECTED");
                   return (
                     <div key={i} className={cn("rounded-lg border px-2 py-1.5 text-[11px] flex flex-wrap items-center gap-2", TONE[tone])}>
-                      <span className="font-mono font-semibold">{d.symbol}</span>
+                      <span className="font-mono font-semibold">{displaySymbol(d.symbol)}</span>
                       <span className="rounded-full border border-current/40 px-1.5 py-px text-[10px] font-mono">{label} · T{tier}</span>
                       <span className="opacity-80">Q{Number(d.qualityScore ?? 0).toFixed(0)}</span>
                       <span className="opacity-80">RR {Number(d.rr ?? 0).toFixed(2)}</span>
@@ -273,7 +274,7 @@ export function AutonomousAgentPanel() {
               <div className="flex flex-wrap gap-1.5">
                 {loss.summary.worstSymbols.map((s: any) => (
                   <span key={s.symbol} className="inline-flex items-center gap-1 rounded-full border border-rose-500/30 bg-rose-500/10 text-rose-300 px-2 py-0.5 text-[10.5px] font-mono">
-                    {s.symbol} {s.pnl >= 0 ? "+" : ""}{fmt(s.pnl, 0)} ({s.losses}L/{s.trades})
+                    {displaySymbol(s.symbol)} {s.pnl >= 0 ? "+" : ""}{fmt(s.pnl, 0)} ({s.losses}L/{s.trades})
                   </span>
                 ))}
               </div>
@@ -299,7 +300,7 @@ export function AutonomousAgentPanel() {
               <div className="flex flex-wrap gap-1.5">
                 {loss.cooldowns.map((c: any) => (
                   <span key={c.symbol} className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-300 px-2 py-0.5 text-[10.5px] font-mono">
-                    {c.symbol} ×{c.loss_count} · until {new Date(c.cooldown_until).toLocaleDateString()}
+                    {displaySymbol(c.symbol)} ×{c.loss_count} · until {new Date(c.cooldown_until).toLocaleDateString()}
                   </span>
                 ))}
               </div>
@@ -367,7 +368,7 @@ export function AutonomousAgentPanel() {
               <div key={p.symbol} className="rounded-xl border border-border/40 bg-card/40 p-2.5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-semibold text-sm">{p.symbol}</span>
+                    <span className="font-semibold text-sm">{displaySymbol(p.symbol)}</span>
                     <span className="text-[10.5px] text-muted-foreground">{p.qty} sh · avg {fmt(p.avgEntry)}</span>
                   </div>
                   <span className={cn("text-[11.5px] font-mono", p.unrealizedPnl >= 0 ? "text-emerald-400" : "text-rose-400")}>

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getPortfolioAnalytics } from "@/lib/analytics.functions";
 import { colorForChange, formatPct, formatMoneyByCurrency, formatMoneyCompact, formatTimeWIB, formatDateTimeWIB } from "@/lib/format";
 import { formatLocalPrice, symbolMarket } from "@/lib/symbols";
+import { displaySymbol } from "@/lib/display-symbol";
 import { Link } from "@tanstack/react-router";
 import { Sparkline } from "@/routes/_authenticated/screener";
 import { ShieldAlert, TrendingUp, Layers, Activity, Target, Wallet, AlertTriangle, CheckCircle2 } from "lucide-react";
@@ -346,7 +347,7 @@ function Portfolio() {
                 return (
                   <tr key={p.symbol} className="border-t border-border align-top">
                     <td className="p-2 font-medium">
-                      <Link to="/chart/$symbol" params={{ symbol: p.symbol }} className="hover:text-primary">{p.symbol}</Link>
+                      <Link to="/chart/$symbol" params={{ symbol: p.symbol }} className="hover:text-primary">{displaySymbol(p.symbol)}</Link>
                       {p.stale && <span className="ml-1 text-[9px] text-amber-400">(stale)</span>}
                     </td>
                     <td className="p-2 text-xs text-muted-foreground">{p.sector}</td>
@@ -428,7 +429,7 @@ function Portfolio() {
             <tbody>
               {recentClosed.map((t: any, i: number) => (
                 <tr key={i} className="border-t border-border">
-                  <td className="p-2 font-medium">{t.symbol}</td>
+                  <td className="p-2 font-medium">{displaySymbol(t.symbol)}</td>
                   <td className="p-2 text-right font-mono text-xs">{priceFmt(t.symbol, t.entryPrice)}</td>
                   <td className="p-2 text-right font-mono text-xs">{priceFmt(t.symbol, t.exitPrice)}</td>
                   <td className="p-2 text-right font-mono text-xs">{t.qty}</td>

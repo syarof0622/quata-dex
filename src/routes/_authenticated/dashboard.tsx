@@ -6,6 +6,7 @@ import { getIndices, getMovers, getNews, getSparklines } from "@/lib/market.func
 import { motion } from "framer-motion";
 import { formatCompact, formatPct, formatPrice, colorForChange } from "@/lib/format";
 import { formatLocalPrice } from "@/lib/symbols";
+import { displaySymbol } from "@/lib/display-symbol";
 import { ArrowDownRight, ArrowUpRight, Newspaper, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MobileEmptyState, MobileSkeletonRows } from "@/components/mobile-ui";
@@ -119,7 +120,7 @@ function Dashboard() {
                 <li key={q.symbol}>
                   <Link to="/chart/$symbol" params={{ symbol: q.symbol }} className="flex items-center justify-between py-1.5 hover:bg-accent/40 rounded px-1 gap-2">
                     <div className="min-w-0">
-                      <div className="font-medium text-[13px] md:text-sm truncate">{q.symbol}</div>
+                      <div className="font-medium text-[13px] md:text-sm truncate">{displaySymbol(q.symbol)}</div>
                       <div className="text-[10.5px] md:text-xs text-muted-foreground truncate">{q.shortName}</div>
                     </div>
                     <div className="text-right font-mono shrink-0">
@@ -146,7 +147,7 @@ function Dashboard() {
                 <li key={q.symbol}>
                   <Link to="/chart/$symbol" params={{ symbol: q.symbol }} className="flex items-center justify-between py-1.5 hover:bg-accent/40 rounded px-1 gap-2">
                     <div className="min-w-0">
-                      <div className="font-medium text-[13px] md:text-sm truncate">{q.symbol}</div>
+                      <div className="font-medium text-[13px] md:text-sm truncate">{displaySymbol(q.symbol)}</div>
                       <div className="text-[10.5px] md:text-xs text-muted-foreground truncate">{q.shortName}</div>
                     </div>
                     <div className="text-right font-mono shrink-0">
@@ -210,7 +211,7 @@ function Dashboard() {
                       style={{ backgroundColor: bg }}
                       className="group rounded-md p-1.5 md:p-2 text-[10.5px] md:text-xs hover:ring-1 hover:ring-primary transition flex flex-col gap-1">
                   <div className="flex items-baseline justify-between gap-1">
-                    <div className="font-semibold truncate">{q.symbol.replace(".JK", "")}</div>
+                    <div className="font-semibold truncate">{displaySymbol(q.symbol)}</div>
                     <div className="font-mono shrink-0 text-[10px] md:text-[11px]">{formatPct(pct)}</div>
                   </div>
                   <div className="-mx-0.5 opacity-90 group-hover:opacity-100 transition-opacity">

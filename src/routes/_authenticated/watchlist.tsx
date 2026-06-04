@@ -8,6 +8,7 @@ import { UndervalueBadge } from "@/components/UndervalueBadge";
 import { Button } from "@/components/ui/button";
 import { formatPct, colorForChange } from "@/lib/format";
 import { formatLocalPrice, IDX_LQ45, US_TOP } from "@/lib/symbols";
+import { displaySymbol } from "@/lib/display-symbol";
 import { X, Plus, Sparkles, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { Sparkline } from "./screener";
@@ -102,7 +103,7 @@ function WL() {
             <Link key={r.symbol} to="/chart/$symbol" params={{ symbol: r.symbol }} className="panel p-4 hover:border-primary/40 transition-colors">
               <div className="flex items-start justify-between">
                 <div>
-                  <div className="font-semibold">{r.symbol}</div>
+                  <div className="font-semibold">{displaySymbol(r.symbol)}</div>
                   <div className="text-[11px] text-muted-foreground truncate max-w-[20ch]">{r.shortName}</div>
                 </div>
                 <button onClick={async (e) => {
@@ -192,7 +193,7 @@ function WL() {
                 const score = u ? Number(u.final_undervalue_score ?? 0) : null;
                 return (
                 <tr key={r.symbol} className="border-t border-border hover:bg-accent/30">
-                  <td className="p-2 font-medium"><Link to="/chart/$symbol" params={{ symbol: r.symbol }}>{r.symbol}</Link></td>
+                  <td className="p-2 font-medium"><Link to="/chart/$symbol" params={{ symbol: r.symbol }}>{displaySymbol(r.symbol)}</Link></td>
                   <td className="p-2 text-muted-foreground truncate max-w-[28ch]">{r.shortName}</td>
                   <td className="p-2 text-right font-mono">{formatLocalPrice(r.symbol, r.price)}</td>
                   <td className={`p-2 text-right font-mono ${colorForChange(r.changePct)}`}>{formatPct(r.changePct)}</td>

@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { simulatePortfolioWhatIf } from "@/lib/analytics.functions";
 import { formatPct, formatMoneyByCurrency, colorForChange } from "@/lib/format";
+import { displaySymbol } from "@/lib/display-symbol";
 import { TrendingUp, TrendingDown, AlertTriangle, Layers, Wallet, FlaskConical } from "lucide-react";
 
 type Props = {
@@ -29,7 +30,7 @@ export function PortfolioAttributionPanel({ data }: Props) {
           </div>
           {attribution.topContributor ? (
             <>
-              <div className="font-mono text-lg">{attribution.topContributor.symbol}</div>
+              <div className="font-mono text-lg">{displaySymbol(attribution.topContributor.symbol)}</div>
               <div className={`text-sm font-mono ${colorForChange(attribution.topContributor.contributionToReturn)}`}>
                 {formatPct(attribution.topContributor.contributionToReturn)} of baseline
               </div>
@@ -45,7 +46,7 @@ export function PortfolioAttributionPanel({ data }: Props) {
           </div>
           {attribution.worstContributor ? (
             <>
-              <div className="font-mono text-lg">{attribution.worstContributor.symbol}</div>
+              <div className="font-mono text-lg">{displaySymbol(attribution.worstContributor.symbol)}</div>
               <div className={`text-sm font-mono ${colorForChange(attribution.worstContributor.contributionToReturn)}`}>
                 {formatPct(attribution.worstContributor.contributionToReturn)} of baseline
               </div>
@@ -96,7 +97,7 @@ export function PortfolioAttributionPanel({ data }: Props) {
               )}
               {positions.map((p) => (
                 <tr key={p.symbol} className="border-t border-border">
-                  <td className="p-2 font-medium">{p.symbol}</td>
+                  <td className="p-2 font-medium">{displaySymbol(p.symbol)}</td>
                   <td className="p-2 text-xs text-muted-foreground">{p.sector}</td>
                   <td className="p-2 text-right font-mono text-xs">{p.weight.toFixed(1)}%</td>
                   <td className={`p-2 text-right font-mono text-xs ${colorForChange(p.unrealizedPnl)}`}>{money(p.unrealizedPnl)}</td>
@@ -165,7 +166,7 @@ export function PortfolioAttributionPanel({ data }: Props) {
               </div>
               {s.worstContributor && (
                 <div className="text-[10px] text-muted-foreground mt-1">
-                  Worst: <span className="text-bear font-mono">{s.worstContributor.symbol}</span> ({money(s.worstContributor.impact)})
+                  Worst: <span className="text-bear font-mono">{displaySymbol(s.worstContributor.symbol)}</span> ({money(s.worstContributor.impact)})
                 </div>
               )}
               {s.riskNotes?.length > 0 && (

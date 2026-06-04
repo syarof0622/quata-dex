@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { formatPrice, formatIDR, formatIDRCompact, formatPct, colorForChange } from "@/lib/format";
+import { displaySymbol } from "@/lib/display-symbol";
 import { resetPaperAccount } from "@/lib/paper.functions";
 import { toast } from "sonner";
 
@@ -134,7 +135,7 @@ function Lab() {
               <tbody>
                 {positions.map((p: any) => (
                   <tr key={p.id} className="border-t border-border">
-                    <td className="p-2 font-medium">{p.symbol}</td>
+                    <td className="p-2 font-medium">{displaySymbol(p.symbol)}</td>
                     <td className="p-2 text-right font-mono">{p.qty}</td>
                     <td className="p-2 text-right font-mono">{formatPrice(p.avg_price)}</td>
                     <td className="p-2 text-right font-mono">{p.mark != null ? formatPrice(p.mark) : "—"}</td>
@@ -160,7 +161,7 @@ function Lab() {
               <tbody>
                 {pending.map((o: any) => (
                   <tr key={o.id} className="border-t border-border">
-                    <td className="p-2 font-medium">{o.symbol}</td>
+                    <td className="p-2 font-medium">{displaySymbol(o.symbol)}</td>
                     <td className={`p-2 uppercase text-xs ${o.side === "buy" ? "text-bull" : "text-bear"}`}>{o.side}</td>
                     <td className="p-2 text-xs uppercase">{o.type}</td>
                     <td className="p-2 text-right font-mono">{o.qty}</td>
@@ -191,7 +192,7 @@ function Lab() {
                 {orders.map((o: any) => (
                   <tr key={o.id} className="border-t border-border">
                     <td className="p-2 text-xs text-muted-foreground">{fmtWIBDateTime(o.filled_at ?? o.created_at)}</td>
-                    <td className="p-2 font-medium">{o.symbol}</td>
+                    <td className="p-2 font-medium">{displaySymbol(o.symbol)}</td>
                     <td className={`p-2 uppercase text-xs ${o.side === "buy" ? "text-bull" : "text-bear"}`}>{o.side}</td>
                     <td className="p-2 text-right font-mono">{o.qty}</td>
                     <td className="p-2 text-right font-mono">{formatPrice(o.filled_price)}</td>
@@ -991,7 +992,7 @@ function AIAgentPanel() {
                 const mv = mark * qty;
                 return (
                   <tr key={p.id} className="border-t border-border">
-                    <td className="p-2 font-mono">{p.symbol}</td>
+                    <td className="p-2 font-mono">{displaySymbol(p.symbol)}</td>
                     <td className="p-2 text-right font-mono">{lot}</td>
                     <td className="p-2 text-right font-mono">{qty}</td>
                     <td className="p-2 text-right font-mono">{formatPrice(p.avg_price)}</td>
@@ -1111,7 +1112,7 @@ function AIAgentPanel() {
                   return (
                     <div key={d.symbol} className="panel p-3 space-y-2 border border-border opacity-80">
                       <div className="flex items-center justify-between gap-2">
-                        <div className="font-mono font-semibold">{d.symbol}</div>
+                        <div className="font-mono font-semibold">{displaySymbol(d.symbol)}</div>
                         <span className="text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded bg-muted text-muted-foreground">Menunggu</span>
                       </div>
                       <div className="text-[11px] text-muted-foreground">Menunggu refresh data berikutnya untuk menghasilkan trade plan.</div>
@@ -1155,7 +1156,7 @@ function AIAgentPanel() {
                 return (
                   <div key={d.id} className={`panel p-3 space-y-2 border ${executed && isBuy ? "border-bull/40" : executed && isExit ? "border-bear/40" : "border-border"}`}>
                     <div className="flex items-center justify-between gap-2">
-                      <div className="font-mono font-semibold">{d.symbol}</div>
+                      <div className="font-mono font-semibold">{displaySymbol(d.symbol)}</div>
                       <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${cardKind.cls}`} title={conf.tooltip}>
                         {cardKind.label}{da.intent && !executed && exec.status !== "hold_position" ? ` · intent ${da.intent}` : ""} · {conf.label}
                       </span>
@@ -1306,7 +1307,7 @@ function AIAgentPanel() {
                   <tr key={d.id} className="border-t border-border align-top">
                     <td className="p-2 text-xs text-muted-foreground whitespace-nowrap">{fmtWIBTime(d.created_at)}</td>
                     <td className="p-2 font-medium">
-                      {d.symbol}
+                      {displaySymbol(d.symbol)}
                       {inactive && <span className="ml-1 text-[9px] uppercase bg-muted text-muted-foreground px-1 py-0.5 rounded align-middle">previous</span>}
                     </td>
                     <td className="p-2 text-[10px] uppercase text-muted-foreground">{mode}</td>

@@ -5,6 +5,7 @@ import { getMovers, getNews } from "@/lib/market.functions";
 import { sectorPerformance, marketBreadth } from "@/lib/screener.functions";
 import { formatPct, formatCompact, colorForChange } from "@/lib/format";
 import { formatLocalPrice } from "@/lib/symbols";
+import { displaySymbol } from "@/lib/display-symbol";
 import { Button } from "@/components/ui/button";
 import { Activity, ArrowDownRight, ArrowUpRight, Newspaper } from "lucide-react";
 import { MobileEmptyState, MobileSkeletonRows } from "@/components/mobile-ui";
@@ -105,10 +106,10 @@ function MarketPage() {
                       {s.count} stocks · breadth {(s.breadth * 100).toFixed(0)}%
                     </div>
                     {s.topGainer && (
-                      <div className="text-[10px] mt-0.5 opacity-80 truncate">▲ {s.topGainer.symbol} {formatPct(s.topGainer.pct)}</div>
+                      <div className="text-[10px] mt-0.5 opacity-80 truncate">▲ {displaySymbol(s.topGainer.symbol)} {formatPct(s.topGainer.pct)}</div>
                     )}
                     {s.topLoser && s.topLoser.symbol !== s.topGainer?.symbol && (
-                      <div className="text-[10px] opacity-80 truncate">▼ {s.topLoser.symbol} {formatPct(s.topLoser.pct)}</div>
+                      <div className="text-[10px] opacity-80 truncate">▼ {displaySymbol(s.topLoser.symbol)} {formatPct(s.topLoser.pct)}</div>
                     )}
                   </div>
                 );
@@ -135,7 +136,7 @@ function MarketPage() {
                 <Link key={q.symbol} to="/chart/$symbol" params={{ symbol: q.symbol }}
                       style={{ backgroundColor: bg }}
                       className="rounded-md p-1.5 md:p-2 text-[10.5px] md:text-xs hover:ring-1 hover:ring-primary transition">
-                  <div className="font-semibold truncate">{q.symbol.replace(".JK", "")}</div>
+                  <div className="font-semibold truncate">{displaySymbol(q.symbol)}</div>
                   <div className="font-mono">{formatPct(pct)}</div>
                   <div className="text-[9.5px] md:text-[10px] opacity-70 font-mono truncate">{formatCompact(q.marketCap ?? undefined)}</div>
                 </Link>
@@ -157,7 +158,7 @@ function MarketPage() {
                 <li key={q.symbol}>
                   <Link to="/chart/$symbol" params={{ symbol: q.symbol }} className="flex items-center justify-between py-1.5 hover:bg-accent/40 rounded px-1 gap-2">
                     <div className="min-w-0">
-                      <div className="font-medium text-[13px] md:text-sm truncate">{q.symbol}</div>
+                      <div className="font-medium text-[13px] md:text-sm truncate">{displaySymbol(q.symbol)}</div>
                       <div className="text-[10.5px] md:text-xs text-muted-foreground truncate">{q.shortName}</div>
                     </div>
                     <div className="text-right font-mono shrink-0">
@@ -180,7 +181,7 @@ function MarketPage() {
                 <li key={q.symbol}>
                   <Link to="/chart/$symbol" params={{ symbol: q.symbol }} className="flex items-center justify-between py-1.5 hover:bg-accent/40 rounded px-1 gap-2">
                     <div className="min-w-0">
-                      <div className="font-medium text-[13px] md:text-sm truncate">{q.symbol}</div>
+                      <div className="font-medium text-[13px] md:text-sm truncate">{displaySymbol(q.symbol)}</div>
                       <div className="text-[10.5px] md:text-xs text-muted-foreground truncate">{q.shortName}</div>
                     </div>
                     <div className="text-right font-mono shrink-0">

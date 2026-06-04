@@ -21,6 +21,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { formatPct, formatPrice, colorForChange } from "@/lib/format";
 import { formatLocalPrice, symbolMarket, priceCurrency } from "@/lib/symbols";
+import { displaySymbol } from "@/lib/display-symbol";
 import { motion } from "framer-motion";
 import { Star, TrendingUp, Target, ShieldAlert, Zap, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { toast } from "sonner";
@@ -49,7 +50,8 @@ function tvSymbol(sym: string): string {
     const m: Record<string, string> = {
       "^GSPC": "SP:SPX", "^IXIC": "NASDAQ:IXIC", "^DJI": "DJ:DJI",
       "^RUT": "TVC:RUT", "^VIX": "TVC:VIX",
-      "^JKSE": "TVC:IDX", "^JKLQ45": "IDX:LQ45",
+      // IHSG composite di TradingView: IDX:COMPOSITE
+      "^JKSE": "IDX:COMPOSITE", "^JKLQ45": "IDX:LQ45",
       "^N225": "TVC:NI225", "^HSI": "TVC:HSI", "^STI": "TVC:STI",
     };
     return m[s] ?? `TVC:${s.slice(1)}`;
@@ -213,7 +215,7 @@ function ChartPage() {
             <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Execution</span>
             <span className={`inline-flex px-2 py-0.5 rounded text-[11px] font-medium ${
               sig.executionStatus === "Ready to Trade" ? "bg-bull-soft text-bull" :
-              sig.executionStatus === "Tidak Ada Trade" ? "bg-accent/40 text-muted-foreground" :
+              sig.executionStatus === "No Trade" ? "bg-accent/40 text-muted-foreground" :
               "bg-yellow-500/20 text-yellow-500"
             }`}>{sig.executionStatus}</span>
             {sig.executionReason && (
@@ -327,7 +329,7 @@ function ChartPage() {
               {isIDX && !realtime && <span className="text-[10px] text-amber-400">~15m delay</span>}
               {isIDX && realtime && <span className="text-[10px] text-bull">~realtime</span>}
             </div>
-            <div className="text-2xl font-semibold">{symbol}</div>
+            <div className="text-2xl font-semibold">{displaySymbol(symbol)}</div>
             <div className="text-xs text-muted-foreground">{quote.data?.shortName ?? ""}</div>
           </div>
           <div className="ml-auto flex items-end gap-6">

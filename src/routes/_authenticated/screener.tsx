@@ -10,6 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { UndervalueBadge } from "@/components/UndervalueBadge";
 import { formatPct, colorForChange } from "@/lib/format";
 import { formatLocalPrice } from "@/lib/symbols";
+import { displaySymbol } from "@/lib/display-symbol";
 import { ALL_SECTORS, type Sector } from "@/lib/sectors";
 import { Filter, Gem, ShieldAlert } from "lucide-react";
 import { listDisclosureIntel } from "@/lib/disclosure-intel.functions";
@@ -196,7 +197,7 @@ function Screener() {
             {rows.map(q => (
               <tr key={q.symbol} className="border-t border-border hover:bg-accent/30">
                 <td className="p-2 font-medium">
-                  <Link to="/chart/$symbol" params={{ symbol: q.symbol }}>{q.symbol}</Link>
+                  <Link to="/chart/$symbol" params={{ symbol: q.symbol }}>{displaySymbol(q.symbol)}</Link>
                   <div className="text-[10px] text-muted-foreground truncate max-w-[16ch]">{q.shortName}</div>
                 </td>
                 <td className="p-2 text-xs text-muted-foreground">{q.sector}</td>
@@ -397,7 +398,7 @@ function UndervaluedPanel() {
             {rows.map((r: any) => (
               <tr key={r.symbol} className="border-t border-border hover:bg-accent/30 align-top">
                 <td className="p-2 font-mono font-medium">
-                  <Link to="/chart/$symbol" params={{ symbol: r.symbol }}>{r.symbol}</Link>
+                  <Link to="/chart/$symbol" params={{ symbol: r.symbol }}>{displaySymbol(r.symbol)}</Link>
                 </td>
                 <td className="p-2"><UndervalueBadge classification={r.classification} /></td>
                 <td className={`p-2 text-right font-mono ${r.finalUndervalueScore >= 65 ? "text-bull" : r.finalUndervalueScore < 50 ? "text-bear" : ""}`}>{Number(r.finalUndervalueScore ?? 0).toFixed(0)}</td>
@@ -525,7 +526,7 @@ function DisclosurePanel() {
         {rows.map((d: any) => (
           <div key={`${d._bucket}-${d.id}`} className="panel p-3 space-y-2">
             <div className="flex items-start justify-between gap-2">
-              <div className="font-mono text-sm">{d.symbol}</div>
+              <div className="font-mono text-sm">{displaySymbol(d.symbol)}</div>
               <DisclosureBadge disclosure={d} compact />
             </div>
             <div className="text-sm font-medium line-clamp-2">{d.title}</div>
