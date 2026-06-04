@@ -1766,7 +1766,7 @@ export const clearRiskPause = createServerFn({ method: "POST" }).handler(async (
 export const setAgentAggressionMode = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({
     id: z.string().uuid(),
-    mode: z.enum(["conservative", "balanced", "progressive", "expert_paper", "research_max"]),
+    mode: z.enum(["conservative", "balanced", "progressive", "expert_paper", "research_max", "swing_max"]),
   }).parse(d))
   .handler(async ({ data }) => {
     const preset = getPreset(data.mode);
