@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { simulatePortfolioWhatIf } from "@/lib/analytics.functions";
 import { formatPct, formatMoneyByCurrency, colorForChange } from "@/lib/format";
+import { displaySymbol } from "@/lib/display-symbol";
 import { TrendingUp, TrendingDown, AlertTriangle, Layers, Wallet, FlaskConical } from "lucide-react";
 
 type Props = {
