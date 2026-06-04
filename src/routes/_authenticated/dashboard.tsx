@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
-import { getIndices, getMovers, getNews } from "@/lib/market.functions";
+import { useServerFn } from "@tanstack/react-start";
+import { useState, useMemo } from "react";
+import { getIndices, getMovers, getNews, getSparklines } from "@/lib/market.functions";
 import { motion } from "framer-motion";
 import { formatCompact, formatPct, formatPrice, colorForChange } from "@/lib/format";
 import { formatLocalPrice } from "@/lib/symbols";
@@ -9,6 +10,7 @@ import { ArrowDownRight, ArrowUpRight, Newspaper, TrendingUp } from "lucide-reac
 import { Button } from "@/components/ui/button";
 import { MobileEmptyState, MobileSkeletonRows } from "@/components/mobile-ui";
 import { PageHero } from "@/components/ui/page-hero";
+import { Sparkline } from "@/components/Sparkline";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — Quanta Terminal" }] }),
@@ -28,6 +30,21 @@ function Dashboard() {
   const gainers = movers.data?.gainers ?? [];
   const losers = movers.data?.losers ?? [];
   const newsItems = news.data ?? [];
+
+  // Live mini-chart per symbol in the heatmap. Batched server fn so we don't
+  // fan out one request per ticker. Refreshes alongside the heatmap movers.
+  const fetchSparks = useServerFn(getSparklines);
+  const heatSymbols = useMemo(
+    () => (movers.data?.all ?? []).map((q: any) => q.symbol).slice(0, 120),
+    [movers.data],
+  );
+  const sparks = useQuery({
+    queryKey: ["heatmap-sparks", market, heatSymbols.join(",")],
+    queryFn: () => fetchSparks({ data: { symbols: heatSymbols, range: "1d" } }),
+    enabled: heatSymbols.length > 0,
+    refetchInterval: 60_000,
+    staleTime: 45_000,
+  });
 
   const marketToggle = (
     <div className="inline-flex rounded-lg border border-border p-0.5 bg-card/40">
@@ -144,7 +161,16 @@ function Dashboard() {
 
       {/* Heatmap mini */}
       <div className="panel p-3 md:p-4">
-        <h3 className="font-semibold text-[13.5px] md:text-base mb-2 md:mb-3">Market Heatmap</h3>
+        <div className="flex items-center justify-between mb-2 md:mb-3 gap-2">
+          <h3 className="font-semibold text-[13.5px] md:text-base">Market Heatmap</h3>
+          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/70" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            </span>
+            Live · intraday
+          </div>
+        </div>
         {(movers.data?.all ?? []).length === 0 ? (
           <MobileEmptyState title="Heatmap data unavailable" hint="Awaiting market feed." />
         ) : (
@@ -155,12 +181,18 @@ function Dashboard() {
               const bg = pct >= 0
                 ? `oklch(0.74 0.18 150 / ${0.15 + intensity * 0.55})`
                 : `oklch(0.65 0.23 27 / ${0.15 + intensity * 0.55})`;
+              const closes = sparks.data?.[q.symbol] ?? [];
               return (
                 <Link key={q.symbol} to="/chart/$symbol" params={{ symbol: q.symbol }}
                       style={{ backgroundColor: bg }}
-                      className="rounded-md p-1.5 md:p-2 text-[10.5px] md:text-xs hover:ring-1 hover:ring-primary transition">
-                  <div className="font-semibold truncate">{q.symbol.replace(".JK", "")}</div>
-                  <div className="font-mono">{formatPct(pct)}</div>
+                      className="group rounded-md p-1.5 md:p-2 text-[10.5px] md:text-xs hover:ring-1 hover:ring-primary transition flex flex-col gap-1">
+                  <div className="flex items-baseline justify-between gap-1">
+                    <div className="font-semibold truncate">{q.symbol.replace(".JK", "")}</div>
+                    <div className="font-mono shrink-0 text-[10px] md:text-[11px]">{formatPct(pct)}</div>
+                  </div>
+                  <div className="-mx-0.5 opacity-90 group-hover:opacity-100 transition-opacity">
+                    <Sparkline values={closes} positive={pct >= 0} height={22} />
+                  </div>
                   <div className="text-[9.5px] md:text-[10px] opacity-70 font-mono truncate">{formatCompact(q.marketCap ?? undefined)}</div>
                 </Link>
               );
