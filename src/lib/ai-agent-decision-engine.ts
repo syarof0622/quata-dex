@@ -715,11 +715,21 @@ export async function evaluateSymbol(
         minutesSinceOpen,
       }, {
         agentEquity: account.equity,
-        riskPerTradePct: Number(agentRowSwing.risk_per_trade_pct ?? 0.008),
+        cashAvailable: account.cash,
+        symbolRecentLossCount: Number(cdSw?.loss_count ?? 0),
+        recoveryLevel: (agentRowSwing.protection_mode_active || agentRowSwing.diagnostic_status === "PROTECTION_MODE" || agentRowSwing.diagnostic_status === "LOSS_PROTECTION_ACTIVE")
+          ? "L0"
+          : Number(agentRowSwing.consecutive_losses ?? 0) >= 2
+            ? "L1"
+            : Number(agentRowSwing.consecutive_losses ?? 0) === 1
+              ? "L2"
+              : "normal",
+        highConvictionMode: agentRowSwing.high_conviction_allocation !== false, // default ON
+        riskPerTradePct: Number(agentRowSwing.risk_per_trade_pct ?? 0.0075),
         minPositionWeightPct: Number(agentRowSwing.min_position_weight_pct ?? 0.04),
-        maxPositionWeightPct: Number(agentRowSwing.max_position_weight_pct ?? 0.08),
-        qualityThreshold: Number(agentRowSwing.swing_quality_threshold ?? 78),
-        minRR: Number(agentRowSwing.min_risk_reward ?? 2.0),
+        maxPositionWeightPct: Math.max(0.18, Number(agentRowSwing.max_position_weight_pct ?? 0.18)),
+        qualityThreshold: Math.max(85, Number(agentRowSwing.swing_quality_threshold ?? 85)),
+        minRR: Math.max(2.5, Number(agentRowSwing.min_risk_reward ?? 2.5)),
         targetHoldingDays: Number(agentRowSwing.target_holding_days ?? 3),
         maxHoldingDays: Number(agentRowSwing.max_holding_days ?? 7),
         timeStopWarningDays: Number(agentRowSwing.time_stop_warning_days ?? 3),
