@@ -8,6 +8,7 @@ import { Sparkline } from "@/routes/_authenticated/screener";
 import { ShieldAlert, TrendingUp, Layers, Activity, Target, Wallet, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { PortfolioAttributionPanel } from "@/components/PortfolioAttributionPanel";
 import { PortfolioIntelligencePanel } from "@/components/PortfolioIntelligencePanel";
+import { PageHero } from "@/components/ui/page-hero";
 
 export const Route = createFileRoute("/_authenticated/portfolio")({
   head: () => ({ meta: [{ title: "Portfolio — Quanta Terminal" }] }),
