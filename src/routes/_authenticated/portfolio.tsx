@@ -94,21 +94,21 @@ function Portfolio() {
   return (
     <div className="p-3 md:p-6 space-y-4 md:space-y-5">
       <PageHero
-        eyebrow="Paper Trading Only"
+        eyebrow="Hanya Paper Trading"
         icon={Wallet}
-        title="Portfolio Risk Analytics"
-        subtitle="Mark-to-market equity, P&L breakdown & risk intelligence — paper trading only."
+        title="Analisis Risiko Portofolio"
+        subtitle="Ekuitas mark-to-market, rincian laba/rugi, dan analisis risiko — hanya paper trading."
         actions={
           <div className="flex items-center gap-x-2 gap-y-1 text-[10.5px] md:text-[11px] text-muted-foreground flex-wrap">
-            <span>Currency <span className="font-mono text-foreground">{currency}</span></span>
+            <span>Mata uang <span className="font-mono text-foreground">{currency}</span></span>
             <span>·</span>
-            <span>{openPositionsCount} open</span>
+            <span>{openPositionsCount} terbuka</span>
             <span>·</span>
-            <span>{executedOrders} executed</span>
+            <span>{executedOrders} tereksekusi</span>
             <span>·</span>
-            <span>{closedTrades} closed</span>
+            <span>{closedTrades} selesai</span>
             <span>·</span>
-            <span>Updated {formatTimeWIB(d.lastUpdated)}</span>
+            <span>Diperbarui {formatTimeWIB(d.lastUpdated)}</span>
           </div>
         }
       />
