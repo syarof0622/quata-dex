@@ -193,7 +193,7 @@ function WL() {
                 const score = u ? Number(u.final_undervalue_score ?? 0) : null;
                 return (
                 <tr key={r.symbol} className="border-t border-border hover:bg-accent/30">
-                  <td className="p-2 font-medium"><Link to="/chart/$symbol" params={{ symbol: r.symbol }}>{r.symbol}</Link></td>
+                  <td className="p-2 font-medium"><Link to="/chart/$symbol" params={{ symbol: r.symbol }}>{displaySymbol(r.symbol)}</Link></td>
                   <td className="p-2 text-muted-foreground truncate max-w-[28ch]">{r.shortName}</td>
                   <td className="p-2 text-right font-mono">{formatLocalPrice(r.symbol, r.price)}</td>
                   <td className={`p-2 text-right font-mono ${colorForChange(r.changePct)}`}>{formatPct(r.changePct)}</td>
