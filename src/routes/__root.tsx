@@ -81,7 +81,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
@@ -102,7 +102,9 @@ function RootComponent() {
     try {
       const raw = localStorage.getItem("quanta:prefs");
       const p = raw ? JSON.parse(raw) : {};
-      const theme = p.theme ?? "dark";
+      // Light cream theme matches the landing page and is now the default.
+      // Users can still opt in to dark via prefs.theme = "dark".
+      const theme = p.theme ?? "light";
       const sysDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
       const useDark = theme === "dark" || (theme === "system" && sysDark);
       document.documentElement.classList.toggle("dark", useDark);
@@ -114,7 +116,7 @@ function RootComponent() {
       <AuthProvider>
         <TooltipProvider delayDuration={150}>
           <Outlet />
-          <Toaster richColors closeButton position="top-right" theme="dark" />
+          <Toaster richColors closeButton position="top-right" theme="light" />
         </TooltipProvider>
       </AuthProvider>
     </QueryClientProvider>

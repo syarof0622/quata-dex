@@ -133,7 +133,8 @@ function AuthedLayout() {
           </header>
 
           <main
-            className="flex-1 min-w-0 overflow-auto"
+            key={path}
+            className="flex-1 min-w-0 overflow-auto anim-fade-up"
             style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 96px)" }}
           >
             <Outlet />
