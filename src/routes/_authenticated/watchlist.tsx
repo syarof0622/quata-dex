@@ -103,7 +103,7 @@ function WL() {
             <Link key={r.symbol} to="/chart/$symbol" params={{ symbol: r.symbol }} className="panel p-4 hover:border-primary/40 transition-colors">
               <div className="flex items-start justify-between">
                 <div>
-                  <div className="font-semibold">{r.symbol}</div>
+                  <div className="font-semibold">{displaySymbol(r.symbol)}</div>
                   <div className="text-[11px] text-muted-foreground truncate max-w-[20ch]">{r.shortName}</div>
                 </div>
                 <button onClick={async (e) => {
