@@ -62,11 +62,11 @@ function Landing() {
         className="fixed inset-0 pointer-events-none z-0"
         style={{
           backgroundImage:
-            "radial-gradient(circle, rgba(0,0,0,0.08) 1px, transparent 1px)",
+            "radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px)",
           backgroundSize: "22px 22px",
         }}
       />
-      {/* Layer 2: hero radial glow */}
+      {/* Layer 2: hero radial glow (neon mint) */}
       <div
         aria-hidden
         className="absolute pointer-events-none z-0"
@@ -77,8 +77,8 @@ function Landing() {
           width: "1400px",
           height: "900px",
           background:
-            "radial-gradient(ellipse at center, rgba(255,255,255,0.95) 0%, rgba(246,242,234,0.5) 40%, transparent 70%)",
-          filter: "blur(20px)",
+            "radial-gradient(ellipse at center, rgba(0,255,178,0.10) 0%, rgba(0,255,178,0.04) 35%, transparent 70%)",
+          filter: "blur(30px)",
         }}
       />
       {/* Layer 3: soft vignette */}
@@ -87,7 +87,7 @@ function Landing() {
         className="fixed inset-0 pointer-events-none z-0"
         style={{
           background:
-            "radial-gradient(ellipse 120% 80% at 50% 40%, transparent 50%, rgba(0,0,0,0.04) 100%)",
+            "radial-gradient(ellipse 120% 80% at 50% 40%, transparent 50%, rgba(0,0,0,0.45) 100%)",
         }}
       />
       {/* Layer 4: subtle gradient fade top to bottom */}
@@ -96,7 +96,7 @@ function Landing() {
         className="fixed inset-0 pointer-events-none z-0"
         style={{
           background:
-            "linear-gradient(180deg, rgba(255,255,255,0.4) 0%, transparent 30%, transparent 80%, rgba(239,234,225,0.6) 100%)",
+            "linear-gradient(180deg, rgba(10,16,24,0.6) 0%, transparent 30%, transparent 80%, rgba(10,16,24,0.8) 100%)",
         }}
       />
 
