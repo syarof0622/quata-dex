@@ -866,26 +866,42 @@ export async function evaluateSymbol(
     const autoReasonTag = autoGate
       ? ` [autonomous:${agent.autonomousRiskMode} score=${autonomousContext!.score.toFixed(0)}]`
       : "";
+    // Swing Max overrides for SL/TP/RR/sizing when active.
+    const finalStopLoss = swingPlan ? swingPlan.stopLoss : stopLoss;
+    const finalTakeProfit = swingPlan ? swingPlan.takeProfit2 : takeProfit;
+    const finalRR = swingPlan ? swingPlan.riskRewardRatio : rr;
+    const finalAllocation = swingPlan ? swingPlan.positionSizeIDR : guard.positionSize;
+    const finalShares = swingPlan && price > 0
+      ? Math.max(100, Math.round(swingPlan.positionSizeIDR / price / 100) * 100)
+      : guard.shares;
+    const finalLot = swingPlan ? Math.max(1, Math.round(finalShares / 100)) : guard.lot;
+    const swingTag = swingPlan
+      ? ` [SwingMax:${swingPlan.entryType} score=${swingPlan.swingQualityScore} RR=${swingPlan.riskRewardRatio} hold=${swingPlan.targetHoldingDays}-${swingPlan.maxHoldingDays}d]`
+      : "";
     return {
       symbol: sym, action: "BUY", confidence, rawConfidence,
       calibrationReason: calib.reason,
-      strategy: autoGate
+      strategy: swingPlan
+        ? "swing_max"
+        : autoGate
         ? (agent.autonomousRiskMode === "expert_research" ? "expert_research_micro_entry"
           : agent.autonomousRiskMode === "progressive" ? "progressive_small_entry"
           : "autonomous_entry")
         : agent.strategyMode,
-      allocationAmount: guard.positionSize,
-      suggestedLot: guard.lot, suggestedShares: guard.shares,
-      entryPrice: price, stopLoss, takeProfit, riskRewardRatio: rr,
-      reasoning: `Teknikal ${techLabel} (${techScore.toFixed(0)}), sentimen ${sentScore.toFixed(2)}, news +${realNewsData.positiveNewsCount}/-${realNewsData.negativeNewsCount} (high ${realNewsData.highImpactNewsCount}), IHSG ${realMarketContext.ihsgBias}, sektor ${sectorRotationLabel}, fundamental ${fundamentalContext.classification}, strategi ${strategyName} (regime ${marketRegimeLabel}). Risk engine: stop ${guard.stopMode} ${guard.stopDistancePct}%, RR ${rr}, size ${guard.lot} lot (risk ${guard.riskAmount.toLocaleString()} IDR). ${calib.reason}${autoReasonTag}`,
+      allocationAmount: finalAllocation,
+      suggestedLot: finalLot, suggestedShares: finalShares,
+      entryPrice: price, stopLoss: finalStopLoss, takeProfit: finalTakeProfit, riskRewardRatio: finalRR,
+      reasoning: `Teknikal ${techLabel} (${techScore.toFixed(0)}), sentimen ${sentScore.toFixed(2)}, news +${realNewsData.positiveNewsCount}/-${realNewsData.negativeNewsCount} (high ${realNewsData.highImpactNewsCount}), IHSG ${realMarketContext.ihsgBias}, sektor ${sectorRotationLabel}, fundamental ${fundamentalContext.classification}, strategi ${strategyName} (regime ${marketRegimeLabel}). Risk engine: stop ${guard.stopMode} ${guard.stopDistancePct}%, RR ${rr}, size ${guard.lot} lot (risk ${guard.riskAmount.toLocaleString()} IDR). ${calib.reason}${autoReasonTag}${swingTag}`,
       dataFreshnessSeconds: freshness, dataSource: "Yahoo Finance + Google News RSS + IDX disclosure",
       executionAllowed: true, analysisOnly: false,
       realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
       portfolioSnapshot,
-      riskSnapshot: { riskGuard: guard, fundamentalContext, strategyContext } as any,
+      riskSnapshot: { riskGuard: guard, fundamentalContext, strategyContext, swingPlan, swingQuality } as any,
       dataQuality, warnings: [...warnings, ...guard.warnings],
-      strategyName, setupType: strategyName, marketRegime: marketRegimeLabel,
-      signalSource: autoGate ? "autonomous_scanner" : "manual_strategy_mode",
+      strategyName: swingPlan ? "swing_max" : strategyName,
+      setupType: swingPlan ? swingPlan.entryType : strategyName,
+      marketRegime: marketRegimeLabel,
+      signalSource: swingPlan ? "swing_max_engine" : (autoGate ? "autonomous_scanner" : "manual_strategy_mode"),
       strategyContext,
     };
   }
