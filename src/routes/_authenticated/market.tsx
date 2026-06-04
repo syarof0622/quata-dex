@@ -158,7 +158,7 @@ function MarketPage() {
                 <li key={q.symbol}>
                   <Link to="/chart/$symbol" params={{ symbol: q.symbol }} className="flex items-center justify-between py-1.5 hover:bg-accent/40 rounded px-1 gap-2">
                     <div className="min-w-0">
-                      <div className="font-medium text-[13px] md:text-sm truncate">{q.symbol}</div>
+                      <div className="font-medium text-[13px] md:text-sm truncate">{displaySymbol(q.symbol)}</div>
                       <div className="text-[10.5px] md:text-xs text-muted-foreground truncate">{q.shortName}</div>
                     </div>
                     <div className="text-right font-mono shrink-0">
