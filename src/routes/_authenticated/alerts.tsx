@@ -101,13 +101,13 @@ function AlertsPage() {
   return (
     <div className="p-4 md:p-6 space-y-4">
       <PageHero
-        eyebrow="Alerts"
+        eyebrow="Peringatan"
         icon={Bell}
-        title="Smart Alerts"
-        subtitle="Price, RSI, EMA cross, volume spike, N-day breakouts, and AI Signal score crossings."
+        title="Peringatan Cerdas"
+        subtitle="Harga, RSI, persilangan EMA, lonjakan volume, breakout N-hari, dan persilangan skor Sinyal AI."
         actions={
           <Button onClick={() => check.mutate()} disabled={check.isPending} variant="outline">
-            <Zap className="size-4 mr-1" /> {check.isPending ? "Scanning…" : "Run scan now"}
+            <Zap className="size-4 mr-1" /> {check.isPending ? "Memindai…" : "Jalankan pemindaian"}
           </Button>
         }
       />
