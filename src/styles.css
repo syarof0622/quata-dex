@@ -45,55 +45,10 @@
   --font-sans: "Inter", ui-sans-serif, -apple-system, "Helvetica Neue", system-ui, sans-serif;
 }
 
-/* ───────────── Default: light cream palette (matches landing page) ───────────── */
+/* ───────────── Default: dark institutional palette ───────────── */
 :root {
   --radius: 0.75rem;
 
-  /* Landing palette: #f6f2ea bg, #ffffff surface, #ded8ce border, #00c896 green */
-  --background: oklch(0.962 0.012 80);      /* #f6f2ea */
-  --surface-1:  oklch(1 0 0);                /* #ffffff */
-  --surface-2:  oklch(0.984 0.008 80);       /* #fbf8f2 */
-  --foreground: oklch(0.18 0.005 80);        /* #0b0b0a */
-
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.005 80);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.005 80);
-
-  /* Landing green accent #00c896 */
-  --primary: oklch(0.74 0.155 168);
-  --primary-foreground: oklch(0.99 0.005 80);
-
-  --secondary: oklch(0.94 0.01 80);
-  --secondary-foreground: oklch(0.22 0.01 80);
-  --muted: oklch(0.94 0.01 80);
-  --muted-foreground: oklch(0.55 0.012 80);  /* #6f6a61 */
-  --accent: oklch(0.95 0.012 80);
-  --accent-foreground: oklch(0.22 0.01 80);
-
-  --bull: oklch(0.74 0.155 168);             /* landing green */
-  --bear: oklch(0.62 0.18 30);               /* #d8553f */
-  --warning: oklch(0.74 0.16 75);            /* #d99a00 */
-
-  --destructive: oklch(0.62 0.18 30);
-  --destructive-foreground: oklch(0.99 0.005 80);
-
-  --border: oklch(0.88 0.012 80);            /* #ded8ce */
-  --input: oklch(0.92 0.012 80);
-  --ring: oklch(0.74 0.155 168 / 50%);
-
-  --sidebar: oklch(0.984 0.008 80);
-  --sidebar-foreground: oklch(0.22 0.01 80);
-  --sidebar-primary: oklch(0.74 0.155 168);
-  --sidebar-primary-foreground: oklch(0.99 0.005 80);
-  --sidebar-accent: oklch(0.94 0.01 80);
-  --sidebar-accent-foreground: oklch(0.22 0.01 80);
-  --sidebar-border: oklch(0.9 0.012 80);
-  --sidebar-ring: oklch(0.74 0.155 168 / 50%);
-}
-
-/* ───────────── Opt-in dark theme (legacy institutional) ───────────── */
-html.dark {
   --background: oklch(0.16 0.025 255);
   --surface-1:  oklch(0.19 0.025 255);
   --surface-2:  oklch(0.23 0.025 255);
@@ -134,6 +89,10 @@ html.dark {
   --sidebar-border: oklch(0.3 0.025 255 / 60%);
   --sidebar-ring: oklch(0.86 0.18 168 / 50%);
 }
+
+/* .dark is also explicitly set on <html> — keep tokens identical so child
+   selectors using `&:is(.dark *)` still match. */
+html.dark { color-scheme: dark; }
 
 @layer base {
   * { border-color: var(--color-border); }
