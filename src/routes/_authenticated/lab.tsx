@@ -1307,7 +1307,7 @@ function AIAgentPanel() {
                   <tr key={d.id} className="border-t border-border align-top">
                     <td className="p-2 text-xs text-muted-foreground whitespace-nowrap">{fmtWIBTime(d.created_at)}</td>
                     <td className="p-2 font-medium">
-                      {d.symbol}
+                      {displaySymbol(d.symbol)}
                       {inactive && <span className="ml-1 text-[9px] uppercase bg-muted text-muted-foreground px-1 py-0.5 rounded align-middle">previous</span>}
                     </td>
                     <td className="p-2 text-[10px] uppercase text-muted-foreground">{mode}</td>
