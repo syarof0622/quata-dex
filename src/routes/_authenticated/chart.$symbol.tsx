@@ -328,7 +328,7 @@ function ChartPage() {
               {isIDX && !realtime && <span className="text-[10px] text-amber-400">~15m delay</span>}
               {isIDX && realtime && <span className="text-[10px] text-bull">~realtime</span>}
             </div>
-            <div className="text-2xl font-semibold">{symbol}</div>
+            <div className="text-2xl font-semibold">{displaySymbol(symbol)}</div>
             <div className="text-xs text-muted-foreground">{quote.data?.shortName ?? ""}</div>
           </div>
           <div className="ml-auto flex items-end gap-6">
