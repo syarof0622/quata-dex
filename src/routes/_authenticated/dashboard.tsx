@@ -211,7 +211,7 @@ function Dashboard() {
                       style={{ backgroundColor: bg }}
                       className="group rounded-md p-1.5 md:p-2 text-[10.5px] md:text-xs hover:ring-1 hover:ring-primary transition flex flex-col gap-1">
                   <div className="flex items-baseline justify-between gap-1">
-                    <div className="font-semibold truncate">{q.symbol.replace(".JK", "")}</div>
+                    <div className="font-semibold truncate">{displaySymbol(q.symbol)}</div>
                     <div className="font-mono shrink-0 text-[10px] md:text-[11px]">{formatPct(pct)}</div>
                   </div>
                   <div className="-mx-0.5 opacity-90 group-hover:opacity-100 transition-opacity">
