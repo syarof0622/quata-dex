@@ -136,7 +136,7 @@ function MarketPage() {
                 <Link key={q.symbol} to="/chart/$symbol" params={{ symbol: q.symbol }}
                       style={{ backgroundColor: bg }}
                       className="rounded-md p-1.5 md:p-2 text-[10.5px] md:text-xs hover:ring-1 hover:ring-primary transition">
-                  <div className="font-semibold truncate">{q.symbol.replace(".JK", "")}</div>
+                  <div className="font-semibold truncate">{displaySymbol(q.symbol)}</div>
                   <div className="font-mono">{formatPct(pct)}</div>
                   <div className="text-[9.5px] md:text-[10px] opacity-70 font-mono truncate">{formatCompact(q.marketCap ?? undefined)}</div>
                 </Link>
