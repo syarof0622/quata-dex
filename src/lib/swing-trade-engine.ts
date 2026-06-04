@@ -363,9 +363,6 @@ export function buildSwingTradePlan(c: SwingCandidate, ctx: SwingContext): Swing
   let lotOut: number | undefined;
 
   if (ctx.highConvictionMode) {
-    // dynamic import to avoid circular surface
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { computeHighConvictionAllocation, explainAllocation } = require("./swing-allocation") as typeof import("./swing-allocation");
     const decision = computeHighConvictionAllocation({
       equity,
       cashAvailable: Math.max(0, Number(ctx.cashAvailable ?? equity)),
