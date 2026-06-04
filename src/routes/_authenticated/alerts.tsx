@@ -12,6 +12,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Trash2, Bell, Zap, Target } from "lucide-react";
 import { formatDateTimeWIB } from "@/lib/format";
+import { PageHero } from "@/components/ui/page-hero";
 
 export const Route = createFileRoute("/_authenticated/alerts")({
   head: () => ({ meta: [{ title: "Smart Alerts — Quanta Terminal" }] }),
@@ -99,15 +100,18 @@ function AlertsPage() {
 
   return (
     <div className="p-4 md:p-6 space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold flex items-center gap-2"><Bell className="size-5 text-primary" /> Smart Alerts</h1>
-          <p className="text-sm text-muted-foreground">Price, RSI, EMA cross, volume spike, N-day breakouts, and AI Signal score crossings.</p>
-        </div>
-        <Button onClick={() => check.mutate()} disabled={check.isPending} variant="outline">
-          <Zap className="size-4 mr-1" /> {check.isPending ? "Scanning…" : "Run scan now"}
-        </Button>
-      </div>
+      <PageHero
+        eyebrow="Alerts"
+        icon={Bell}
+        title="Smart Alerts"
+        subtitle="Price, RSI, EMA cross, volume spike, N-day breakouts, and AI Signal score crossings."
+        actions={
+          <Button onClick={() => check.mutate()} disabled={check.isPending} variant="outline">
+            <Zap className="size-4 mr-1" /> {check.isPending ? "Scanning…" : "Run scan now"}
+          </Button>
+        }
+      />
+
 
       <div className="panel p-4 space-y-3">
         <div className="grid md:grid-cols-6 gap-2 items-end">

@@ -8,6 +8,7 @@ import { Sparkline } from "@/routes/_authenticated/screener";
 import { ShieldAlert, TrendingUp, Layers, Activity, Target, Wallet, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { PortfolioAttributionPanel } from "@/components/PortfolioAttributionPanel";
 import { PortfolioIntelligencePanel } from "@/components/PortfolioIntelligencePanel";
+import { PageHero } from "@/components/ui/page-hero";
 
 export const Route = createFileRoute("/_authenticated/portfolio")({
   head: () => ({ meta: [{ title: "Portfolio — Quanta Terminal" }] }),
@@ -92,23 +93,26 @@ function Portfolio() {
 
   return (
     <div className="p-3 md:p-6 space-y-4 md:space-y-5">
-      <div className="flex items-end justify-between flex-wrap gap-2">
-        <div className="min-w-0">
-          <h1 className="hero-h1 text-2xl md:text-2xl font-semibold tracking-tight">Portfolio Risk Analytics</h1>
-          <p className="text-[12.5px] md:text-sm text-muted-foreground">Mark-to-market equity, P&amp;L breakdown &amp; risk intelligence — paper trading only.</p>
-        </div>
-        <div className="flex items-center gap-x-2 gap-y-1 text-[10.5px] md:text-[11px] text-muted-foreground flex-wrap">
-          <span>Currency <span className="font-mono text-foreground">{currency}</span></span>
-          <span>·</span>
-          <span>{openPositionsCount} open</span>
-          <span>·</span>
-          <span>{executedOrders} executed</span>
-          <span>·</span>
-          <span>{closedTrades} closed</span>
-          <span>·</span>
-          <span>Updated {formatTimeWIB(d.lastUpdated)}</span>
-        </div>
-      </div>
+      <PageHero
+        eyebrow="Paper Trading Only"
+        icon={Wallet}
+        title="Portfolio Risk Analytics"
+        subtitle="Mark-to-market equity, P&L breakdown & risk intelligence — paper trading only."
+        actions={
+          <div className="flex items-center gap-x-2 gap-y-1 text-[10.5px] md:text-[11px] text-muted-foreground flex-wrap">
+            <span>Currency <span className="font-mono text-foreground">{currency}</span></span>
+            <span>·</span>
+            <span>{openPositionsCount} open</span>
+            <span>·</span>
+            <span>{executedOrders} executed</span>
+            <span>·</span>
+            <span>{closedTrades} closed</span>
+            <span>·</span>
+            <span>Updated {formatTimeWIB(d.lastUpdated)}</span>
+          </div>
+        }
+      />
+
 
       {!hasActivity && (
         <div className="panel p-8 text-center space-y-3">

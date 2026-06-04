@@ -20,6 +20,8 @@ import { startAgent, pauseAgent, stopAgent, emergencyStop, getAgentStatus, runAg
 import { testAIAgentCronServer } from "@/lib/cron-test.functions";
 import { TickerSearch } from "@/components/TickerSearch";
 import { AiInsightsPanel } from "@/components/AiInsightsPanel";
+import { PageHero } from "@/components/ui/page-hero";
+import { FlaskConical } from "lucide-react";
 
 const MAX_AGENT_SYMBOLS = 5;
 
@@ -72,13 +74,14 @@ function Lab() {
   });
   return (
     <div className="p-4 md:p-6 space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">Simulation Lab</h1>
-          <p className="text-sm text-muted-foreground">Paper trading {currency} · live P/L · advanced orders · journal · backtest · AI coach</p>
-        </div>
-        <ResetAccountControl onDone={() => acct.refetch()} currentCash={cash || (currency === "IDR" ? 100_000_000 : 100_000)} currency={currency} />
-      </div>
+      <PageHero
+        eyebrow="Paper Trading Only"
+        icon={FlaskConical}
+        title="Simulation Lab"
+        subtitle={`Paper trading ${currency} · live P/L · advanced orders · journal · backtest · AI coach`}
+        actions={<ResetAccountControl onDone={() => acct.refetch()} currentCash={cash || (currency === "IDR" ? 100_000_000 : 100_000)} currency={currency} />}
+      />
+
 
       
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">

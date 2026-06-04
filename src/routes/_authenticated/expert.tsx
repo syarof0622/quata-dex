@@ -8,6 +8,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Calculator, Layers, Network } from "lucide-react";
 import { formatPrice } from "@/lib/format";
 import { TickerSearch } from "@/components/TickerSearch";
+import { PageHero } from "@/components/ui/page-hero";
+import { Sparkles } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/expert")({
   head: () => ({ meta: [{ title: "Expert Tools — Quanta Terminal" }] }),
@@ -17,10 +19,13 @@ export const Route = createFileRoute("/_authenticated/expert")({
 function ExpertPage() {
   return (
     <div className="p-4 md:p-6 space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">Expert Tools</h1>
-        <p className="text-sm text-muted-foreground">Multi-timeframe analysis · risk-managed position sizing · cross-asset correlation.</p>
-      </div>
+      <PageHero
+        eyebrow="Expert Tools"
+        icon={Sparkles}
+        title="Expert Tools"
+        subtitle="Multi-timeframe analysis · risk-managed position sizing · cross-asset correlation."
+      />
+
       <Tabs defaultValue="mtf">
         <TabsList>
           <TabsTrigger value="mtf"><Layers className="size-4 mr-1" /> Multi-Timeframe</TabsTrigger>

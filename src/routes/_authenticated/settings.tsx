@@ -14,6 +14,8 @@ import { checkAlerts } from "@/lib/alerts.functions";
 import { toast } from "sonner";
 import { LogOut, RefreshCw, Bell, Palette, User, Database, Zap, Trash2, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { PageHero } from "@/components/ui/page-hero";
+import { Settings as SettingsIcon } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({ meta: [{ title: "Settings — Quanta Terminal" }] }),
@@ -137,10 +139,13 @@ function SettingsPage() {
 
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-4xl">
-      <div>
-        <h1 className="text-2xl font-semibold">Settings</h1>
-        <p className="text-sm text-muted-foreground">Profile, preferences, paper account & data integrations.</p>
-      </div>
+      <PageHero
+        eyebrow="Preferences"
+        icon={SettingsIcon}
+        title="Settings"
+        subtitle="Profile, preferences, paper account & data integrations."
+      />
+
 
       <Tabs defaultValue="profile">
         <TabsList>

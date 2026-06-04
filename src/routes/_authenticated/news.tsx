@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Newspaper, TrendingUp, TrendingDown, Minus, Activity, RefreshCw, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
 import { formatTimeWIB, formatDateTimeWIB } from "@/lib/format";
+import { PageHero } from "@/components/ui/page-hero";
 
 export const Route = createFileRoute("/_authenticated/news")({
   head: () => ({
@@ -116,35 +117,35 @@ function NewsHub() {
 
   return (
     <div className="p-4 md:p-6 space-y-4">
-      <div className="flex items-end justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold flex items-center gap-2">
-            <Newspaper className="size-5 text-primary" /> News &amp; Market Sentiment
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Berita saham IDX dari Kontan, CNBC, ANTARA, Investor.id, dan Google News — auto-deduplicate, sentiment &amp; impact scoring.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {serpStatus.data && (
-            <span className={`text-[10px] px-2 py-1 rounded font-medium border ${
-              !serpStatus.data.enabled ? "border-border text-muted-foreground" :
-              serpStatus.data.quotaBlocked ? "border-bear/40 bg-bear-soft text-bear" :
-              "border-primary/40 bg-primary/10 text-primary"
-            }`} title={serpStatus.data.enabled ? `SerpApi credits used ${serpStatus.data.used}/${serpStatus.data.limit}` : "SerpApi disabled"}>
-              {!serpStatus.data.enabled
-                ? "SerpApi: off"
-                : serpStatus.data.quotaBlocked
-                ? "SerpApi quota protection"
-                : `Enhanced by SerpApi · ${serpStatus.data.remaining} left`}
-            </span>
-          )}
-          <Button variant="outline" size="sm" onClick={() => refresh.mutate()} disabled={refresh.isPending}>
-            {refresh.isPending ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
-            Refresh now
-          </Button>
-        </div>
-      </div>
+      <PageHero
+        eyebrow="News & Sentiment"
+        live
+        icon={Newspaper}
+        title="News & Market Sentiment"
+        subtitle="Berita saham IDX dari Kontan, CNBC, ANTARA, Investor.id, dan Google News — auto-deduplicate, sentiment & impact scoring."
+        actions={
+          <div className="flex items-center gap-2">
+            {serpStatus.data && (
+              <span className={`text-[10px] px-2 py-1 rounded font-medium border ${
+                !serpStatus.data.enabled ? "border-border text-muted-foreground" :
+                serpStatus.data.quotaBlocked ? "border-bear/40 bg-bear-soft text-bear" :
+                "border-primary/40 bg-primary/10 text-primary"
+              }`} title={serpStatus.data.enabled ? `SerpApi credits used ${serpStatus.data.used}/${serpStatus.data.limit}` : "SerpApi disabled"}>
+                {!serpStatus.data.enabled
+                  ? "SerpApi: off"
+                  : serpStatus.data.quotaBlocked
+                  ? "SerpApi quota protection"
+                  : `Enhanced by SerpApi · ${serpStatus.data.remaining} left`}
+              </span>
+            )}
+            <Button variant="outline" size="sm" onClick={() => refresh.mutate()} disabled={refresh.isPending}>
+              {refresh.isPending ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+              Refresh now
+            </Button>
+          </div>
+        }
+      />
+
 
       {/* Pipeline status */}
       {pipeline.data && (() => {
