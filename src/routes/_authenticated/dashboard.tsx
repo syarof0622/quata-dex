@@ -28,13 +28,28 @@ function Dashboard() {
   const losers = movers.data?.losers ?? [];
   const newsItems = news.data ?? [];
 
+  const marketToggle = (
+    <div className="inline-flex rounded-lg border border-border p-0.5 bg-card/40">
+      {(["idx", "us", "global"] as const).map(m => (
+        <Button key={m} size="sm" variant={market === m ? "default" : "ghost"} onClick={() => setMarket(m)} className="h-7 px-2.5 text-[11.5px]">
+          {m === "idx" ? "🇮🇩 IDX" : m === "us" ? "🇺🇸 US" : "🌐 Global"}
+        </Button>
+      ))}
+    </div>
+  );
+
   return (
     <div className="p-3 md:p-6 space-y-4 md:space-y-6">
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex flex-wrap items-end justify-between gap-2">
-        <div className="min-w-0">
-          <h1 className="hero-h1 text-2xl md:text-2xl font-semibold tracking-tight">Market Dashboard</h1>
-          <p className="text-[12.5px] md:text-sm text-muted-foreground">Realtime overview · IDX, indices, movers, news</p>
-        </div>
+      <PageHero
+        eyebrow="Command Center"
+        live
+        icon={TrendingUp}
+        title="Market Dashboard"
+        subtitle="Realtime overview · IDX, indices, movers, news"
+        actions={marketToggle}
+      />
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="hidden">
+        <div className="min-w-0" />
         <div className="inline-flex rounded-lg border border-border p-0.5 bg-card/40">
           {(["idx", "us", "global"] as const).map(m => (
             <Button key={m} size="sm" variant={market === m ? "default" : "ghost"} onClick={() => setMarket(m)} className="h-7 px-2.5 text-[11.5px]">
