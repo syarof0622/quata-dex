@@ -881,12 +881,13 @@ export async function evaluateSymbol(
     const finalTakeProfit = swingPlan ? swingPlan.takeProfit2 : takeProfit;
     const finalRR = swingPlan ? swingPlan.riskRewardRatio : rr;
     const finalAllocation = swingPlan ? swingPlan.positionSizeIDR : guard.positionSize;
-    const finalShares = swingPlan && price > 0
-      ? Math.max(100, Math.round(swingPlan.positionSizeIDR / price / 100) * 100)
-      : guard.shares;
+    const finalShares = swingPlan && swingPlan.shares ? swingPlan.shares
+      : swingPlan && price > 0
+        ? Math.max(100, Math.floor(swingPlan.positionSizeIDR / price / 100) * 100)
+        : guard.shares;
     const finalLot = swingPlan ? Math.max(1, Math.round(finalShares / 100)) : guard.lot;
     const swingTag = swingPlan
-      ? ` [SwingMax:${swingPlan.entryType} score=${swingPlan.swingQualityScore} RR=${swingPlan.riskRewardRatio} hold=${swingPlan.targetHoldingDays}-${swingPlan.maxHoldingDays}d]`
+      ? ` [SwingMax:${swingPlan.entryType} score=${swingPlan.swingQualityScore} RR=${swingPlan.riskRewardRatio} tier=${swingPlan.allocationTier ?? "n/a"}(${swingPlan.allocationTierLabel ?? "—"}) alloc=${((swingPlan.allocationPct ?? 0) * 100).toFixed(1)}% cap=${swingPlan.allocationCapWinner ?? "n/a"} hold=${swingPlan.targetHoldingDays}-${swingPlan.maxHoldingDays}d]`
       : "";
     return {
       symbol: sym, action: "BUY", confidence, rawConfidence,
