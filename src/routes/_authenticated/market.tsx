@@ -5,6 +5,7 @@ import { getMovers, getNews } from "@/lib/market.functions";
 import { sectorPerformance, marketBreadth } from "@/lib/screener.functions";
 import { formatPct, formatCompact, colorForChange } from "@/lib/format";
 import { formatLocalPrice } from "@/lib/symbols";
+import { displaySymbol } from "@/lib/display-symbol";
 import { Button } from "@/components/ui/button";
 import { Activity, ArrowDownRight, ArrowUpRight, Newspaper } from "lucide-react";
 import { MobileEmptyState, MobileSkeletonRows } from "@/components/mobile-ui";
