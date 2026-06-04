@@ -11,6 +11,7 @@ import { formatLocalPrice, IDX_LQ45, US_TOP } from "@/lib/symbols";
 import { X, Plus, Sparkles, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { Sparkline } from "./screener";
+import { PageHero } from "@/components/ui/page-hero";
 
 export const Route = createFileRoute("/_authenticated/watchlist")({
   head: () => ({ meta: [{ title: "Watchlist — Quanta Terminal" }] }),
