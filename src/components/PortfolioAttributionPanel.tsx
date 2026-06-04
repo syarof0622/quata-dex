@@ -30,7 +30,7 @@ export function PortfolioAttributionPanel({ data }: Props) {
           </div>
           {attribution.topContributor ? (
             <>
-              <div className="font-mono text-lg">{attribution.topContributor.symbol}</div>
+              <div className="font-mono text-lg">{displaySymbol(attribution.topContributor.symbol)}</div>
               <div className={`text-sm font-mono ${colorForChange(attribution.topContributor.contributionToReturn)}`}>
                 {formatPct(attribution.topContributor.contributionToReturn)} of baseline
               </div>
