@@ -368,7 +368,7 @@ export function AutonomousAgentPanel() {
               <div key={p.symbol} className="rounded-xl border border-border/40 bg-card/40 p-2.5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-semibold text-sm">{p.symbol}</span>
+                    <span className="font-semibold text-sm">{displaySymbol(p.symbol)}</span>
                     <span className="text-[10.5px] text-muted-foreground">{p.qty} sh · avg {fmt(p.avgEntry)}</span>
                   </div>
                   <span className={cn("text-[11.5px] font-mono", p.unrealizedPnl >= 0 ? "text-emerald-400" : "text-rose-400")}>
