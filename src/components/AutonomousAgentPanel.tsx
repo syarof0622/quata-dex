@@ -51,6 +51,12 @@ export function AutonomousAgentPanel() {
     queryFn: () => fetchLoss(),
     refetchInterval: 45_000,
   });
+  const fetchSwing = useServerFn(getSwingMaxStatus);
+  const { data: swing } = useQuery({
+    queryKey: ["agent-swing-max-status"],
+    queryFn: () => fetchSwing(),
+    refetchInterval: 30_000,
+  });
   const modeMutation = useMutation({
     mutationFn: async (mode: AggressionMode) => {
       const agentId = (data as any)?.agent?.id;
