@@ -46,7 +46,7 @@ export function PortfolioAttributionPanel({ data }: Props) {
           </div>
           {attribution.worstContributor ? (
             <>
-              <div className="font-mono text-lg">{attribution.worstContributor.symbol}</div>
+              <div className="font-mono text-lg">{displaySymbol(attribution.worstContributor.symbol)}</div>
               <div className={`text-sm font-mono ${colorForChange(attribution.worstContributor.contributionToReturn)}`}>
                 {formatPct(attribution.worstContributor.contributionToReturn)} of baseline
               </div>
