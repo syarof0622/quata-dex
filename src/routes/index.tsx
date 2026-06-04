@@ -311,7 +311,7 @@ function MockupSection() {
           <MockCard title="Market Pulse" col="col-span-12 sm:col-span-6 lg:col-span-3">
             <div className="text-[11px] mb-1.5" style={{ color: C.muted }}>IDX Regime</div>
             <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium"
-              style={{ background: "#fff5e6", color: C.amber, border: `1px solid #f3e0bc` }}>
+              style={{ background: "rgba(245,176,66,0.12)", color: C.amber, border: `1px solid #f3e0bc` }}>
               <CircleDot className="w-3 h-3" /> Neutral
             </div>
             <div className="mt-2.5 text-[11px]" style={{ color: C.muted }}>Breadth · 54% advancers</div>
@@ -443,9 +443,9 @@ function SentimentDial({ value }: { value: number }) {
 function DecisionRow({ ticker, intent, final, reason, tone }:
   { ticker: string; intent: string; final: string; reason: string; tone: "block" | "hold" | "watch" }) {
   const palette = {
-    block: { bg: "#fdecea", fg: C.red, border: "#f5cfca" },
-    hold: { bg: "#eaf7f1", fg: C.green, border: "#c8eada" },
-    watch: { bg: "#fff5e6", fg: C.amber, border: "#f3e0bc" },
+    block: { bg: "rgba(239,77,77,0.12)", fg: C.red, border: "rgba(239,77,77,0.35)" },
+    hold: { bg: "rgba(0,255,178,0.10)", fg: C.green, border: "rgba(0,255,178,0.30)" },
+    watch: { bg: "rgba(245,176,66,0.12)", fg: C.amber, border: "rgba(245,176,66,0.35)" },
   }[tone];
   return (
     <div className="flex items-center justify-between py-1.5 text-[11px]" style={{ borderTop: `1px solid ${C.borderSoft}` }}>
@@ -665,7 +665,7 @@ function NewsSection() {
                 style={{ borderTop: i === 0 ? "none" : `1px solid ${C.borderSoft}` }}>
                 <span style={{ color: C.inkSoft }}>{it}</span>
                 <span className="text-[11px] font-medium px-2 py-0.5 rounded"
-                  style={{ background: "#eaf7f1", color: C.green, border: `1px solid #c8eada` }}>
+                  style={{ background: "rgba(0,255,178,0.10)", color: C.green, border: `1px solid #c8eada` }}>
                   active
                 </span>
               </div>
