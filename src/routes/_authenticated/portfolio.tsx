@@ -347,7 +347,7 @@ function Portfolio() {
                 return (
                   <tr key={p.symbol} className="border-t border-border align-top">
                     <td className="p-2 font-medium">
-                      <Link to="/chart/$symbol" params={{ symbol: p.symbol }} className="hover:text-primary">{p.symbol}</Link>
+                      <Link to="/chart/$symbol" params={{ symbol: p.symbol }} className="hover:text-primary">{displaySymbol(p.symbol)}</Link>
                       {p.stale && <span className="ml-1 text-[9px] text-amber-400">(stale)</span>}
                     </td>
                     <td className="p-2 text-xs text-muted-foreground">{p.sector}</td>
