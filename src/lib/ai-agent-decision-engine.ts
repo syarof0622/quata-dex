@@ -12,6 +12,8 @@ import { computeDataQuality, type DataQualityReport } from "./data-quality";
 import { sectorOf } from "./sectors";
 import { getStrategyContextFor } from "./strategy-intelligence.functions";
 import { finalRiskGuard } from "./risk-engine";
+import { calculateTradeQualityScore } from "./trade-quality";
+import { evaluateBuyGuards, getSymbolCooldown } from "./loss-protection.server";
 
 export type AgentAction = "BUY" | "SELL" | "HOLD" | "EXIT";
 
