@@ -14,6 +14,8 @@ import { checkAlerts } from "@/lib/alerts.functions";
 import { toast } from "sonner";
 import { LogOut, RefreshCw, Bell, Palette, User, Database, Zap, Trash2, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { PageHero } from "@/components/ui/page-hero";
+import { Settings as SettingsIcon } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({ meta: [{ title: "Settings — Quanta Terminal" }] }),
