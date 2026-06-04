@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Activity, AlertTriangle, CheckCircle2, CircleSlash, Loader2, PlayCircle } from "lucide-react";
 import { toast } from "sonner";
+import { PageHero } from "@/components/ui/page-hero";
+import { HeartPulse } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/health")({
   component: HealthPage,
