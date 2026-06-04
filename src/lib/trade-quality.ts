@@ -140,6 +140,7 @@ export const QUALITY_THRESHOLDS: Record<string, number> = {
   expert_paper: 70,
   research_max: 68,
   expert_research: 70,
+  swing_max: 78,
 };
 
 export function qualityThresholdFor(mode: string | null | undefined): number {
