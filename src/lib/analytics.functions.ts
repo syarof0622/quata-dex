@@ -388,6 +388,7 @@ export const getPortfolioAnalytics = createServerFn({ method: "GET" })
       initialBalance,
       cash, equity, totalValue, totalCost,
       unrealized, realized: totalRealized,
+      realizedGain: grossProfit, realizedLoss: grossLoss,
       totalReturnAmount, pnlPct,
       exposure, concentration, maxPositionWeight, cashRatio, largestSectorPct,
       drawdown, dailyPnl, dailyPnlPct,

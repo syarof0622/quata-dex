@@ -80,14 +80,27 @@ function Lab() {
         <ResetAccountControl onDone={() => acct.refetch()} currentCash={cash || (currency === "IDR" ? 100_000_000 : 100_000)} currency={currency} />
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         <div className="panel p-4"><div className="text-xs text-muted-foreground">Saldo Tersedia</div><div className="font-mono text-xl md:text-2xl">{fmtMoney(cash)}</div></div>
         <div className="panel p-4"><div className="text-xs text-muted-foreground">Equity Total</div><div className="font-mono text-xl md:text-2xl">{fmtMoney(equity)}</div></div>
         <div className="panel p-4"><div className="text-xs text-muted-foreground">Unrealized P/L</div><div className={`font-mono text-xl md:text-2xl ${colorForChange(pnl.unrealized)}`}>{fmtMoney(pnl.unrealized)}</div></div>
         <div className="panel p-4"><div className="text-xs text-muted-foreground">Positions</div><div className="font-mono text-xl md:text-2xl">{positions.length}</div></div>
-        <div className="panel p-4"><div className="text-xs text-muted-foreground">Filled orders</div><div className="font-mono text-xl md:text-2xl">{orders.length}</div></div>
-        <div className="panel p-4"><div className="text-xs text-muted-foreground">Pending</div><div className="font-mono text-xl md:text-2xl">{pending.length}</div></div>
       </div>
+      {(() => {
+        const realizedGain = (orders as any[]).reduce((s, o) => s + Math.max(0, Number(o.realized_pnl ?? 0)), 0);
+        const realizedLoss = (orders as any[]).reduce((s, o) => s + Math.min(0, Number(o.realized_pnl ?? 0)), 0);
+        const realizedNet = realizedGain + realizedLoss;
+        return (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            <div className="panel p-4"><div className="text-xs text-muted-foreground">Realized Gain</div><div className="font-mono text-xl md:text-2xl text-emerald-400">{fmtMoney(realizedGain)}</div></div>
+            <div className="panel p-4"><div className="text-xs text-muted-foreground">Realized Loss</div><div className="font-mono text-xl md:text-2xl text-rose-400">{fmtMoney(realizedLoss)}</div></div>
+            <div className="panel p-4"><div className="text-xs text-muted-foreground">Realized Net</div><div className={`font-mono text-xl md:text-2xl ${colorForChange(realizedNet)}`}>{fmtMoney(realizedNet)}</div></div>
+            <div className="panel p-4"><div className="text-xs text-muted-foreground">Filled orders</div><div className="font-mono text-xl md:text-2xl">{orders.length}</div></div>
+            <div className="panel p-4"><div className="text-xs text-muted-foreground">Pending</div><div className="font-mono text-xl md:text-2xl">{pending.length}</div></div>
+          </div>
+        );
+      })()}
 
       <Tabs defaultValue={initialTab}>
         <TabsList className="flex-wrap h-auto no-scrollbar overflow-x-auto max-w-full">
