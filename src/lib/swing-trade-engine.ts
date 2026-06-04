@@ -417,7 +417,7 @@ export function evaluateSwingExit(
   if (price >= plan.takeProfit2) {
     return { shouldExit: true, reason: "take_profit_triggered", exitType: "FULL", newStatus: "EXIT_TRIGGERED", detail: "TP2 reached." };
   }
-  if (plan.trailingActive && plan.trailingStop != null && price <= (plan.trailingStop as unknown as number)) {
+  if (plan.trailingActive && plan.trailingStop != null && price <= plan.trailingStop) {
     return { shouldExit: true, reason: "trailing_stop_triggered", exitType: "FULL", newStatus: "EXIT_TRIGGERED", detail: "Trailing stop triggered." };
   }
   if (price >= plan.takeProfit1) {
