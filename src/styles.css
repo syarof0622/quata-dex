@@ -145,8 +145,8 @@ html.dark { color-scheme: dark; }
   }
   .panel:hover {
     box-shadow:
-      0 1px 0 color-mix(in oklab, white 60%, transparent) inset,
-      0 12px 28px -16px color-mix(in oklab, var(--foreground) 18%, transparent);
+      0 1px 0 color-mix(in oklab, var(--foreground) 6%, transparent) inset,
+      0 14px 30px -18px color-mix(in oklab, black 60%, transparent);
   }
   .panel-2 {
     background: var(--surface-2);
