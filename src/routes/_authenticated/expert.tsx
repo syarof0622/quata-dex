@@ -8,6 +8,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Calculator, Layers, Network } from "lucide-react";
 import { formatPrice } from "@/lib/format";
 import { TickerSearch } from "@/components/TickerSearch";
+import { PageHero } from "@/components/ui/page-hero";
+import { Sparkles } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/expert")({
   head: () => ({ meta: [{ title: "Expert Tools — Quanta Terminal" }] }),
