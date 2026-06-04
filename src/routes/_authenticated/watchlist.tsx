@@ -64,17 +64,21 @@ function WL() {
 
   return (
     <div className="p-4 md:p-6 space-y-4">
-      <div className="flex items-end justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold flex items-center gap-2"><Sparkles className="size-5 text-primary" /> Watchlist Intelligence</h1>
-          <p className="text-sm text-muted-foreground">Setiap saham di-ranking otomatis oleh AI Signal v2.</p>
-        </div>
-        <div className="inline-flex rounded-md border border-border p-0.5">
-          {(["smart", "simple"] as const).map(v => (
-            <Button key={v} size="sm" variant={view === v ? "default" : "ghost"} onClick={() => setView(v)} className="h-7 px-3 capitalize">{v}</Button>
-          ))}
-        </div>
-      </div>
+      <PageHero
+        eyebrow="AI Signal v2"
+        live
+        icon={Sparkles}
+        title="Watchlist Intelligence"
+        subtitle="Setiap saham di-ranking otomatis oleh AI Signal v2."
+        actions={
+          <div className="inline-flex rounded-md border border-border p-0.5">
+            {(["smart", "simple"] as const).map(v => (
+              <Button key={v} size="sm" variant={view === v ? "default" : "ghost"} onClick={() => setView(v)} className="h-7 px-3 capitalize">{v}</Button>
+            ))}
+          </div>
+        }
+      />
+
 
       {/* Quick presets */}
       <div className="panel p-3">
