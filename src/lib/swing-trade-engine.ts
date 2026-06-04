@@ -114,6 +114,15 @@ export type SwingPlan = {
   warnings: string[];
   positionSizeIDR: number;
   status: SwingPlanStatus;
+  // High-conviction allocation tier (add-on patch)
+  allocationTier?: 0 | 1 | 2 | 3;
+  allocationTierLabel?: "REJECTED" | "STARTER" | "HIGH_CONVICTION" | "PREMIUM";
+  allocationPct?: number;
+  allocationReason?: string;
+  riskPerTradePct?: number;
+  allocationCapWinner?: string;
+  shares?: number;
+  lot?: number;
 };
 
 export type SwingEntryEvaluation = {
