@@ -251,6 +251,50 @@ export const getCandles = createServerFn({ method: "POST" })
     });
   });
 
+// Batched intraday sparkline closes for many symbols at once.
+// Used by the Market Heatmap to render a tiny live mini-chart per ticker
+// without firing N independent serverFn calls from the client.
+// Each symbol is fetched in parallel (chunked), cached briefly so the
+// dashboard's 30s heatmap refetch interval stays near-realtime.
+export const getSparklines = createServerFn({ method: "POST" })
+  .inputValidator((d: { symbols: string[]; range?: "1d" | "5d" }) =>
+    z.object({
+      symbols: z.array(z.string().min(1).max(20)).min(1).max(150),
+      range: z.enum(["1d", "5d"]).optional().default("1d"),
+    }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const interval = data.range === "5d" ? "30m" : "5m";
+    const range = data.range;
+    async function one(symbol: string): Promise<{ symbol: string; closes: number[] }> {
+      const key = `spark:${symbol}:${range}`;
+      return cached(key, 30_000, async () => {
+        try {
+          const r = await yfFetch(
+            `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${interval}&range=${range}`,
+          );
+          const result = r?.chart?.result?.[0];
+          const closes: number[] = (result?.indicators?.quote?.[0]?.close ?? [])
+            .filter((v: any) => typeof v === "number" && isFinite(v));
+          // Down-sample to at most 40 points so payload stays small.
+          const max = 40;
+          if (closes.length <= max) return { symbol, closes };
+          const step = closes.length / max;
+          const ds: number[] = [];
+          for (let i = 0; i < max; i++) ds.push(closes[Math.floor(i * step)]);
+          ds.push(closes[closes.length - 1]);
+          return { symbol, closes: ds };
+        } catch {
+          return { symbol, closes: [] };
+        }
+      });
+    }
+    const out = await fetchInChunks(data.symbols, 12, one);
+    const map: Record<string, number[]> = {};
+    for (const r of out) map[r.symbol] = r.closes;
+    return map;
+  });
+
 export const searchTicker = createServerFn({ method: "POST" })
   .inputValidator((d: { q: string }) => z.object({ q: z.string().min(1).max(40) }).parse(d))
   .handler(async ({ data }) => {
