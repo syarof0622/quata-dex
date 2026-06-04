@@ -1112,7 +1112,7 @@ function AIAgentPanel() {
                   return (
                     <div key={d.symbol} className="panel p-3 space-y-2 border border-border opacity-80">
                       <div className="flex items-center justify-between gap-2">
-                        <div className="font-mono font-semibold">{d.symbol}</div>
+                        <div className="font-mono font-semibold">{displaySymbol(d.symbol)}</div>
                         <span className="text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded bg-muted text-muted-foreground">Menunggu</span>
                       </div>
                       <div className="text-[11px] text-muted-foreground">Menunggu refresh data berikutnya untuk menghasilkan trade plan.</div>
