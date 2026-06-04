@@ -1156,7 +1156,7 @@ function AIAgentPanel() {
                 return (
                   <div key={d.id} className={`panel p-3 space-y-2 border ${executed && isBuy ? "border-bull/40" : executed && isExit ? "border-bear/40" : "border-border"}`}>
                     <div className="flex items-center justify-between gap-2">
-                      <div className="font-mono font-semibold">{d.symbol}</div>
+                      <div className="font-mono font-semibold">{displaySymbol(d.symbol)}</div>
                       <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${cardKind.cls}`} title={conf.tooltip}>
                         {cardKind.label}{da.intent && !executed && exec.status !== "hold_position" ? ` · intent ${da.intent}` : ""} · {conf.label}
                       </span>
