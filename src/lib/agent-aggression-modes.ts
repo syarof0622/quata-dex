@@ -61,6 +61,13 @@ export const AGGRESSION_PRESETS: Record<AggressionMode, AggressionPreset> = {
     maxActivePositions: 20, minBuyConfidence: 0.45, minRR: 2.5, minAutonomousScore: 50,
     allowTechnicalWithoutFundamental: true, allowRotation: true,
   },
+  swing_max: {
+    mode: "swing_max", label: "Swing Max",
+    description: "Swing trading disiplin: hold 2–5 hari, entry selektif, RR ≥ 2.0, anti-churn, paper only.",
+    targetExposurePct: 0.45, minPositionWeightPct: 0.040, maxPositionWeightPct: 0.08,
+    maxActivePositions: 4, minBuyConfidence: 0.65, minRR: 2.0, minAutonomousScore: 70,
+    allowTechnicalWithoutFundamental: true, allowRotation: false,
+  },
 };
 
 export function getPreset(mode: string | null | undefined): AggressionPreset {
