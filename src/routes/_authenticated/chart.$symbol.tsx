@@ -49,7 +49,8 @@ function tvSymbol(sym: string): string {
     const m: Record<string, string> = {
       "^GSPC": "SP:SPX", "^IXIC": "NASDAQ:IXIC", "^DJI": "DJ:DJI",
       "^RUT": "TVC:RUT", "^VIX": "TVC:VIX",
-      "^JKSE": "TVC:IDX", "^JKLQ45": "IDX:LQ45",
+      // IHSG composite di TradingView: IDX:COMPOSITE
+      "^JKSE": "IDX:COMPOSITE", "^JKLQ45": "IDX:LQ45",
       "^N225": "TVC:NI225", "^HSI": "TVC:HSI", "^STI": "TVC:STI",
     };
     return m[s] ?? `TVC:${s.slice(1)}`;
