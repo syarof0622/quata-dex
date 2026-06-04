@@ -49,16 +49,6 @@ function Dashboard() {
         subtitle="Realtime overview · IDX, indices, movers, news"
         actions={marketToggle}
       />
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="hidden">
-        <div className="min-w-0" />
-        <div className="inline-flex rounded-lg border border-border p-0.5 bg-card/40">
-          {(["idx", "us", "global"] as const).map(m => (
-            <Button key={m} size="sm" variant={market === m ? "default" : "ghost"} onClick={() => setMarket(m)} className="h-7 px-2.5 text-[11.5px]">
-              {m === "idx" ? "🇮🇩 IDX" : m === "us" ? "🇺🇸 US" : "🌐 Global"}
-            </Button>
-          ))}
-        </div>
-      </motion.div>
 
       {/* Indices — horizontal scroll on mobile, grid on md+ */}
       <div className="-mx-3 md:mx-0 px-3 md:px-0">
