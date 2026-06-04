@@ -92,10 +92,13 @@ function Screener() {
 
   return (
     <div className="p-4 md:p-6 space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold flex items-center gap-2"><Filter className="size-5" /> Stock Screener</h1>
-        <p className="text-sm text-muted-foreground">Technical + fundamental screening untuk peluang trade & undervalued</p>
-      </div>
+      <PageHero
+        eyebrow="Research"
+        icon={Filter}
+        title="Stock Screener"
+        subtitle="Technical + fundamental screening untuk peluang trade & undervalued"
+      />
+
 
       <Tabs defaultValue="technical">
         <TabsList>
