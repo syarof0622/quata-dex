@@ -265,6 +265,33 @@ async function executePaperFill(opts: {
   const feePct = side === "buy" ? BUY_FEE_PCT : SELL_FEE_PCT;
   const fee = +(notional * feePct).toFixed(2);
 
+  // ===== Loss-Protection SELL guard: minimum holding period =====
+  if (side === "sell") {
+    try {
+      const { data: agentRow } = await supabaseAdmin
+        .from("ai_trade_agents").select("*").eq("id", agentId).maybeSingle();
+      const { data: posRow } = await supabaseAdmin
+        .from("paper_positions").select("created_at")
+        .eq("user_id", USER_ID).eq("symbol", symbol).maybeSingle();
+      if (agentRow && posRow?.created_at) {
+        const { evaluateSellGuards } = await import("./loss-protection.server");
+        const guard = evaluateSellGuards({
+          agent: agentRow,
+          symbol,
+          positionOpenedAt: posRow.created_at,
+          exitReason: closeReason ?? null,
+        });
+        if (!guard.allow) {
+          throw new Error(`min_hold_not_reached: position too young (<${guard.minHoldMinutes}m), exitReason=${closeReason ?? "signal"}`);
+        }
+      }
+    } catch (e: any) {
+      if (e?.message?.startsWith("min_hold_not_reached")) throw e;
+      // non-fatal: continue on lookup failure
+    }
+  }
+
+
   const { data: account } = await supabaseAdmin.from("paper_accounts").select("*").eq("id", paperAccountId).single();
   if (!account) throw new Error("paper account missing");
   const cashBefore = Number(account.cash);
