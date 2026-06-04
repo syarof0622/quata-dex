@@ -97,7 +97,7 @@ export function PortfolioAttributionPanel({ data }: Props) {
               )}
               {positions.map((p) => (
                 <tr key={p.symbol} className="border-t border-border">
-                  <td className="p-2 font-medium">{p.symbol}</td>
+                  <td className="p-2 font-medium">{displaySymbol(p.symbol)}</td>
                   <td className="p-2 text-xs text-muted-foreground">{p.sector}</td>
                   <td className="p-2 text-right font-mono text-xs">{p.weight.toFixed(1)}%</td>
                   <td className={`p-2 text-right font-mono text-xs ${colorForChange(p.unrealizedPnl)}`}>{money(p.unrealizedPnl)}</td>
