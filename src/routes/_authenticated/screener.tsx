@@ -102,7 +102,7 @@ function Screener() {
 
       <Tabs defaultValue="technical">
         <TabsList>
-          <TabsTrigger value="technical"><Filter className="size-3.5 mr-1" /> Technical</TabsTrigger>
+          <TabsTrigger value="technical"><Filter className="size-3.5 mr-1" /> Teknikal</TabsTrigger>
           <TabsTrigger value="undervalued"><Gem className="size-3.5 mr-1" /> Undervalued (Fundamental)</TabsTrigger>
           <TabsTrigger value="disclosure"><ShieldAlert className="size-3.5 mr-1" /> Disclosure / Corporate Action</TabsTrigger>
         </TabsList>
@@ -128,7 +128,7 @@ function Screener() {
       {/* Filters */}
       <div className="panel p-4 grid md:grid-cols-3 lg:grid-cols-6 gap-3">
         <div className="md:col-span-3">
-          <label className="text-xs text-muted-foreground">Signal labels</label>
+          <label className="text-xs text-muted-foreground">Label sinyal</label>
           <div className="flex flex-wrap gap-1 mt-1">
             {LABELS.map(l => (
               <Button key={l} size="sm" variant={f.labels.has(l) ? "default" : "outline"} className="h-7 text-[11px]" onClick={() => toggleLabel(l)}>
@@ -150,24 +150,24 @@ function Screener() {
           <Input type="number" value={f.minTrend} onChange={e => setF({ ...f, minTrend: parseFloat(e.target.value || "0") })} />
         </div>
         <div>
-          <label className="text-xs text-muted-foreground">Sector</label>
+          <label className="text-xs text-muted-foreground">Sektor</label>
           <select value={f.sector} onChange={e => setF({ ...f, sector: e.target.value as any })} className="w-full h-9 px-2 rounded-md bg-background border border-border text-sm">
-            <option value="all">All</option>
+            <option value="all">Semua</option>
             {ALL_SECTORS.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
         <div>
-          <label className="text-xs text-muted-foreground">Sort by</label>
+          <label className="text-xs text-muted-foreground">Urutkan berdasarkan</label>
           <select value={f.sortBy} onChange={e => setF({ ...f, sortBy: e.target.value as any })} className="w-full h-9 px-2 rounded-md bg-background border border-border text-sm">
             <option value="score">AI Score</option>
-            <option value="changePct">% Change</option>
+            <option value="changePct">% Perubahan</option>
             <option value="rsi">RSI</option>
             <option value="volRel">Relative Volume (RVOL)</option>
             <option value="trendStrength">Trend</option>
           </select>
         </div>
         <div className="flex items-end justify-end text-xs text-muted-foreground md:col-span-6">
-          {data.isFetching ? "Computing…" : `${rows.length} / ${data.data?.length ?? 0} match`}
+          {data.isFetching ? "Menghitung…" : `${rows.length} / ${data.data?.length ?? 0} cocok`}
         </div>
       </div>
 
@@ -177,15 +177,15 @@ function Screener() {
           <thead className="text-xs text-muted-foreground">
             <tr>
               <th className="text-left p-2">Symbol</th>
-              <th className="text-left p-2">Sector</th>
-              <th className="text-right p-2">Price</th>
-              <th className="text-right p-2">Chg%</th>
+              <th className="text-left p-2">Sektor</th>
+              <th className="text-right p-2">Harga</th>
+              <th className="text-right p-2">Ubh%</th>
               <th className="text-center p-2" title="Market direction bias — bukan instruksi entry langsung">Bias</th>
-              <th className="text-center p-2" title="Apakah setup sudah valid untuk eksekusi">Action</th>
+              <th className="text-center p-2" title="Apakah setup sudah valid untuk eksekusi">Aksi</th>
               <th className="text-center p-2" title="Trade setup quality grade">Setup</th>
-              <th className="text-center p-2">Risk</th>
-              <th className="text-right p-2">Score</th>
-              <th className="text-right p-2">Conf</th>
+              <th className="text-center p-2">Risiko</th>
+              <th className="text-right p-2">Skor</th>
+              <th className="text-right p-2">Konf.</th>
               <th className="text-right p-2">RSI</th>
               <th className="text-right p-2">ADX</th>
               <th className="text-right p-2" title="Relative Volume = volume hari ini ÷ rata-rata 20 hari">RVOL</th>
@@ -350,23 +350,23 @@ function UndervaluedPanel() {
           </select>
         </div>
         <div>
-          <label className="text-xs text-muted-foreground">Classification</label>
+          <label className="text-xs text-muted-foreground">Klasifikasi</label>
           <select value={classFilter} onChange={e => setClassFilter(e.target.value as any)} className="h-9 px-2 rounded-md bg-background border border-border text-sm">
-            <option value="all">All</option>
+            <option value="Semua">Semua</option>
             <option value="strong_undervalued">Strong Undervalue</option>
             <option value="undervalued">Undervalued</option>
             <option value="fair_value">Fair Value</option>
             <option value="overvalued">Overvalued</option>
             <option value="value_trap_risk">Value Trap</option>
-            <option value="insufficient_data">Insufficient Data</option>
+            <option value="insufficient_data">Data Tidak Cukup</option>
           </select>
         </div>
         <div>
-          <label className="text-xs text-muted-foreground">Limit</label>
+          <label className="text-xs text-muted-foreground">Batas</label>
           <Input type="number" min={1} max={30} value={limit} onChange={e => setLimit(parseInt(e.target.value || "10", 10))} className="w-24" />
         </div>
         <Button onClick={() => scan.mutate()} disabled={scan.isPending}>
-          {scan.isPending ? "Scanning…" : "Run Fundamental Scan"}
+          {scan.isPending ? "Memindai…" : "Jalankan Analisis Fundamental"}
         </Button>
         <div className="text-[11px] text-muted-foreground ml-auto">
           Fundamental scan menggunakan data publik Yahoo Finance · skor dievaluasi 8 dimensi · saham dengan data tidak cukup ditandai INSUFFICIENT DATA, bukan undervalued.
@@ -379,18 +379,18 @@ function UndervaluedPanel() {
           <thead className="text-xs text-muted-foreground">
             <tr>
               <th className="text-left p-2">Symbol</th>
-              <th className="text-left p-2">Classification</th>
-              <th className="text-right p-2" title="Final undervalue score (0-100)">Score</th>
+              <th className="text-left p-2">Klasifikasi</th>
+              <th className="text-right p-2" title="Final undervalue score (0-100)">Skor</th>
               <th className="text-right p-2" title="Valuation (PER/PBV)">Val</th>
               <th className="text-right p-2" title="Quality (ROE/ROA/margin)">Qual</th>
-              <th className="text-right p-2" title="Financial health (DER/FCF)">Health</th>
-              <th className="text-right p-2" title="Growth (revenue/profit YoY)">Growth</th>
+              <th className="text-right p-2" title="Financial health (DER/FCF)">Kesehatan</th>
+              <th className="text-right p-2" title="Growth (revenue/profit YoY)">Pertumbuhan</th>
               <th className="text-right p-2" title="Dividend yield + payout">Div</th>
-              <th className="text-right p-2" title="Sector relative">Sector</th>
+              <th className="text-right p-2" title="Sector relative">Sektor</th>
               <th className="text-right p-2" title="Technical timing">Timing</th>
               <th className="text-right p-2" title="Value-trap risk (lower=better)">Trap</th>
               <th className="text-left p-2" title="Latest official IDX/BEI disclosure">Disclosure</th>
-              <th className="text-left p-2">Reasoning</th>
+              <th className="text-left p-2">Alasan</th>
             </tr>
           </thead>
           <tbody>
@@ -502,8 +502,8 @@ function DisclosurePanel() {
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
         {([
-          ["all", "All"],
-          ["high_impact", "High Impact"],
+          ["all", "Semua"],
+          ["high_impact", "Dampak Tinggi"],
           ["uma_suspension", "UMA / Suspension"],
           ["dividend_buyback", "Dividend / Buyback"],
           ["rights_issue", "Rights Issue"],
@@ -514,7 +514,7 @@ function DisclosurePanel() {
         ))}
       </div>
 
-      {q.isLoading && <div className="text-sm text-muted-foreground">Loading…</div>}
+      {q.isLoading && <div className="text-sm text-muted-foreground">Memuat…</div>}
       {!q.isLoading && rows.length === 0 && (
         <div className="panel p-6 text-center text-sm text-muted-foreground">
           Tidak ada disclosure / corporate action / regulatory event yang cocok.

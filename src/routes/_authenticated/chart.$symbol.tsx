@@ -38,7 +38,7 @@ const TF_LABEL: Record<(typeof TFS)[number], string> = {
   "5": "5m", "15": "15m", "60": "1h", "240": "4h", D: "1D", W: "1W",
 };
 const TF_FULL: Record<(typeof TFS)[number], string> = {
-  "5": "5-Minute", "15": "15-Minute", "60": "1-Hour", "240": "4-Hour", D: "Daily", W: "Weekly",
+  "5": "5-Menit", "15": "15-Menit", "60": "1-Jam", "240": "4-Jam", D: "Harian", W: "Mingguan",
 };
 const tfToYf = (tf: string) =>
   tf === "D" ? "1d" : tf === "W" ? "1wk" : tf === "60" ? "1h" : tf === "240" ? "4h" : `${tf}m`;
@@ -200,7 +200,7 @@ function ChartPage() {
           {sig?.dataQuality && <DataQualityBadge q={sig.dataQuality} notes={sig.dataNotes} />}
         </div>
         <div className="text-[11px] text-muted-foreground mt-0.5">
-          Signal is calculated based on the selected timeframe.
+          Sinyal dihitung berdasarkan timeframe yang dipilih.
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Market Bias</span>
@@ -213,7 +213,7 @@ function ChartPage() {
             <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Execution</span>
             <span className={`inline-flex px-2 py-0.5 rounded text-[11px] font-medium ${
               sig.executionStatus === "Ready to Trade" ? "bg-bull-soft text-bull" :
-              sig.executionStatus === "No Trade" ? "bg-accent/40 text-muted-foreground" :
+              sig.executionStatus === "Tidak Ada Trade" ? "bg-accent/40 text-muted-foreground" :
               "bg-yellow-500/20 text-yellow-500"
             }`}>{sig.executionStatus}</span>
             {sig.executionReason && (
@@ -222,22 +222,22 @@ function ChartPage() {
           </div>
         )}
         <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
-          <Stat label="Confidence" value={sig?.confidence ?? legacy.data?.confidence} suffix="%"
+          <Stat label="Kepercayaan" value={sig?.confidence ?? legacy.data?.confidence} suffix="%"
             hint={sig?.confidenceLabel} tip="How much the model trusts this signal: blends factor agreement, signal magnitude, volatility and data quality." />
           <Stat label="AI Score" value={sig?.score ?? legacy.data?.score}
             tip="Composite directional score from -100 (strong sell) to +100 (strong buy)." />
-          <Stat label="Risk" value={sig?.risk} hint={sig?.riskLabel}
+          <Stat label="Risiko" value={sig?.risk} hint={sig?.riskLabel}
             tip="0–30 Low · 31–60 Medium · 61–80 High · 81–100 Extreme. Driven by ATR%, regime volatility, choppiness and data quality." />
         </div>
         {sig && (
           <>
             <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-              <Stat label="Trend Strength" value={sig.trendStrength ?? "N/A"} hint={sig.trendStrengthLabel}
+              <Stat label="Kekuatan Trend" value={sig.trendStrength ?? "N/A"} hint={sig.trendStrengthLabel}
                 tip="ADX (0–100): <20 Weak · 20–30 Developing · 30–50 Strong · 50–70 Very Strong · >70 Extreme. N/A if data insufficient." />
-              <Stat label="Volatility" value={sig.volatilityLevel} tip="ATR% bucket — low / medium / high." />
-              <Stat label="Continuation Probability" value={sig.probContinuation} suffix="%"
+              <Stat label="Volatilitas" value={sig.volatilityLevel} tip="ATR% bucket — low / medium / high." />
+              <Stat label="Prob. Kelanjutan" value={sig.probContinuation} suffix="%"
                 tip="Heuristic chance the current move continues over the next bars." />
-              <Stat label="Reversal Probability" value={sig.probReversal} suffix="%"
+              <Stat label="Prob. Pembalikan" value={sig.probReversal} suffix="%"
                 tip="Heuristic chance of a reversal — complement of continuation." />
             </div>
             <div className="mt-3 grid grid-cols-5 gap-1 text-[10px]">
@@ -246,12 +246,12 @@ function ChartPage() {
               ))}
             </div>
             <div className="mt-3 text-xs text-muted-foreground">
-              Style: <span className="text-foreground capitalize">{sig.recommendedStyle}</span> · Regime:{" "}
+              Gaya: <span className="text-foreground capitalize">{sig.recommendedStyle}</span> · Regime:{" "}
               <span className="text-foreground capitalize">{sig.regime.trend}/{sig.regime.phase}</span>
             </div>
             {sig.invalidations.length > 0 && (
               <div className="mt-3 text-xs">
-                <div className="flex items-center gap-1 text-bear mb-1"><ShieldAlert className="size-3" /> Invalidations</div>
+                <div className="flex items-center gap-1 text-bear mb-1"><ShieldAlert className="size-3" /> Invalidasi</div>
                 <ul className="space-y-1 text-muted-foreground">
                   {sig.invalidations.map((r, i) => <li key={i}>• {r}</li>)}
                 </ul>
@@ -259,14 +259,14 @@ function ChartPage() {
             )}
             {sig.dataQuality !== "high" && (
               <div className="mt-3 text-[11px] text-muted-foreground border-t border-border pt-2">
-                Signal confidence reduced due to {sig.dataQuality === "low" ? "low" : "limited"}-quality data.
+                Kepercayaan sinyal dikurangi karena {sig.dataQuality === "low" ? "rendah" : "terbatas"}-kualitas data.
               </div>
             )}
           </>
         )}
         {!sig && legacy.data?.reasons && (
           <div className="mt-3">
-            <div className="text-xs text-muted-foreground mb-1">Reasoning</div>
+            <div className="text-xs text-muted-foreground mb-1">Alasan</div>
             <ul className="text-xs space-y-1">
               {legacy.data.reasons.map((r: string, i: number) => <li key={i}>• {r}</li>)}
             </ul>
@@ -352,7 +352,7 @@ function ChartPage() {
                 await addToWatchlist({ data: { symbol } });
                 qc.invalidateQueries({ queryKey: ["watchlist"] });
                 qc.invalidateQueries({ queryKey: ["wl-rank"] });
-                toast.success(`Added ${symbol} to watchlist`);
+                toast.success(`${symbol} ditambahkan ke watchlist`);
               }}
             >
               <Star className="size-4" />
@@ -360,13 +360,13 @@ function ChartPage() {
             {isMobile ? (
               <Sheet open={mobilePanelOpen} onOpenChange={setMobilePanelOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="outline" size="sm" title="Open AI panel">
+                  <Button variant="outline" size="sm" title="Buka panel AI">
                     <PanelRightOpen className="size-4" />
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
                   <SheetHeader>
-                    <SheetTitle>AI Signal & Trading Tools</SheetTitle>
+                    <SheetTitle>Sinyal AI & Alat Trading</SheetTitle>
                   </SheetHeader>
                   <div className="mt-3">{rightPanelContent}</div>
                 </SheetContent>
@@ -376,7 +376,7 @@ function ChartPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setPanelOpen(o => !o)}
-                title={panelOpen ? "Collapse panel" : "Expand panel"}
+                title={panelOpen ? "Tutup panel" : "Buka panel"}
                 className="hidden xl:inline-flex"
               >
                 {panelOpen ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />}
@@ -402,10 +402,10 @@ function ChartPage() {
         <div className="panel p-4">
           <Tabs defaultValue="setup">
             <TabsList className="flex-wrap h-auto gap-1">
-              <TabsTrigger value="setup">Trade Setup</TabsTrigger>
-              <TabsTrigger value="reasoning">AI Reasoning</TabsTrigger>
-              <TabsTrigger value="sr">Support/Resistance</TabsTrigger>
-              <TabsTrigger value="technical">Technical</TabsTrigger>
+              <TabsTrigger value="setup">Setup Trade</TabsTrigger>
+              <TabsTrigger value="reasoning">Alasan AI</TabsTrigger>
+              <TabsTrigger value="sr">Dukungan/Resistansi</TabsTrigger>
+              <TabsTrigger value="technical">Teknikal</TabsTrigger>
               <TabsTrigger value="fundamental">Fundamental</TabsTrigger>
               <TabsTrigger value="smart">Smart Money</TabsTrigger>
             </TabsList>
@@ -502,11 +502,11 @@ function TradeSetupPanel({
   onPlace: (side: "buy" | "sell", qty: number) => Promise<void>; price: number;
 }) {
   const [qty, setQty] = useState(10);
-  if (!setup) return <div className="text-sm text-muted-foreground">Computing trade setup…</div>;
+  if (!setup) return <div className="text-sm text-muted-foreground">Menghitung setup trade…</div>;
   if (setup.bias === "neutral") {
     return (
       <div className="text-sm text-muted-foreground flex items-center gap-2">
-        <Zap className="size-4" /> No actionable setup — wait for clearer signal.
+        <Zap className="size-4" /> Tidak ada setup yang bisa dieksekusi — tunggu sinyal lebih jelas.
       </div>
     );
   }
@@ -525,16 +525,16 @@ function TradeSetupPanel({
         </span>
         {q && (
           <span className={`px-2 py-1 rounded text-xs font-semibold border ${gradeTone}`}>
-            Setup quality: {q.grade} · {q.score}/100
+            Kualitas setup: {q.grade} · {q.score}/100
           </span>
         )}
         {setup.conditional && (
           <span className="px-2 py-1 rounded text-xs font-semibold border bg-yellow-500/10 text-yellow-500 border-yellow-500/30">
-            Conditional {long ? "Long" : "Short"} — wait for confirmation
+            Kondisional {long ? "Long" : "Short"} — tunggu konfirmasi
           </span>
         )}
         <span className="text-xs text-muted-foreground">
-          Risk per trade: <span className="text-foreground">{setup.riskPerTradePct}%</span> · Suggested allocation:{" "}
+          Risiko per trade: <span className="text-foreground">{setup.riskPerTradePct}%</span> · Alokasi disarankan:{" "}
           <span className="text-foreground">{setup.suggestedAllocationPct}%</span>
         </span>
       </div>
@@ -697,9 +697,9 @@ function ReasoningPanel({ signal, regime, mctx, setup, symbol, fmt }: {
         <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Why this signal</div>
         <div className="text-foreground font-medium">{headline}</div>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1 text-xs">
-          <div><span className="text-muted-foreground">Market Bias:</span> <span className="font-medium">{label}</span></div>
+          <div><span className="text-muted-foreground">Bias Pasar:</span> <span className="font-medium">{label}</span></div>
           <div><span className="text-muted-foreground">Execution:</span> <span className="font-medium">{execStatus}</span></div>
-          <div><span className="text-muted-foreground">Confidence:</span> <span className="font-medium">{signal.confidence ?? 0}/100</span></div>
+          <div><span className="text-muted-foreground">Kepercayaan:</span> <span className="font-medium">{signal.confidence ?? 0}/100</span></div>
           {signal.trendStrength != null
             ? <div><span className="text-muted-foreground">ADX:</span> <span className="font-medium">{Math.round(signal.trendStrength)}</span></div>
             : <div><span className="text-muted-foreground">ADX:</span> <span className="font-medium">N/A</span></div>}
@@ -728,7 +728,7 @@ function ReasoningPanel({ signal, regime, mctx, setup, symbol, fmt }: {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
             <CtxCell label={mctx.benchmark.name} value={`${mctx.benchmark.trend}`} sub={mctx.benchmark.change20d != null ? `${mctx.benchmark.change20d > 0 ? "+" : ""}${mctx.benchmark.change20d}% 20d` : "—"} />
             <CtxCell label={`Sektor ${mctx.sector.name}`} value={mctx.sector.proxy ? mctx.sector.trend : "n/a"} sub={mctx.sector.proxy ? (mctx.sector.change20d != null ? `${mctx.sector.change20d > 0 ? "+" : ""}${mctx.sector.change20d}% 20d` : "—") : "no proxy"} />
-            <CtxCell label="Rel. strength vs index" value={mctx.relativeStrength.vsBenchmark != null ? `${mctx.relativeStrength.vsBenchmark > 0 ? "+" : ""}${mctx.relativeStrength.vsBenchmark}%` : "—"} sub={mctx.relativeStrength.vsBenchmark != null && mctx.relativeStrength.vsBenchmark > 0 ? "outperforming" : mctx.relativeStrength.vsBenchmark != null ? "underperforming" : ""} />
+            <CtxCell label="Kekuatan rel. vs indeks" value={mctx.relativeStrength.vsBenchmark != null ? `${mctx.relativeStrength.vsBenchmark > 0 ? "+" : ""}${mctx.relativeStrength.vsBenchmark}%` : "—"} sub={mctx.relativeStrength.vsBenchmark != null && mctx.relativeStrength.vsBenchmark > 0 ? "outperforming" : mctx.relativeStrength.vsBenchmark != null ? "underperforming" : ""} />
             <CtxCell label="Beta · Corr" value={`${mctx.beta ?? "—"} · ${mctx.correlation ?? "—"}`} sub={`Session: ${mctx.session}`} />
           </div>
         </div>
@@ -760,8 +760,8 @@ function ReasoningPanel({ signal, regime, mctx, setup, symbol, fmt }: {
           {regime && (
             <>
               <li className="text-foreground">Regime: <span className="capitalize">{regime.trend}</span> · phase {regime.phase}</li>
-              <li>Volatility: <span className="capitalize">{regime.volatility}</span></li>
-              {regime.bestStrategy && <li className="md:col-span-2">Strategy fit: {regime.bestStrategy}</li>}
+              <li>Volatilitas: <span className="capitalize">{regime.volatility}</span></li>
+              {regime.bestStrategy && <li className="md:col-span-2">Cocok untuk strategi: {regime.bestStrategy}</li>}
             </>
           )}
           {(signal.invalidations ?? []).map((r: string, i: number) => (
@@ -800,10 +800,10 @@ function ReasoningPanel({ signal, regime, mctx, setup, symbol, fmt }: {
         <ul className="text-xs grid md:grid-cols-2 gap-x-4 gap-y-1">
           <li><span className="text-muted-foreground">Bias:</span> <span className="font-medium">{decision.bias}</span></li>
           <li><span className="text-muted-foreground">Execution:</span> <span className="font-medium">{decision.execution}</span></li>
-          <li><span className="text-muted-foreground">Best Strategy:</span> <span className="font-medium">{decision.strategy}</span></li>
+          <li><span className="text-muted-foreground">Strategi Terbaik:</span> <span className="font-medium">{decision.strategy}</span></li>
           <li><span className="text-muted-foreground">Risk:</span> <span className="font-medium">{decision.risk}</span></li>
-          <li className="md:col-span-2"><span className="text-muted-foreground">Avoid:</span> <span className="font-medium">{decision.avoid}</span></li>
-          <li className="md:col-span-2"><span className="text-muted-foreground">Trigger:</span> <span className="font-medium">{decision.trigger}</span></li>
+          <li className="md:col-span-2"><span className="text-muted-foreground">Hindari:</span> <span className="font-medium">{decision.avoid}</span></li>
+          <li className="md:col-span-2"><span className="text-muted-foreground">Pemicu:</span> <span className="font-medium">{decision.trigger}</span></li>
         </ul>
       </div>
     </div>
@@ -821,13 +821,13 @@ function CtxCell({ label, value, sub }: { label: string; value: string; sub?: st
 }
 
 function SRPanel({ zones, price, fmt }: { zones: any[]; price: number; fmt: (n: any) => string }) {
-  if (!zones?.length) return <div className="text-sm text-muted-foreground">No clear S/R zones detected.</div>;
+  if (!zones?.length) return <div className="text-sm text-muted-foreground">Tidak ada zona S/R yang terdeteksi.</div>;
   const supports = zones.filter(z => z.kind === "support").sort((a, b) => b.price - a.price);
   const resistances = zones.filter(z => z.kind === "resistance").sort((a, b) => a.price - b.price);
   return (
     <div className="grid md:grid-cols-2 gap-4 text-sm">
       <div>
-        <h4 className="font-semibold text-bear mb-2">Resistances</h4>
+        <h4 className="font-semibold text-bear mb-2">Resistansi</h4>
         <ul className="space-y-1">
           {resistances.slice(0, 6).map((z, i) => (
             <li key={i} className="flex justify-between font-mono text-xs">
@@ -838,7 +838,7 @@ function SRPanel({ zones, price, fmt }: { zones: any[]; price: number; fmt: (n: 
         </ul>
       </div>
       <div>
-        <h4 className="font-semibold text-bull mb-2">Supports</h4>
+        <h4 className="font-semibold text-bull mb-2">Dukungan</h4>
         <ul className="space-y-1">
           {supports.slice(0, 6).map((z, i) => (
             <li key={i} className="flex justify-between font-mono text-xs">
@@ -848,7 +848,7 @@ function SRPanel({ zones, price, fmt }: { zones: any[]; price: number; fmt: (n: 
           ))}
         </ul>
       </div>
-      <div className="md:col-span-2 text-xs text-muted-foreground">Current price: <span className="font-mono text-foreground">{fmt(price)}</span></div>
+      <div className="md:col-span-2 text-xs text-muted-foreground">Harga saat ini: <span className="font-mono text-foreground">{fmt(price)}</span></div>
     </div>
   );
 }
@@ -890,7 +890,7 @@ function SmartMoneyPanel({ symbol }: { symbol: string }) {
     queryFn: () => smartMoney({ data: { symbol } }),
     refetchInterval: 60_000,
   });
-  if (!q.data) return <div className="text-sm text-muted-foreground">Analyzing institutional flow…</div>;
+  if (!q.data) return <div className="text-sm text-muted-foreground">Menganalisis aliran institusional…</div>;
   const d: any = q.data;
   const tone = d.score > 15 ? "text-bull" : d.score < -15 ? "text-bear" : "text-muted-foreground";
   const qualityBadge = d.quality === "high" ? "bg-bull-soft text-bull" : d.quality === "medium" ? "bg-accent/40" : "bg-muted/40 text-muted-foreground";
@@ -960,7 +960,7 @@ function SentimentPanel({ symbol }: { symbol: string }) {
   return (
     <div className="panel p-4">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="font-semibold">News Sentiment</h3>
+        <h3 className="font-semibold">Sentimen Berita</h3>
         <div className="flex items-center gap-2">
           <span className={`text-sm font-semibold ${tone}`}>
             {d.label}{hasScore && d.relevantCount > 0 ? ` · ${d.score}` : ""}
@@ -971,22 +971,22 @@ function SentimentPanel({ symbol }: { symbol: string }) {
             className="text-[10px] px-2 py-0.5 rounded border border-border hover:bg-accent/40 disabled:opacity-50"
             title="Refresh news"
           >
-            {q.isFetching ? "…" : "Refresh"}
+            {q.isFetching ? "…" : "Perbarui"}
           </button>
         </div>
       </div>
       <div className="text-[11px] text-muted-foreground mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
-        <span>Confidence: <span className="text-foreground">{d.confidence}%</span></span>
-        <span>News: <span className="text-foreground">{d.newsCount}</span></span>
-        <span>Relevant: <span className="text-foreground">{d.relevantCount}</span></span>
-        <span>Quality: <span className="text-foreground">{d.relevanceQuality}</span></span>
-        {updated && <span>Updated: <span className="text-foreground">{updatedLabel}</span></span>}
+        <span>Kepercayaan: <span className="text-foreground">{d.confidence}%</span></span>
+        <span>Berita: <span className="text-foreground">{d.newsCount}</span></span>
+        <span>Relevan: <span className="text-foreground">{d.relevantCount}</span></span>
+        <span>Kualitas: <span className="text-foreground">{d.relevanceQuality}</span></span>
+        {updated && <span>Diperbarui: <span className="text-foreground">{updatedLabel}</span></span>}
       </div>
 
       {dbSent.data && (
         <div className="mt-2 p-2 rounded bg-accent/20 border border-border/50 text-[11px] space-y-0.5">
           <div className="flex items-center justify-between">
-            <span className="font-semibold text-foreground">24h aggregated (multi-source)</span>
+            <span className="font-semibold text-foreground">Agregat 24j (multi-sumber)</span>
             <span className={
               (dbSent.data as any).average_sentiment_score > 0.15 ? "text-bull" :
               (dbSent.data as any).average_sentiment_score < -0.15 ? "text-bear" : "text-muted-foreground"
@@ -998,7 +998,7 @@ function SentimentPanel({ symbol }: { symbol: string }) {
             <span className="text-bull">+{(dbSent.data as any).positive_count}</span>
             <span>={(dbSent.data as any).neutral_count}</span>
             <span className="text-bear">−{(dbSent.data as any).negative_count}</span>
-            <span>High-impact: <span className="text-foreground">{(dbSent.data as any).high_impact_news_count}</span></span>
+            <span>Dampak tinggi: <span className="text-foreground">{(dbSent.data as any).high_impact_news_count}</span></span>
           </div>
         </div>
       )}
@@ -1011,9 +1011,9 @@ function SentimentPanel({ symbol }: { symbol: string }) {
 
       <div className="mt-3 flex gap-1 text-[11px]">
         {([
-          ["relevant", `Relevant (${d.relevantCount ?? 0})`],
-          ["general", `General (${d.generalCount ?? 0})`],
-          ["sources", `Sources (${(d.sourceBreakdown ?? []).length})`],
+          ["relevant", `Relevan (${d.relevantCount ?? 0})`],
+          ["general", `Umum (${d.generalCount ?? 0})`],
+          ["sources", `Sumber (${(d.sourceBreakdown ?? []).length})`],
         ] as const).map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)}
             className={`px-2 py-1 rounded ${tab === k ? "bg-primary text-primary-foreground" : "bg-accent/40 hover:bg-accent/60"}`}>
@@ -1025,7 +1025,7 @@ function SentimentPanel({ symbol }: { symbol: string }) {
       {tab === "relevant" && (
         <ul className="mt-2 text-xs space-y-1 max-h-48 overflow-auto">
           {(d.relevant ?? []).length === 0 ? (
-            <li className="text-muted-foreground">No highly relevant news found for {symbol}.</li>
+            <li className="text-muted-foreground">Tidak ada berita yang sangat relevan untuk {symbol}.</li>
           ) : (
             (d.relevant ?? []).slice(0, 8).map(renderItem)
           )}
@@ -1034,17 +1034,17 @@ function SentimentPanel({ symbol }: { symbol: string }) {
       {tab === "general" && (
         <ul className="mt-2 text-xs space-y-1 max-h-48 overflow-auto">
           {(d.general ?? []).length === 0 ? (
-            <li className="text-muted-foreground">No general market news for context.</li>
+            <li className="text-muted-foreground">Tidak ada berita pasar umum untuk konteks.</li>
           ) : (
             (d.general ?? []).slice(0, 8).map(renderItem)
           )}
-          <li className="text-[10px] text-muted-foreground/70 pt-1">General/unrelated headlines do not affect the sentiment score.</li>
+          <li className="text-[10px] text-muted-foreground/70 pt-1">Berita umum/tidak relevan tidak mempengaruhi skor sentimen.</li>
         </ul>
       )}
       {tab === "sources" && (
         <ul className="mt-2 text-xs space-y-1 max-h-48 overflow-auto">
           {(d.sourceBreakdown ?? []).length === 0 ? (
-            <li className="text-muted-foreground">No source breakdown available.</li>
+            <li className="text-muted-foreground">Tidak ada rincian sumber tersedia.</li>
           ) : (
             (d.sourceBreakdown ?? []).map((s: any, i: number) => (
               <li key={i} className="flex justify-between gap-2 border-b border-border/30 pb-1">
@@ -1109,7 +1109,7 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualit
   const primaryLabel = isHold
     ? "No Trade"
     : !setupActive
-      ? "Set Alert"
+      ? "Pasang Alert"
       : isShort ? "Execute SHORT" : "Execute LONG";
   const primaryClass = !setupActive
     ? "bg-accent/40 text-foreground hover:bg-accent/60 border border-border"
@@ -1170,7 +1170,7 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualit
       {(isHold || blocked) && !hasPosition && (
         <div className={`mt-2 text-xs ${blocked && !isHold ? "text-yellow-500" : "text-muted-foreground"}`}>
           {isHold
-            ? "No valid trade setup. Wait for trigger confirmation."
+            ? "Tidak ada setup trade yang valid. Tunggu konfirmasi trigger."
             : `${signalLabel?.includes("BUY") ? "Bullish" : "Bearish"} bias detected, but no valid entry trigger yet.${executionReason ? ` ${executionReason}` : ""}`}
         </div>
       )}
@@ -1246,7 +1246,7 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualit
         <Button disabled={busy || isHold}
           onClick={() => {
             if (!setupActive) {
-              toast.message("Alert saved", { description: "We'll notify you when a valid trigger appears." });
+              toast.message("Alert tersimpan", { description: "Kami akan memberitahu Anda saat trigger valid muncul." });
             } else {
               onTrade(primarySide);
             }
@@ -1257,16 +1257,16 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualit
         <Button disabled={busy} variant="outline" className="flex-1"
           onClick={() => {
             if (!setupActive && !isHold) {
-              toast.success("Setup saved to journal");
+              toast.success("Setup disimpan ke jurnal");
             } else {
               onTrade(isShort ? "buy" : "sell");
             }
           }}>
-          {isHold ? "Close / Sell" : !setupActive ? "Save Setup" : isShort ? "Cover / Buy" : "Close / Sell"}
+          {isHold ? "Close / Sell" : !setupActive ? "Simpan Setup" : isShort ? "Cover / Buy" : "Close / Sell"}
         </Button>
       </div>
       <div className="mt-3 text-[11px] text-muted-foreground">
-        {type === "market" ? "Slippage 0.05% · fee 0.1%." : "Pending orders evaluate every minute."} Pastikan setup, stop loss, dan risk per trade sudah sesuai.
+        {type === "market" ? "Slippage 0.05% · fee 0.1%." : "Order tertunda dievaluasi setiap menit."} Pastikan setup, stop loss, dan risk per trade sudah sesuai.
       </div>
       <p className="mt-2 text-[10px] text-muted-foreground/80 leading-snug">
         Analisis ini bersifat edukatif dan bukan saran finansial. Sinyal AI dapat salah, data dapat terlambat, dan kondisi market dapat berubah cepat. Selalu gunakan risk management dan lakukan riset mandiri.

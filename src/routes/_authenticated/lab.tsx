@@ -69,8 +69,8 @@ function Lab() {
 
   const cancel = useMutation({
     mutationFn: (id: string) => cancelOrder({ data: { id } }),
-    onSuccess: () => { toast.success("Order cancelled"); acct.refetch(); },
-    onError: (e: any) => toast.error(e?.message ?? "Cancel failed"),
+    onSuccess: () => { toast.success("Order dibatalkan"); acct.refetch(); },
+    onError: (e: any) => toast.error(e?.message ?? "Gagal membatalkan"),
   });
   return (
     <div className="p-4 md:p-6 space-y-4">
@@ -88,7 +88,7 @@ function Lab() {
         <div className="panel p-4"><div className="text-xs text-muted-foreground">Saldo Tersedia</div><div className="font-mono text-xl md:text-2xl">{fmtMoney(cash)}</div></div>
         <div className="panel p-4"><div className="text-xs text-muted-foreground">Equity Total</div><div className="font-mono text-xl md:text-2xl">{fmtMoney(equity)}</div></div>
         <div className="panel p-4"><div className="text-xs text-muted-foreground">Unrealized P/L</div><div className={`font-mono text-xl md:text-2xl ${colorForChange(pnl.unrealized)}`}>{fmtMoney(pnl.unrealized)}</div></div>
-        <div className="panel p-4"><div className="text-xs text-muted-foreground">Positions</div><div className="font-mono text-xl md:text-2xl">{positions.length}</div></div>
+        <div className="panel p-4"><div className="text-xs text-muted-foreground">Posisi</div><div className="font-mono text-xl md:text-2xl">{positions.length}</div></div>
       </div>
       {(() => {
         const realizedGain = (orders as any[]).reduce((s, o) => s + Math.max(0, Number(o.realized_pnl ?? 0)), 0);
@@ -96,11 +96,11 @@ function Lab() {
         const realizedNet = realizedGain + realizedLoss;
         return (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-            <div className="panel p-4"><div className="text-xs text-muted-foreground">Realized Gain</div><div className="font-mono text-xl md:text-2xl text-emerald-400">{fmtMoney(realizedGain)}</div></div>
-            <div className="panel p-4"><div className="text-xs text-muted-foreground">Realized Loss</div><div className="font-mono text-xl md:text-2xl text-rose-400">{fmtMoney(realizedLoss)}</div></div>
-            <div className="panel p-4"><div className="text-xs text-muted-foreground">Realized Net</div><div className={`font-mono text-xl md:text-2xl ${colorForChange(realizedNet)}`}>{fmtMoney(realizedNet)}</div></div>
-            <div className="panel p-4"><div className="text-xs text-muted-foreground">Filled orders</div><div className="font-mono text-xl md:text-2xl">{orders.length}</div></div>
-            <div className="panel p-4"><div className="text-xs text-muted-foreground">Pending</div><div className="font-mono text-xl md:text-2xl">{pending.length}</div></div>
+            <div className="panel p-4"><div className="text-xs text-muted-foreground">Keuntungan Terealisasi</div><div className="font-mono text-xl md:text-2xl text-emerald-400">{fmtMoney(realizedGain)}</div></div>
+            <div className="panel p-4"><div className="text-xs text-muted-foreground">Kerugian Terealisasi</div><div className="font-mono text-xl md:text-2xl text-rose-400">{fmtMoney(realizedLoss)}</div></div>
+            <div className="panel p-4"><div className="text-xs text-muted-foreground">Net Terealisasi</div><div className={`font-mono text-xl md:text-2xl ${colorForChange(realizedNet)}`}>{fmtMoney(realizedNet)}</div></div>
+            <div className="panel p-4"><div className="text-xs text-muted-foreground">Order Terisi</div><div className="font-mono text-xl md:text-2xl">{orders.length}</div></div>
+            <div className="panel p-4"><div className="text-xs text-muted-foreground">Tertunda</div><div className="font-mono text-xl md:text-2xl">{pending.length}</div></div>
           </div>
         );
       })()}
@@ -108,10 +108,10 @@ function Lab() {
       <Tabs defaultValue={initialTab}>
         <TabsList className="flex-wrap h-auto no-scrollbar overflow-x-auto max-w-full">
 
-          <TabsTrigger value="positions">Positions</TabsTrigger>
-          <TabsTrigger value="pending">Pending Orders</TabsTrigger>
-          <TabsTrigger value="orders">Order History</TabsTrigger>
-          <TabsTrigger value="journal">Trading Journal</TabsTrigger>
+          <TabsTrigger value="positions">Posisi</TabsTrigger>
+          <TabsTrigger value="pending">Order Tertunda</TabsTrigger>
+          <TabsTrigger value="orders">Riwayat Order</TabsTrigger>
+          <TabsTrigger value="journal">Jurnal Trading</TabsTrigger>
           <TabsTrigger value="backtest">Backtest</TabsTrigger>
           <TabsTrigger value="coach">AI Coach</TabsTrigger>
           <TabsTrigger value="agent"><Bot className="size-3 mr-1" />AI Trade Agent</TabsTrigger>
@@ -124,11 +124,11 @@ function Lab() {
                 <tr>
                   <th className="text-left p-2">Symbol</th>
                   <th className="text-right p-2">Qty</th>
-                  <th className="text-right p-2">Avg Price</th>
+                  <th className="text-right p-2">Harga Rata-rata</th>
                   <th className="text-right p-2">Mark</th>
                   <th className="text-right p-2">P/L</th>
                   <th className="text-right p-2">%</th>
-                  <th className="text-right p-2">Opened</th>
+                  <th className="text-right p-2">Dibuka</th>
                 </tr>
               </thead>
               <tbody>
@@ -143,7 +143,7 @@ function Lab() {
                     <td className="p-2 text-right text-xs text-muted-foreground">{fmtWIBDateTime(p.opened_at)}</td>
                   </tr>
                 ))}
-                {positions.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">No open positions. Place a paper trade from any chart.</td></tr>}
+                {positions.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">Belum ada posisi terbuka. Tempatkan paper trade dari grafik mana saja.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -153,8 +153,8 @@ function Lab() {
             <table className="w-full text-sm">
               <thead className="text-xs text-muted-foreground">
                 <tr>
-                  <th className="text-left p-2">Symbol</th><th className="text-left p-2">Side</th><th className="text-left p-2">Type</th>
-                  <th className="text-right p-2">Qty</th><th className="text-right p-2">Trigger</th><th className="text-right p-2">Created</th><th></th>
+                  <th className="text-left p-2">Symbol</th><th className="text-left p-2">Sisi</th><th className="text-left p-2">Jenis</th>
+                  <th className="text-right p-2">Lot</th><th className="text-right p-2">Pemicu</th><th className="text-right p-2">Dibuat</th><th></th>
                 </tr>
               </thead>
               <tbody>
@@ -176,7 +176,7 @@ function Lab() {
                     </td>
                   </tr>
                 ))}
-                {pending.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">No pending orders. Place a limit/stop order from any chart.</td></tr>}
+                {pending.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">Belum ada order tertunda. Tempatkan order limit/stop dari grafik mana saja.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -185,7 +185,7 @@ function Lab() {
           <div className="panel p-2">
             <table className="w-full text-sm">
               <thead className="text-xs text-muted-foreground">
-                <tr><th className="text-left p-2">Time</th><th className="text-left p-2">Symbol</th><th className="text-left p-2">Side</th><th className="text-right p-2">Qty</th><th className="text-right p-2">Fill</th></tr>
+                <tr><th className="text-left p-2">Waktu</th><th className="text-left p-2">Symbol</th><th className="text-left p-2">Sisi</th><th className="text-right p-2">Lot</th><th className="text-right p-2">Terisi</th></tr>
               </thead>
               <tbody>
                 {orders.map((o: any) => (
@@ -197,7 +197,7 @@ function Lab() {
                     <td className="p-2 text-right font-mono">{formatPrice(o.filled_price)}</td>
                   </tr>
                 ))}
-                {orders.length === 0 && <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">No orders yet.</td></tr>}
+                {orders.length === 0 && <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">Belum ada order.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -360,13 +360,13 @@ function displayActionFor(d: any, execStatus: ExecStatus, openSymbols?: Set<stri
 // the default Active view, and let the user drill into Executed / Blocked / Watch.
 type FeedFilter = "active" | "executed" | "open_position" | "blocked" | "watch_research" | "previous" | "all";
 const FEED_FILTER_OPTIONS: { value: FeedFilter; label: string }[] = [
-  { value: "active",         label: "Active Session" },
-  { value: "executed",       label: "Executed Only" },
-  { value: "open_position",  label: "Open Position Events" },
-  { value: "blocked",        label: "Blocked" },
-  { value: "watch_research", label: "Watch / Research" },
-  { value: "previous",       label: "Previous Session" },
-  { value: "all",            label: "All" },
+  { value: "active",         label: "Sesi Aktif" },
+  { value: "executed",       label: "Dieksekusi Saja" },
+  { value: "open_position",  label: "Event Posisi Terbuka" },
+  { value: "blocked",        label: "Diblokir" },
+  { value: "watch_research", label: "Pantau / Riset" },
+  { value: "previous",       label: "Sesi Sebelumnya" },
+  { value: "all",            label: "Semua" },
 ];
 
 const TONE_TEXT: Record<"bull"|"bear"|"muted"|"warn", string> = {
@@ -645,34 +645,34 @@ function AutomationStatusPanel({ agent, session }: { agent: any; session: any })
     <div className="panel p-3 space-y-2 border border-dashed">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold uppercase text-muted-foreground">Automation Status</span>
+          <span className="text-xs font-semibold uppercase text-muted-foreground">Status Otomasi</span>
           <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${state.cls}`}>{state.label}</span>
         </div>
         <span className="text-[10px] text-muted-foreground font-mono">{cronUrl}</span>
       </div>
       <p className="text-xs text-muted-foreground leading-relaxed">{state.msg}</p>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
-        <div><span className="text-muted-foreground">Automation:</span> <span className="font-mono">{automationEnabled ? "enabled" : "disabled"}</span></div>
-        <div className="md:col-span-2"><span className="text-muted-foreground">Last worker run:</span> <span className="font-mono">{formatRelativeWIB(agent.last_worker_run_at)}</span></div>
-        <div className="md:col-span-2"><span className="text-muted-foreground">Next expected:</span> <span className="font-mono">{formatRelativeWIB(agent.next_expected_worker_run_at)}</span></div>
-        <div><span className="text-muted-foreground">Worker errors:</span> <span className="font-mono">{agent.worker_error_count ?? 0}</span></div>
-        <div className="md:col-span-2"><span className="text-muted-foreground">Last auto decision:</span> <span className="font-mono">{formatRelativeWIB(agent.last_auto_decision_at)}</span></div>
-        <div className="md:col-span-2"><span className="text-muted-foreground">Last auto execution:</span> <span className="font-mono">{formatRelativeWIB(agent.last_auto_execution_at)}</span></div>
+        <div><span className="text-muted-foreground">Otomasi:</span> <span className="font-mono">{automationEnabled ? "enabled" : "disabled"}</span></div>
+        <div className="md:col-span-2"><span className="text-muted-foreground">Terakhir berjalan:</span> <span className="font-mono">{formatRelativeWIB(agent.last_worker_run_at)}</span></div>
+        <div className="md:col-span-2"><span className="text-muted-foreground">Ekspektasi berikutnya:</span> <span className="font-mono">{formatRelativeWIB(agent.next_expected_worker_run_at)}</span></div>
+        <div><span className="text-muted-foreground">Error worker:</span> <span className="font-mono">{agent.worker_error_count ?? 0}</span></div>
+        <div className="md:col-span-2"><span className="text-muted-foreground">Keputusan otomatis terakhir:</span> <span className="font-mono">{formatRelativeWIB(agent.last_auto_decision_at)}</span></div>
+        <div className="md:col-span-2"><span className="text-muted-foreground">Eksekusi otomatis terakhir:</span> <span className="font-mono">{formatRelativeWIB(agent.last_auto_execution_at)}</span></div>
       </div>
       {agent.last_blocked_reason && (
         <div className="text-xs">
-          <span className="text-muted-foreground">Last blocked reason: </span>
+          <span className="text-muted-foreground">Alasan terblokir terakhir: </span>
           <span className="font-mono">{agent.last_blocked_reason}</span>
         </div>
       )}
       <div className="flex flex-wrap gap-2 pt-1">
-        <Button size="sm" variant="outline" onClick={testCron}>Test cron now</Button>
-        <Button size="sm" variant="outline" onClick={copyCronUrl}>Copy cron URL</Button>
+        <Button size="sm" variant="outline" onClick={testCron}>Tes cron sekarang</Button>
+        <Button size="sm" variant="outline" onClick={copyCronUrl}>Salin URL cron</Button>
       </div>
       <div className="text-[11px] text-muted-foreground leading-relaxed border border-dashed rounded p-2 space-y-0.5">
         <div><span className="font-semibold">Endpoint:</span> <code className="font-mono">{cronUrl}</code></div>
         <div><span className="font-semibold">Required header:</span> <code className="font-mono">x-cron-secret: &lt;CRON_SECRET&gt;</code> (or <code className="font-mono">Authorization: Bearer &lt;CRON_SECRET&gt;</code>)</div>
-        <div>Schedule every 1 minute. Paper Trading only — no real-money execution.</div>
+        <div>Jadwalkan setiap 1 menit. Paper Trading saja — tidak ada eksekusi uang sungguhan.</div>
       </div>
       {workerStale && (
         <div className="text-[11px] text-amber-600 dark:text-amber-400 leading-relaxed border border-amber-500/30 bg-amber-500/5 rounded p-2">
@@ -754,24 +754,24 @@ function AIAgentPanel() {
       trailingStop: false, tradingHoursOnly: true, requireFreshData: true,
       allowBuy: true, allowSell: true,
     } }),
-    onSuccess: () => { toast.success("Agent started"); status.refetch(); },
+    onSuccess: () => { toast.success("Agent dimulai"); status.refetch(); },
     onError: (e: any) => toast.error(e?.message ?? "Start failed"),
   });
   const pause = useMutation({
     mutationFn: () => pauseAgent({ data: { id: agent.id } }),
-    onSuccess: () => { toast.success("Agent paused"); status.refetch(); },
+    onSuccess: () => { toast.success("Agent dijeda"); status.refetch(); },
   });
   const stop = useMutation({
     mutationFn: () => stopAgent({ data: { id: agent.id } }),
-    onSuccess: () => { toast.success("Agent stopped"); status.refetch(); },
+    onSuccess: () => { toast.success("Agent dihentikan"); status.refetch(); },
   });
   const estop = useMutation({
     mutationFn: () => emergencyStop({ data: { id: agent.id } }),
-    onSuccess: () => { toast.success("Emergency stop"); status.refetch(); },
+    onSuccess: () => { toast.success("Emergency stop aktif"); status.refetch(); },
   });
   const tick = useMutation({
     mutationFn: () => runAgentNow({ data: { id: agent.id } }),
-    onSuccess: (r: any) => { toast.success(`Tick: ${r.count} decisions, ${r.executed} executed`); status.refetch(); },
+    onSuccess: (r: any) => { toast.success(`Siklus: ${r.count} keputusan, ${r.executed} dieksekusi`); status.refetch(); },
     onError: (e: any) => toast.error(e?.message ?? "Tick failed"),
   });
   const repairLabels = useMutation({
@@ -784,8 +784,8 @@ function AIAgentPanel() {
   const runCopy = runButtonCopy(agent, session);
   const selectedSet = new Set((agent?.selected_symbols ?? symbols) as string[]);
   const trainingBadge = decisions.length > 0
-    ? { label: "Training Data Saved", cls: "bg-bull/15 text-bull" }
-    : { label: "Waiting for Training Data", cls: "bg-muted text-muted-foreground" };
+    ? { label: "Data Latih Tersimpan", cls: "bg-bull/15 text-bull" }
+    : { label: "Menunggu Data Latih", cls: "bg-muted text-muted-foreground" };
 
   // Data Readiness — aggregated across active candidates (selectedSet) and open
   // positions. A single fresh candidate should NOT show as "unavailable".
@@ -841,9 +841,9 @@ function AIAgentPanel() {
             <div>
               <div className="font-semibold flex items-center gap-2 flex-wrap">
                 AI Trade Agent
-                <span className="text-[10px] uppercase font-semibold bg-primary/15 text-primary px-1.5 py-0.5 rounded">Real Market Data</span>
-                <span className="text-[10px] uppercase font-semibold bg-bull/15 text-bull px-1.5 py-0.5 rounded">Paper Trading Execution</span>
-                <span className="text-[10px] uppercase font-semibold bg-muted text-muted-foreground px-1.5 py-0.5 rounded">Simulated Fill</span>
+                <span className="text-[10px] uppercase font-semibold bg-primary/15 text-primary px-1.5 py-0.5 rounded">Data Pasar Nyata</span>
+                <span className="text-[10px] uppercase font-semibold bg-bull/15 text-bull px-1.5 py-0.5 rounded">Eksekusi Paper Trading</span>
+                <span className="text-[10px] uppercase font-semibold bg-muted text-muted-foreground px-1.5 py-0.5 rounded">Pengisian Simulasi</span>
                 <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${trainingBadge.cls}`}>{trainingBadge.label}</span>
               </div>
               <div className="text-xs text-muted-foreground">
@@ -852,8 +852,8 @@ function AIAgentPanel() {
             </div>
           </div>
           <div className="flex gap-2">
-            {!isActive && <Button size="sm" onClick={() => start.mutate()} disabled={start.isPending}><Play className="size-3 mr-1" />Start</Button>}
-            {isActive && agent.status !== "paused" && <Button size="sm" variant="outline" onClick={() => pause.mutate()}><Pause className="size-3 mr-1" />Pause</Button>}
+            {!isActive && <Button size="sm" onClick={() => start.mutate()} disabled={start.isPending}><Play className="size-3 mr-1" />Mulai</Button>}
+            {isActive && agent.status !== "paused" && <Button size="sm" variant="outline" onClick={() => pause.mutate()}><Pause className="size-3 mr-1" />Jeda</Button>}
             {isActive && <Button size="sm" variant="outline" onClick={() => tick.mutate()} disabled={tick.isPending} title={runCopy.tip}>{runCopy.label}</Button>}
             {isActive && <Button size="sm" variant="outline" onClick={() => stop.mutate()}><Square className="size-3 mr-1" />Stop</Button>}
             {isActive && <Button size="sm" variant="destructive" onClick={() => estop.mutate()}><AlertTriangle className="size-3 mr-1" />Emergency</Button>}
@@ -907,35 +907,35 @@ function AIAgentPanel() {
           {!isActive && <div><label className="text-xs text-muted-foreground">Allocation / trade (IDR)</label><Input type="number" value={alloc} onChange={e => setAlloc(e.target.value)} /></div>}
           {!isActive && (
             <div>
-              <label className="text-xs text-muted-foreground">Risk level</label>
+              <label className="text-xs text-muted-foreground">Level Risiko</label>
               <Select value={risk} onValueChange={(v) => setRisk(v as any)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="conservative">Conservative (SL 1.5% / TP 3.5%)</SelectItem>
-                  <SelectItem value="balanced">Balanced (SL 2.5% / TP 5%)</SelectItem>
-                  <SelectItem value="aggressive">Aggressive (SL 4% / TP 8%)</SelectItem>
+                  <SelectItem value="conservative">Konservatif (SL 1.5% / TP 3.5%)</SelectItem>
+                  <SelectItem value="balanced">Seimbang (SL 2.5% / TP 5%)</SelectItem>
+                  <SelectItem value="aggressive">Agresif (SL 4% / TP 8%)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           )}
-          {!isActive && <div><label className="text-xs text-muted-foreground">Min confidence (0–1)</label><Input value={conf} onChange={e => setConf(e.target.value)} /></div>}
+          {!isActive && <div><label className="text-xs text-muted-foreground">Min. kepercayaan (0–1)</label><Input value={conf} onChange={e => setConf(e.target.value)} /></div>}
         </div>
       </div>
 
       {/* Data Readiness Card — aggregated across active candidates + open positions */}
       <div className="panel p-3 space-y-2" title="Aggregated from active candidates and open positions.">
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="text-xs font-semibold uppercase tracking-wide">Data Readiness <span className="text-[10px] normal-case text-muted-foreground font-normal">· aggregated</span></div>
+          <div className="text-xs font-semibold uppercase tracking-wide">Kesiapan Data <span className="text-[10px] normal-case text-muted-foreground font-normal">· teragregasi</span></div>
           <div className="text-[10px] text-muted-foreground">
-            Last update: {newestDecision ? fmtWIBTime(newestDecision.created_at) : "—"} · {activeDecisions.length} active
+            Pembaruan terakhir: {newestDecision ? fmtWIBTime(newestDecision.created_at) : "—"} · {activeDecisions.length} aktif
           </div>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 text-[11px]">
           {[
-            { k: "Price",       v: priceStatus },
-            { k: "Technical",   v: techStatus },
-            { k: "News",        v: newsStatus },
-            { k: "Sentiment",   v: sentStatus },
+            { k: "Harga",       v: priceStatus },
+            { k: "Teknikal",   v: techStatus },
+            { k: "Berita",        v: newsStatus },
+            { k: "Sentimen",   v: sentStatus },
             { k: "Disclosure",  v: discStatus },
           ].map(item => (
             <div key={item.k} className="flex items-center justify-between gap-2 px-2 py-1 rounded bg-muted/30" title="Aggregated from active candidates and open positions.">
@@ -944,15 +944,15 @@ function AIAgentPanel() {
             </div>
           ))}
           <div className="flex items-center justify-between gap-2 px-2 py-1 rounded bg-muted/30">
-            <span className="text-muted-foreground">Market</span>
+            <span className="text-muted-foreground">Pasar</span>
             <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${session?.isOpen ? "bg-bull/15 text-bull" : session?.isBreak ? "bg-amber-500/15 text-amber-600 dark:text-amber-400" : "bg-muted text-muted-foreground"}`}>
               {session?.label ?? "—"}
             </span>
           </div>
           <div className="flex items-center justify-between gap-2 px-2 py-1 rounded bg-muted/30">
-            <span className="text-muted-foreground">Execution</span>
+            <span className="text-muted-foreground">Eksekusi</span>
             <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${execAllowed ? "bg-bull/15 text-bull" : "bg-bear/15 text-bear"}`}>
-              {execAllowed ? "Allowed" : "Blocked"}
+              {execAllowed ? "Diizinkan" : "Diblokir"}
             </span>
           </div>
         </div>
@@ -962,10 +962,10 @@ function AIAgentPanel() {
       <div className="panel p-2 overflow-x-auto">
         <div className="px-2 py-1 text-xs text-muted-foreground flex items-center justify-between flex-wrap gap-2">
           <span className="flex items-center gap-2">
-            <span className="font-semibold uppercase tracking-wide text-foreground">Open Positions</span>
+            <span className="font-semibold uppercase tracking-wide text-foreground">Posisi Terbuka</span>
             <span className="text-[10px] uppercase bg-bull/15 text-bull px-1.5 py-0.5 rounded">{agentPositions.length} open</span>
           </span>
-          <span className="text-[10px] text-muted-foreground">source: paper_positions</span>
+          <span className="text-[10px] text-muted-foreground">sumber: paper_positions</span>
         </div>
         {agentPositions.length === 0 ? (
           <div className="p-3 text-xs text-muted-foreground">Belum ada open position. AI belum mengeksekusi paper BUY.</div>
@@ -975,12 +975,12 @@ function AIAgentPanel() {
               <tr>
                 <th className="text-left p-2">Symbol</th>
                 <th className="text-right p-2">Lot</th>
-                <th className="text-right p-2">Shares</th>
-                <th className="text-right p-2">Avg Entry</th>
-                <th className="text-right p-2">Last Price</th>
-                <th className="text-right p-2">Market Value</th>
+                <th className="text-right p-2">Lembar</th>
+                <th className="text-right p-2">Rata-rata Entry</th>
+                <th className="text-right p-2">Harga Terakhir</th>
+                <th className="text-right p-2">Nilai Pasar</th>
                 <th className="text-right p-2">Unrealized P/L</th>
-                <th className="text-right p-2">Opened</th>
+                <th className="text-right p-2">Dibuka</th>
               </tr>
             </thead>
             <tbody>
@@ -1009,16 +1009,16 @@ function AIAgentPanel() {
 
       {/* Performance */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-        <Stat label="Closed trades" value={String(orderCounts.closedTrades)} />
-        <Stat label="Executed orders" value={String(orderCounts.executed)} />
-        <Stat label="Open positions" value={String(orderCounts.openPositions)} tone={orderCounts.openPositions > 0 ? "bull" : undefined} />
+        <Stat label="Trade Tertutup" value={String(orderCounts.closedTrades)} />
+        <Stat label="Order Tereksekusi" value={String(orderCounts.executed)} />
+        <Stat label="Posisi Terbuka" value={String(orderCounts.openPositions)} tone={orderCounts.openPositions > 0 ? "bull" : undefined} />
         <Stat
-          label="Win rate"
+          label="Rasio Menang"
           value={orderCounts.closedTrades === 0 ? "N/A" : Number(performance?.win_rate ?? 0).toFixed(1) + "%"}
           tone={orderCounts.closedTrades === 0 ? undefined : Number(performance?.win_rate ?? 0) >= 50 ? "bull" : "bear"}
         />
         <Stat
-          label="Profit factor"
+          label="Faktor Profit"
           value={orderCounts.closedTrades === 0 ? "N/A" : Number(performance?.profit_factor ?? 0).toFixed(2)}
         />
       </div>
@@ -1031,9 +1031,9 @@ function AIAgentPanel() {
           </span>
           <span className="flex items-center gap-2">
             <Button size="sm" variant="outline" disabled={repairLabels.isPending} onClick={() => repairLabels.mutate()}>
-              {repairLabels.isPending ? "Repairing…" : "Repair AI Learning Labels"}
+              {repairLabels.isPending ? "Repairing…" : "Perbaiki Label Pembelajaran AI"}
             </Button>
-            <span className="text-[10px] uppercase bg-muted px-1.5 py-0.5 rounded">{orderCounts.executed > 0 ? "Waiting for first close" : "Waiting for first executed trade"}</span>
+            <span className="text-[10px] uppercase bg-muted px-1.5 py-0.5 rounded">{orderCounts.executed > 0 ? "Menunggu penutupan pertama" : "Menunggu trade pertama tereksekusi"}</span>
           </span>
         </div>
       )}
@@ -1048,12 +1048,12 @@ function AIAgentPanel() {
             <thead className="text-xs text-muted-foreground">
               <tr>
                 <th className="text-left p-2">Symbol</th>
-                <th className="text-right p-2">Win rate</th>
-                <th className="text-right p-2">Avg return</th>
-                <th className="text-right p-2">Samples</th>
-                <th className="text-left p-2">Best strategy</th>
-                <th className="text-left p-2">Worst strategy</th>
-                <th className="text-left p-2">Last result · Recent mistake</th>
+                <th className="text-right p-2">Rasio Menang</th>
+                <th className="text-right p-2">Return Rata-rata</th>
+                <th className="text-right p-2">Sampel</th>
+                <th className="text-left p-2">Strategi Terbaik</th>
+                <th className="text-left p-2">Strategi Terburuk</th>
+                <th className="text-left p-2">Hasil Terakhir · Kesalahan Terkini</th>
               </tr>
             </thead>
             <tbody>
@@ -1201,7 +1201,7 @@ function AIAgentPanel() {
 
       <div className="panel p-2 overflow-x-auto">
         <div className="px-2 py-1 text-xs text-muted-foreground flex items-center justify-between flex-wrap gap-2">
-          <span className="font-semibold uppercase tracking-wide text-foreground">Decision feed</span>
+          <span className="font-semibold uppercase tracking-wide text-foreground">Umpan Keputusan</span>
           <div className="flex items-center gap-1 flex-wrap">
             {FEED_FILTER_OPTIONS.map(opt => (
               <button
@@ -1220,14 +1220,14 @@ function AIAgentPanel() {
         </div>
         <table className="w-full text-sm min-w-[960px]">
           <thead className="text-xs text-muted-foreground">
-            <tr><th className="text-left p-2">Time</th><th className="text-left p-2">Symbol</th>
+            <tr><th className="text-left p-2">Waktu</th><th className="text-left p-2">Symbol</th>
               <th className="text-left p-2">Mode</th>
-              <th className="text-left p-2">Action</th>
-              <th className="text-left p-2">Intent</th>
-              <th className="text-right p-2">Conf (raw→cal)</th><th className="text-right p-2">Lot</th>
+              <th className="text-left p-2">Aksi</th>
+              <th className="text-left p-2">Niat</th>
+              <th className="text-right p-2">Kep. (raw→kal)</th><th className="text-right p-2">Lot</th>
               <th className="text-right p-2">Entry / Ref</th><th className="text-right p-2">SL</th><th className="text-right p-2">TP</th>
-              <th className="text-left p-2">Source · Fresh</th>
-              <th className="text-left p-2">Status</th><th className="text-left p-2">Reasoning</th></tr>
+              <th className="text-left p-2">Sumber · Fresh</th>
+              <th className="text-left p-2">Status</th><th className="text-left p-2">Alasan</th></tr>
           </thead>
           <tbody>
             {(() => {
@@ -1347,7 +1347,7 @@ function AIAgentPanel() {
       </div>
 
       <div className="panel p-2">
-        <div className="px-2 py-1 text-xs text-muted-foreground">Risk guard log</div>
+        <div className="px-2 py-1 text-xs text-muted-foreground">Log Penjaga Risiko</div>
         <ul className="text-xs divide-y divide-border">
           {risks.map((r: any) => (
             <li key={r.id} className="p-2 flex justify-between gap-2">
@@ -1365,7 +1365,7 @@ function AIAgentPanel() {
 function AICoach() {
   return (
     <div className="panel p-4">
-      <p className="text-sm text-muted-foreground mb-3">Ask the AI to review your trades, suggest improvements, or generate a strategy idea.</p>
+      <p className="text-sm text-muted-foreground mb-3">Minta AI meninjau trade Anda, menyarankan perbaikan, atau membuat ide strategi.</p>
       <ChatPanel system="You are an institutional trading coach inside Quanta Terminal (paper trading only). Review the user's described trades, point out mistakes (sizing, timing, risk), and suggest concrete improvements. Use markdown bullets. HARD RULE: follow the GLOBAL FUNDAMENTAL & DISCLOSURE GUARD prepended by the system — never invent PER/PBV/ROE/DER/dividend yield, never call any ticker 'undervalue' or 'fundamental kuat' without validated data, never assign Value Trap Risk Low/Medium/High when data is insufficient (use 'Unknown'). For missing metrics write 'N/A'. Scanner/sector/momentum signals are NOT fundamental validation — label such candidates as 'Kandidat Pantauan Non-Fundamental'. If user asks about undervalue, answer identically to the AI Trading Analyst." />
     </div>
   );
@@ -1426,10 +1426,10 @@ function Backtester() {
   return (
     <div className="space-y-3">
       <div className="panel p-4 space-y-2">
-        <div className="flex items-center gap-2 text-sm font-semibold"><Sparkles className="size-4 text-primary" /> AI Strategy Generator</div>
+        <div className="flex items-center gap-2 text-sm font-semibold"><Sparkles className="size-4 text-primary" /> Pembuat Strategi AI</div>
         <div className="flex gap-2">
-          <Input value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} placeholder='e.g., "buy oversold tech stocks on RSI bounce"' />
-          <Button onClick={() => gen.mutate()} disabled={gen.isPending || !aiPrompt.trim()}>{gen.isPending ? "Designing…" : "Generate"}</Button>
+          <Input value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} placeholder='mis., "beli saham tech oversold saat RSI bounce"' />
+          <Button onClick={() => gen.mutate()} disabled={gen.isPending || !aiPrompt.trim()}>{gen.isPending ? "Merancang…" : "Hasilkan"}</Button>
         </div>
         {gen.data && <div className="text-xs text-muted-foreground"><span className="text-foreground font-semibold">{gen.data.name}</span> · {gen.data.description}</div>}
       </div>
@@ -1437,7 +1437,7 @@ function Backtester() {
       <div className="panel p-4 grid md:grid-cols-6 gap-2 items-end">
         <div><label className="text-xs text-muted-foreground">Symbol</label><Input value={symbol} onChange={e => setSymbol(e.target.value)} /></div>
         <div>
-          <label className="text-xs text-muted-foreground">Timeframe</label>
+          <label className="text-xs text-muted-foreground">Jangka Waktu</label>
           <Select value={tf} onValueChange={setTf}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -1446,7 +1446,7 @@ function Backtester() {
           </Select>
         </div>
         <div>
-          <label className="text-xs text-muted-foreground">Signal Rule</label>
+          <label className="text-xs text-muted-foreground">Aturan Sinyal</label>
           <Select value={rule} onValueChange={(v) => setRule(v as any)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -1457,7 +1457,7 @@ function Backtester() {
           </Select>
         </div>
         <div>
-          <label className="text-xs text-muted-foreground">Strategy label</label>
+          <label className="text-xs text-muted-foreground">Label Strategi</label>
           <Select value={strategyName || "__none"} onValueChange={(v) => setStrategyName(v === "__none" ? "" : v as StrategyName)}>
             <SelectTrigger><SelectValue placeholder="(rule)" /></SelectTrigger>
             <SelectContent>
@@ -1477,7 +1477,7 @@ function Backtester() {
           </Select>
         </div>
         <div>
-          <label className="text-xs text-muted-foreground">Market Regime</label>
+          <label className="text-xs text-muted-foreground">Regime Pasar</label>
           <Select value={regime || "__none"} onValueChange={(v) => setRegime(v === "__none" ? "" : v)}>
             <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
             <SelectContent>
@@ -1487,7 +1487,7 @@ function Backtester() {
           </Select>
         </div>
         <div className="md:col-span-6">
-          <Button onClick={() => run.mutate()} disabled={run.isPending}>{run.isPending ? "Running…" : "Run backtest & persist"}</Button>
+          <Button onClick={() => run.mutate()} disabled={run.isPending}>{run.isPending ? "Berjalan…" : "Jalankan backtest & simpan"}</Button>
           <span className="text-[11px] text-muted-foreground ml-2">Hasil dipakai AI Trade Agent untuk strategy scoring (paper trading only).</span>
         </div>
       </div>
@@ -1495,11 +1495,11 @@ function Backtester() {
       {m && (
         <div className="grid md:grid-cols-6 gap-2">
           <Stat label="Trades" value={m.trades.toString()} />
-          <Stat label="Win rate" value={m.trades === 0 ? "N/A" : m.winRate.toFixed(1) + "%"} tone={m.trades === 0 ? undefined : m.winRate >= 50 ? "bull" : "bear"} />
-          <Stat label="Total return" value={m.trades === 0 ? "0.00% (No trades)" : m.totalReturnPct.toFixed(2) + "%"} tone={m.trades === 0 ? undefined : m.totalReturnPct >= 0 ? "bull" : "bear"} />
+          <Stat label="Rasio Menang" value={m.trades === 0 ? "N/A" : m.winRate.toFixed(1) + "%"} tone={m.trades === 0 ? undefined : m.winRate >= 50 ? "bull" : "bear"} />
+          <Stat label="Total Return" value={m.trades === 0 ? "0.00% (No trades)" : m.totalReturnPct.toFixed(2) + "%"} tone={m.trades === 0 ? undefined : m.totalReturnPct >= 0 ? "bull" : "bear"} />
           <Stat label="Max DD" value={m.trades === 0 ? "N/A" : "-" + m.maxDrawdownPct.toFixed(2) + "%"} tone={m.trades === 0 ? undefined : "bear"} />
           <Stat label="Sharpe" value={m.trades === 0 ? "N/A" : m.sharpe.toFixed(2)} />
-          <Stat label="Profit factor" value={m.trades === 0 ? "N/A" : isFinite(m.profitFactor) ? m.profitFactor.toFixed(2) : "∞"} />
+          <Stat label="Faktor Profit" value={m.trades === 0 ? "N/A" : isFinite(m.profitFactor) ? m.profitFactor.toFixed(2) : "∞"} />
         </div>
       )}
 
@@ -1517,7 +1517,7 @@ function Backtester() {
                   <td className={`p-2 text-right font-mono ${Number(t.pnlPct ?? 0) >= 0 ? "text-bull" : "text-bear"}`}>{Number(t.pnlPct ?? 0).toFixed(2)}%</td>
                 </tr>
               ))}
-              {!(run.data as any).trades.length && <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">No trades produced.</td></tr>}
+              {!(run.data as any).trades.length && <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">Tidak ada trade yang dihasilkan.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -1527,12 +1527,12 @@ function Backtester() {
       <div className="panel p-4 space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
-            <div className="text-sm font-semibold">Strategy Performance</div>
-            <div className="text-[11px] text-muted-foreground">Backtest + forward (closed paper trades) aggregated per strategy.</div>
+            <div className="text-sm font-semibold">Performa Strategi</div>
+            <div className="text-[11px] text-muted-foreground">Backtest + forward (closed paper trades) teragregasi per strategi.</div>
           </div>
           <div className="flex items-end gap-2">
             <div>
-              <label className="text-[10px] text-muted-foreground">Filter regime</label>
+              <label className="text-[10px] text-muted-foreground">Filter Regime</label>
               <Select value={filterRegime || "__all"} onValueChange={(v) => setFilterRegime(v === "__all" ? "" : v)}>
                 <SelectTrigger className="w-40 h-8"><SelectValue placeholder="all" /></SelectTrigger>
                 <SelectContent>
@@ -1542,7 +1542,7 @@ function Backtester() {
               </Select>
             </div>
             <div>
-              <label className="text-[10px] text-muted-foreground">Filter sector</label>
+              <label className="text-[10px] text-muted-foreground">Filter Sektor</label>
               <Select value={filterSector || "__all"} onValueChange={(v) => setFilterSector(v === "__all" ? "" : v)}>
                 <SelectTrigger className="w-40 h-8"><SelectValue placeholder="all" /></SelectTrigger>
                 <SelectContent>
@@ -1551,7 +1551,7 @@ function Backtester() {
                 </SelectContent>
               </Select>
             </div>
-            <Button size="sm" variant="outline" onClick={() => perf.refetch()}>Refresh</Button>
+            <Button size="sm" variant="outline" onClick={() => perf.refetch()}>Perbarui</Button>
           </div>
         </div>
 
@@ -1585,10 +1585,10 @@ function Backtester() {
           <table className="w-full text-xs">
             <thead className="text-muted-foreground">
               <tr>
-                <th className="text-left p-2">Strategy</th>
-                <th className="text-right p-2">Score</th>
-                <th className="text-right p-2">Class</th>
-                <th className="text-right p-2">Sample</th>
+                <th className="text-left p-2">Strategi</th>
+                <th className="text-right p-2">Skor</th>
+                <th className="text-right p-2">Kelas</th>
+                <th className="text-right p-2">Sampel</th>
                 <th className="text-right p-2">WR fwd</th>
                 <th className="text-right p-2">WR bt</th>
                 <th className="text-right p-2">Avg ret</th>
@@ -1658,7 +1658,7 @@ function ResetAccountControl({ onDone, currentCash, currency }: { onDone: () => 
         ))}
       </div>
       <Button onClick={() => reset.mutate(Math.max(0, Number(amount) || 0))} disabled={reset.isPending}>
-        {reset.isPending ? "…" : "Apply"}
+        {reset.isPending ? "…" : "Terapkan"}
       </Button>
       <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
     </div>
@@ -1700,7 +1700,7 @@ function AutonomousModeControls({ agent, onChange }: { agent: any; onChange: () 
     <div className="rounded border border-border/60 p-3 space-y-2 bg-muted/20">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <div className="text-xs font-semibold uppercase tracking-wide">Symbol Selection Mode</div>
+          <div className="text-xs font-semibold uppercase tracking-wide">Mode Pemilihan Emiten</div>
           <div className="text-[11px] text-muted-foreground">
             {mode === "manual"
               ? "Manual — Anda memilih emiten; AI hanya menganalisis daftar tsb."
@@ -1831,17 +1831,17 @@ function AutonomousScannerPanel({ agent }: { agent: any }) {
         </div>
         <div className="flex gap-1">
           <Button size="sm" variant="ghost" onClick={() => backfill.mutate()} disabled={backfill.isPending} title="Hitung hypothetical return untuk watch/research candidates">
-            {backfill.isPending ? "Backfill…" : "Backfill outcomes"}
+            {backfill.isPending ? "Backfill…" : "Isi Ulang Hasil"}
           </Button>
           <Button size="sm" variant="outline" onClick={() => rescan.mutate()} disabled={rescan.isPending}>
-            {rescan.isPending ? "Scanning…" : "Rescan now"}
+            {rescan.isPending ? "Scanning…" : "Pindai Ulang"}
           </Button>
         </div>
       </div>
 
       {/* Risk mode selector */}
       <div>
-        <div className="text-[11px] text-muted-foreground mb-1">Risk mode</div>
+        <div className="text-[11px] text-muted-foreground mb-1">Mode Risiko</div>
         <div className="flex flex-wrap gap-1">
           {modes.map(m => (
             <Button
@@ -1871,7 +1871,7 @@ function AutonomousScannerPanel({ agent }: { agent: any }) {
       </div>
 
       <div>
-        <div className="text-[11px] text-muted-foreground mb-1">Selected for execution (top {selected.length})</div>
+        <div className="text-[11px] text-muted-foreground mb-1">Dipilih untuk eksekusi (top {selected.length})</div>
         <div className="flex flex-wrap gap-1 min-h-6">
           {selected.length === 0 && <span className="text-xs text-muted-foreground">Tidak ada trade candidate — lihat tabel untuk alasan.</span>}
           {selected.map((s, i) => (
@@ -1894,7 +1894,7 @@ function AutonomousScannerPanel({ agent }: { agent: any }) {
                 <th className="text-right p-1">Liq</th>
                 <th className="text-right p-1">Risk</th>
                 <th className="text-left p-1">Status</th>
-                <th className="text-right p-1" title="Hypothetical return jika di-entry pada scan price">Hypo 1h</th>
+                <th className="text-right p-1" title="Return hipotetis jika di-entry pada harga scan">Hypo 1h</th>
               </tr>
             </thead>
             <tbody>
