@@ -102,9 +102,8 @@ function RootComponent() {
     try {
       const raw = localStorage.getItem("quanta:prefs");
       const p = raw ? JSON.parse(raw) : {};
-      // Light cream theme matches the landing page and is now the default.
-      // Users can still opt in to dark via prefs.theme = "dark".
-      const theme = p.theme ?? "light";
+      // Dark institutional theme is the default.
+      const theme = p.theme ?? "dark";
       const sysDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
       const useDark = theme === "dark" || (theme === "system" && sysDark);
       document.documentElement.classList.toggle("dark", useDark);
