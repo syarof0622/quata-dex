@@ -31,6 +31,21 @@ function Dashboard() {
   const losers = movers.data?.losers ?? [];
   const newsItems = news.data ?? [];
 
+  // Live mini-chart per symbol in the heatmap. Batched server fn so we don't
+  // fan out one request per ticker. Refreshes alongside the heatmap movers.
+  const fetchSparks = useServerFn(getSparklines);
+  const heatSymbols = useMemo(
+    () => (movers.data?.all ?? []).map((q: any) => q.symbol).slice(0, 120),
+    [movers.data],
+  );
+  const sparks = useQuery({
+    queryKey: ["heatmap-sparks", market, heatSymbols.join(",")],
+    queryFn: () => fetchSparks({ data: { symbols: heatSymbols, range: "1d" } }),
+    enabled: heatSymbols.length > 0,
+    refetchInterval: 60_000,
+    staleTime: 45_000,
+  });
+
   const marketToggle = (
     <div className="inline-flex rounded-lg border border-border p-0.5 bg-card/40">
       {(["idx", "us", "global"] as const).map(m => (
