@@ -136,10 +136,22 @@ function Portfolio() {
           title="From positions still open"
         />
         <Stat
-          label="Realized P/L"
+          label="Realized Gain"
+          value={hasClosed ? money(num((d as any).realizedGain)) : "—"}
+          tone={hasClosed && num((d as any).realizedGain) > 0 ? "bull" : undefined}
+          title="Total profit dari trade tertutup (winning closes)"
+        />
+        <Stat
+          label="Realized Loss"
+          value={hasClosed ? money(num((d as any).realizedLoss)) : "—"}
+          tone={hasClosed && num((d as any).realizedLoss) < 0 ? "bear" : undefined}
+          title="Total kerugian dari trade tertutup (losing closes)"
+        />
+        <Stat
+          label="Realized Net"
           value={hasClosed ? money(num(d.realized)) : "—"}
           tone={hasClosed ? (num(d.realized) >= 0 ? "bull" : "bear") : undefined}
-          title="From closed trades"
+          title="Gain + Loss (net realized P/L)"
         />
         <Stat
           label="Total Return"
