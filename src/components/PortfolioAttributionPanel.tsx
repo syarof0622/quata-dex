@@ -166,7 +166,7 @@ export function PortfolioAttributionPanel({ data }: Props) {
               </div>
               {s.worstContributor && (
                 <div className="text-[10px] text-muted-foreground mt-1">
-                  Worst: <span className="text-bear font-mono">{s.worstContributor.symbol}</span> ({money(s.worstContributor.impact)})
+                  Worst: <span className="text-bear font-mono">{displaySymbol(s.worstContributor.symbol)}</span> ({money(s.worstContributor.impact)})
                 </div>
               )}
               {s.riskNotes?.length > 0 && (
