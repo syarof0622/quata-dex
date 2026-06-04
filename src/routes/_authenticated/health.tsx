@@ -80,24 +80,23 @@ function HealthPage() {
 
   return (
     <div className="p-4 md:p-6 space-y-6">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold flex items-center gap-2">
-            <Activity className="size-5 text-primary" /> System Health
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Worker, data freshness, source health & audit trail. Diperbarui setiap 30 detik.
-            {data ? ` Last updated: ${fmtWIB(data.generatedAt)}` : ""}
-          </p>
-        </div>
-        <button
-          onClick={() => refetch()}
-          className="text-xs px-3 py-1.5 rounded-md border border-border hover:bg-muted"
-          disabled={isFetching}
-        >
-          {isFetching ? "Refreshing…" : "Refresh"}
-        </button>
-      </div>
+      <PageHero
+        eyebrow="Operational Intelligence"
+        live
+        icon={HeartPulse}
+        title="System Health"
+        subtitle={`Worker, data freshness, source health & audit trail. Diperbarui setiap 30 detik.${data ? ` · Last updated: ${fmtWIB(data.generatedAt)}` : ""}`}
+        actions={
+          <button
+            onClick={() => refetch()}
+            className="text-xs px-3 py-1.5 rounded-md border border-border hover:bg-muted"
+            disabled={isFetching}
+          >
+            {isFetching ? "Refreshing…" : "Refresh"}
+          </button>
+        }
+      />
+
 
       {isLoading && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
