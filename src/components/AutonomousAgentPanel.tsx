@@ -205,6 +205,35 @@ export function AutonomousAgentPanel() {
               </div>
             </div>
           )}
+          {((swing as any)?.allocationDecisions?.length ?? 0) > 0 && (
+            <div className="mt-3 space-y-1">
+              <div className="text-[10.5px] uppercase tracking-wider text-muted-foreground">Allocation decisions (24h)</div>
+              <div className="flex flex-col gap-1">
+                {(swing as any).allocationDecisions.map((d: any, i: number) => {
+                  const tier = d.tier ?? 0;
+                  const tone = d.action === "BUY"
+                    ? (tier >= 3 ? "emerald" : tier === 2 ? "sky" : "amber")
+                    : "rose";
+                  const pct = d.allocationPct != null ? `${(d.allocationPct * 100).toFixed(1)}%` : "0%";
+                  const label = d.tierLabel ?? (d.action === "BUY" ? "STARTER" : "REJECTED");
+                  return (
+                    <div key={i} className={cn("rounded-lg border px-2 py-1.5 text-[11px] flex flex-wrap items-center gap-2", TONE[tone])}>
+                      <span className="font-mono font-semibold">{d.symbol}</span>
+                      <span className="rounded-full border border-current/40 px-1.5 py-px text-[10px] font-mono">{label} · T{tier}</span>
+                      <span className="opacity-80">Q{Number(d.qualityScore ?? 0).toFixed(0)}</span>
+                      <span className="opacity-80">RR {Number(d.rr ?? 0).toFixed(2)}</span>
+                      <span className="opacity-80">{pct} ({d.allocationIDR ? d.allocationIDR.toLocaleString() : 0} IDR)</span>
+                      <span className="opacity-70">{d.lot} lot</span>
+                      {d.capWinner && <span className="opacity-60">cap:{d.capWinner}</span>}
+                      <span className="basis-full text-[10.5px] opacity-70 leading-tight">
+                        {d.allocationReason ?? d.reasoningShort}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
