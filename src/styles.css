@@ -106,19 +106,14 @@ html.dark { color-scheme: dark; }
       "ss01" 0, "ss02" 0, "ss03" 0, "ss04" 0,
       "ss05" 0, "ss06" 0, "ss07" 0, "ss08" 0;
   }
-  /* Landing-style dotted grid + radial glow on the body itself so every
-     authenticated page inherits the same clean cream backdrop. */
+  /* Dotted-grid + soft radial glow backdrop (works in both themes via tokens). */
   body {
     background-image:
-      radial-gradient(circle, color-mix(in oklab, var(--foreground) 8%, transparent) 1px, transparent 1px),
-      radial-gradient(ellipse 1200px 600px at 50% -10%, color-mix(in oklab, white 95%, transparent) 0%, transparent 60%);
-    background-size: 22px 22px, 100% 100%;
-    background-attachment: fixed, fixed;
-  }
-  html.dark body {
-    background-image:
-      radial-gradient(1200px 600px at 10% -10%, oklch(0.86 0.18 168 / 0.06), transparent 60%),
-      radial-gradient(1000px 500px at 100% 0%, oklch(0.55 0.2 280 / 0.05), transparent 60%);
+      radial-gradient(circle, color-mix(in oklab, var(--foreground) 6%, transparent) 1px, transparent 1px),
+      radial-gradient(1200px 600px at 10% -10%, color-mix(in oklab, var(--primary) 8%, transparent), transparent 60%),
+      radial-gradient(1000px 500px at 100% 0%, color-mix(in oklab, var(--primary) 5%, transparent), transparent 60%);
+    background-size: 24px 24px, 100% 100%, 100% 100%;
+    background-attachment: fixed, fixed, fixed;
   }
   .font-mono, code, pre { font-family: var(--font-mono); }
 }
