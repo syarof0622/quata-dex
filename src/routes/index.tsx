@@ -29,21 +29,20 @@ export const Route = createFileRoute("/")({
   component: Landing,
 });
 
-// Light cream palette scoped to this public landing page only.
-// The authenticated dashboard keeps its dark institutional theme.
+// Dark institutional palette — matches the authenticated terminal theme.
 const C = {
-  bg: "#f6f2ea",
-  bg2: "#efeae1",
-  surface: "#ffffff",
-  surfaceMuted: "#fbf8f2",
-  border: "#ded8ce",
-  borderSoft: "#ece6d8",
-  ink: "#0b0b0a",
-  inkSoft: "#2a2822",
-  muted: "#6f6a61",
-  green: "#00c896",
-  amber: "#d99a00",
-  red: "#d8553f",
+  bg: "#0a1018",
+  bg2: "#0e1622",
+  surface: "#111a26",
+  surfaceMuted: "#0d141d",
+  border: "#1f2a3a",
+  borderSoft: "#172131",
+  ink: "#eaf2ff",
+  inkSoft: "#c5d2e6",
+  muted: "#7d8aa1",
+  green: "#00ffb2",
+  amber: "#f5b042",
+  red: "#ef4d4d",
 };
 
 function Landing() {
