@@ -21,6 +21,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { formatPct, formatPrice, colorForChange } from "@/lib/format";
 import { formatLocalPrice, symbolMarket, priceCurrency } from "@/lib/symbols";
+import { displaySymbol } from "@/lib/display-symbol";
 import { motion } from "framer-motion";
 import { Star, TrendingUp, Target, ShieldAlert, Zap, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { toast } from "sonner";
