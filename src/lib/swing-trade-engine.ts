@@ -4,7 +4,10 @@
 // invalidation, holding window) and gate BUY/SELL decisions so the AI Trade
 // Agent does NOT behave like an intraday scalper.
 //
-// Spec covered: PATCHES 2, 3, 4, 5, 6, 7, 8, 9, 10, 16, 20.
+// Spec covered: PATCHES 2, 3, 4, 5, 6, 7, 8, 9, 10, 16, 20 + High-Conviction add-on.
+
+import { computeHighConvictionAllocation, explainAllocation } from "./swing-allocation";
+
 
 export type SwingEntryType =
   | "PULLBACK_TO_SUPPORT"
