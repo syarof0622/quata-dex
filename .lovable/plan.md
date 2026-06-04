@@ -1,106 +1,89 @@
-# AI Trade Agent — Aggression, Deployment & Profit Patch
+# URGENT — AI Agent Loss Protection Patch
 
-Scope: paper trading only. No broker, no real money. No rebuild — surgical edits to the existing agent engine, decision pipeline, UI, and a small schema extension.
+Tujuan: hentikan overtrading & rentetan rugi di paper trading. Semua tetap **Paper Trading Only**. Tidak menyentuh broker / real money. Tidak menghapus fitur lain.
 
-## 1. Aggression Modes (Patch 1, 2, 10, 16)
-
-Extend `ai_trade_agents` with a single source of truth for mode tuning. Add column `aggression_mode` (`conservative | balanced | progressive | expert_paper | research_max`, default `balanced`) plus `target_exposure_pct`, `min_position_weight_pct`, and rename usage of existing `max_position_per_symbol` as max cap per mode.
-
-Mode preset table (applied in engine, overridable in UI):
-
-```text
-mode            target_exp  min_pos  max_pos  max_active  min_conf  min_RR
-conservative    0.20        0.015    0.04     5           0.75      1.5
-balanced        0.40        0.030    0.07     8           0.65      1.8
-progressive     0.60        0.050    0.10     12          0.55      2.0
-expert_paper    0.75        0.060    0.12     15          0.50      2.2
-research_max    0.85        0.070    0.15     20          0.45      2.5
-```
-
-UI: Settings page + AutonomousAgentPanel gets a mode selector + sliders for the six knobs above, plus toggles for `allow_rotation`, `allow_trailing_stop`, `allow_partial_tp`, `allow_technical_without_fundamental`, `watch_spam_dedup`. Banner: "Paper trading only — no real money."
-
-## 2. Cash Deployment Engine (Patch 2, 3)
-
-In `ai-trade-agent.functions.ts` decision loop:
-1. Compute `equity`, `cashRatio`, `currentExposurePct`.
-2. `deploymentGap = target_exposure_pct - currentExposurePct`.
-3. If `deploymentGap > 0` and session valid, raise BUY priority and allow up to `min(deploymentGap, max_position_weight_pct)` per candidate.
-4. Round to IDX lot via existing `sizeOrder`. If lot < min meaningful, bump to `min_position_weight_pct` when cash allows; otherwise downgrade to WATCH with reason `cash_insufficient_for_min_lot` (not generic block).
-5. Surface `cashUnderDeployed` diagnostic on agent state.
-
-## 3. Decision Hierarchy (Patch 4, 5)
-
-Rewrite final action selector in `ai-agent-decision-engine.ts`:
-
-```text
-hardBlocks  → BLOCKED   (market closed/break, no cash, lot<1, max positions,
-                         suspension, UMA high, no price, no SL, no TP,
-                         daily loss / drawdown limit hit)
-softWarnings → reduce confidence, do NOT block in expert_paper / research_max
-passes all gates + confidence ≥ mode buy threshold → BUY
-confidence between watch and buy threshold → WATCH
-data insufficient / not actionable → RESEARCH
-```
-
-Remove the current bias that defaults passing candidates to WATCH.
-
-## 4. Market-Break Dedup + Pending Queue (Patch 6, 7, 13)
-
-- Add table `ai_agent_pending_executions` (agent_id, symbol, plan jsonb, created_at, expires_at, status). One row per symbol per session.
-- In cron: when session is `lunch_break | pre_open | post_close | closed`, do NOT insert per-symbol `BLOCKED` rows. Instead upsert a single session-level decision row `MARKET_PAUSED` per agent (dedup window 10 min) and stash top candidates in `ai_agent_pending_executions` with `PENDING_REVALIDATION_AFTER_BREAK`.
-- On first tick where `session.isOpen` flips true: load pending rows, revalidate price + risk + lot, execute BUY if still valid, else mark `expired`.
-
-## 5. Profit-Oriented Exits (Patch 8, 14)
-
-Every BUY decision must populate `stop_loss`, `take_profit`, `risk_reward_ratio`, plus a new `exit_plan` jsonb: `{ sl, tp1, tp2, trailing_activate_pct, trailing_distance_pct, partial_tp_enabled }`. Reject the candidate if RR < mode min.
-
-Open-position manager (`position-management-engine.ts`): every tick, for each open paper position with missing SL/TP, synthesize from ATR (1.5× for SL, mode RR for TP) and persist. Compute `distance_to_sl_pct`, `distance_to_tp_pct`, `management_status` (`hold | trail | tp1_hit | sl_pending | exit_now`). Portfolio + AutonomousAgentPanel render these.
-
-Risk-pause guard: pause blocks BUY/ROTATION_ENTRY only — SELL / EXIT / TP / SL always allowed.
-
-## 6. Profit Optimization Score (Patch 9)
-
-In scanner, after candidate scoring:
-
-```text
-executionScore = candidateScore
-  + momentumBonus + sectorRotationBonus + liquidityBonus + cashDeploymentBonus
-  - downsideRiskPenalty - concentrationPenalty - staleDataPenalty
-```
-
-Persist into `ai_agent_scan_candidates.execution_score` (new column). Rank executable candidates by it.
-
-## 7. Rotation (Patch 11)
-
-When `openPositions ≥ max_active` and a new candidate's `executionScore` exceeds weakest open position's live score by ≥ 15 and that position's unrealized loss is within `-1R`, emit `ROTATION_EXIT` then `ROTATION_ENTRY` decisions. Modes `progressive | expert_paper | research_max` only. Always log reason.
-
-## 8. Trade Memory Feedback (Patch 12)
-
-Extend `ai_agent_trade_memory` usage: when computing confidence, multiply by symbol/sector/strategy win-rate factor (clamped 0.7–1.15). If `sample_size < 10`, attach `low_sample_size` warning but still apply a damped factor (0.9–1.05).
-
-## 9. "Why Profit Is Low" Diagnostic (Patch 15)
-
-New server fn `getProfitDiagnostics(agentId)` returns checks + recommended fixes (cash too high, positions too small, watch spam, market break, slot saturated, RR too tight, stale data, etc.). Renders in AutonomousAgentPanel as a new card.
-
-## 10. Acceptance Verification
-
-After implementation: run `bunx tsc --noEmit`, trigger one manual cron tick during open session via existing "Manual run" button, confirm decisions are BUY (not WATCH spam), one `MARKET_PAUSED` row during break instead of per-minute blocks, every BUY has SL/TP/RR, Expert Paper visibly deploys more cash than Conservative.
+Patch dieksekusi dalam 5 fase, satu pass migrasi DB di awal, lalu kode dilapis di atasnya.
 
 ---
 
-## Files touched (estimate)
+## Fase 1 — Schema & Defaults (1 migrasi DB)
 
-- `supabase/migrations/<new>.sql` — add columns + pending table
-- `src/lib/ai-trade-agent.functions.ts` — deployment loop, rotation, pending queue
-- `src/lib/ai-agent-decision-engine.ts` — new decision hierarchy, soft/hard split
-- `src/lib/ai-autonomous-scanner.server.ts` — execution score
-- `src/lib/position-management-engine.ts` — SL/TP synth + distances
-- `src/routes/api/public/cron/ai-agent.ts` — break dedup + resume hook
-- `src/lib/autonomous-status.functions.ts` — profit diagnostics fn
-- `src/components/AutonomousAgentPanel.tsx` — mode selector, diagnostics card, exit-plan display
-- `src/routes/_authenticated/portfolio.tsx` — SL/TP/trailing columns
-- `src/routes/_authenticated/settings.tsx` — full mode config UI
+Tabel & kolom baru di `public` (semua dengan GRANT + RLS scoped ke super-admin UUID):
 
-## Out of scope (explicit)
+- `symbol_trade_cooldowns` — `symbol`, `reason`, `loss_count`, `last_loss_at`, `cooldown_until`
+- `strategy_health` — `strategy`, `trades`, `wins`, `losses`, `consec_losses`, `avg_return`, `profit_factor`, `status` (`ACTIVE`/`PAUSED_FOR_REVIEW`), `paused_reason`, `paused_at`
+- `ai_agent_state` — singleton row: `mode` (`NORMAL`/`CAUTION`/`LOSS_PROTECTION_ACTIVE`/`PROTECTION_MODE`/`OBSERVATION_MODE`), `reason`, `daily_loss_amount`, `daily_loss_pct`, `consec_losses`, `trades_today`, `updated_at`
+- `post_trade_reviews` — extend existing (atau buat baru jika belum ada): `mistake_category`, `trade_quality_score`, `recommended_adjustment`, `what_went_wrong`
+- `ai_risk_config` — singleton row: semua limit (max_daily_loss_pct=1.0, max_consec_losses=3, max_trades_per_day=5, max_trades_per_symbol_per_day=1, max_portfolio_drawdown_pct=5, min_profit_factor=0.8, min_win_rate=35, min_trade_quality_score=75, min_rr=2.0). User-editable.
 
-- No broker integration. No real-money path. No removal of existing features. No new auth. No schema deletions.
+## Fase 2 — Loss-Protection Engine (server)
+
+File baru `src/lib/loss-protection.server.ts`:
+
+- `evaluateGlobalGuards()` — hitung dari `paper_orders` + `ai_agent_state`; return `{ allowBuy, allowSell, mode, reasons[] }`.
+- `evaluateSymbolCooldown(symbol)` — baca `symbol_trade_cooldowns`; tier 1/3/10 sesi.
+- `evaluateStrategyHealth(strategy)` — baca `strategy_health`; auto-pause sample≥5 & WR<30% / PF<0.7 / avgRet<-1.5% / consec≥3.
+- `recordTradeOutcome(order)` — dipanggil dari cron orders saat fill SELL: update cooldown, strategy_health, agent_state, dan tulis post_trade_review.
+- `calculateTradeQualityScore(candidate)` — 0-100 dengan komponen tren/MA/volume/RS/regime/vol/liq/sentiment/loss-history/cooldown/RR/data-freshness. Output: `score`, `label`, `reasonCodes[]`.
+
+## Fase 3 — Wire Into Decision Engine
+
+Edit `src/lib/ai-agent-decision-engine.ts` & `src/lib/ai-trade-agent.functions.ts`:
+
+- Sebelum BUY: jalankan `evaluateGlobalGuards`, cooldown, strategy health, quality score, regime filter, min RR, min stop distance (1.2×ATR atau 2% fallback). Tolak BUY jika gagal salah satu; catat `reasonCodes`.
+- Sebelum SELL: hanya boleh karena SL/TP/trailing/strategy invalidated/regime emergency/disclosure negatif/loss-rule. Tambahkan minimum holding period (30 menit intraday) kecuali pengecualian.
+- Tulis `decision_replay` dengan reason yang baru (`overtrading_guard_active`, `symbol_cooldown_active`, `strategy_paused_due_to_poor_performance`, `quality_score_too_low`, `regime_risk_off`, `min_hold_not_reached`, dst).
+- Post-fill hook: panggil `recordTradeOutcome`.
+
+## Fase 4 — Cron Integration
+
+- `src/routes/api/public/cron/ai-agent.ts`: panggil engine baru di awal tick; skip iterasi jika `mode != NORMAL/CAUTION` untuk BUY.
+- `src/routes/api/public/cron/orders.ts`: setelah SELL filled (sudah hitung `realizedPnl`), panggil `recordTradeOutcome` agar cooldown/strategy_health/agent_state ter-update real-time.
+
+## Fase 5 — UI Diagnostics
+
+- `AutonomousAgentPanel.tsx` — tambah section **"Why the AI is losing"**: WR, PF, avg return, worst symbols, worst strategy, mistake counts, overtrading score, avg hold, regime mismatch, recommended fix. Tampilkan badge mode (NORMAL / CAUTION / LOSS_PROTECTION_ACTIVE / STRATEGY_PAUSED / OBSERVATION_MODE).
+- Tab **Trade Memory** di Lab: extend tabel — Loss streak, Cooldown status, Best/Worst strategy, Recommended action; tampilkan disclaimer "Low sample size" jika trades < 10.
+- Chat (`src/routes/api/chat.ts`) — saat user tanya "kenapa rugi terus", inject ringkasan dari `evaluateAccountHealth()` baru (loss-protection.server) ke prompt.
+
+---
+
+## Defaults yang dipasang sekarang
+
+```
+max_trades_per_day = 5
+max_trades_per_symbol_per_day = 1
+max_consec_losses = 3
+max_daily_loss_pct = 1.0
+max_portfolio_drawdown_pct = 5
+min_trade_quality_score = 75 (Balanced) / 70 (Expert) / 68 (Research Max)
+min_risk_reward = 2.0
+min_hold_minutes = 30
+strategy_kill_switch = enabled
+symbol_cooldown = enabled
+overtrading_guard = enabled
+risk_off_filter = enabled
+```
+
+Expert Paper / Research Max tetap dijaga: loss protection **tidak bisa dimatikan**, hanya threshold quality boleh sedikit lebih rendah.
+
+---
+
+## Acceptance check setelah eksekusi
+
+- BUY ditolak saat: cooldown aktif, strategy paused, quality<threshold, RR<min, mode=LOSS_PROTECTION/PROTECTION/OBSERVATION, daily/symbol cap tercapai, regime risk-off tanpa konfirmasi kuat.
+- SELL hanya dengan exitReason eksplisit; tidak boleh sebelum min-hold kecuali SL/TP/emergency.
+- Setiap closed trade menulis `post_trade_review` dengan `mistake_category`.
+- Panel AI Agent menampilkan diagnosa + mode badge.
+- Trade Memory menampilkan loss streak & cooldown.
+- AI Analyst menjelaskan penyebab rugi pakai data nyata.
+- Tidak ada jalur ke broker / real money — diuji dengan grep.
+
+---
+
+## File yang akan disentuh
+
+Baru: `src/lib/loss-protection.server.ts`, `src/lib/trade-quality.ts`, 1 migrasi SQL.
+Edit: `ai-agent-decision-engine.ts`, `ai-trade-agent.functions.ts`, `post-trade-review.functions.ts`, `routes/api/public/cron/ai-agent.ts`, `routes/api/public/cron/orders.ts`, `AutonomousAgentPanel.tsx`, `routes/_authenticated/lab.tsx` (tab Trade Memory), `routes/api/chat.ts` (context injection).
+
+Estimasi: ~1 migrasi DB + ~900-1100 LOC baru/edit. Saya kerjakan fase per fase setelah plan ini disetujui.
