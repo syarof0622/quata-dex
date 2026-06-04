@@ -642,6 +642,102 @@ export async function evaluateSymbol(
         blockedReason: "max_position_weight_reached",
       });
     }
+
+    // ===== SWING MAX gate (Patches 2-10/16/20) =====
+    // When swing_mode_active, every BUY must pass the swing-trade engine:
+    // quality threshold, structural stop, RR≥2, weekly per-symbol cap, and
+    // session/regime/overextension guards. Plan is attached to riskSnapshot
+    // and persisted by the caller after a successful fill.
+    const agentRowSwing: any = (agent.agentRow ?? {}) as any;
+    const swingActive = !!agentRowSwing.swing_mode_active;
+    let swingPlan: any = null;
+    let swingQuality: any = null;
+    if (swingActive) {
+      const weeklyCap = Number(agentRowSwing.max_trades_per_symbol_per_week ?? 1);
+      const weekAgo = new Date(Date.now() - 7 * 86400_000).toISOString();
+      const { count: weekCnt } = await supabaseAdmin
+        .from("swing_trade_plans")
+        .select("id", { count: "exact", head: true })
+        .eq("agent_id", agent.id).eq("symbol", sym)
+        .gte("created_at", weekAgo);
+      if ((weekCnt ?? 0) >= weeklyCap) {
+        return emptySnap(sym, `Swing cap: ${weekCnt}/${weeklyCap} entries for ${sym} in last 7d.`, {
+          confidence, rawConfidence, calibrationReason: calib.reason,
+          realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
+          portfolioSnapshot, dataQuality,
+          blockedReason: "swing_weekly_symbol_cap",
+        });
+      }
+      const { evaluateSwingEntry } = await import("./swing-trade-engine");
+      const cdSw = await getSymbolCooldown(agent.id, sym).catch(() => null);
+      const volLabelSw = ((setup as any)?.signal?.riskLabel ?? "").toLowerCase().includes("high")
+        ? "high" : ((setup as any)?.signal?.riskLabel ?? "").toLowerCase().includes("medium") ? "medium" : "low";
+      const sessLabel = session.state === "open_session_1" ? "session_1"
+        : session.state === "open_session_2" ? "session_2"
+        : session.state === "lunch_break" ? "lunch"
+        : session.state === "pre_open" ? "pre_open" : "post_close";
+      const minutesSinceOpen = session.state === "open_session_1" ? Math.max(0, (session.minutesNow ?? 999) - 9*60) : 999;
+      const sEval = evaluateSwingEntry({
+        symbol: sym, price,
+        techScore, techLabel,
+        aboveEMA20: (setup as any)?.signal?.aboveShortMA ?? null,
+        aboveEMA50: (setup as any)?.signal?.aboveMediumMA ?? null,
+        ema20: (setup as any)?.indicators?.ma?.short ?? null,
+        ema50: (setup as any)?.indicators?.ma?.medium ?? null,
+        recentSwingLow: (setup as any)?.setup?.support ?? null,
+        supportLevel: (setup as any)?.setup?.support ?? null,
+        resistanceLevel: (setup as any)?.setup?.resistance ?? null,
+        nearestResistance: (setup as any)?.setup?.resistance ?? null,
+        atrPct: typeof (setup as any)?.setup?.stopDistancePct === "number" ? (setup as any).setup.stopDistancePct : null,
+        rsi: (setup as any)?.indicators?.rsi ?? null,
+        breakout: !!setup?.setup?.breakout,
+        breakoutLevel: (setup as any)?.setup?.resistance ?? null,
+        weeklyTrend: null,
+        rvol: (setup as any)?.signal?.rvol ?? null,
+        valueTradedIDR: quote?.volume && quote?.price ? Number(quote.volume) * Number(quote.price) : null,
+        volumeConfirmed: (setup as any)?.signal?.volumeConfirmed ?? null,
+        rsVsIHSG: null,
+        rsVsSector: sectorRotationScore,
+        sectorRotation: (sectorRotationLabel as any) || "neutral",
+        marketRegime: marketRegimeLabel,
+        ihsgBias: (realMarketContext as any).ihsgBias ?? null,
+        volatilityLabel: volLabelSw as any,
+        highImpactNegativeDisclosure: !!(officialDisclosure && officialDisclosure.impact === "high" && officialDisclosure.sentiment === "negative"),
+        newsBias: Number(newsSnap.newsBias ?? 0),
+        sentScore,
+        newsStale: false,
+        intradayChangePct: Number(quote.changePercent ?? 0),
+        intradayCloseLocation: null,
+        symbolCooldownActive: !!(cdSw?.cooldown_until && new Date(cdSw.cooldown_until).getTime() > Date.now()),
+        symbolLossStreak: Number(cdSw?.loss_count ?? 0),
+        strategyPaused: false,
+        marketSessionLabel: sessLabel,
+        minutesSinceOpen,
+      }, {
+        agentEquity: account.equity,
+        riskPerTradePct: Number(agentRowSwing.risk_per_trade_pct ?? 0.008),
+        minPositionWeightPct: Number(agentRowSwing.min_position_weight_pct ?? 0.04),
+        maxPositionWeightPct: Number(agentRowSwing.max_position_weight_pct ?? 0.08),
+        qualityThreshold: Number(agentRowSwing.swing_quality_threshold ?? 78),
+        minRR: Number(agentRowSwing.min_risk_reward ?? 2.0),
+        targetHoldingDays: Number(agentRowSwing.target_holding_days ?? 3),
+        maxHoldingDays: Number(agentRowSwing.max_holding_days ?? 7),
+        timeStopWarningDays: Number(agentRowSwing.time_stop_warning_days ?? 3),
+        swingProtectionActive: !!agentRowSwing.swing_protection_active,
+      });
+      swingQuality = sEval.quality;
+      if (!sEval.allowed || !sEval.plan) {
+        return emptySnap(sym, `Swing Max block: ${sEval.blockedReasons.join(", ")} (quality ${sEval.quality.score}/${agentRowSwing.swing_quality_threshold ?? 78}).`, {
+          confidence, rawConfidence, calibrationReason: calib.reason,
+          realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
+          portfolioSnapshot, dataQuality,
+          blockedReason: `swing_${sEval.blockedReasons[0] ?? "blocked"}`,
+          warnings: [...warnings, ...sEval.blockedReasons.map(r => `swing:${r}`), ...sEval.warnings],
+          riskSnapshot: { swingQuality: sEval.quality } as any,
+        });
+      }
+      swingPlan = sEval.plan;
+    }
     // ===== Advanced Risk Engine =====
     // Compute structural stop distance, ATR-equivalent volatility label, news
     // shock, sector exposure, cash buffer, RR — single canonical guard.
@@ -770,26 +866,42 @@ export async function evaluateSymbol(
     const autoReasonTag = autoGate
       ? ` [autonomous:${agent.autonomousRiskMode} score=${autonomousContext!.score.toFixed(0)}]`
       : "";
+    // Swing Max overrides for SL/TP/RR/sizing when active.
+    const finalStopLoss = swingPlan ? swingPlan.stopLoss : stopLoss;
+    const finalTakeProfit = swingPlan ? swingPlan.takeProfit2 : takeProfit;
+    const finalRR = swingPlan ? swingPlan.riskRewardRatio : rr;
+    const finalAllocation = swingPlan ? swingPlan.positionSizeIDR : guard.positionSize;
+    const finalShares = swingPlan && price > 0
+      ? Math.max(100, Math.round(swingPlan.positionSizeIDR / price / 100) * 100)
+      : guard.shares;
+    const finalLot = swingPlan ? Math.max(1, Math.round(finalShares / 100)) : guard.lot;
+    const swingTag = swingPlan
+      ? ` [SwingMax:${swingPlan.entryType} score=${swingPlan.swingQualityScore} RR=${swingPlan.riskRewardRatio} hold=${swingPlan.targetHoldingDays}-${swingPlan.maxHoldingDays}d]`
+      : "";
     return {
       symbol: sym, action: "BUY", confidence, rawConfidence,
       calibrationReason: calib.reason,
-      strategy: autoGate
+      strategy: swingPlan
+        ? "swing_max"
+        : autoGate
         ? (agent.autonomousRiskMode === "expert_research" ? "expert_research_micro_entry"
           : agent.autonomousRiskMode === "progressive" ? "progressive_small_entry"
           : "autonomous_entry")
         : agent.strategyMode,
-      allocationAmount: guard.positionSize,
-      suggestedLot: guard.lot, suggestedShares: guard.shares,
-      entryPrice: price, stopLoss, takeProfit, riskRewardRatio: rr,
-      reasoning: `Teknikal ${techLabel} (${techScore.toFixed(0)}), sentimen ${sentScore.toFixed(2)}, news +${realNewsData.positiveNewsCount}/-${realNewsData.negativeNewsCount} (high ${realNewsData.highImpactNewsCount}), IHSG ${realMarketContext.ihsgBias}, sektor ${sectorRotationLabel}, fundamental ${fundamentalContext.classification}, strategi ${strategyName} (regime ${marketRegimeLabel}). Risk engine: stop ${guard.stopMode} ${guard.stopDistancePct}%, RR ${rr}, size ${guard.lot} lot (risk ${guard.riskAmount.toLocaleString()} IDR). ${calib.reason}${autoReasonTag}`,
+      allocationAmount: finalAllocation,
+      suggestedLot: finalLot, suggestedShares: finalShares,
+      entryPrice: price, stopLoss: finalStopLoss, takeProfit: finalTakeProfit, riskRewardRatio: finalRR,
+      reasoning: `Teknikal ${techLabel} (${techScore.toFixed(0)}), sentimen ${sentScore.toFixed(2)}, news +${realNewsData.positiveNewsCount}/-${realNewsData.negativeNewsCount} (high ${realNewsData.highImpactNewsCount}), IHSG ${realMarketContext.ihsgBias}, sektor ${sectorRotationLabel}, fundamental ${fundamentalContext.classification}, strategi ${strategyName} (regime ${marketRegimeLabel}). Risk engine: stop ${guard.stopMode} ${guard.stopDistancePct}%, RR ${rr}, size ${guard.lot} lot (risk ${guard.riskAmount.toLocaleString()} IDR). ${calib.reason}${autoReasonTag}${swingTag}`,
       dataFreshnessSeconds: freshness, dataSource: "Yahoo Finance + Google News RSS + IDX disclosure",
       executionAllowed: true, analysisOnly: false,
       realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
       portfolioSnapshot,
-      riskSnapshot: { riskGuard: guard, fundamentalContext, strategyContext } as any,
+      riskSnapshot: { riskGuard: guard, fundamentalContext, strategyContext, swingPlan, swingQuality } as any,
       dataQuality, warnings: [...warnings, ...guard.warnings],
-      strategyName, setupType: strategyName, marketRegime: marketRegimeLabel,
-      signalSource: autoGate ? "autonomous_scanner" : "manual_strategy_mode",
+      strategyName: swingPlan ? "swing_max" : strategyName,
+      setupType: swingPlan ? swingPlan.entryType : strategyName,
+      marketRegime: marketRegimeLabel,
+      signalSource: swingPlan ? "swing_max_engine" : (autoGate ? "autonomous_scanner" : "manual_strategy_mode"),
       strategyContext,
     };
   }

@@ -830,6 +830,38 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
                 if (isNewEntry) newEntriesUsed += 1;
                 executed += 1;
                 if (side === "buy") metrics.paperBuysExecuted += 1;
+                // Persist swing trade plan when Swing Max produced one.
+                const sPlan = (decision.riskSnapshot as any)?.swingPlan;
+                if (side === "buy" && sPlan && orderId) {
+                  try {
+                    await supabaseAdmin.from("swing_trade_plans").insert({
+                      agent_id: agent.id,
+                      paper_account_id: agent.paper_account_id,
+                      symbol: sym,
+                      entry_type: sPlan.entryType,
+                      entry_price: sPlan.entryPrice,
+                      entry_zone_low: sPlan.entryZoneLow,
+                      entry_zone_high: sPlan.entryZoneHigh,
+                      stop_loss: sPlan.stopLoss,
+                      take_profit_1: sPlan.takeProfit1,
+                      take_profit_2: sPlan.takeProfit2,
+                      trailing_active: !!sPlan.trailingActive,
+                      trailing_stop: sPlan.trailingStop,
+                      invalidation_level: sPlan.invalidationLevel,
+                      risk_reward_ratio: sPlan.riskRewardRatio,
+                      swing_quality_score: sPlan.swingQualityScore,
+                      target_holding_days: sPlan.targetHoldingDays,
+                      max_holding_days: sPlan.maxHoldingDays,
+                      min_holding_until: sPlan.minHoldingUntilISO,
+                      time_stop_at: sPlan.timeStopAtISO,
+                      reasons: sPlan.reasons ?? [],
+                      warnings: sPlan.warnings ?? [],
+                      status: "ACTIVE",
+                      strategy: "swing_max",
+                      market_regime: decision.marketRegime ?? null,
+                    });
+                  } catch (e) { /* tolerate */ }
+                }
               } else decisionStatus = "rejected";
             }
           } catch (e: any) {

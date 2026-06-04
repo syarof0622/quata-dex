@@ -3,9 +3,11 @@ import { useServerFn } from "@tanstack/react-start";
 import { getAutonomousAgentStatus } from "@/lib/autonomous-status.functions";
 import { setAgentAggressionMode, getProfitDiagnostics } from "@/lib/ai-trade-agent.functions";
 import { getLossDiagnostics } from "@/lib/loss-diagnostics.functions";
+import { getSwingMaxStatus } from "@/lib/swing-status.functions";
 import { AGGRESSION_PRESETS, type AggressionMode } from "@/lib/agent-aggression-modes";
 import { cn } from "@/lib/utils";
-import { Bot, ShieldCheck, AlertTriangle, Activity, Target, TrendingDown, TrendingUp, Pause, Zap, ShieldAlert, Clock } from "lucide-react";
+import { Bot, ShieldCheck, AlertTriangle, Activity, Target, TrendingDown, TrendingUp, Pause, Zap, ShieldAlert, Clock, Waves } from "lucide-react";
+
 
 const TONE: Record<string, string> = {
   emerald: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
@@ -48,6 +50,12 @@ export function AutonomousAgentPanel() {
     queryKey: ["agent-loss-diagnostics"],
     queryFn: () => fetchLoss(),
     refetchInterval: 45_000,
+  });
+  const fetchSwing = useServerFn(getSwingMaxStatus);
+  const { data: swing } = useQuery({
+    queryKey: ["agent-swing-max-status"],
+    queryFn: () => fetchSwing(),
+    refetchInterval: 30_000,
   });
   const modeMutation = useMutation({
     mutationFn: async (mode: AggressionMode) => {
@@ -140,6 +148,67 @@ export function AutonomousAgentPanel() {
           <div className="mt-2 text-[11px] text-muted-foreground border-t border-border/40 pt-2">{diag.recommendation}</div>
         )}
       </div>
+
+
+
+      {/* Swing Max panel */}
+      {swing?.agent && (
+        <div className={cn("rounded-2xl border p-3 sm:p-4",
+          swing.agent.swing_mode_active ? "border-sky-500/40 bg-sky-500/5" : "border-border/60 bg-card/50")}>
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <Waves className="h-4 w-4 text-sky-400" /> Swing Max
+              <span className={cn("ml-1 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-mono",
+                swing.agent.swing_mode_active ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" : "border-slate-500/30 bg-slate-500/10 text-slate-300")}>
+                {swing.agent.swing_mode_active ? "ACTIVE" : "INACTIVE"}
+              </span>
+              {swing.agent.swing_protection_active && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 text-amber-300 px-2 py-0.5 text-[10px] font-mono">
+                  PROTECTION
+                </span>
+              )}
+            </h3>
+            <span className="text-[10.5px] text-muted-foreground font-mono">
+              Q≥{swing.agent.swing_quality_threshold ?? 78} · hold {swing.agent.target_holding_days ?? 3}-{swing.agent.max_holding_days ?? 7}d · {swing.agent.max_trades_per_symbol_per_week ?? 1}/wk/sym
+            </span>
+          </div>
+          {swing.agent.swing_protection_reason && (
+            <div className="text-[11.5px] text-amber-300 mb-2">{swing.agent.swing_protection_reason}</div>
+          )}
+          {swing.stats && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[11px] mb-2">
+              <Heart label="Open plans" value={String(swing.stats.openCount)} />
+              <Heart label="Closed" value={String(swing.stats.closedCount)} />
+              <Heart label="Win rate" value={`${(swing.stats.winRate * 100).toFixed(0)}%`} />
+              <Heart label="Avg hold" value={`${swing.stats.avgHoldDays.toFixed(1)}d`} />
+            </div>
+          )}
+          {(swing.plans?.length ?? 0) > 0 && (
+            <div className="space-y-1">
+              <div className="text-[10.5px] uppercase tracking-wider text-muted-foreground">Recent plans</div>
+              <div className="flex flex-col gap-1">
+                {swing.plans.slice(0, 6).map((p: any) => {
+                  const closed = !!p.closed_at;
+                  const pnl = Number(p.realized_pnl_pct ?? 0);
+                  const tone = closed ? (pnl >= 0 ? "emerald" : "rose") : "sky";
+                  return (
+                    <div key={`${p.symbol}-${p.created_at}`} className={cn("rounded-lg border px-2 py-1.5 text-[11px] flex flex-wrap items-center gap-2", TONE[tone])}>
+                      <span className="font-mono font-semibold">{p.symbol}</span>
+                      <span className="opacity-70">{p.entry_type}</span>
+                      <span className="opacity-70">Q{Number(p.swing_quality_score ?? 0).toFixed(0)}</span>
+                      <span className="opacity-70">RR {Number(p.risk_reward_ratio ?? 0).toFixed(2)}</span>
+                      <span className="opacity-70">SL {fmt(p.stop_loss, 0)} / TP {fmt(p.take_profit_2, 0)}</span>
+                      <span className="ml-auto opacity-80">{closed ? `${pnl >= 0 ? "+" : ""}${pnl.toFixed(2)}% · ${p.exit_reason ?? "closed"}` : p.status}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+
 
       {/* Loss-Protection diagnostics — "Why the AI is losing" */}
       {loss?.agent && (
