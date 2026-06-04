@@ -8,7 +8,7 @@
 // CRITICAL: All paths reference this table — do not hardcode mode knobs elsewhere.
 
 export type AggressionMode =
-  | "conservative" | "balanced" | "progressive" | "expert_paper" | "research_max";
+  | "conservative" | "balanced" | "progressive" | "expert_paper" | "research_max" | "swing_max";
 
 export type AggressionPreset = {
   mode: AggressionMode;
@@ -61,6 +61,13 @@ export const AGGRESSION_PRESETS: Record<AggressionMode, AggressionPreset> = {
     maxActivePositions: 20, minBuyConfidence: 0.45, minRR: 2.5, minAutonomousScore: 50,
     allowTechnicalWithoutFundamental: true, allowRotation: true,
   },
+  swing_max: {
+    mode: "swing_max", label: "Swing Max",
+    description: "Swing trading disiplin: hold 2–5 hari, entry selektif, RR ≥ 2.0, anti-churn, paper only.",
+    targetExposurePct: 0.45, minPositionWeightPct: 0.040, maxPositionWeightPct: 0.08,
+    maxActivePositions: 4, minBuyConfidence: 0.65, minRR: 2.0, minAutonomousScore: 70,
+    allowTechnicalWithoutFundamental: true, allowRotation: false,
+  },
 };
 
 export function getPreset(mode: string | null | undefined): AggressionPreset {
@@ -73,6 +80,7 @@ export function toLegacyRiskMode(mode: AggressionMode): "conservative" | "balanc
   if (mode === "conservative") return "conservative";
   if (mode === "progressive") return "progressive";
   if (mode === "expert_paper" || mode === "research_max") return "expert_research";
+  if (mode === "swing_max") return "balanced"; // scanner stays balanced; swing engine adds its own gates
   return "balanced";
 }
 
