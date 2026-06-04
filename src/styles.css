@@ -116,6 +116,16 @@ html.dark { color-scheme: dark; }
     background-attachment: fixed, fixed, fixed;
   }
   .font-mono, code, pre { font-family: var(--font-mono); }
+
+  /* Contrast guardrails: clamp commonly-abused low-opacity helpers so text
+     stays legible on dark surfaces. These selectors are intentionally narrow
+     so they only affect text/border opacity utilities, not layout/bg ones. */
+  .text-muted-foreground\/50,
+  .text-muted-foreground\/60,
+  .text-muted-foreground\/70 { color: color-mix(in oklab, var(--muted-foreground) 92%, transparent) !important; }
+  .border-border\/40,
+  .border-border\/50,
+  .border-border\/60 { border-color: color-mix(in oklab, var(--border) 85%, transparent) !important; }
 }
 
 @layer components {
