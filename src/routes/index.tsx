@@ -29,21 +29,20 @@ export const Route = createFileRoute("/")({
   component: Landing,
 });
 
-// Light cream palette scoped to this public landing page only.
-// The authenticated dashboard keeps its dark institutional theme.
+// Dark institutional palette — matches the authenticated terminal theme.
 const C = {
-  bg: "#f6f2ea",
-  bg2: "#efeae1",
-  surface: "#ffffff",
-  surfaceMuted: "#fbf8f2",
-  border: "#ded8ce",
-  borderSoft: "#ece6d8",
-  ink: "#0b0b0a",
-  inkSoft: "#2a2822",
-  muted: "#6f6a61",
-  green: "#00c896",
-  amber: "#d99a00",
-  red: "#d8553f",
+  bg: "#0a1018",
+  bg2: "#0e1622",
+  surface: "#111a26",
+  surfaceMuted: "#0d141d",
+  border: "#1f2a3a",
+  borderSoft: "#172131",
+  ink: "#eaf2ff",
+  inkSoft: "#c5d2e6",
+  muted: "#7d8aa1",
+  green: "#00ffb2",
+  amber: "#f5b042",
+  red: "#ef4d4d",
 };
 
 function Landing() {
@@ -63,11 +62,11 @@ function Landing() {
         className="fixed inset-0 pointer-events-none z-0"
         style={{
           backgroundImage:
-            "radial-gradient(circle, rgba(0,0,0,0.08) 1px, transparent 1px)",
+            "radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px)",
           backgroundSize: "22px 22px",
         }}
       />
-      {/* Layer 2: hero radial glow */}
+      {/* Layer 2: hero radial glow (neon mint) */}
       <div
         aria-hidden
         className="absolute pointer-events-none z-0"
@@ -78,8 +77,8 @@ function Landing() {
           width: "1400px",
           height: "900px",
           background:
-            "radial-gradient(ellipse at center, rgba(255,255,255,0.95) 0%, rgba(246,242,234,0.5) 40%, transparent 70%)",
-          filter: "blur(20px)",
+            "radial-gradient(ellipse at center, rgba(0,255,178,0.10) 0%, rgba(0,255,178,0.04) 35%, transparent 70%)",
+          filter: "blur(30px)",
         }}
       />
       {/* Layer 3: soft vignette */}
@@ -88,7 +87,7 @@ function Landing() {
         className="fixed inset-0 pointer-events-none z-0"
         style={{
           background:
-            "radial-gradient(ellipse 120% 80% at 50% 40%, transparent 50%, rgba(0,0,0,0.04) 100%)",
+            "radial-gradient(ellipse 120% 80% at 50% 40%, transparent 50%, rgba(0,0,0,0.45) 100%)",
         }}
       />
       {/* Layer 4: subtle gradient fade top to bottom */}
@@ -97,7 +96,7 @@ function Landing() {
         className="fixed inset-0 pointer-events-none z-0"
         style={{
           background:
-            "linear-gradient(180deg, rgba(255,255,255,0.4) 0%, transparent 30%, transparent 80%, rgba(239,234,225,0.6) 100%)",
+            "linear-gradient(180deg, rgba(10,16,24,0.6) 0%, transparent 30%, transparent 80%, rgba(10,16,24,0.8) 100%)",
         }}
       />
 
@@ -312,7 +311,7 @@ function MockupSection() {
           <MockCard title="Market Pulse" col="col-span-12 sm:col-span-6 lg:col-span-3">
             <div className="text-[11px] mb-1.5" style={{ color: C.muted }}>IDX Regime</div>
             <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium"
-              style={{ background: "#fff5e6", color: C.amber, border: `1px solid #f3e0bc` }}>
+              style={{ background: "rgba(245,176,66,0.12)", color: C.amber, border: `1px solid rgba(245,176,66,0.35)` }}>
               <CircleDot className="w-3 h-3" /> Neutral
             </div>
             <div className="mt-2.5 text-[11px]" style={{ color: C.muted }}>Breadth · 54% advancers</div>
@@ -444,9 +443,9 @@ function SentimentDial({ value }: { value: number }) {
 function DecisionRow({ ticker, intent, final, reason, tone }:
   { ticker: string; intent: string; final: string; reason: string; tone: "block" | "hold" | "watch" }) {
   const palette = {
-    block: { bg: "#fdecea", fg: C.red, border: "#f5cfca" },
-    hold: { bg: "#eaf7f1", fg: C.green, border: "#c8eada" },
-    watch: { bg: "#fff5e6", fg: C.amber, border: "#f3e0bc" },
+    block: { bg: "rgba(239,77,77,0.12)", fg: C.red, border: "rgba(239,77,77,0.35)" },
+    hold: { bg: "rgba(0,255,178,0.10)", fg: C.green, border: "rgba(0,255,178,0.30)" },
+    watch: { bg: "rgba(245,176,66,0.12)", fg: C.amber, border: "rgba(245,176,66,0.35)" },
   }[tone];
   return (
     <div className="flex items-center justify-between py-1.5 text-[11px]" style={{ borderTop: `1px solid ${C.borderSoft}` }}>
@@ -666,7 +665,7 @@ function NewsSection() {
                 style={{ borderTop: i === 0 ? "none" : `1px solid ${C.borderSoft}` }}>
                 <span style={{ color: C.inkSoft }}>{it}</span>
                 <span className="text-[11px] font-medium px-2 py-0.5 rounded"
-                  style={{ background: "#eaf7f1", color: C.green, border: `1px solid #c8eada` }}>
+                  style={{ background: "rgba(0,255,178,0.10)", color: C.green, border: `1px solid rgba(0,255,178,0.30)` }}>
                   active
                 </span>
               </div>
