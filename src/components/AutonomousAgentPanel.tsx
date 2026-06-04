@@ -43,6 +43,12 @@ export function AutonomousAgentPanel() {
     queryFn: () => fetchDiag(),
     refetchInterval: 60_000,
   });
+  const fetchLoss = useServerFn(getLossDiagnostics);
+  const { data: loss } = useQuery({
+    queryKey: ["agent-loss-diagnostics"],
+    queryFn: () => fetchLoss(),
+    refetchInterval: 45_000,
+  });
   const modeMutation = useMutation({
     mutationFn: async (mode: AggressionMode) => {
       const agentId = (data as any)?.agent?.id;
