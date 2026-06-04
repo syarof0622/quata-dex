@@ -6,6 +6,7 @@ import { getLossDiagnostics } from "@/lib/loss-diagnostics.functions";
 import { getSwingMaxStatus } from "@/lib/swing-status.functions";
 import { AGGRESSION_PRESETS, type AggressionMode } from "@/lib/agent-aggression-modes";
 import { cn } from "@/lib/utils";
+import { displaySymbol } from "@/lib/display-symbol";
 import { Bot, ShieldCheck, AlertTriangle, Activity, Target, TrendingDown, TrendingUp, Pause, Zap, ShieldAlert, Clock, Waves } from "lucide-react";
 
 
