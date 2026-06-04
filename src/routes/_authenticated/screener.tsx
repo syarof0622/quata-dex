@@ -398,7 +398,7 @@ function UndervaluedPanel() {
             {rows.map((r: any) => (
               <tr key={r.symbol} className="border-t border-border hover:bg-accent/30 align-top">
                 <td className="p-2 font-mono font-medium">
-                  <Link to="/chart/$symbol" params={{ symbol: r.symbol }}>{r.symbol}</Link>
+                  <Link to="/chart/$symbol" params={{ symbol: r.symbol }}>{displaySymbol(r.symbol)}</Link>
                 </td>
                 <td className="p-2"><UndervalueBadge classification={r.classification} /></td>
                 <td className={`p-2 text-right font-mono ${r.finalUndervalueScore >= 65 ? "text-bull" : r.finalUndervalueScore < 50 ? "text-bear" : ""}`}>{Number(r.finalUndervalueScore ?? 0).toFixed(0)}</td>
