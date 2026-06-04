@@ -81,18 +81,18 @@ function HealthPage() {
   return (
     <div className="p-4 md:p-6 space-y-6">
       <PageHero
-        eyebrow="Operational Intelligence"
+        eyebrow="Intelijen Operasional"
         live
         icon={HeartPulse}
-        title="System Health"
-        subtitle={`Worker, data freshness, source health & audit trail. Diperbarui setiap 30 detik.${data ? ` · Last updated: ${fmtWIB(data.generatedAt)}` : ""}`}
+        title="Kesehatan Sistem"
+        subtitle={`Worker, kesegaran data, kesehatan sumber, dan jejak audit. Diperbarui setiap 30 detik.${data ? ` · Diperbarui terakhir: ${fmtWIB(data.generatedAt)}` : ""}`}
         actions={
           <button
             onClick={() => refetch()}
             className="text-xs px-3 py-1.5 rounded-md border border-border hover:bg-muted"
             disabled={isFetching}
           >
-            {isFetching ? "Refreshing…" : "Refresh"}
+            {isFetching ? "Memperbarui…" : "Perbarui"}
           </button>
         }
       />
