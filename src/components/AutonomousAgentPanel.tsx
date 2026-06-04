@@ -209,10 +209,6 @@ export function AutonomousAgentPanel() {
       )}
 
 
-        {diag?.recommendation && (
-          <div className="mt-2 text-[11px] text-muted-foreground border-t border-border/40 pt-2">{diag.recommendation}</div>
-        )}
-      </div>
 
       {/* Loss-Protection diagnostics — "Why the AI is losing" */}
       {loss?.agent && (
