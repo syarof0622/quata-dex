@@ -161,7 +161,7 @@ function Lab() {
               <tbody>
                 {pending.map((o: any) => (
                   <tr key={o.id} className="border-t border-border">
-                    <td className="p-2 font-medium">{o.symbol}</td>
+                    <td className="p-2 font-medium">{displaySymbol(o.symbol)}</td>
                     <td className={`p-2 uppercase text-xs ${o.side === "buy" ? "text-bull" : "text-bear"}`}>{o.side}</td>
                     <td className="p-2 text-xs uppercase">{o.type}</td>
                     <td className="p-2 text-right font-mono">{o.qty}</td>
