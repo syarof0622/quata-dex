@@ -12,6 +12,8 @@ import { computeDataQuality, type DataQualityReport } from "./data-quality";
 import { sectorOf } from "./sectors";
 import { getStrategyContextFor } from "./strategy-intelligence.functions";
 import { finalRiskGuard } from "./risk-engine";
+import { calculateTradeQualityScore } from "./trade-quality";
+import { evaluateBuyGuards, getSymbolCooldown } from "./loss-protection.server";
 
 export type AgentAction = "BUY" | "SELL" | "HOLD" | "EXIT";
 
@@ -712,6 +714,58 @@ export async function evaluateSymbol(
     const stopLoss = agent.autoStopLoss ? guard.stopLoss : null;
     const takeProfit = agent.autoTakeProfit ? guard.takeProfit : null;
     const rr = guard.riskRewardRatio;
+
+    // ===== Loss-Protection BUY guard (Phase 3) =====
+    // Cooldown info for quality scoring
+    const agentRowAny = (agent.agentRow ?? {}) as any;
+    const cd = await getSymbolCooldown(agent.id, sym).catch(() => null);
+    const cooldownActive = !!(cd?.cooldown_until && new Date(cd.cooldown_until).getTime() > Date.now());
+    const lossStreak = Number(cd?.loss_count ?? 0);
+
+    const quality = calculateTradeQualityScore({
+      techScore, techLabel,
+      trend: techScore > 15 ? "bullish" : techScore < -15 ? "bearish" : "neutral",
+      aboveShortMA: (setup as any)?.signal?.aboveShortMA ?? null,
+      aboveMediumMA: (setup as any)?.signal?.aboveMediumMA ?? null,
+      breakout: !!setup?.setup?.breakout,
+      volumeConfirmed: (setup as any)?.signal?.volumeConfirmed ?? null,
+      valueTradedIDR: quote?.volume && quote?.price ? Number(quote.volume) * Number(quote.price) : null,
+      sectorRotation: sectorRotationLabel as any,
+      marketRegime: marketRegimeLabel,
+      ihsgBias: (realMarketContext as any).ihsgBias ?? null,
+      volatilityLabel: volLabel as any,
+      newsBias: Number((realNewsData as any).newsBias ?? 0),
+      negativeDisclosure,
+      sentScore,
+      riskRewardRatio: rr,
+      stopDistancePct: guard.stopDistancePct,
+      symbolLossStreak: lossStreak,
+      symbolCooldownActive: cooldownActive,
+      dataFreshnessSeconds: freshness,
+      dataQualityScore: (dataQuality as any)?.score ?? null,
+    });
+
+    const buyGuard = await evaluateBuyGuards({
+      agent: { ...agentRowAny, id: agent.id, aggression_mode: agentRowAny.aggression_mode ?? agent.autonomousRiskMode },
+      symbol: sym,
+      strategy: String(agent.strategyMode ?? "trend_following"),
+      qualityScore: quality.score,
+      riskRewardRatio: rr,
+      stopDistancePct: guard.stopDistancePct,
+      marketRegime: marketRegimeLabel,
+    });
+
+    if (!buyGuard.allow) {
+      return emptySnap(sym, `Loss-protection block: ${buyGuard.reasons.join(", ")}. Quality ${quality.score}/${quality.label}.`, {
+        confidence, rawConfidence, calibrationReason: calib.reason,
+        realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
+        portfolioSnapshot, dataFreshnessSeconds: freshness, dataQuality,
+        riskSnapshot: { riskGuard: guard, lossProtection: { ...buyGuard, quality } } as any,
+        blockedReason: buyGuard.reasons[0],
+        warnings: [...warnings, ...buyGuard.reasons.map(r => `loss_protection:${r}`)],
+        strategyName, marketRegime: marketRegimeLabel, strategyContext,
+      });
+    }
 
     const autoReasonTag = autoGate
       ? ` [autonomous:${agent.autonomousRiskMode} score=${autonomousContext!.score.toFixed(0)}]`

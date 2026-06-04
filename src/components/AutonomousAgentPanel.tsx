@@ -2,9 +2,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getAutonomousAgentStatus } from "@/lib/autonomous-status.functions";
 import { setAgentAggressionMode, getProfitDiagnostics } from "@/lib/ai-trade-agent.functions";
+import { getLossDiagnostics } from "@/lib/loss-diagnostics.functions";
 import { AGGRESSION_PRESETS, type AggressionMode } from "@/lib/agent-aggression-modes";
 import { cn } from "@/lib/utils";
-import { Bot, ShieldCheck, AlertTriangle, Activity, Target, TrendingDown, TrendingUp, Pause, Zap } from "lucide-react";
+import { Bot, ShieldCheck, AlertTriangle, Activity, Target, TrendingDown, TrendingUp, Pause, Zap, ShieldAlert, Clock } from "lucide-react";
 
 const TONE: Record<string, string> = {
   emerald: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
@@ -41,6 +42,12 @@ export function AutonomousAgentPanel() {
     queryKey: ["agent-profit-diagnostics"],
     queryFn: () => fetchDiag(),
     refetchInterval: 60_000,
+  });
+  const fetchLoss = useServerFn(getLossDiagnostics);
+  const { data: loss } = useQuery({
+    queryKey: ["agent-loss-diagnostics"],
+    queryFn: () => fetchLoss(),
+    refetchInterval: 45_000,
   });
   const modeMutation = useMutation({
     mutationFn: async (mode: AggressionMode) => {
@@ -133,6 +140,89 @@ export function AutonomousAgentPanel() {
           <div className="mt-2 text-[11px] text-muted-foreground border-t border-border/40 pt-2">{diag.recommendation}</div>
         )}
       </div>
+
+      {/* Loss-Protection diagnostics — "Why the AI is losing" */}
+      {loss?.agent && (
+        <div className={cn("rounded-2xl border p-3 sm:p-4",
+          loss.agent.mode === "LOSS_PROTECTION_ACTIVE" || loss.agent.mode === "PROTECTION_MODE"
+            ? "border-rose-500/40 bg-rose-500/5"
+            : loss.agent.mode === "OBSERVATION_MODE" || loss.agent.mode === "CAUTION"
+              ? "border-amber-500/40 bg-amber-500/5"
+              : "border-border/60 bg-card/50")}>
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <ShieldAlert className="h-4 w-4 text-rose-400" /> Loss Protection · {loss.agent.mode}
+            </h3>
+            <span className="text-[10.5px] text-muted-foreground font-mono">
+              streak {loss.agent.consecutiveLosses}/{loss.agent.maxConsecutiveLosses}
+            </span>
+          </div>
+          {loss.agent.protectionReason && (
+            <div className="text-[11.5px] text-rose-300 mb-2">{loss.agent.protectionReason}</div>
+          )}
+          {loss.summary && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[11px]">
+              <Heart label="Closed (50)" value={String(loss.summary.closedTrades ?? 0)} />
+              <Heart label="Win rate" value={`${((loss.summary.winRate ?? 0) * 100).toFixed(0)}%`} />
+              <Heart label="Profit factor" value={fmt(loss.summary.profitFactor, 2)} />
+              <Heart label="W / L" value={`${loss.summary.wins ?? 0} / ${loss.summary.losses ?? 0}`} />
+            </div>
+          )}
+          {(loss.summary?.worstSymbols?.length ?? 0) > 0 && (
+            <div className="mt-2">
+              <div className="text-[10.5px] uppercase tracking-wider text-muted-foreground mb-1">Worst symbols</div>
+              <div className="flex flex-wrap gap-1.5">
+                {loss.summary.worstSymbols.map((s: any) => (
+                  <span key={s.symbol} className="inline-flex items-center gap-1 rounded-full border border-rose-500/30 bg-rose-500/10 text-rose-300 px-2 py-0.5 text-[10.5px] font-mono">
+                    {s.symbol} {s.pnl >= 0 ? "+" : ""}{fmt(s.pnl, 0)} ({s.losses}L/{s.trades})
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          {loss.summary?.worstStrategy && (
+            <div className="mt-2 text-[11px] text-muted-foreground">
+              Worst strategy: <span className="font-mono text-foreground">{loss.summary.worstStrategy.strategy}</span>
+              {" · PF "}{fmt(loss.summary.worstStrategy.profitFactor, 2)}
+              {" · WR "}{((loss.summary.worstStrategy.winRate ?? 0) * 100).toFixed(0)}%
+              {loss.summary.worstStrategy.status === "PAUSED_FOR_REVIEW" && (
+                <span className="ml-1 inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-300 px-1.5 text-[10px]">
+                  <Pause className="h-3 w-3" /> paused
+                </span>
+              )}
+            </div>
+          )}
+          {(loss.cooldowns?.length ?? 0) > 0 && (
+            <div className="mt-2">
+              <div className="text-[10.5px] uppercase tracking-wider text-muted-foreground mb-1 flex items-center gap-1">
+                <Clock className="h-3 w-3" /> Active cooldowns
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {loss.cooldowns.map((c: any) => (
+                  <span key={c.symbol} className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-300 px-2 py-0.5 text-[10.5px] font-mono">
+                    {c.symbol} ×{c.loss_count} · until {new Date(c.cooldown_until).toLocaleDateString()}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          {(loss.pausedStrategies?.length ?? 0) > 0 && (
+            <div className="mt-2">
+              <div className="text-[10.5px] uppercase tracking-wider text-muted-foreground mb-1">Strategies paused by kill-switch</div>
+              <div className="flex flex-wrap gap-1.5">
+                {loss.pausedStrategies.map((s: any) => (
+                  <span key={s.strategy} className="inline-flex items-center gap-1 rounded-full border border-rose-500/30 bg-rose-500/10 text-rose-300 px-2 py-0.5 text-[10.5px]">
+                    {s.strategy} · {s.paused_reason ?? "poor stats"}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="mt-2 text-[10.5px] text-muted-foreground border-t border-border/40 pt-2">
+            Guards: Q≥{loss.agent.minTradeQualityScore} · RR≥{loss.agent.minRiskReward.toFixed(1)} · min-hold {loss.agent.minHoldMinutes}m · daily-loss {(loss.agent.maxDailyLossPct * 100).toFixed(1)}%
+          </div>
+        </div>
+      )}
 
       {/* Why AI Did Not Trade + profit diagnostics */}
       <div className="rounded-2xl border border-border/60 bg-card/50 p-3 sm:p-4">
