@@ -274,7 +274,7 @@ export function AutonomousAgentPanel() {
               <div className="flex flex-wrap gap-1.5">
                 {loss.summary.worstSymbols.map((s: any) => (
                   <span key={s.symbol} className="inline-flex items-center gap-1 rounded-full border border-rose-500/30 bg-rose-500/10 text-rose-300 px-2 py-0.5 text-[10.5px] font-mono">
-                    {s.symbol} {s.pnl >= 0 ? "+" : ""}{fmt(s.pnl, 0)} ({s.losses}L/{s.trades})
+                    {displaySymbol(s.symbol)} {s.pnl >= 0 ? "+" : ""}{fmt(s.pnl, 0)} ({s.losses}L/{s.trades})
                   </span>
                 ))}
               </div>
