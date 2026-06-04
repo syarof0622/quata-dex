@@ -345,6 +345,8 @@ export function buildSwingTradePlan(c: SwingCandidate, ctx: SwingContext): Swing
     takeProfit1: +tp1.toFixed(4),
     takeProfit2: +tp2.toFixed(4),
     trailingActivation: +(price + riskPerShare * 1.0).toFixed(4),
+    trailingActive: false,
+    trailingStop: null,
     invalidationLevel: +(stopLoss * 0.99).toFixed(4),
     riskRewardRatio: rr,
     swingQualityScore: q.score,
