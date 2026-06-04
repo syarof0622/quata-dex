@@ -6,6 +6,7 @@ import { getIndices, getMovers, getNews, getSparklines } from "@/lib/market.func
 import { motion } from "framer-motion";
 import { formatCompact, formatPct, formatPrice, colorForChange } from "@/lib/format";
 import { formatLocalPrice } from "@/lib/symbols";
+import { displaySymbol } from "@/lib/display-symbol";
 import { ArrowDownRight, ArrowUpRight, Newspaper, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MobileEmptyState, MobileSkeletonRows } from "@/components/mobile-ui";
