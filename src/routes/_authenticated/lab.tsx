@@ -992,7 +992,7 @@ function AIAgentPanel() {
                 const mv = mark * qty;
                 return (
                   <tr key={p.id} className="border-t border-border">
-                    <td className="p-2 font-mono">{p.symbol}</td>
+                    <td className="p-2 font-mono">{displaySymbol(p.symbol)}</td>
                     <td className="p-2 text-right font-mono">{lot}</td>
                     <td className="p-2 text-right font-mono">{qty}</td>
                     <td className="p-2 text-right font-mono">{formatPrice(p.avg_price)}</td>
