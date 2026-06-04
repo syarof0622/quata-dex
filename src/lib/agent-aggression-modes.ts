@@ -8,7 +8,7 @@
 // CRITICAL: All paths reference this table — do not hardcode mode knobs elsewhere.
 
 export type AggressionMode =
-  | "conservative" | "balanced" | "progressive" | "expert_paper" | "research_max";
+  | "conservative" | "balanced" | "progressive" | "expert_paper" | "research_max" | "swing_max";
 
 export type AggressionPreset = {
   mode: AggressionMode;
