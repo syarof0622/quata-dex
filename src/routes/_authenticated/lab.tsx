@@ -75,10 +75,10 @@ function Lab() {
   return (
     <div className="p-4 md:p-6 space-y-4">
       <PageHero
-        eyebrow="Paper Trading Only"
+        eyebrow="Hanya Paper Trading"
         icon={FlaskConical}
-        title="Simulation Lab"
-        subtitle={`Paper trading ${currency} · live P/L · advanced orders · journal · backtest · AI coach`}
+        title="Lab Simulasi"
+        subtitle={`Paper trading ${currency} · laba/rugi langsung · order lanjutan · jurnal · uji balik · pelatih AI`}
         actions={<ResetAccountControl onDone={() => acct.refetch()} currentCash={cash || (currency === "IDR" ? 100_000_000 : 100_000)} currency={currency} />}
       />
 
