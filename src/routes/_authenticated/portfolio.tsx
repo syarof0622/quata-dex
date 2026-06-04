@@ -429,7 +429,7 @@ function Portfolio() {
             <tbody>
               {recentClosed.map((t: any, i: number) => (
                 <tr key={i} className="border-t border-border">
-                  <td className="p-2 font-medium">{t.symbol}</td>
+                  <td className="p-2 font-medium">{displaySymbol(t.symbol)}</td>
                   <td className="p-2 text-right font-mono text-xs">{priceFmt(t.symbol, t.entryPrice)}</td>
                   <td className="p-2 text-right font-mono text-xs">{priceFmt(t.symbol, t.exitPrice)}</td>
                   <td className="p-2 text-right font-mono text-xs">{t.qty}</td>
