@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { formatPrice, formatIDR, formatIDRCompact, formatPct, colorForChange } from "@/lib/format";
+import { displaySymbol } from "@/lib/display-symbol";
 import { resetPaperAccount } from "@/lib/paper.functions";
 import { toast } from "sonner";
 
