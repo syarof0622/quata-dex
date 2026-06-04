@@ -334,19 +334,63 @@ export function buildSwingTradePlan(c: SwingCandidate, ctx: SwingContext): Swing
   if (!isFinite(rr) || rr < ctx.minRR) return null;
   if (q.score < ctx.qualityThreshold) return null;
 
-  // Position sizing — risk-based
+  // Position sizing
   const equity = Math.max(0, Number(ctx.agentEquity ?? 0));
-  const riskBudget = equity * ctx.riskPerTradePct;
-  let positionSizeIDR = riskPerShare > 0 ? (riskBudget / riskPerShare) * price : 0;
-  // Reduce in risk-off / high vol / protection mode
+  const stopDistPctRound = +stopDistPct.toFixed(2);
+
+  // Default path: legacy risk-based clamp (kept for non-high-conviction calls).
+  let positionSizeIDR = riskPerShare > 0 ? ((equity * ctx.riskPerTradePct) / riskPerShare) * price : 0;
   const regime = String(c.marketRegime ?? "").toLowerCase();
   if (/risk_off|bear|crash/.test(regime)) positionSizeIDR *= 0.6;
   if (c.volatilityLabel === "high") positionSizeIDR *= 0.7;
   if (ctx.swingProtectionActive) positionSizeIDR *= 0.5;
-  // Cap to weight bands
   positionSizeIDR = Math.min(positionSizeIDR, equity * ctx.maxPositionWeightPct);
   positionSizeIDR = Math.max(positionSizeIDR, equity * ctx.minPositionWeightPct);
   positionSizeIDR = Math.round(positionSizeIDR);
+
+  // High-conviction allocator (Patch add-on) — when enabled overrides sizing
+  // and can REJECT the plan entirely if setup is weak / tiny / on cooldown.
+  let allocationTier: 0 | 1 | 2 | 3 | undefined;
+  let allocationTierLabel: SwingPlan["allocationTierLabel"];
+  let allocationPct: number | undefined;
+  let allocationReason: string | undefined;
+  let riskPerTradePctOut: number | undefined;
+  let allocationCapWinner: string | undefined;
+  let sharesOut: number | undefined;
+  let lotOut: number | undefined;
+
+  if (ctx.highConvictionMode) {
+    // dynamic import to avoid circular surface
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { computeHighConvictionAllocation, explainAllocation } = require("./swing-allocation") as typeof import("./swing-allocation");
+    const decision = computeHighConvictionAllocation({
+      equity,
+      cashAvailable: Math.max(0, Number(ctx.cashAvailable ?? equity)),
+      price,
+      qualityScore: q.score,
+      riskRewardRatio: rr,
+      stopDistancePct: stopDistPctRound,
+      recentLossCount: Number(ctx.symbolRecentLossCount ?? 0),
+      recoveryLevel: (ctx.recoveryLevel ?? "normal") as any,
+      protectionActive: !!ctx.swingProtectionActive,
+      hasFullPlan: true,
+    });
+    if (!decision.allowed) {
+      // Tier-0 / size-floor rejection — block plan creation so the decision
+      // engine reports a clear allocation-block reason.
+      q.warnings.push(`alloc_reject:${decision.blockedReason}`);
+      return null;
+    }
+    positionSizeIDR = decision.allocationIDR;
+    allocationTier = decision.tier;
+    allocationTierLabel = decision.tierLabel;
+    allocationPct = decision.allocationPct;
+    allocationReason = explainAllocation(c.symbol, decision);
+    riskPerTradePctOut = decision.riskPerTradePct;
+    allocationCapWinner = decision.capExplain;
+    sharesOut = decision.shares;
+    lotOut = decision.lot;
+  }
 
   const now = Date.now();
   return {
@@ -372,6 +416,14 @@ export function buildSwingTradePlan(c: SwingCandidate, ctx: SwingContext): Swing
     warnings: q.warnings,
     positionSizeIDR,
     status: "PLANNED",
+    allocationTier,
+    allocationTierLabel,
+    allocationPct,
+    allocationReason,
+    riskPerTradePct: riskPerTradePctOut,
+    allocationCapWinner,
+    shares: sharesOut,
+    lot: lotOut,
   };
 }
 
