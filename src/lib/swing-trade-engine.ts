@@ -75,12 +75,17 @@ export type SwingContext = {
   riskPerTradePct: number;                        // 0.005–0.008
   minPositionWeightPct: number;                   // 0.04
   maxPositionWeightPct: number;                   // 0.08
-  qualityThreshold: number;                       // 78
-  minRR: number;                                  // 2.0
+  qualityThreshold: number;                       // 78 (legacy) / 85 (high-conviction default)
+  minRR: number;                                  // 2.0 (legacy) / 2.5 (high-conviction)
   targetHoldingDays: number;                      // 3
   maxHoldingDays: number;                         // 7
   timeStopWarningDays: number;                    // 3
   swingProtectionActive?: boolean | null;
+  // High-conviction allocation extras (Patch add-on)
+  cashAvailable?: number | null;
+  symbolRecentLossCount?: number | null;
+  recoveryLevel?: "L0" | "L1" | "L2" | "normal" | "premium" | null;
+  highConvictionMode?: boolean | null;            // when true, run tiered allocator
 };
 
 export type SwingQualityResult = {
