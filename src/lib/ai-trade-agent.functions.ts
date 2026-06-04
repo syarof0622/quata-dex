@@ -1780,6 +1780,7 @@ export const setAgentAggressionMode = createServerFn({ method: "POST" })
       max_active_positions: preset.maxActivePositions,
       min_confidence_to_trade: preset.minBuyConfidence,
       min_autonomous_score: preset.minAutonomousScore,
+      swing_mode_active: data.mode === "swing_max",
     }).eq("id", data.id).eq("user_id", USER_ID);
     if (error) throw new Error(error.message);
     return { ok: true, preset };
