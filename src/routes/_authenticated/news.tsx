@@ -118,11 +118,11 @@ function NewsHub() {
   return (
     <div className="p-4 md:p-6 space-y-4">
       <PageHero
-        eyebrow="News & Sentiment"
+        eyebrow="Berita & Sentimen"
         live
         icon={Newspaper}
-        title="News & Market Sentiment"
-        subtitle="Berita saham IDX dari Kontan, CNBC, ANTARA, Investor.id, dan Google News — auto-deduplicate, sentiment & impact scoring."
+        title="Berita & Sentimen Pasar"
+        subtitle="Berita saham IDX dari Kontan, CNBC, ANTARA, Investor.id, dan Google News — deduplikasi otomatis, dengan skor sentimen dan dampak."
         actions={
           <div className="flex items-center gap-2">
             {serpStatus.data && (

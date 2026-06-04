@@ -10,39 +10,41 @@ import { Button } from "@/components/ui/button";
 import { TickerSearch } from "@/components/TickerSearch";
 import { OnboardingDialog } from "@/components/OnboardingDialog";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
+import { UI_LABELS_ID } from "@/lib/i18n/id";
 
 export const Route = createFileRoute("/_authenticated")({
   component: AuthedLayout,
 });
 
+const L = UI_LABELS_ID.nav;
 const NAV = [
-  { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/market", icon: TrendingUp, label: "Market" },
-  { to: "/screener", icon: SlidersHorizontal, label: "Screener" },
-  { to: "/watchlist", icon: Star, label: "Watchlist" },
-  { to: "/portfolio", icon: PieChart, label: "Portfolio" },
-  { to: "/ai", icon: Bot, label: "AI Analyst" },
-  { to: "/lab", icon: FlaskConical, label: "Simulation Lab" },
-  { to: "/expert", icon: Sparkles, label: "Expert Tools" },
-  { to: "/news", icon: Newspaper, label: "News" },
-  { to: "/alerts", icon: Bell, label: "Alerts" },
-  { to: "/health", icon: HeartPulse, label: "System Health" },
-  { to: "/settings", icon: Settings, label: "Settings" },
+  { to: "/dashboard", icon: LayoutDashboard, label: L.dashboard },
+  { to: "/market", icon: TrendingUp, label: L.market },
+  { to: "/screener", icon: SlidersHorizontal, label: L.screener },
+  { to: "/watchlist", icon: Star, label: L.watchlist },
+  { to: "/portfolio", icon: PieChart, label: L.portfolio },
+  { to: "/ai", icon: Bot, label: L.aiAnalyst },
+  { to: "/lab", icon: FlaskConical, label: L.simulationLab },
+  { to: "/expert", icon: Sparkles, label: L.expertTools },
+  { to: "/news", icon: Newspaper, label: L.news },
+  { to: "/alerts", icon: Bell, label: L.alerts },
+  { to: "/health", icon: HeartPulse, label: L.systemHealth },
+  { to: "/settings", icon: Settings, label: L.settings },
 ] as const;
 
 const PAGE_TITLES: Record<string, string> = {
-  "/dashboard": "Dashboard",
-  "/market": "Market Pulse",
-  "/screener": "Screener",
-  "/watchlist": "Watchlist",
-  "/portfolio": "Portfolio",
-  "/ai": "AI Analyst",
-  "/lab": "Simulation Lab",
-  "/expert": "Expert Tools",
-  "/news": "News & Sentiment",
-  "/alerts": "Alerts",
-  "/health": "System Health",
-  "/settings": "Settings",
+  "/dashboard": L.dashboard,
+  "/market": L.market,
+  "/screener": L.screener,
+  "/watchlist": L.watchlist,
+  "/portfolio": L.portfolio,
+  "/ai": L.aiAnalyst,
+  "/lab": L.simulationLab,
+  "/expert": L.expertTools,
+  "/news": L.news,
+  "/alerts": L.alerts,
+  "/health": L.systemHealth,
+  "/settings": L.settings,
 };
 
 function AuthedLayout() {

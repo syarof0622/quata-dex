@@ -8,24 +8,27 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { useNavigate } from "@tanstack/react-router";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { UI_LABELS_ID } from "@/lib/i18n/id";
+
+const L = UI_LABELS_ID.nav;
 
 const PRIMARY = [
-  { to: "/dashboard", icon: LayoutDashboard, label: "Home", search: undefined as any },
-  { to: "/ai", icon: Bot, label: "Analyst", search: undefined as any },
-  { to: "/lab", icon: Sparkles, label: "Agent", search: { tab: "agent" } as any },
-  { to: "/portfolio", icon: PieChart, label: "Portfolio", search: undefined as any },
+  { to: "/dashboard", icon: LayoutDashboard, label: L.home, search: undefined as any },
+  { to: "/ai", icon: Bot, label: L.analyst, search: undefined as any },
+  { to: "/lab", icon: Sparkles, label: L.agent, search: { tab: "agent" } as any },
+  { to: "/portfolio", icon: PieChart, label: L.portfolio, search: undefined as any },
 ] as const;
 
 const MORE_ITEMS = [
-  { to: "/market", icon: TrendingUp, label: "Market Pulse" },
-  { to: "/lab", icon: FlaskConical, label: "Simulation Lab" },
-  { to: "/watchlist", icon: Star, label: "Watchlist" },
-  { to: "/screener", icon: SlidersHorizontal, label: "Screener" },
-  { to: "/expert", icon: Sparkles, label: "Expert Tools" },
-  { to: "/news", icon: Newspaper, label: "News & Sentiment" },
-  { to: "/alerts", icon: Bell, label: "Alerts" },
-  { to: "/health", icon: HeartPulse, label: "System Health" },
-  { to: "/settings", icon: Settings, label: "Settings" },
+  { to: "/market", icon: TrendingUp, label: L.market },
+  { to: "/lab", icon: FlaskConical, label: L.simulationLab },
+  { to: "/watchlist", icon: Star, label: L.watchlist },
+  { to: "/screener", icon: SlidersHorizontal, label: L.screener },
+  { to: "/expert", icon: Sparkles, label: L.expertTools },
+  { to: "/news", icon: Newspaper, label: L.news },
+  { to: "/alerts", icon: Bell, label: L.alerts },
+  { to: "/health", icon: HeartPulse, label: L.systemHealth },
+  { to: "/settings", icon: Settings, label: L.settings },
 ] as const;
 
 export function MobileBottomNav() {
@@ -46,7 +49,7 @@ export function MobileBottomNav() {
           style={{ minHeight: 60 }}
         >
           {PRIMARY.map(({ to, icon: Icon, label, search }) => {
-            const active = path === to || path.startsWith(to + "/") || (to === "/lab" && label === "Agent" && path.startsWith("/lab"));
+            const active = path === to || path.startsWith(to + "/") || (to === "/lab" && label === L.agent && path.startsWith("/lab"));
             return (
               <Link
                 key={label}

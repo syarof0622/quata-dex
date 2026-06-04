@@ -72,11 +72,11 @@ function Dashboard() {
   return (
     <div className="p-3 md:p-6 space-y-4 md:space-y-6">
       <PageHero
-        eyebrow="Command Center"
+        eyebrow="Pusat Kendali"
         live
         icon={TrendingUp}
-        title="Market Dashboard"
-        subtitle="Realtime overview · IDX, indices, movers, news"
+        title="Dasbor Pasar"
+        subtitle="Ringkasan real-time · IDX, indeks, mover, dan berita"
         actions={marketToggle}
       />
 

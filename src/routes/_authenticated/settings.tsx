@@ -140,10 +140,10 @@ function SettingsPage() {
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-4xl">
       <PageHero
-        eyebrow="Preferences"
+        eyebrow="Preferensi"
         icon={SettingsIcon}
-        title="Settings"
-        subtitle="Profile, preferences, paper account & data integrations."
+        title="Pengaturan"
+        subtitle="Profil, preferensi, akun paper trading, dan integrasi data."
       />
 
 

@@ -93,10 +93,10 @@ function Screener() {
   return (
     <div className="p-4 md:p-6 space-y-4">
       <PageHero
-        eyebrow="Research"
+        eyebrow="Riset"
         icon={Filter}
-        title="Stock Screener"
-        subtitle="Technical + fundamental screening untuk peluang trade & undervalued"
+        title="Penyaring Saham"
+        subtitle="Penyaringan teknikal & fundamental untuk peluang trading dan emiten undervalued"
       />
 
 
