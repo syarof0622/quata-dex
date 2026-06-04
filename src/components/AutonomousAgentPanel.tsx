@@ -66,6 +66,7 @@ export function AutonomousAgentPanel() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["autonomous-agent-status"] });
       qc.invalidateQueries({ queryKey: ["agent-profit-diagnostics"] });
+      qc.invalidateQueries({ queryKey: ["agent-swing-max-status"] });
     },
   });
 
