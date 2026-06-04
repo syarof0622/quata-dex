@@ -220,7 +220,7 @@ export function AutonomousAgentPanel() {
                   const label = d.tierLabel ?? (d.action === "BUY" ? "STARTER" : "REJECTED");
                   return (
                     <div key={i} className={cn("rounded-lg border px-2 py-1.5 text-[11px] flex flex-wrap items-center gap-2", TONE[tone])}>
-                      <span className="font-mono font-semibold">{d.symbol}</span>
+                      <span className="font-mono font-semibold">{displaySymbol(d.symbol)}</span>
                       <span className="rounded-full border border-current/40 px-1.5 py-px text-[10px] font-mono">{label} · T{tier}</span>
                       <span className="opacity-80">Q{Number(d.qualityScore ?? 0).toFixed(0)}</span>
                       <span className="opacity-80">RR {Number(d.rr ?? 0).toFixed(2)}</span>
