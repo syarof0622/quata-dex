@@ -682,20 +682,26 @@ function SafetySection() {
   return (
     <section id="paper" className="max-w-[1440px] mx-auto px-6 lg:px-10 py-20 md:py-28">
       <div
-        className="rounded-3xl p-8 md:p-12 grid grid-cols-1 md:grid-cols-12 gap-8 items-center"
+        className="relative rounded-3xl p-8 md:p-12 grid grid-cols-1 md:grid-cols-12 gap-8 items-center overflow-hidden animate-fade-in"
         style={{
-          background: "linear-gradient(135deg, #fbf5e6 0%, #fdf9ef 100%)",
-          border: `1px solid #f0e3c0`,
+          background: `linear-gradient(135deg, ${C.surface} 0%, ${C.bg} 100%)`,
+          border: `1px solid rgba(245,176,66,0.25)`,
+          boxShadow: "0 30px 80px -40px rgba(245,176,66,0.25)",
         }}
       >
-        <div className="md:col-span-2 flex md:justify-center">
-          <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
-            style={{ background: C.surface, border: `1px solid #f0e3c0` }}>
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-24 -right-24 w-[420px] h-[420px] rounded-full blur-3xl opacity-30"
+          style={{ background: "radial-gradient(closest-side, rgba(245,176,66,0.45), transparent 70%)" }}
+        />
+        <div className="md:col-span-2 flex md:justify-center relative">
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center animate-scale-in"
+            style={{ background: "rgba(245,176,66,0.12)", border: `1px solid rgba(245,176,66,0.35)` }}>
             <ShieldCheck className="w-6 h-6" style={{ color: C.amber }} />
           </div>
         </div>
-        <div className="md:col-span-10">
-          <h2 className="font-semibold tracking-tight" style={{ fontSize: "clamp(24px, 3vw, 34px)", letterSpacing: "-0.02em", lineHeight: 1.15 }}>
+        <div className="md:col-span-10 relative">
+          <h2 className="font-semibold tracking-tight" style={{ color: C.ink, fontSize: "clamp(24px, 3vw, 34px)", letterSpacing: "-0.02em", lineHeight: 1.15 }}>
             Built for simulation. Not real-money execution.
           </h2>
           <p className="mt-3 text-[15px] md:text-[16px]" style={{ color: C.inkSoft }}>
