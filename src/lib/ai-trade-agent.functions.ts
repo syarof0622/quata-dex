@@ -271,14 +271,14 @@ async function executePaperFill(opts: {
       const { data: agentRow } = await supabaseAdmin
         .from("ai_trade_agents").select("*").eq("id", agentId).maybeSingle();
       const { data: posRow } = await supabaseAdmin
-        .from("paper_positions").select("created_at")
+        .from("paper_positions").select("opened_at")
         .eq("user_id", USER_ID).eq("symbol", symbol).maybeSingle();
-      if (agentRow && posRow?.created_at) {
+      if (agentRow && posRow?.opened_at) {
         const { evaluateSellGuards } = await import("./loss-protection.server");
         const guard = evaluateSellGuards({
           agent: agentRow,
           symbol,
-          positionOpenedAt: posRow.created_at,
+          positionOpenedAt: posRow.opened_at,
           exitReason: closeReason ?? null,
         });
         if (!guard.allow) {
