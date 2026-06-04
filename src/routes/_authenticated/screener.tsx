@@ -15,6 +15,7 @@ import { Filter, Gem, ShieldAlert } from "lucide-react";
 import { listDisclosureIntel } from "@/lib/disclosure-intel.functions";
 import { DisclosureBadge } from "@/components/DisclosureBadge";
 import { toast } from "sonner";
+import { PageHero } from "@/components/ui/page-hero";
 
 export const Route = createFileRoute("/_authenticated/screener")({
   head: () => ({ meta: [{ title: "Screener — Quanta Terminal" }] }),
