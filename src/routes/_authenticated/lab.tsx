@@ -20,6 +20,8 @@ import { startAgent, pauseAgent, stopAgent, emergencyStop, getAgentStatus, runAg
 import { testAIAgentCronServer } from "@/lib/cron-test.functions";
 import { TickerSearch } from "@/components/TickerSearch";
 import { AiInsightsPanel } from "@/components/AiInsightsPanel";
+import { PageHero } from "@/components/ui/page-hero";
+import { FlaskConical } from "lucide-react";
 
 const MAX_AGENT_SYMBOLS = 5;
 
