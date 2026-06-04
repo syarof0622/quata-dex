@@ -192,7 +192,7 @@ function Lab() {
                 {orders.map((o: any) => (
                   <tr key={o.id} className="border-t border-border">
                     <td className="p-2 text-xs text-muted-foreground">{fmtWIBDateTime(o.filled_at ?? o.created_at)}</td>
-                    <td className="p-2 font-medium">{o.symbol}</td>
+                    <td className="p-2 font-medium">{displaySymbol(o.symbol)}</td>
                     <td className={`p-2 uppercase text-xs ${o.side === "buy" ? "text-bull" : "text-bear"}`}>{o.side}</td>
                     <td className="p-2 text-right font-mono">{o.qty}</td>
                     <td className="p-2 text-right font-mono">{formatPrice(o.filled_price)}</td>
