@@ -8,6 +8,7 @@ import { formatLocalPrice } from "@/lib/symbols";
 import { ArrowDownRight, ArrowUpRight, Newspaper, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MobileEmptyState, MobileSkeletonRows } from "@/components/mobile-ui";
+import { PageHero } from "@/components/ui/page-hero";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — Quanta Terminal" }] }),
