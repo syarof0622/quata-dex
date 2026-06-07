@@ -12,10 +12,12 @@ import { getPaperAccount, resetPaperAccount, updatePaperCurrency } from "@/lib/p
 import { formatIDRCompact } from "@/lib/format";
 import { checkAlerts } from "@/lib/alerts.functions";
 import { toast } from "sonner";
-import { LogOut, RefreshCw, Bell, Palette, User, Database, Zap, Trash2, Mail } from "lucide-react";
+import { LogOut, RefreshCw, Bell, Palette, User, Database, Zap, Trash2, Mail, Wallet, Bot } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHero } from "@/components/ui/page-hero";
 import { Settings as SettingsIcon } from "lucide-react";
+import { PaperBalanceCard } from "@/components/PaperBalanceCard";
+import { AiSettingsCard } from "@/components/AiSettingsCard";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({ meta: [{ title: "Settings — Quanta Terminal" }] }),
@@ -148,13 +150,18 @@ function SettingsPage() {
 
 
       <Tabs defaultValue="profile">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="profile"><User className="size-4 mr-1" /> Profile</TabsTrigger>
+          <TabsTrigger value="paper"><Wallet className="size-4 mr-1" /> Saldo Paper</TabsTrigger>
+          <TabsTrigger value="ai"><Bot className="size-4 mr-1" /> Agen AI</TabsTrigger>
           <TabsTrigger value="appearance"><Palette className="size-4 mr-1" /> Appearance</TabsTrigger>
           <TabsTrigger value="trading"><Zap className="size-4 mr-1" /> Trading</TabsTrigger>
           <TabsTrigger value="notifications"><Bell className="size-4 mr-1" /> Notifications</TabsTrigger>
           <TabsTrigger value="data"><Database className="size-4 mr-1" /> Data</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="paper" className="space-y-3 mt-3"><PaperBalanceCard /></TabsContent>
+        <TabsContent value="ai" className="space-y-3 mt-3"><AiSettingsCard /></TabsContent>
 
         {/* PROFILE */}
         <TabsContent value="profile" className="space-y-3 mt-3">
