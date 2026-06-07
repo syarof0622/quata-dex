@@ -136,7 +136,7 @@ export function ChatPanel({ system }: { system?: string }) {
             <MessageRow key={i} message={m} onCopy={() => copy(m.content)} onRegenerate={i === messages.length - 1 && m.role === "assistant" && !busy ? regenerate : undefined} streaming={busy && i === messages.length - 1 && m.role === "assistant"} />
           ))}
 
-          {lastAssistantStreaming && <TypingIndicator phase={STREAMING_PHASES[phaseIdx]} />}
+          {lastAssistantStreaming && <TypingIndicator phase={phases[phaseIdx]} />}
           <div ref={endRef} />
         </div>
       </div>
