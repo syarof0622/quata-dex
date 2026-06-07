@@ -76,16 +76,16 @@ function MarketPage() {
       {breadth.data ? (
         <div className="panel p-3 md:p-4 grid grid-cols-2 md:grid-cols-5 gap-3 items-center">
           <div>
-            <div className="text-[10.5px] md:text-xs uppercase tracking-wider text-muted-foreground">Regime</div>
+            <div className="text-[10.5px] md:text-xs uppercase tracking-wider text-muted-foreground">{L.body.market.regime}</div>
             <div className={`text-base md:text-lg font-semibold ${breadth.data.tone === "Risk-On" ? "text-bull" : breadth.data.tone === "Risk-Off" ? "text-bear" : ""}`}>
               {breadth.data.tone}
             </div>
           </div>
-          <Stat label="Advancing" value={breadth.data.up} tone="bull" />
-          <Stat label="Declining" value={breadth.data.down} tone="bear" />
-          <Stat label="Flat" value={breadth.data.flat} />
+          <Stat label={L.body.market.advancing} value={breadth.data.up} tone="bull" />
+          <Stat label={L.body.market.declining} value={breadth.data.down} tone="bear" />
+          <Stat label={L.body.market.flat} value={breadth.data.flat} />
           <div>
-            <div className="text-[10.5px] md:text-xs uppercase tracking-wider text-muted-foreground">A/D ratio</div>
+            <div className="text-[10.5px] md:text-xs uppercase tracking-wider text-muted-foreground">{L.body.market.adRatio}</div>
             <div className="font-mono text-base md:text-lg">{(breadth.data.up / Math.max(1, breadth.data.down)).toFixed(2)}</div>
           </div>
           <div className="col-span-2 md:col-span-5">
@@ -102,11 +102,11 @@ function MarketPage() {
 
       {/* Sector performance — horizontal scroll on mobile */}
       <div className="panel p-3 md:p-4">
-        <h3 className="font-semibold text-[13.5px] md:text-base mb-2 md:mb-3">Sector Rotation</h3>
+        <h3 className="font-semibold text-[13.5px] md:text-base mb-2 md:mb-3">{L.body.market.sectorRotation}</h3>
         {sectors.isLoading ? (
           <MobileSkeletonRows rows={3} height={72} />
         ) : (sectors.data ?? []).length === 0 ? (
-          <MobileEmptyState title="Sector data unavailable" hint="Awaiting breadth calculation." />
+          <MobileEmptyState title={L.body.market.sectorUnavailable} hint={L.body.market.sectorHint} />
         ) : (
           <div className="-mx-1 px-1 md:mx-0 md:px-0">
             <div className="flex md:grid md:grid-cols-3 lg:grid-cols-5 gap-2 overflow-x-auto no-scrollbar">
@@ -120,7 +120,7 @@ function MarketPage() {
                     <div className="font-semibold text-[12.5px] md:text-sm truncate">{s.sector}</div>
                     <div className="font-mono text-[15px] md:text-base mt-0.5">{formatPct(s.avgPct)}</div>
                     <div className="text-[10px] mt-0.5 opacity-80">
-                      {s.count} stocks · breadth {(s.breadth * 100).toFixed(0)}%
+                      {s.count} {L.body.market.stocksWord} · {L.body.market.breadthWord} {(s.breadth * 100).toFixed(0)}%
                     </div>
                     {s.topGainer && (
                       <div className="text-[10px] mt-0.5 opacity-80 truncate">▲ {displaySymbol(s.topGainer.symbol)} {formatPct(s.topGainer.pct)}</div>
@@ -138,9 +138,9 @@ function MarketPage() {
 
       {/* Heatmap */}
       <div className="panel p-3 md:p-4">
-        <h3 className="font-semibold text-[13.5px] md:text-base mb-2 md:mb-3">Stock Heatmap</h3>
+        <h3 className="font-semibold text-[13.5px] md:text-base mb-2 md:mb-3">{L.body.market.stockHeatmap}</h3>
         {(movers.data?.all ?? []).length === 0 ? (
-          <MobileEmptyState title="Heatmap data unavailable" hint="Awaiting market feed." />
+          <MobileEmptyState title={L.body.market.heatmapUnavailable} hint={L.body.market.awaitingMarketFeed} />
         ) : (
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-10 gap-1.5">
             {(movers.data?.all ?? []).map(q => {
@@ -172,7 +172,7 @@ function MarketPage() {
       {/* Top gainers/losers + news */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
         <div className="panel p-3 md:p-4">
-          <div className="flex items-center gap-2 mb-2"><ArrowUpRight className="size-4 text-bull" /><h3 className="font-semibold text-[13.5px] md:text-base">Top Gainers</h3></div>
+          <div className="flex items-center gap-2 mb-2"><ArrowUpRight className="size-4 text-bull" /><h3 className="font-semibold text-[13.5px] md:text-base">{L.body.market.topGainers}</h3></div>
           {(movers.data?.gainers ?? []).length === 0 ? (
             <MobileSkeletonRows rows={4} />
           ) : (
@@ -195,7 +195,7 @@ function MarketPage() {
           )}
         </div>
         <div className="panel p-3 md:p-4">
-          <div className="flex items-center gap-2 mb-2"><ArrowDownRight className="size-4 text-bear" /><h3 className="font-semibold text-[13.5px] md:text-base">Top Losers</h3></div>
+          <div className="flex items-center gap-2 mb-2"><ArrowDownRight className="size-4 text-bear" /><h3 className="font-semibold text-[13.5px] md:text-base">{L.body.market.topLosers}</h3></div>
           {(movers.data?.losers ?? []).length === 0 ? (
             <MobileSkeletonRows rows={4} />
           ) : (
@@ -218,7 +218,7 @@ function MarketPage() {
           )}
         </div>
         <div className="panel p-3 md:p-4 col-span-2 lg:col-span-1">
-          <div className="flex items-center gap-2 mb-2"><Newspaper className="size-4 text-primary" /><h3 className="font-semibold text-[13.5px] md:text-base">Latest News</h3></div>
+          <div className="flex items-center gap-2 mb-2"><Newspaper className="size-4 text-primary" /><h3 className="font-semibold text-[13.5px] md:text-base">{L.body.market.latestNews}</h3></div>
           {(news.data ?? []).length === 0 ? (
             <MobileSkeletonRows rows={4} height={32} />
           ) : (
@@ -238,6 +238,7 @@ function MarketPage() {
     </div>
   );
 }
+
 
 function Stat({ label, value, tone }: { label: string; value: number | string; tone?: "bull" | "bear" }) {
   const cls = tone === "bull" ? "text-bull" : tone === "bear" ? "text-bear" : "";
