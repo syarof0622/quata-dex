@@ -97,7 +97,7 @@ export function ChatPanel({ system }: { system?: string }) {
         }
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Network error");
+      toast.error(e instanceof Error ? e.message : T.networkError);
     } finally {
       setBusy(false);
     }
