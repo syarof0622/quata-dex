@@ -68,10 +68,11 @@ const PAGE_TITLES: Record<string, string> = {
 };
 
 function AuthedLayout() {
-  const { signOut } = useAuth();
+  const { signOut, isAdmin } = useAuth();
   const nav = useNavigate();
   const path = useRouterState({ select: s => s.location.pathname });
   const pageTitle = Object.entries(PAGE_TITLES).find(([p]) => path.startsWith(p))?.[1] ?? "Quanta.Terminal";
+  const navItems = isAdmin ? [...NAV, { to: "/admin" as const, icon: Shield, label: "Admin" }] : NAV;
 
   return (
     <SidebarProvider>
