@@ -15,6 +15,7 @@ import { runAgentOnce } from "@/lib/ai-trade-agent.functions";
 import { getIDXMarketSession } from "@/lib/idx-market-session";
 import { checkCronSecret } from "@/lib/cron-auth.server";
 import { audit } from "@/lib/audit.server";
+import { runAsUser } from "@/lib/current-user.server";
 
 type AgentResult = {
   id: string;
