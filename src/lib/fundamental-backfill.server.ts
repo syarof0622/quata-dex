@@ -5,7 +5,6 @@
 // fundamental_signal_snapshots + fundamental_quality_scores rows.
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { currentUserId } from "@/lib/current-user.server";
 import {
   fetchFundamentalFromSources,
   upsertFundamentalSnapshot,
@@ -21,27 +20,25 @@ import type { FundamentalDTO } from "./fundamentals.functions";
 import { calculateFundamentalConfidence } from "./fundamental-confidence.server";
 import { linkFundamentalToNews } from "./fundamental-news-linker.server";
 
-const HARDCODED_USER = currentUserId();
-
 // ---------- universe selection ----------
+// Global backfill — aggregate symbols across ALL users' positions + watchlists
+// plus recent scanner candidates. Runs from cron without a user context.
 export async function selectUniverse(limit = 30): Promise<string[]> {
   const set = new Set<string>();
 
-  // open positions
+  // open positions (all users)
   try {
     const { data } = await supabaseAdmin
       .from("paper_positions")
-      .select("symbol")
-      .eq("user_id", HARDCODED_USER);
+      .select("symbol");
     for (const r of data ?? []) if (r?.symbol) set.add(String(r.symbol).toUpperCase());
   } catch {}
 
-  // watchlist
+  // watchlist (all users)
   try {
     const { data } = await supabaseAdmin
       .from("watchlist")
-      .select("symbol")
-      .eq("user_id", HARDCODED_USER);
+      .select("symbol");
     for (const r of (data ?? []) as any[]) if (r?.symbol) set.add(String(r.symbol).toUpperCase());
   } catch {}
 
