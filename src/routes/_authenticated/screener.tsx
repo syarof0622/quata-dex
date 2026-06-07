@@ -478,6 +478,7 @@ export function Sparkline({ values, bull, width = 80, height = 24 }: { values: n
 }
 
 function DisclosurePanel() {
+  const { L } = useLang();
   const [filter, setFilter] = useState<"all" | "high_impact" | "uma_suspension" | "dividend_buyback" | "rights_issue">("all");
   const q = useQuery({
     queryKey: ["disclosure-screener"],
@@ -508,11 +509,11 @@ function DisclosurePanel() {
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
         {([
-          ["all", "Semua"],
-          ["high_impact", "Dampak Tinggi"],
-          ["uma_suspension", "UMA / Suspension"],
-          ["dividend_buyback", "Dividend / Buyback"],
-          ["rights_issue", "Rights Issue"],
+          ["all", L.tools.screener.dscAll],
+          ["high_impact", L.tools.screener.dscHighImpact],
+          ["uma_suspension", L.tools.screener.dscUma],
+          ["dividend_buyback", L.tools.screener.dscDivBuyback],
+          ["rights_issue", L.tools.screener.dscRights],
         ] as const).map(([key, label]) => (
           <Button key={key} size="sm" variant={filter === key ? "default" : "outline"} onClick={() => setFilter(key)}>
             {label}
@@ -520,12 +521,13 @@ function DisclosurePanel() {
         ))}
       </div>
 
-      {q.isLoading && <div className="text-sm text-muted-foreground">Memuat…</div>}
+      {q.isLoading && <div className="text-sm text-muted-foreground">{L.tools.screener.loading}</div>}
       {!q.isLoading && rows.length === 0 && (
         <div className="panel p-6 text-center text-sm text-muted-foreground">
-          Tidak ada disclosure / corporate action / regulatory event yang cocok.
+          {L.tools.screener.noDisclosure}
         </div>
       )}
+
 
       <div className="grid gap-2 md:grid-cols-2">
         {rows.map((d: any) => (
