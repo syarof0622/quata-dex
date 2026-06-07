@@ -37,6 +37,19 @@ function MarketPage() {
   });
   const news = useQuery({ queryKey: ["mkt-news", market], queryFn: () => getNews({ data: { market } }), refetchInterval: 60_000 });
 
+  const fetchSparks = useServerFn(getSparklines);
+  const heatSymbols = useMemo(
+    () => (movers.data?.all ?? []).map((q: any) => q.symbol).slice(0, 120),
+    [movers.data],
+  );
+  const sparks = useQuery({
+    queryKey: ["mkt-heatmap-sparks", market, heatSymbols.join(",")],
+    queryFn: () => fetchSparks({ data: { symbols: heatSymbols, range: "1d" } }),
+    enabled: heatSymbols.length > 0,
+    refetchInterval: 60_000,
+    staleTime: 45_000,
+  });
+
   return (
     <div className="p-3 md:p-6 space-y-4 md:space-y-5">
       <PageHero
