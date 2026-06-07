@@ -9,13 +9,16 @@ import { Sparkles, Pencil } from "lucide-react";
 import { formatPrice, formatDateTimeWIB } from "@/lib/format";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { useLang } from "@/hooks/use-language";
 
 export function JournalPanel() {
+  const { L } = useLang();
+  const J = L.body.journal;
   const list = useQuery({ queryKey: ["journal"], queryFn: () => listJournal(), refetchInterval: 15000 });
   const stats = useQuery({ queryKey: ["journal-stats"], queryFn: () => journalStats(), refetchInterval: 15000 });
   const review = useMutation({
     mutationFn: () => aiReviewJournal({ data: { mode: "session" } }),
-    onError: (e: any) => toast.error(e?.message ?? "AI review failed"),
+    onError: (e: any) => toast.error(e?.message ?? J.aiReviewFailed),
   });
   const [editing, setEditing] = useState<any | null>(null);
 
@@ -24,19 +27,19 @@ export function JournalPanel() {
     <div className="space-y-3">
       {s && (
         <div className="grid md:grid-cols-5 gap-2">
-          <Stat label="Trades" value={s.total ?? 0} />
-          <Stat label="Closed" value={s.closed ?? 0} />
-          <Stat label="Win rate" value={s.winRate == null ? "N/A" : Number(s.winRate).toFixed(1) + "%"} tone={s.winRate == null ? undefined : Number(s.winRate) >= 50 ? "bull" : "bear"} />
-          <Stat label="Total P/L" value={"$" + formatPrice(s.totalPnl ?? 0)} tone={(s.totalPnl ?? 0) >= 0 ? "bull" : "bear"} />
-          <Stat label="Expectancy" value={"$" + formatPrice(s.expectancy ?? 0)} tone={(s.expectancy ?? 0) >= 0 ? "bull" : "bear"} />
+          <Stat label={J.trades} value={s.total ?? 0} />
+          <Stat label={J.closed} value={s.closed ?? 0} />
+          <Stat label={J.winRate} value={s.winRate == null ? "N/A" : Number(s.winRate).toFixed(1) + "%"} tone={s.winRate == null ? undefined : Number(s.winRate) >= 50 ? "bull" : "bear"} />
+          <Stat label={J.totalPnl} value={"$" + formatPrice(s.totalPnl ?? 0)} tone={(s.totalPnl ?? 0) >= 0 ? "bull" : "bear"} />
+          <Stat label={J.expectancy} value={"$" + formatPrice(s.expectancy ?? 0)} tone={(s.expectancy ?? 0) >= 0 ? "bull" : "bear"} />
         </div>
       )}
 
       <div className="panel p-4 space-y-2">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm font-semibold"><Sparkles className="size-4 text-primary" /> AI Session Review</div>
+          <div className="flex items-center gap-2 text-sm font-semibold"><Sparkles className="size-4 text-primary" /> {J.aiReview}</div>
           <Button size="sm" onClick={() => review.mutate()} disabled={review.isPending}>
-            {review.isPending ? "Analyzing…" : "Review my recent trades"}
+            {review.isPending ? J.analyzing : J.reviewBtn}
           </Button>
         </div>
         {review.data?.review && (
@@ -50,12 +53,12 @@ export function JournalPanel() {
         <table className="w-full text-sm">
           <thead className="text-xs text-muted-foreground">
             <tr>
-              <th className="text-left p-2">Time</th>
-              <th className="text-left p-2">Symbol</th>
-              <th className="text-left p-2">Side</th>
-              <th className="text-right p-2">Qty @ Price</th>
-              <th className="text-left p-2">Setup</th>
-              <th className="text-left p-2">Notes</th>
+              <th className="text-left p-2">{J.thTime}</th>
+              <th className="text-left p-2">{J.thSymbol}</th>
+              <th className="text-left p-2">{J.thSide}</th>
+              <th className="text-right p-2">{J.thQtyPrice}</th>
+              <th className="text-left p-2">{J.thSetup}</th>
+              <th className="text-left p-2">{J.thNotes}</th>
               <th></th>
             </tr>
           </thead>
@@ -73,7 +76,7 @@ export function JournalPanel() {
                 </td>
               </tr>
             ))}
-            {!(list.data?.length) && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">No journal entries yet. Trades log automatically when filled.</td></tr>}
+            {!(list.data?.length) && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">{J.empty}</td></tr>}
           </tbody>
         </table>
       </div>
@@ -93,6 +96,8 @@ function Stat({ label, value, tone }: { label: string; value: string | number; t
 }
 
 function EditDialog({ entry, onClose }: { entry: any | null; onClose: () => void }) {
+  const { L } = useLang();
+  const J = L.body.journal;
   const [setup, setSetup] = useState("");
   const [emotion, setEmotion] = useState("");
   const [notes, setNotes] = useState("");
@@ -112,12 +117,12 @@ function EditDialog({ entry, onClose }: { entry: any | null; onClose: () => void
       id: entry.id, setup, emotion, notes,
       tags: tags.split(",").map(t => t.trim()).filter(Boolean),
     } }),
-    onSuccess: () => { toast.success("Journal updated"); onClose(); },
-    onError: (e: any) => toast.error(e?.message ?? "Update failed"),
+    onSuccess: () => { toast.success(J.saved); onClose(); },
+    onError: (e: any) => toast.error(e?.message ?? J.updateFailed),
   });
   const aiTrade = useMutation({
     mutationFn: () => aiReviewJournal({ data: { id: entry.id, mode: "trade" } }),
-    onError: (e: any) => toast.error(e?.message ?? "AI failed"),
+    onError: (e: any) => toast.error(e?.message ?? J.aiFailed),
   });
 
   if (!entry) return null;
@@ -130,24 +135,24 @@ function EditDialog({ entry, onClose }: { entry: any | null; onClose: () => void
         </DialogHeader>
         <div className="space-y-3">
           <div>
-            <label className="text-xs text-muted-foreground">Setup / Strategy</label>
-            <Input value={setup} onChange={e => setSetup(e.target.value)} placeholder="e.g. RSI bounce, EMA cross, breakout" />
+            <label className="text-xs text-muted-foreground">{J.setupLabel}</label>
+            <Input value={setup} onChange={e => setSetup(e.target.value)} placeholder={J.setupPh} />
           </div>
           <div>
-            <label className="text-xs text-muted-foreground">Emotion</label>
-            <Input value={emotion} onChange={e => setEmotion(e.target.value)} placeholder="confident · fomo · revenge · disciplined" />
+            <label className="text-xs text-muted-foreground">{J.emotion}</label>
+            <Input value={emotion} onChange={e => setEmotion(e.target.value)} placeholder={J.emotionPh} />
           </div>
           <div>
-            <label className="text-xs text-muted-foreground">Notes</label>
-            <Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={4} placeholder="What was your thesis? How did it play out?" />
+            <label className="text-xs text-muted-foreground">{J.notes}</label>
+            <Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={4} placeholder={J.notesPh} />
           </div>
           <div>
-            <label className="text-xs text-muted-foreground">Tags (comma separated)</label>
-            <Input value={tags} onChange={e => setTags(e.target.value)} placeholder="swing, breakout, idx" />
+            <label className="text-xs text-muted-foreground">{J.tags}</label>
+            <Input value={tags} onChange={e => setTags(e.target.value)} placeholder={J.tagsPh} />
           </div>
           {entry.ai_review && (
             <div className="border-t border-border pt-2">
-              <div className="text-xs text-muted-foreground mb-1">Latest AI review</div>
+              <div className="text-xs text-muted-foreground mb-1">{J.latestAi}</div>
               <div className="prose prose-sm prose-invert max-w-none text-xs">
                 <ReactMarkdown>{entry.ai_review}</ReactMarkdown>
               </div>
@@ -155,7 +160,7 @@ function EditDialog({ entry, onClose }: { entry: any | null; onClose: () => void
           )}
           {aiTrade.data?.review && (
             <div className="border-t border-border pt-2">
-              <div className="text-xs text-muted-foreground mb-1">New AI review</div>
+              <div className="text-xs text-muted-foreground mb-1">{J.newAi}</div>
               <div className="prose prose-sm prose-invert max-w-none text-xs">
                 <ReactMarkdown>{aiTrade.data.review}</ReactMarkdown>
               </div>
@@ -164,9 +169,9 @@ function EditDialog({ entry, onClose }: { entry: any | null; onClose: () => void
         </div>
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={() => aiTrade.mutate()} disabled={aiTrade.isPending}>
-            <Sparkles className="size-3 mr-1" /> {aiTrade.isPending ? "Analyzing…" : "AI grade this trade"}
+            <Sparkles className="size-3 mr-1" /> {aiTrade.isPending ? J.analyzing : J.gradeBtn}
           </Button>
-          <Button onClick={() => save.mutate()} disabled={save.isPending}>{save.isPending ? "Saving…" : "Save"}</Button>
+          <Button onClick={() => save.mutate()} disabled={save.isPending}>{save.isPending ? J.analyzing : J.save}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
