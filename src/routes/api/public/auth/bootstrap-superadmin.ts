@@ -60,9 +60,8 @@ export const Route = createFileRoute("/api/public/auth/bootstrap-superadmin")({
         const reassigned: Record<string, number> = {};
         for (const t of LEGACY_USER_TABLES) {
           try {
-            const { error, count } = await supabaseAdmin.from(t).update({ user_id: userId } as any, { count: "exact" }).eq("user_id", LEGACY_UID);
-            if (!error) reassigned[t] = count ?? 0;
-            else reassigned[t] = -1;
+            const { error, count } = await (supabaseAdmin.from(t as any) as any).update({ user_id: userId }, { count: "exact" }).eq("user_id", LEGACY_UID);
+            reassigned[t] = error ? -1 : (count ?? 0);
           } catch { reassigned[t] = -1; }
         }
 
