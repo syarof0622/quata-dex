@@ -63,7 +63,8 @@ function applyTheme(t: Prefs["theme"]) {
 
 function SettingsPage() {
   const { user, signOut } = useAuth();
-  const { lang, setLang } = useLang();
+  const { lang, setLang, L } = useLang();
+  const S = L.body.settings;
   const qc = useQueryClient();
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs);
   const [displayName, setDisplayName] = useState(
@@ -96,23 +97,23 @@ function SettingsPage() {
     mutationFn: (cash: number) => resetPaperAccount({ data: { cash, currency } }),
     onSuccess: (_r, cash) => {
       const sym = currency === "IDR" ? "Rp " : "$";
-      toast.success(`Paper account reset to ${sym}${cash.toLocaleString()}`);
+      toast.success(S.resetSuccess.replace("{amt}", `${sym}${cash.toLocaleString()}`));
       qc.invalidateQueries();
     },
-    onError: (e: Error) => toast.error(e?.message ?? "Reset failed"),
+    onError: (e: Error) => toast.error(e?.message ?? S.resetFailed),
   });
 
   const curMut = useMutation({
     mutationFn: (c: "IDR" | "USD") => updatePaperCurrency({ data: { currency: c } }),
-    onSuccess: (_r, c) => { toast.success(`Mata uang: ${c}`); qc.invalidateQueries(); },
-    onError: (e: Error) => toast.error(e?.message ?? "Failed"),
+    onSuccess: (_r, c) => { toast.success(`${S.currencyToast} ${c}`); qc.invalidateQueries(); },
+    onError: (e: Error) => toast.error(e?.message ?? S.resetFailed),
   });
 
   const scan = useMutation({
     mutationFn: () => checkAlerts(),
     onSuccess: (r: any) => {
       const list = Array.isArray(r?.triggered) ? r.triggered : [];
-      if (!list.length) toast.message("No alerts triggered.");
+      if (!list.length) toast.message(S.noAlerts);
       else list.forEach((t: any) => toast.success(`${t.symbol}: ${t.reason}`));
     },
   });
@@ -122,44 +123,46 @@ function SettingsPage() {
     const { error } = await supabase.auth.updateUser({ data: { full_name: displayName } });
     setSavingProfile(false);
     if (error) toast.error(error.message);
-    else toast.success("Profile saved");
+    else toast.success(S.profileSaved);
   }
 
   async function changePassword() {
-    if (pwd.length < 8) return toast.error("Password must be ≥ 8 characters");
-    if (pwd !== pwd2) return toast.error("Passwords do not match");
+    if (pwd.length < 8) return toast.error(S.pwdMin);
+    if (pwd !== pwd2) return toast.error(S.pwdMismatch);
     const { error } = await supabase.auth.updateUser({ password: pwd });
     if (error) toast.error(error.message);
-    else { toast.success("Password updated"); setPwd(""); setPwd2(""); }
+    else { toast.success(S.passwordUpdated); setPwd(""); setPwd2(""); }
   }
 
   async function requestDesktopPerm(v: boolean) {
     update("notifyDesktop", v);
     if (v && typeof Notification !== "undefined" && Notification.permission !== "granted") {
       const p = await Notification.requestPermission();
-      if (p !== "granted") { update("notifyDesktop", false); toast.error("Notification permission denied"); }
+      if (p !== "granted") { update("notifyDesktop", false); toast.error(S.notifDenied); }
     }
   }
+
+
 
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-4xl">
       <PageHero
-        eyebrow={lang === "en" ? "Preferences" : "Preferensi"}
+        eyebrow={S.eyebrow}
         icon={SettingsIcon}
-        title={lang === "en" ? "Settings" : "Pengaturan"}
-        subtitle={lang === "en" ? "Profile, preferences, paper trading account, and data integrations." : "Profil, preferensi, akun paper trading, dan integrasi data."}
+        title={S.title}
+        subtitle={S.subtitle}
       />
 
 
       <Tabs defaultValue="profile">
         <TabsList className="flex-wrap h-auto">
-          <TabsTrigger value="profile"><User className="size-4 mr-1" /> Profile</TabsTrigger>
-          <TabsTrigger value="paper"><Wallet className="size-4 mr-1" /> Saldo Paper</TabsTrigger>
-          <TabsTrigger value="ai"><Bot className="size-4 mr-1" /> Agen AI</TabsTrigger>
-          <TabsTrigger value="appearance"><Palette className="size-4 mr-1" /> Appearance</TabsTrigger>
-          <TabsTrigger value="trading"><Zap className="size-4 mr-1" /> Trading</TabsTrigger>
-          <TabsTrigger value="notifications"><Bell className="size-4 mr-1" /> Notifications</TabsTrigger>
-          <TabsTrigger value="data"><Database className="size-4 mr-1" /> Data</TabsTrigger>
+          <TabsTrigger value="profile"><User className="size-4 mr-1" /> {S.tabProfile}</TabsTrigger>
+          <TabsTrigger value="paper"><Wallet className="size-4 mr-1" /> {S.tabPaper}</TabsTrigger>
+          <TabsTrigger value="ai"><Bot className="size-4 mr-1" /> {S.tabAi}</TabsTrigger>
+          <TabsTrigger value="appearance"><Palette className="size-4 mr-1" /> {S.tabAppearance}</TabsTrigger>
+          <TabsTrigger value="trading"><Zap className="size-4 mr-1" /> {S.tabTrading}</TabsTrigger>
+          <TabsTrigger value="notifications"><Bell className="size-4 mr-1" /> {S.tabNotifications}</TabsTrigger>
+          <TabsTrigger value="data"><Database className="size-4 mr-1" /> {S.tabData}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="paper" className="space-y-3 mt-3"><PaperBalanceCard /></TabsContent>
@@ -178,49 +181,44 @@ function SettingsPage() {
               </div>
             </div>
             <div>
-              <Label>Display name</Label>
-              <Input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Your name" />
+              <Label>{S.displayName}</Label>
+              <Input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder={S.yourName} />
             </div>
-            <Button onClick={saveProfile} disabled={savingProfile}>{savingProfile ? "Saving…" : "Save profile"}</Button>
+            <Button onClick={saveProfile} disabled={savingProfile}>{savingProfile ? S.saving : S.saveProfile}</Button>
           </div>
 
           <div className="panel p-4 space-y-3">
-            <h3 className="font-semibold">Change password</h3>
+            <h3 className="font-semibold">{S.changePassword}</h3>
             <div className="grid sm:grid-cols-2 gap-3">
-              <div><Label>New password</Label><Input type="password" value={pwd} onChange={e => setPwd(e.target.value)} /></div>
-              <div><Label>Confirm</Label><Input type="password" value={pwd2} onChange={e => setPwd2(e.target.value)} /></div>
+              <div><Label>{S.newPassword}</Label><Input type="password" value={pwd} onChange={e => setPwd(e.target.value)} /></div>
+              <div><Label>{S.confirm}</Label><Input type="password" value={pwd2} onChange={e => setPwd2(e.target.value)} /></div>
             </div>
-            <Button onClick={changePassword} variant="outline">Update password</Button>
+            <Button onClick={changePassword} variant="outline">{S.updatePassword}</Button>
           </div>
 
           <div className="panel p-4 flex items-center justify-between">
             <div>
-              <div className="font-semibold">Sign out</div>
-              <div className="text-xs text-muted-foreground">End this session on this device.</div>
+              <div className="font-semibold">{S.signOut}</div>
+              <div className="text-xs text-muted-foreground">{S.signOutHint}</div>
             </div>
-            <Button variant="destructive" onClick={() => signOut()}><LogOut className="size-4 mr-1" /> Sign out</Button>
+            <Button variant="destructive" onClick={() => signOut()}><LogOut className="size-4 mr-1" /> {S.signOut}</Button>
           </div>
         </TabsContent>
 
         {/* APPEARANCE */}
         <TabsContent value="appearance" className="space-y-3 mt-3">
           <div className="panel p-4 space-y-3">
-            <Row label="Theme" hint="Light / dark / follow system">
+            <Row label={S.theme} hint={S.themeHint}>
               <Select value={prefs.theme} onValueChange={(v) => update("theme", v as Prefs["theme"])}>
                 <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="dark">Dark</SelectItem>
-                  <SelectItem value="light">Light</SelectItem>
-                  <SelectItem value="system">System</SelectItem>
+                  <SelectItem value="dark">{S.themeDark}</SelectItem>
+                  <SelectItem value="light">{S.themeLight}</SelectItem>
+                  <SelectItem value="system">{S.themeSystem}</SelectItem>
                 </SelectContent>
               </Select>
             </Row>
-            <Row
-              label={lang === "en" ? "System Language" : "Bahasa Sistem"}
-              hint={lang === "en"
-                ? "Switches the entire interface (navigation, settings, news feed filter)."
-                : "Mengubah seluruh antarmuka (navigasi, pengaturan, filter berita)."}
-            >
+            <Row label={S.systemLanguage} hint={S.systemLanguageHintEn}>
               <Select value={lang} onValueChange={(v) => { setLang(v as "id" | "en"); update("newsLang", v as Prefs["newsLang"]); }}>
                 <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -235,7 +233,7 @@ function SettingsPage() {
         {/* TRADING */}
         <TabsContent value="trading" className="space-y-3 mt-3">
           <div className="panel p-4 space-y-3">
-            <Row label="Default market" hint="Used on Market & Screener pages">
+            <Row label={S.defaultMarket} hint={S.defaultMarketHint}>
               <Select value={prefs.defaultMarket} onValueChange={(v) => update("defaultMarket", v as Prefs["defaultMarket"])}>
                 <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -245,7 +243,7 @@ function SettingsPage() {
                 </SelectContent>
               </Select>
             </Row>
-            <Row label="Default timeframe" hint="Chart timeframe on first load">
+            <Row label={S.defaultTimeframe} hint={S.defaultTimeframeHint}>
               <Select value={prefs.defaultTimeframe} onValueChange={(v) => update("defaultTimeframe", v)}>
                 <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -253,21 +251,21 @@ function SettingsPage() {
                 </SelectContent>
               </Select>
             </Row>
-            <Row label="Auto-refresh (sec)" hint="Quotes & screener polling interval">
+            <Row label={S.autoRefresh} hint={S.autoRefreshHint}>
               <Input type="number" className="w-32" value={prefs.refreshInterval}
                 onChange={e => update("refreshInterval", Math.max(5, Number(e.target.value) || 30))} />
             </Row>
           </div>
 
           <div className="panel p-4 space-y-3">
-            <h3 className="font-semibold flex items-center gap-2"><RefreshCw className="size-4" /> Paper Trading Account</h3>
+            <h3 className="font-semibold flex items-center gap-2"><RefreshCw className="size-4" /> {S.paperAccount}</h3>
             <div className="grid grid-cols-3 gap-3 text-sm">
-              <Mini label={`Cash (${accountCurrency})`} value={accountCurrency === "IDR" ? formatIDRCompact(Number(account.data?.account?.cash ?? 0)) : fmt(account.data?.account?.cash)} />
-              <Mini label="Positions" value={String(account.data?.positions?.length ?? 0)} />
-              <Mini label="Open orders" value={String(account.data?.pending?.length ?? 0)} />
+              <Mini label={`${S.cashLabel} (${accountCurrency})`} value={accountCurrency === "IDR" ? formatIDRCompact(Number(account.data?.account?.cash ?? 0)) : fmt(account.data?.account?.cash)} />
+              <Mini label={S.positions} value={String(account.data?.positions?.length ?? 0)} />
+              <Mini label={S.openOrders} value={String(account.data?.pending?.length ?? 0)} />
             </div>
 
-            <Row label="Mata Uang Akun" hint="Berlaku untuk paper trading. Mengubah currency tidak menghapus saldo.">
+            <Row label={S.accountCurrency} hint={S.accountCurrencyHint}>
               <Select value={currency} onValueChange={(v) => { const c = v as "IDR" | "USD"; setCurrency(c); curMut.mutate(c); }}>
                 <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -278,10 +276,10 @@ function SettingsPage() {
             </Row>
 
             <div className="border-t border-border pt-3 space-y-2">
-              <div className="text-xs text-muted-foreground">Atur saldo awal untuk paper trading. Akan menghapus semua posisi & order.</div>
+              <div className="text-xs text-muted-foreground">{S.resetHint}</div>
               <div className="flex items-end gap-2 flex-wrap">
                 <div>
-                  <Label className="text-[11px]">Saldo awal ({currency === "IDR" ? "Rp" : "$"})</Label>
+                  <Label className="text-[11px]">{S.startingBalance} ({currency === "IDR" ? "Rp" : "$"})</Label>
                   <Input type="number" min="0" className="w-48" value={resetAmount} onChange={e => setResetAmount(e.target.value)} />
                 </div>
                 <div className="flex flex-wrap gap-1">
@@ -297,9 +295,9 @@ function SettingsPage() {
                 <Button variant="destructive" onClick={() => {
                   const cash = Math.max(0, Number(resetAmount) || 0);
                   const sym = currency === "IDR" ? "Rp " : "$";
-                  if (confirm(`Reset paper account to ${sym}${cash.toLocaleString()}? Ini tidak dapat dibatalkan.`)) reset.mutate(cash);
+                  if (confirm(S.resetConfirm.replace("{amt}", `${sym}${cash.toLocaleString()}`))) reset.mutate(cash);
                 }} disabled={reset.isPending}>
-                  <Trash2 className="size-4 mr-1" /> {reset.isPending ? "Saving…" : "Reset & simpan saldo"}
+                  <Trash2 className="size-4 mr-1" /> {reset.isPending ? S.saving : S.resetSave}
                 </Button>
               </div>
             </div>
@@ -309,16 +307,16 @@ function SettingsPage() {
         {/* NOTIFICATIONS */}
         <TabsContent value="notifications" className="space-y-3 mt-3">
           <div className="panel p-4 space-y-3">
-            <Row label="Toast on alert trigger" hint="Show toast when an alert fires">
+            <Row label={S.toastTriggers} hint={S.toastTriggersHint}>
               <Switch checked={prefs.notifyTriggers} onCheckedChange={(v) => update("notifyTriggers", v)} />
             </Row>
-            <Row label="Desktop notifications" hint="Browser notifications even when tab is in the background">
+            <Row label={S.desktopNotif} hint={S.desktopNotifHint}>
               <Switch checked={prefs.notifyDesktop} onCheckedChange={requestDesktopPerm} />
             </Row>
             <div className="border-t border-border pt-3 flex items-center justify-between">
-              <div className="text-sm text-muted-foreground">Run an alert scan now to test your rules.</div>
+              <div className="text-sm text-muted-foreground">{S.scanHint}</div>
               <Button variant="outline" onClick={() => scan.mutate()} disabled={scan.isPending}>
-                <Zap className="size-4 mr-1" /> {scan.isPending ? "Scanning…" : "Run scan"}
+                <Zap className="size-4 mr-1" /> {scan.isPending ? S.scanning : S.runScan}
               </Button>
             </div>
           </div>
@@ -327,7 +325,7 @@ function SettingsPage() {
         {/* DATA */}
         <TabsContent value="data" className="space-y-3 mt-3">
           <div className="panel p-4 space-y-2">
-            <h3 className="font-semibold">Data sources</h3>
+            <h3 className="font-semibold">{S.dataSources}</h3>
             <ul className="text-sm text-muted-foreground space-y-1">
               <li>• Quotes & candles · <span className="text-foreground">Yahoo Finance</span> (cached 8–30s)</li>
               <li>• Charts · <span className="text-foreground">TradingView</span> embed widget</li>
@@ -336,7 +334,7 @@ function SettingsPage() {
             </ul>
           </div>
           <div className="panel p-4 space-y-2">
-            <h3 className="font-semibold">User ID</h3>
+            <h3 className="font-semibold">{S.userId}</h3>
             <code className="text-xs font-mono break-all bg-accent/40 p-2 rounded block">{user?.id}</code>
           </div>
         </TabsContent>
