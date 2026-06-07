@@ -5,7 +5,7 @@ import { colorForChange, formatPct, formatMoneyByCurrency, formatMoneyCompact, f
 import { formatLocalPrice, symbolMarket } from "@/lib/symbols";
 import { displaySymbol } from "@/lib/display-symbol";
 import { Link } from "@tanstack/react-router";
-import { Sparkline } from "@/routes/_authenticated/screener";
+import { Sparkline } from "@/components/Sparkline";
 import { ShieldAlert, TrendingUp, Layers, Activity, Target, Wallet, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { PortfolioAttributionPanel } from "@/components/PortfolioAttributionPanel";
 import { PortfolioIntelligencePanel } from "@/components/PortfolioIntelligencePanel";
