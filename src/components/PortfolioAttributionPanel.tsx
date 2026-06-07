@@ -207,31 +207,31 @@ function WhatIfPanel({ positions, cash, currency }: { positions: any[]; cash: nu
 
   return (
     <div className="panel p-4">
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
         <FlaskConical className="size-4" />
-        <h3 className="font-semibold">What-If Analysis</h3>
-        <span className="text-[10px] text-muted-foreground ml-2">read-only simulation</span>
+        <h3 className="font-semibold">Analisis What-If</h3>
+        <span className="text-[10px] text-muted-foreground">simulasi read-only</span>
       </div>
       <div className="grid md:grid-cols-2 gap-4">
         {/* Close */}
-        <div className="space-y-2">
-          <div className="text-xs font-semibold text-muted-foreground">Close Position</div>
-          <div className="flex gap-2">
+        <div className="space-y-2 min-w-0">
+          <div className="text-xs font-semibold text-muted-foreground">Tutup Posisi</div>
+          <div className="flex flex-wrap gap-2 min-w-0">
             <select
               value={closeSym}
               onChange={(e) => setCloseSym(e.target.value)}
-              className="text-xs px-2 py-1.5 rounded bg-accent/40 border border-border/40 flex-1"
+              className="text-xs px-2 py-1.5 rounded bg-accent/40 border border-border/40 flex-1 min-w-0"
               disabled={symbols.length === 0}
             >
-              {symbols.length === 0 && <option>— no positions —</option>}
+              {symbols.length === 0 && <option>— tidak ada posisi —</option>}
               {symbols.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
             <button
               onClick={() => closeSym && closeMut.mutate(closeSym)}
               disabled={!closeSym || closeMut.isPending}
-              className="text-xs px-3 py-1.5 rounded bg-primary text-primary-foreground disabled:opacity-50"
+              className="text-xs px-3 py-1.5 rounded bg-primary text-primary-foreground disabled:opacity-50 shrink-0"
             >
-              Simulate
+              Simulasikan
             </button>
           </div>
           {closeMut.data && "error" in closeMut.data && (
@@ -239,9 +239,9 @@ function WhatIfPanel({ positions, cash, currency }: { positions: any[]; cash: nu
           )}
           {closeMut.data && !("error" in closeMut.data) && (
             <div className="text-xs space-y-1 font-mono">
-              <div>Realized: <span className={colorForChange((closeMut.data as any).realizedPnlIfClosedNow)}>{money((closeMut.data as any).realizedPnlIfClosedNow)}</span></div>
-              <div>New cash: {money((closeMut.data as any).newCash)}</div>
-              <div>New exposure: {(closeMut.data as any).newExposurePct.toFixed(1)}%</div>
+              <div>Realisasi: <span className={colorForChange((closeMut.data as any).realizedPnlIfClosedNow)}>{money((closeMut.data as any).realizedPnlIfClosedNow)}</span></div>
+              <div>Kas baru: {money((closeMut.data as any).newCash)}</div>
+              <div>Eksposur baru: {(closeMut.data as any).newExposurePct.toFixed(1)}%</div>
               {(closeMut.data as any).notes?.map((n: string, i: number) => (
                 <div key={i} className="text-amber-400 text-[10px]">• {n}</div>
               ))}
@@ -249,35 +249,35 @@ function WhatIfPanel({ positions, cash, currency }: { positions: any[]; cash: nu
           )}
         </div>
         {/* Add */}
-        <div className="space-y-2">
-          <div className="text-xs font-semibold text-muted-foreground">Add Simulated Position</div>
-          <div className="flex gap-2">
+        <div className="space-y-2 min-w-0">
+          <div className="text-xs font-semibold text-muted-foreground">Tambah Posisi Simulasi</div>
+          <div className="grid grid-cols-2 sm:grid-cols-[1fr_72px_104px_auto] gap-2 min-w-0">
             <input
-              placeholder="Symbol (e.g. MAPI.JK)"
+              placeholder="Simbol (mis. MAPI)"
               value={addSym}
               onChange={(e) => setAddSym(e.target.value.toUpperCase())}
-              className="text-xs px-2 py-1.5 rounded bg-accent/40 border border-border/40 flex-1"
+              className="text-xs px-2 py-1.5 rounded bg-accent/40 border border-border/40 col-span-2 sm:col-span-1 min-w-0"
             />
             <input
               type="number" min="1"
               placeholder="Lot"
               value={addLot}
               onChange={(e) => setAddLot(Number(e.target.value))}
-              className="text-xs px-2 py-1.5 rounded bg-accent/40 border border-border/40 w-16"
+              className="text-xs px-2 py-1.5 rounded bg-accent/40 border border-border/40 min-w-0"
             />
             <input
               type="number"
-              placeholder="Price (auto)"
+              placeholder="Harga (auto)"
               value={addPrice}
               onChange={(e) => setAddPrice(e.target.value)}
-              className="text-xs px-2 py-1.5 rounded bg-accent/40 border border-border/40 w-24"
+              className="text-xs px-2 py-1.5 rounded bg-accent/40 border border-border/40 min-w-0"
             />
             <button
               onClick={() => addSym && addMut.mutate({ symbol: addSym, lot: addLot, price: addPrice ? Number(addPrice) : undefined })}
               disabled={!addSym || addMut.isPending}
-              className="text-xs px-3 py-1.5 rounded bg-primary text-primary-foreground disabled:opacity-50"
+              className="text-xs px-3 py-1.5 rounded bg-primary text-primary-foreground disabled:opacity-50 col-span-2 sm:col-span-1 shrink-0"
             >
-              Simulate
+              Simulasikan
             </button>
           </div>
           {addMut.data && "error" in addMut.data && (
