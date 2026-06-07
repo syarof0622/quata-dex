@@ -4,36 +4,32 @@ import { Button } from "@/components/ui/button";
 import { AIReportRenderer } from "@/components/AIReportRenderer";
 import { Send, Loader2, Copy, RotateCcw, Sparkles, TrendingUp, ShieldAlert, Search, Bot, User } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLang } from "@/hooks/use-language";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
-const PROMPT_CHIPS = [
-  { icon: ShieldAlert, label: "Cek portfolio saya" },
-  { icon: User, label: "Jelaskan open position" },
-  { icon: Bot, label: "Kenapa AI Agent tidak buy?" },
-  { icon: Bot, label: "Evaluasi performa AI Agent" },
-  { icon: TrendingUp, label: "Top momentum hari ini" },
-  { icon: Sparkles, label: "Saham undervalue" },
-  { icon: Search, label: "Saham dari screener terbaik" },
-  { icon: ShieldAlert, label: "Cek alert aktif" },
-  { icon: Search, label: "Cek data source" },
-];
-
-const WELCOME_CARDS = [
-  { icon: TrendingUp, title: "Market recommendation", body: "Saham apa yang layak dibeli sekarang?" },
-  { icon: Search, title: "Ticker analysis", body: "Analisis BBCA.JK secara teknikal & fundamental" },
-  { icon: ShieldAlert, title: "Portfolio risk", body: "Cek risiko portfolio saya hari ini" },
-  { icon: Bot, title: "AI Agent diagnosis", body: "Kenapa AI Trade Agent belum membeli apa-apa?" },
-];
-
-const STREAMING_PHASES = [
-  "Analyzing market context…",
-  "Checking news & sentiment…",
-  "Evaluating technical setup…",
-  "Preparing recommendation…",
-];
-
 export function ChatPanel({ system }: { system?: string }) {
+  const { L } = useLang();
+  const T = L.body.chat;
+  const promptChips = useMemo(() => ([
+    { icon: ShieldAlert, label: T.chips.checkPortfolio },
+    { icon: User, label: T.chips.explainOpenPos },
+    { icon: Bot, label: T.chips.whyNotBuy },
+    { icon: Bot, label: T.chips.evalAgent },
+    { icon: TrendingUp, label: T.chips.topMomentum },
+    { icon: Sparkles, label: T.chips.undervalued },
+    { icon: Search, label: T.chips.bestScreener },
+    { icon: ShieldAlert, label: T.chips.activeAlerts },
+    { icon: Search, label: T.chips.dataSource },
+  ]), [T]);
+  const welcomeCards = useMemo(() => ([
+    { icon: TrendingUp, title: T.cards.marketRec.title, body: T.cards.marketRec.body },
+    { icon: Search, title: T.cards.tickerAnalysis.title, body: T.cards.tickerAnalysis.body },
+    { icon: ShieldAlert, title: T.cards.portfolioRisk.title, body: T.cards.portfolioRisk.body },
+    { icon: Bot, title: T.cards.agentDiag.title, body: T.cards.agentDiag.body },
+  ]), [T]);
+  const phases = T.phases as readonly string[];
+
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -47,9 +43,9 @@ export function ChatPanel({ system }: { system?: string }) {
   useEffect(() => {
     if (!busy) return;
     setPhaseIdx(0);
-    const t = setInterval(() => setPhaseIdx(i => (i + 1) % STREAMING_PHASES.length), 1400);
+    const t = setInterval(() => setPhaseIdx(i => (i + 1) % phases.length), 1400);
     return () => clearInterval(t);
-  }, [busy]);
+  }, [busy, phases.length]);
 
   const lastAssistantStreaming = busy && messages[messages.length - 1]?.role === "assistant" && !messages[messages.length - 1]?.content;
 
