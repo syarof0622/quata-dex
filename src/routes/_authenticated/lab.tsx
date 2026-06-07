@@ -72,8 +72,8 @@ function Lab() {
 
   const cancel = useMutation({
     mutationFn: (id: string) => cancelOrder({ data: { id } }),
-    onSuccess: () => { toast.success("Order dibatalkan"); acct.refetch(); },
-    onError: (e: any) => toast.error(e?.message ?? "Gagal membatalkan"),
+    onSuccess: () => { toast.success(L.body.lab.toastOrderCanceled); acct.refetch(); },
+    onError: (e: any) => toast.error(e?.message ?? L.body.lab.toastCancelFailed),
   });
   return (
     <div className="p-4 md:p-6 space-y-4">
