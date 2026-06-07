@@ -111,11 +111,11 @@ function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
         {/* Gainers */}
         <div className="panel p-3 md:p-4">
-          <div className="flex items-center gap-2 mb-2"><ArrowUpRight className="size-4 text-bull" /><h3 className="font-semibold text-[13.5px] md:text-base">Top Gainers</h3></div>
+          <div className="flex items-center gap-2 mb-2"><ArrowUpRight className="size-4 text-bull" /><h3 className="font-semibold text-[13.5px] md:text-base">{L.body.dashboard.topGainers}</h3></div>
           {movers.isLoading ? (
             <MobileSkeletonRows rows={4} />
           ) : gainers.length === 0 ? (
-            <MobileEmptyState icon={<TrendingUp className="size-5" />} title="No movers yet" hint="Data will load once the market feed updates." />
+            <MobileEmptyState icon={<TrendingUp className="size-5" />} title={L.body.dashboard.noMoversTitle} hint={L.body.dashboard.noMoversHint} />
           ) : (
             <ul className="divide-y divide-border/60">
               {gainers.slice(0, 6).map(q => (
@@ -138,11 +138,11 @@ function Dashboard() {
 
         {/* Losers */}
         <div className="panel p-3 md:p-4">
-          <div className="flex items-center gap-2 mb-2"><ArrowDownRight className="size-4 text-bear" /><h3 className="font-semibold text-[13.5px] md:text-base">Top Losers</h3></div>
+          <div className="flex items-center gap-2 mb-2"><ArrowDownRight className="size-4 text-bear" /><h3 className="font-semibold text-[13.5px] md:text-base">{L.body.dashboard.topLosers}</h3></div>
           {movers.isLoading ? (
             <MobileSkeletonRows rows={4} />
           ) : losers.length === 0 ? (
-            <MobileEmptyState icon={<TrendingUp className="size-5 rotate-180" />} title="No movers yet" hint="Data will load once the market feed updates." />
+            <MobileEmptyState icon={<TrendingUp className="size-5 rotate-180" />} title={L.body.dashboard.noMoversTitle} hint={L.body.dashboard.noMoversHint} />
           ) : (
             <ul className="divide-y divide-border/60">
               {losers.slice(0, 6).map(q => (
@@ -165,11 +165,11 @@ function Dashboard() {
 
         {/* News — full width on mobile (spans 2 cols), single col at lg */}
         <div className="panel p-3 md:p-4 col-span-2 lg:col-span-1">
-          <div className="flex items-center gap-2 mb-2"><Newspaper className="size-4 text-primary" /><h3 className="font-semibold text-[13.5px] md:text-base">Latest News</h3></div>
+          <div className="flex items-center gap-2 mb-2"><Newspaper className="size-4 text-primary" /><h3 className="font-semibold text-[13.5px] md:text-base">{L.body.dashboard.latestNews}</h3></div>
           {news.isLoading ? (
             <MobileSkeletonRows rows={4} height={32} />
           ) : newsItems.length === 0 ? (
-            <MobileEmptyState icon={<Newspaper className="size-5" />} title="No news yet" />
+            <MobileEmptyState icon={<Newspaper className="size-5" />} title={L.body.dashboard.noNewsTitle} />
           ) : (
             <ul className="space-y-2.5">
               {newsItems.slice(0, 6).map((n: any, i: number) => (
@@ -188,17 +188,18 @@ function Dashboard() {
       {/* Heatmap mini */}
       <div className="panel p-3 md:p-4">
         <div className="flex items-center justify-between mb-2 md:mb-3 gap-2">
-          <h3 className="font-semibold text-[13.5px] md:text-base">Market Heatmap</h3>
+          <h3 className="font-semibold text-[13.5px] md:text-base">{L.body.dashboard.marketHeatmap}</h3>
           <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
             <span className="relative flex h-1.5 w-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/70" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
             </span>
-            Live · intraday
+            {L.body.dashboard.liveIntraday}
           </div>
         </div>
         {(movers.data?.all ?? []).length === 0 ? (
-          <MobileEmptyState title="Heatmap data unavailable" hint="Awaiting market feed." />
+          <MobileEmptyState title={L.body.dashboard.heatmapUnavailable} hint={L.body.dashboard.awaitingMarketFeed} />
+
         ) : (
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-10 gap-1.5">
             {(movers.data?.all ?? []).map(q => {
