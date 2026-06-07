@@ -330,7 +330,7 @@ function Portfolio() {
           <table className="w-full text-sm">
             <thead className="text-xs text-muted-foreground">
               <tr>
-                <th className="text-left p-2">{L.body.portfolio.thSector ? L.body.watchlist.thSymbol : "Symbol"}</th>
+                <th className="text-left p-2">{L.body.watchlist.thSymbol}</th>
                 <th className="text-left p-2">{L.body.portfolio.thSector}</th>
                 <th className="text-right p-2">{L.body.portfolio.thLot}</th>
                 <th className="text-right p-2">{L.body.portfolio.thAvgEntry}</th>
@@ -361,7 +361,7 @@ function Portfolio() {
                   <tr key={p.symbol} className="border-t border-border align-top">
                     <td className="p-2 font-medium">
                       <Link to="/chart/$symbol" params={{ symbol: p.symbol }} className="hover:text-primary">{displaySymbol(p.symbol)}</Link>
-                      {p.stale && <span className="ml-1 text-[9px] text-amber-400">(stale)</span>}
+                      {p.stale && <span className="ml-1 text-[9px] text-amber-400">{L.body.portfolio.stale}</span>}
                     </td>
                     <td className="p-2 text-xs text-muted-foreground">{p.sector}</td>
                     <td className="p-2 text-right font-mono text-xs">{num(p.lot).toFixed(0)}</td>
@@ -397,9 +397,9 @@ function Portfolio() {
                       ) : <span className="text-muted-foreground">—</span>}
                     </td>
                     <td className={`p-2 text-xs ${msTone}`}>
-                      {ms ?? "NO PLAN"}
+                      {ms ?? L.body.portfolio.noPlan}
                       {!p.hasExitPlan && (
-                        <div className="text-[10px] text-amber-400 mt-0.5">No exit plan — will be generated on next worker run.</div>
+                        <div className="text-[10px] text-amber-400 mt-0.5">{L.body.portfolio.noExitPlan}</div>
                       )}
                       {p.exitPlanReason && p.hasExitPlan && (
                         <div className="text-[10px] text-muted-foreground mt-0.5 truncate max-w-[180px]" title={p.exitPlanReason}>{p.exitPlanReason}</div>
@@ -411,9 +411,10 @@ function Portfolio() {
               })}
               {positions.length === 0 && (
                 <tr><td colSpan={11} className="p-6 text-center text-muted-foreground">
-                  Belum ada open position. AI belum mengeksekusi paper BUY atau semua posisi sudah ditutup.
+                  {L.body.portfolio.noOpenPosition}
                 </td></tr>
               )}
+
             </tbody>
           </table>
         </div>
@@ -422,21 +423,21 @@ function Portfolio() {
       {/* Recent Closed Trades */}
       <div className="panel p-2">
         <div className="px-2 pt-2 pb-1">
-          <h3 className="font-semibold">Recent Closed Trades</h3>
-          <div className="text-[11px] text-muted-foreground">Realized P/L hanya dihitung dari closed trades.</div>
+          <h3 className="font-semibold">{L.body.portfolio.recentClosedTitle}</h3>
+          <div className="text-[11px] text-muted-foreground">{L.body.portfolio.realizedNote}</div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="text-xs text-muted-foreground">
               <tr>
-                <th className="text-left p-2">Symbol</th>
-                <th className="text-right p-2">Entry</th>
-                <th className="text-right p-2">Exit</th>
-                <th className="text-right p-2">Qty</th>
-                <th className="text-right p-2">Realized P/L</th>
-                <th className="text-right p-2">Return %</th>
-                <th className="text-left p-2">Reason</th>
-                <th className="text-right p-2">Closed</th>
+                <th className="text-left p-2">{L.body.watchlist.thSymbol}</th>
+                <th className="text-right p-2">{L.body.portfolio.thEntry}</th>
+                <th className="text-right p-2">{L.body.portfolio.thExit}</th>
+                <th className="text-right p-2">{L.body.portfolio.thQty}</th>
+                <th className="text-right p-2">{L.body.portfolio.thRealized}</th>
+                <th className="text-right p-2">{L.body.portfolio.thReturnPct}</th>
+                <th className="text-left p-2">{L.body.portfolio.thReason}</th>
+                <th className="text-right p-2">{L.body.portfolio.thClosed}</th>
               </tr>
             </thead>
             <tbody>
@@ -453,8 +454,9 @@ function Portfolio() {
                 </tr>
               ))}
               {recentClosed.length === 0 && (
-                <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">Belum ada closed trade.</td></tr>
+                <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">{L.body.portfolio.noClosedTrades}</td></tr>
               )}
+
             </tbody>
           </table>
         </div>
