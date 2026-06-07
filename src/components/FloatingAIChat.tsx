@@ -122,15 +122,11 @@ export function FloatingAIChat() {
           <div
             className={cn(
               "fixed z-50 flex flex-col overflow-hidden border border-border/70 bg-card/95 backdrop-blur-xl shadow-2xl",
-              // Mobile: full-screen-ish sheet pinned to bottom
-              "left-2 right-2 rounded-2xl",
-              // Desktop: anchored card near the button
-              "md:left-auto md:right-5 md:w-[400px] lg:w-[440px] md:rounded-2xl",
+              "left-2 right-2 rounded-2xl top-16",
+              "md:left-auto md:right-5 md:top-auto md:w-[400px] lg:w-[440px]",
             )}
             style={{
               bottom: "calc(env(safe-area-inset-bottom, 0px) + 156px)",
-              top: "max(env(safe-area-inset-top, 0px), 64px)",
-              // On md+, override the top with auto via max-height — but we can use class for that
               maxHeight: "min(680px, calc(100vh - 180px))",
             }}
           >
