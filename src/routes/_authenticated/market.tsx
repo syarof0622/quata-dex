@@ -12,6 +12,7 @@ import { Activity, ArrowDownRight, ArrowUpRight, Newspaper } from "lucide-react"
 import { MobileEmptyState, MobileSkeletonRows } from "@/components/mobile-ui";
 import { PageHero } from "@/components/ui/page-hero";
 import { Sparkline } from "@/components/Sparkline";
+import { useLang } from "@/hooks/use-language";
 
 export const Route = createFileRoute("/_authenticated/market")({
   head: () => ({ meta: [{ title: "Market — Quanta Terminal" }] }),
@@ -19,6 +20,7 @@ export const Route = createFileRoute("/_authenticated/market")({
 });
 
 function MarketPage() {
+  const { L } = useLang();
   const [market, setMarket] = useState<"idx" | "us" | "global">("idx");
   const movers = useQuery({
     queryKey: ["movers", market],
@@ -53,11 +55,11 @@ function MarketPage() {
   return (
     <div className="p-3 md:p-6 space-y-4 md:space-y-5">
       <PageHero
-        eyebrow="Intelijen Pasar Langsung"
+        eyebrow={L.hero.market.eyebrow}
         live
         icon={Activity}
-        title="Denyut Pasar"
-        subtitle="Rotasi sektor, keluasan pasar, dan rezim risiko"
+        title={L.hero.market.title}
+        subtitle={L.hero.market.subtitle}
         actions={
           <div className="inline-flex rounded-lg border border-border p-0.5 bg-card/40">
             {(["idx", "us", "global"] as const).map(m => (

@@ -73,10 +73,10 @@ export function MobileBottomNav() {
                   color: moreActive ? "var(--primary)" : "var(--muted-foreground)",
                   background: moreActive ? "color-mix(in oklab, var(--primary) 10%, transparent)" : "transparent",
                 }}
-                aria-label="More menu"
+                aria-label={Labels.shell.more}
               >
                 <MoreHorizontal className="size-[18px]" />
-                <span className="text-[10px] font-medium leading-none">More</span>
+                <span className="text-[10px] font-medium leading-none">{Labels.shell.more}</span>
               </button>
             </SheetTrigger>
             <SheetContent
@@ -109,7 +109,7 @@ export function MobileBottomNav() {
                 onClick={() => { setMoreOpen(false); signOut(); nav({ to: "/auth" }); }}
                 className="mt-3 w-full flex items-center justify-center gap-2 rounded-xl px-3 py-3 border border-border text-[13.5px] font-medium text-muted-foreground active:scale-[0.98]"
               >
-                <LogOut className="size-4" /> Sign out
+                <LogOut className="size-4" /> {Labels.shell.signOut}
               </button>
             </SheetContent>
           </Sheet>

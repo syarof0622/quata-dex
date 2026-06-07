@@ -13,6 +13,7 @@ import { X, Plus, Sparkles, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { Sparkline } from "./screener";
 import { PageHero } from "@/components/ui/page-hero";
+import { useLang } from "@/hooks/use-language";
 
 export const Route = createFileRoute("/_authenticated/watchlist")({
   head: () => ({ meta: [{ title: "Watchlist — Quanta Terminal" }] }),
@@ -29,6 +30,7 @@ const PRESETS: { label: string; symbols: string[] }[] = [
 ];
 
 function WL() {
+  const { L } = useLang();
   const qc = useQueryClient();
   const [view, setView] = useState<"smart" | "simple">("smart");
   const wl = useQuery({ queryKey: ["watchlist"], queryFn: () => getWatchlist() });
@@ -66,11 +68,11 @@ function WL() {
   return (
     <div className="p-4 md:p-6 space-y-4">
       <PageHero
-        eyebrow="Sinyal AI v2"
+        eyebrow={L.hero.watchlist.eyebrow}
         live
         icon={Sparkles}
-        title="Intelijen Daftar Pantau"
-        subtitle="Setiap saham diperingkat otomatis oleh Sinyal AI v2."
+        title={L.hero.watchlist.title}
+        subtitle={L.hero.watchlist.subtitle}
         actions={
           <div className="inline-flex rounded-md border border-border p-0.5">
             {(["smart", "simple"] as const).map(v => (

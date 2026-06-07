@@ -235,6 +235,65 @@ export const UI_LABELS_ID = {
       eyebrow: "Akun",
     },
   },
+
+  // ---- Shell, nav chrome ----
+  shell: {
+    loadingSession: "Memuat sesi…",
+    marketsLive: "Pasar · langsung",
+    signOut: "Keluar",
+    more: "Lainnya",
+    openAi: "Buka AI",
+    closeAi: "Tutup AI",
+    close: "Tutup",
+  },
+
+  // ---- Onboarding dialog ----
+  onboarding: {
+    title: "Selamat datang — mulai dalam mode Demo?",
+    description: "Demo mode mengisi watchlist default (BBCA, BBRI, TLKM, ASII, GOTO, ANTM, UNVR, MDKA) dan menyalakan paper trading. Semua data adalah data pasar nyata, namun eksekusi tetap simulasi — tidak ada uang sungguhan. Anda bisa mematikannya kapan saja.",
+    features: [
+      "AI Trade Agent + Pemindai Otonom",
+      "Penyaring teknikal & fundamental (undervalued)",
+      "Rezim Pasar, Rotasi Sektor, Risiko Portofolio",
+      "Tinjauan pasca-trade & pelajaran",
+      "Peringatan AI multi-faktor",
+    ],
+    skip: "Lewati",
+    start: "Mulai Demo",
+    preparing: "Menyiapkan…",
+  },
+
+  // ---- Floating AI chat ----
+  chat: {
+    title: "Analis AI",
+    subtitle: "Tanya pasar, portofolio, atau ticker",
+    greet: "Hai 👋 Saya bisa bantu analisis ticker, baca momentum, atau diagnosa AI Agent. Pilih ide cepat di bawah atau ketik pertanyaan.",
+    placeholder: "Tanya AI…",
+    failed: "Chat gagal",
+    networkError: "Kesalahan jaringan",
+    quickPrompts: [
+      "Cek portofolio saya",
+      "Momentum teratas hari ini",
+      "Saham undervalue",
+      "Kenapa AI Agent tidak buy?",
+    ],
+  },
+
+  // ---- Per-page hero (eyebrow / title / subtitle) ----
+  hero: {
+    dashboard: { eyebrow: "Pusat Kendali", title: "Dasbor Pasar", subtitle: "Ringkasan real-time · IDX, indeks, mover, dan berita" },
+    market: { eyebrow: "Intelijen Pasar Langsung", title: "Denyut Pasar", subtitle: "Rotasi sektor, keluasan pasar, dan rezim risiko" },
+    screener: { eyebrow: "Riset", title: "Penyaring Saham", subtitle: "Penyaringan teknikal & fundamental untuk peluang trading dan emiten undervalued" },
+    watchlist: { eyebrow: "Sinyal AI v2", title: "Intelijen Daftar Pantau", subtitle: "Setiap saham diperingkat otomatis oleh Sinyal AI v2." },
+    portfolio: { eyebrow: "Hanya Paper Trading", title: "Analisis Risiko Portofolio", subtitle: "Ekuitas mark-to-market, rincian laba/rugi, dan analisis risiko — hanya paper trading." },
+    ai: { eyebrow: "Asisten AI", title: "Analis Trading AI", subtitle: "Asisten pasar berbasis harga, berita, sentimen, dan konteks paper trading" },
+    lab: { eyebrow: "Hanya Paper Trading", title: "Lab Simulasi", subtitle: "Paper trading {currency} · laba/rugi langsung · order lanjutan · jurnal · uji balik · pelatih AI" },
+    expert: { eyebrow: "Alat Ahli", title: "Alat Ahli", subtitle: "Analisis multi-timeframe · sizing posisi dengan kontrol risiko · korelasi lintas aset." },
+    news: { eyebrow: "Berita & Sentimen", title: "Berita & Sentimen Pasar", subtitle: "Berita saham IDX dari Kontan, CNBC, ANTARA, Investor.id, dan Google News — deduplikasi otomatis, dengan skor sentimen dan dampak." },
+    alerts: { eyebrow: "Peringatan", title: "Peringatan Cerdas", subtitle: "Harga, RSI, persilangan EMA, lonjakan volume, breakout N-hari, dan persilangan skor Sinyal AI." },
+    health: { eyebrow: "Intelijen Operasional", title: "Kesehatan Sistem", subtitle: "Worker, kesegaran data, kesehatan sumber, dan jejak audit. Diperbarui setiap 30 detik.", updatedSuffix: "Diperbarui terakhir" },
+    settings: { eyebrow: "Preferensi", title: "Pengaturan", subtitle: "Profil, preferensi, akun paper trading, dan integrasi data." },
+  },
 } as const;
 
 // Audit helper — daftar kata Inggris yang seharusnya sudah diterjemahkan.

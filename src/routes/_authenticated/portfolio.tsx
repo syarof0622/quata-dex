@@ -10,6 +10,7 @@ import { ShieldAlert, TrendingUp, Layers, Activity, Target, Wallet, AlertTriangl
 import { PortfolioAttributionPanel } from "@/components/PortfolioAttributionPanel";
 import { PortfolioIntelligencePanel } from "@/components/PortfolioIntelligencePanel";
 import { PageHero } from "@/components/ui/page-hero";
+import { useLang } from "@/hooks/use-language";
 
 export const Route = createFileRoute("/_authenticated/portfolio")({
   head: () => ({ meta: [{ title: "Portfolio — Quanta Terminal" }] }),
@@ -24,6 +25,7 @@ function priceFmt(symbol: string, n: number | null | undefined) {
 }
 
 function Portfolio() {
+  const { L } = useLang();
   const a = useQuery({
     queryKey: ["portfolio-analytics"],
     queryFn: () => getPortfolioAnalytics(),
@@ -95,10 +97,10 @@ function Portfolio() {
   return (
     <div className="p-3 md:p-6 space-y-4 md:space-y-5">
       <PageHero
-        eyebrow="Hanya Paper Trading"
+        eyebrow={L.hero.portfolio.eyebrow}
         icon={Wallet}
-        title="Analisis Risiko Portofolio"
-        subtitle="Ekuitas mark-to-market, rincian laba/rugi, dan analisis risiko — hanya paper trading."
+        title={L.hero.portfolio.title}
+        subtitle={L.hero.portfolio.subtitle}
         actions={
           <div className="flex items-center gap-x-2 gap-y-1 text-[10.5px] md:text-[11px] text-muted-foreground flex-wrap">
             <span>Mata uang <span className="font-mono text-foreground">{currency}</span></span>

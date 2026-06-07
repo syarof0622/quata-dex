@@ -17,6 +17,7 @@ import { listDisclosureIntel } from "@/lib/disclosure-intel.functions";
 import { DisclosureBadge } from "@/components/DisclosureBadge";
 import { toast } from "sonner";
 import { PageHero } from "@/components/ui/page-hero";
+import { useLang } from "@/hooks/use-language";
 
 export const Route = createFileRoute("/_authenticated/screener")({
   head: () => ({ meta: [{ title: "Screener — Quanta Terminal" }] }),
@@ -62,6 +63,7 @@ const PRESETS: { name: string; apply: (f: Filters) => Filters }[] = [
 ];
 
 function Screener() {
+  const { L } = useLang();
   const [f, setF] = useState<Filters>(DEFAULT);
   const data = useQuery({
     queryKey: ["screen", f.market],
@@ -94,10 +96,10 @@ function Screener() {
   return (
     <div className="min-w-0 max-w-full space-y-4 overflow-hidden p-3 sm:p-4 md:p-6">
       <PageHero
-        eyebrow="Riset"
+        eyebrow={L.hero.screener.eyebrow}
         icon={Filter}
-        title="Penyaring Saham"
-        subtitle="Penyaringan teknikal & fundamental untuk peluang trading dan emiten undervalued"
+        title={L.hero.screener.title}
+        subtitle={L.hero.screener.subtitle}
       />
 
 

@@ -4,17 +4,13 @@ import { Bot, Loader2, Send, Sparkles, X, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AIReportRenderer } from "@/components/AIReportRenderer";
 import { cn } from "@/lib/utils";
+import { useLang } from "@/hooks/use-language";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
-const QUICK_PROMPTS = [
-  "Cek portfolio saya",
-  "Top momentum hari ini",
-  "Saham undervalue",
-  "Kenapa AI Agent tidak buy?",
-];
-
 export function FloatingAIChat() {
+  const { L } = useLang();
+  const QUICK_PROMPTS = L.chat.quickPrompts;
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -50,7 +46,7 @@ export function FloatingAIChat() {
         body: JSON.stringify({ messages: next }),
       });
       if (!resp.ok || !resp.body) {
-        toast.error("Chat gagal");
+        toast.error(L.chat.failed);
         setBusy(false);
         return;
       }
@@ -81,7 +77,7 @@ export function FloatingAIChat() {
         }
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Network error");
+      toast.error(e instanceof Error ? e.message : L.chat.networkError);
     } finally {
       setBusy(false);
     }
@@ -92,7 +88,7 @@ export function FloatingAIChat() {
       {/* Floating button — always reachable, above mobile bottom nav */}
       <button
         onClick={() => setOpen(o => !o)}
-        aria-label={open ? "Tutup AI" : "Buka AI"}
+        aria-label={open ? L.shell.closeAi : L.shell.openAi}
         className={cn(
           "fixed z-50 right-3 md:right-5 grid place-items-center",
           "h-12 w-12 md:h-14 md:w-14 rounded-full shadow-xl",
@@ -136,13 +132,13 @@ export function FloatingAIChat() {
                 <Sparkles className="h-4 w-4 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-semibold leading-tight">Analis AI</div>
-                <div className="text-[10.5px] text-muted-foreground leading-tight">Tanya pasar, portfolio, atau ticker</div>
+                <div className="text-[13px] font-semibold leading-tight">{L.chat.title}</div>
+                <div className="text-[10.5px] text-muted-foreground leading-tight">{L.chat.subtitle}</div>
               </div>
               <button
                 onClick={() => setOpen(false)}
                 className="h-8 w-8 rounded-md hover:bg-muted/60 grid place-items-center text-muted-foreground"
-                aria-label="Tutup"
+                aria-label={L.shell.close}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -153,7 +149,7 @@ export function FloatingAIChat() {
               {messages.length === 0 ? (
                 <div className="space-y-3">
                   <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-[12.5px] text-muted-foreground leading-relaxed">
-                    Hai 👋 Saya bisa bantu analisis ticker, baca momentum, atau diagnosa AI Agent. Pilih ide cepat di bawah atau ketik pertanyaan.
+                    {L.chat.greet}
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     {QUICK_PROMPTS.map((p) => (
@@ -183,7 +179,7 @@ export function FloatingAIChat() {
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void sendText(input); } }}
                   rows={1}
-                  placeholder="Tanya AI…"
+                  placeholder={L.chat.placeholder}
                   disabled={busy}
                   className="flex-1 resize-none bg-transparent text-[13px] placeholder:text-muted-foreground/70 focus:outline-none max-h-28 py-1.5"
                 />

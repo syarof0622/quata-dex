@@ -144,10 +144,10 @@ function SettingsPage() {
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-4xl">
       <PageHero
-        eyebrow="Preferensi"
+        eyebrow={lang === "en" ? "Preferences" : "Preferensi"}
         icon={SettingsIcon}
-        title="Pengaturan"
-        subtitle="Profil, preferensi, akun paper trading, dan integrasi data."
+        title={lang === "en" ? "Settings" : "Pengaturan"}
+        subtitle={lang === "en" ? "Profile, preferences, paper trading account, and data integrations." : "Profil, preferensi, akun paper trading, dan integrasi data."}
       />
 
 

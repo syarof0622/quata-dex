@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Newspaper, TrendingUp, TrendingDown, Minus, Activity, RefreshCw, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
 import { formatTimeWIB, formatDateTimeWIB } from "@/lib/format";
 import { PageHero } from "@/components/ui/page-hero";
+import { useLang } from "@/hooks/use-language";
 
 export const Route = createFileRoute("/_authenticated/news")({
   head: () => ({
@@ -51,6 +52,7 @@ function loadNewsLang(): "id" | "en" | "" {
 }
 
 function NewsHub() {
+  const { L } = useLang();
   const qc = useQueryClient();
   const [source, setSource] = useState("");
   const [sentiment, setSentiment] = useState<"" | "positive" | "neutral" | "negative">("");
@@ -148,11 +150,11 @@ function NewsHub() {
   return (
     <div className="p-4 md:p-6 space-y-4">
       <PageHero
-        eyebrow="Berita & Sentimen"
+        eyebrow={L.hero.news.eyebrow}
         live
         icon={Newspaper}
-        title="Berita & Sentimen Pasar"
-        subtitle="Berita saham IDX dari Kontan, CNBC, ANTARA, Investor.id, dan Google News — deduplikasi otomatis, dengan skor sentimen dan dampak."
+        title={L.hero.news.title}
+        subtitle={L.hero.news.subtitle}
         actions={
           <div className="flex items-center gap-2">
             {serpStatus.data && (

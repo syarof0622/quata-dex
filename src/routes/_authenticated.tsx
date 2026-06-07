@@ -20,10 +20,11 @@ export const Route = createFileRoute("/_authenticated")({
 
 function AuthedLayoutGate() {
   const { loading, isAuthenticated, profile } = useAuth();
+  const { L } = useLang();
   const nav = useNavigate();
   const path = useRouterState({ select: s => s.location.pathname });
   if (loading) {
-    return <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">Memuat sesi…</div>;
+    return <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">{L.shell.loadingSession}</div>;
   }
   if (!isAuthenticated) {
     if (typeof window !== "undefined") nav({ to: "/auth" });
@@ -99,8 +100,8 @@ function AuthedLayout() {
             <SidebarFooter>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton onClick={() => { signOut(); nav({ to: "/auth" }); }} tooltip="Sign out">
-                    <LogOut className="size-4" /><span>Sign out</span>
+                  <SidebarMenuButton onClick={() => { signOut(); nav({ to: "/auth" }); }} tooltip={Labels.shell.signOut}>
+                    <LogOut className="size-4" /><span>{Labels.shell.signOut}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
@@ -115,7 +116,7 @@ function AuthedLayout() {
             <TickerSearch className="flex-1 max-w-xl" />
             <div className="hidden md:flex items-center gap-3 ml-auto">
               <span className="flex items-center gap-2 text-xs text-muted-foreground panel px-2.5 py-1">
-                <span className="pulse-dot" /> Markets · live
+                <span className="pulse-dot" /> {Labels.shell.marketsLive}
               </span>
               <Button size="sm" variant="outline" asChild><Link to="/ai"><Bot className="size-4" /> AI</Link></Button>
             </div>
@@ -138,7 +139,7 @@ function AuthedLayout() {
             <div className="flex-1 min-w-0">
               <div className="text-[13.5px] font-semibold tracking-tight truncate">{pageTitle}</div>
               <div className="text-[10px] text-muted-foreground leading-none flex items-center gap-1.5">
-                <span className="pulse-dot" style={{ width: 6, height: 6 }} /> Markets · live
+                <span className="pulse-dot" style={{ width: 6, height: 6 }} /> {Labels.shell.marketsLive}
               </div>
             </div>
             <Button size="sm" variant="outline" asChild className="h-8 px-2.5">

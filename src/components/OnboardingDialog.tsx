@@ -16,8 +16,10 @@ import {
   seedDefaultWatchlist,
   setDemoMode,
 } from "@/lib/demo-mode.functions";
+import { useLang } from "@/hooks/use-language";
 
 export function OnboardingDialog() {
+  const { L } = useLang();
   const fetchStatus = useServerFn(getDemoStatus);
   const finish = useServerFn(completeOnboarding);
   const seed = useServerFn(seedDefaultWatchlist);
@@ -63,27 +65,18 @@ export function OnboardingDialog() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Selamat datang — mulai dalam mode Demo?</DialogTitle>
-          <DialogDescription>
-            Demo mode mengisi watchlist default (BBCA, BBRI, TLKM, ASII, GOTO,
-            ANTM, UNVR, MDKA) dan menyalakan paper trading. Semua data adalah
-            data pasar nyata, namun eksekusi tetap simulasi — tidak ada uang
-            sungguhan. Anda bisa mematikannya kapan saja.
-          </DialogDescription>
+          <DialogTitle>{L.onboarding.title}</DialogTitle>
+          <DialogDescription>{L.onboarding.description}</DialogDescription>
         </DialogHeader>
         <ul className="text-sm list-disc pl-5 space-y-1 text-muted-foreground">
-          <li>AI Trade Agent + Autonomous Scanner</li>
-          <li>Screener teknikal & fundamental (undervalued)</li>
-          <li>Market Regime, Sector Rotation, Portfolio Risk</li>
-          <li>Post-trade Review & Lessons Learned</li>
-          <li>Multi-factor AI alerts</li>
+          {L.onboarding.features.map((f) => <li key={f}>{f}</li>)}
         </ul>
         <DialogFooter>
           <Button variant="ghost" disabled={busy} onClick={skip}>
-            Lewati
+            {L.onboarding.skip}
           </Button>
           <Button disabled={busy} onClick={startDemo}>
-            {busy ? "Menyiapkan…" : "Mulai Demo"}
+            {busy ? L.onboarding.preparing : L.onboarding.start}
           </Button>
         </DialogFooter>
       </DialogContent>
