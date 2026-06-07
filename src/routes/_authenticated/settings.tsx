@@ -63,7 +63,8 @@ function applyTheme(t: Prefs["theme"]) {
 
 function SettingsPage() {
   const { user, signOut } = useAuth();
-  const { lang, setLang } = useLang();
+  const { lang, setLang, L } = useLang();
+  const S = L.body.settings;
   const qc = useQueryClient();
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs);
   const [displayName, setDisplayName] = useState(
