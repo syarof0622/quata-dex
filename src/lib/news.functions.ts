@@ -70,6 +70,10 @@ export const listNews = createServerFn({ method: "POST" })
     }
     if (data.fromDate) q = q.gte("published_at", data.fromDate);
     if (data.toDate) q = q.lte("published_at", data.toDate);
+    if (data.language) {
+      const pats = LANG_PATTERNS[data.language];
+      q = q.or(pats.map((p) => `title.ilike.${p}`).join(","));
+    }
 
     const { data: rows, error, count } = await q;
     if (error) throw new Error(error.message);
