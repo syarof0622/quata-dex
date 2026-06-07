@@ -43,22 +43,23 @@ function ExpertPage() {
 }
 
 function MTF() {
+  const { L } = useLang();
   const [s, setS] = useState("AAPL");
   const q = useQuery({ queryKey: ["mtf", s], queryFn: () => multiTimeframeSignal({ data: { symbol: s.toUpperCase() } }) });
   return (
     <div className="space-y-3">
       <div className="panel p-4 flex gap-2 items-end">
         <div className="flex-1">
-          <label className="text-xs text-muted-foreground">Symbol — type to search</label>
+          <label className="text-xs text-muted-foreground">{L.tools.expert.symbolSearch}</label>
           <TickerSearch initialValue={s} placeholder="AAPL, NVDA, BBCA.JK…" onPick={(sym) => setS(sym)} />
         </div>
-        <Button onClick={() => q.refetch()} disabled={q.isFetching}>{q.isFetching ? "Computing…" : "Analyze"}</Button>
+        <Button onClick={() => q.refetch()} disabled={q.isFetching}>{q.isFetching ? L.tools.expert.computing : L.tools.expert.analyze}</Button>
       </div>
       {q.data && (
         <div className="panel p-4">
           <div className="flex items-center gap-3 flex-wrap">
             <span className={`text-xl font-semibold ${q.data.composite >= 25 ? "text-bull" : q.data.composite <= -25 ? "text-bear" : "text-muted-foreground"}`}>{q.data.label}</span>
-            <span className="text-xs text-muted-foreground">composite {q.data.composite}</span>
+            <span className="text-xs text-muted-foreground">{L.tools.expert.composite} {q.data.composite}</span>
             {q.data.alignmentLabel && (
               <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded ${
                 q.data.alignmentTone === "bull" ? "bg-bull-soft text-bull" :
@@ -72,7 +73,7 @@ function MTF() {
             <p className="mt-2 text-xs text-muted-foreground">{q.data.recommendation}</p>
           )}
           <table className="w-full text-sm mt-3">
-            <thead className="text-xs text-muted-foreground"><tr><th className="text-left p-2">Timeframe</th><th className="text-left p-2">Label</th><th className="text-right p-2">Score</th><th className="text-right p-2">Confidence</th></tr></thead>
+            <thead className="text-xs text-muted-foreground"><tr><th className="text-left p-2">{L.tools.expert.thTimeframe}</th><th className="text-left p-2">{L.tools.expert.thLabel}</th><th className="text-right p-2">{L.tools.expert.thScore}</th><th className="text-right p-2">{L.tools.expert.thConfidence}</th></tr></thead>
             <tbody>
               {q.data.byTimeframe.map((r: any) => (
                 <tr key={r.tf} className="border-t border-border">
