@@ -1,19 +1,32 @@
-// Tiny inline SVG sparkline. No external dep, scales to container.
-// Used by the Market Heatmap to render a live mini-chart per ticker.
+// Tiny inline SVG sparkline. No external dep, fully fluid to container width.
+// Used by the Dashboard / Market heatmap & indices to render a live mini-chart.
 import { memo } from "react";
 
 type Props = {
   values: number[];
   positive?: boolean;
-  width?: number;
-  height?: number;
+  width?: number;        // viewBox width (logical units, not px)
+  height?: number;       // rendered px height
   strokeWidth?: number;
   className?: string;
 };
 
-function SparklineImpl({ values, positive, width = 80, height = 22, strokeWidth = 1.2, className }: Props) {
+function SparklineImpl({
+  values,
+  positive,
+  width = 200,
+  height = 28,
+  strokeWidth = 1.4,
+  className,
+}: Props) {
   if (!values || values.length < 2) {
-    return <div className={className} style={{ height, width: "100%" }} />;
+    return (
+      <div
+        className={className}
+        style={{ height, width: "100%" }}
+        aria-hidden
+      />
+    );
   }
   const min = Math.min(...values);
   const max = Math.max(...values);
@@ -30,10 +43,17 @@ function SparklineImpl({ values, positive, width = 80, height = 22, strokeWidth 
   const linePath = `M${points.join(" L")}`;
   const areaPath = `${linePath} L${width},${height} L0,${height} Z`;
   const last = points[points.length - 1].split(",").map(Number);
-  const gradId = `sg-${isUp ? "u" : "d"}`;
+  const gradId = `sg-${isUp ? "u" : "d"}-${values.length}`;
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} width="100%" height={height} preserveAspectRatio="none"
-         className={className} aria-hidden>
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      width="100%"
+      height="100%"
+      preserveAspectRatio="none"
+      className={`block w-full ${className ?? ""}`}
+      style={{ height, display: "block" }}
+      aria-hidden
+    >
       <defs>
         <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={fill} />
@@ -41,8 +61,16 @@ function SparklineImpl({ values, positive, width = 80, height = 22, strokeWidth 
         </linearGradient>
       </defs>
       <path d={areaPath} fill={`url(#${gradId})`} />
-      <path d={linePath} fill="none" stroke={stroke} strokeWidth={strokeWidth} strokeLinejoin="round" strokeLinecap="round" />
-      <circle cx={last[0]} cy={last[1]} r={1.4} fill={stroke} />
+      <path
+        d={linePath}
+        fill="none"
+        stroke={stroke}
+        strokeWidth={strokeWidth}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        vectorEffect="non-scaling-stroke"
+      />
+      <circle cx={last[0]} cy={last[1]} r={1.6} fill={stroke} vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }

@@ -89,14 +89,14 @@ function Dashboard() {
             return (
               <Link key={q?.symbol ?? i} to={q ? "/chart/$symbol" : "/dashboard"} params={q ? { symbol: q.symbol } : undefined as any}
                     className="panel p-3 hover:border-primary/40 transition-colors shrink-0 min-w-[44vw] md:min-w-0">
-                <div className="flex items-start gap-2">
+                <div className="flex items-stretch gap-2">
                   <div className="min-w-0 flex-1">
                     <div className="text-[10.5px] md:text-xs text-muted-foreground uppercase tracking-wider truncate">{q?.shortName ?? "—"}</div>
                     <div className="font-mono text-[15px] md:text-lg mt-1">{q ? formatPrice(q.price) : "—"}</div>
                     <div className={`text-[11px] md:text-xs font-mono ${colorForChange(q?.changePercent)}`}>{q ? formatPct(q.changePercent) : "—"}</div>
                   </div>
-                  <div className="shrink-0 self-stretch flex items-center w-[72px] md:w-[84px]">
-                    <Sparkline values={closes} positive={(q?.changePercent ?? 0) >= 0} height={34} />
+                  <div className="shrink-0 self-stretch flex items-center flex-1 min-w-[72px] max-w-[140px]">
+                    <Sparkline values={closes} positive={(q?.changePercent ?? 0) >= 0} height={38} />
                   </div>
                 </div>
               </Link>

@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
-import { getMovers, getNews } from "@/lib/market.functions";
+import { useServerFn } from "@tanstack/react-start";
+import { useState, useMemo } from "react";
+import { getMovers, getNews, getSparklines } from "@/lib/market.functions";
 import { sectorPerformance, marketBreadth } from "@/lib/screener.functions";
 import { formatPct, formatCompact, colorForChange } from "@/lib/format";
 import { formatLocalPrice } from "@/lib/symbols";
@@ -10,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Activity, ArrowDownRight, ArrowUpRight, Newspaper } from "lucide-react";
 import { MobileEmptyState, MobileSkeletonRows } from "@/components/mobile-ui";
 import { PageHero } from "@/components/ui/page-hero";
+import { Sparkline } from "@/components/Sparkline";
 
 export const Route = createFileRoute("/_authenticated/market")({
   head: () => ({ meta: [{ title: "Market — Quanta Terminal" }] }),
@@ -34,6 +36,19 @@ function MarketPage() {
     refetchInterval: 60_000,
   });
   const news = useQuery({ queryKey: ["mkt-news", market], queryFn: () => getNews({ data: { market } }), refetchInterval: 60_000 });
+
+  const fetchSparks = useServerFn(getSparklines);
+  const heatSymbols = useMemo(
+    () => (movers.data?.all ?? []).map((q: any) => q.symbol).slice(0, 120),
+    [movers.data],
+  );
+  const sparks = useQuery({
+    queryKey: ["mkt-heatmap-sparks", market, heatSymbols.join(",")],
+    queryFn: () => fetchSparks({ data: { symbols: heatSymbols, range: "1d" } }),
+    enabled: heatSymbols.length > 0,
+    refetchInterval: 60_000,
+    staleTime: 45_000,
+  });
 
   return (
     <div className="p-3 md:p-6 space-y-4 md:space-y-5">
@@ -132,12 +147,18 @@ function MarketPage() {
               const bg = pct >= 0
                 ? `oklch(0.74 0.18 150 / ${0.15 + intensity * 0.6})`
                 : `oklch(0.65 0.23 27 / ${0.15 + intensity * 0.6})`;
+              const closes = sparks.data?.[q.symbol] ?? [];
               return (
                 <Link key={q.symbol} to="/chart/$symbol" params={{ symbol: q.symbol }}
                       style={{ backgroundColor: bg }}
-                      className="rounded-md p-1.5 md:p-2 text-[10.5px] md:text-xs hover:ring-1 hover:ring-primary transition">
-                  <div className="font-semibold truncate">{displaySymbol(q.symbol)}</div>
-                  <div className="font-mono">{formatPct(pct)}</div>
+                      className="group rounded-md p-1.5 md:p-2 text-[10.5px] md:text-xs hover:ring-1 hover:ring-primary transition flex flex-col gap-1">
+                  <div className="flex items-baseline justify-between gap-1">
+                    <div className="font-semibold truncate">{displaySymbol(q.symbol)}</div>
+                    <div className="font-mono shrink-0 text-[10px] md:text-[11px]">{formatPct(pct)}</div>
+                  </div>
+                  <div className="-mx-0.5 opacity-90 group-hover:opacity-100 transition-opacity">
+                    <Sparkline values={closes} positive={pct >= 0} height={22} />
+                  </div>
                   <div className="text-[9.5px] md:text-[10px] opacity-70 font-mono truncate">{formatCompact(q.marketCap ?? undefined)}</div>
                 </Link>
               );
