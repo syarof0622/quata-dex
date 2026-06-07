@@ -166,7 +166,7 @@ export function ChatPanel({ system }: { system?: string }) {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKey}
               rows={1}
-              placeholder="Tanya AI: saham apa yang layak dibeli, risiko portfolio, atau analisis ticker…"
+              placeholder={T.placeholder}
               disabled={busy}
               className="flex-1 resize-none bg-transparent text-sm placeholder:text-muted-foreground/70 focus:outline-none max-h-32 py-1.5"
             />
