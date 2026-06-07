@@ -164,19 +164,20 @@ function NewsHub() {
                 "border-primary/40 bg-primary/10 text-primary"
               }`} title={serpStatus.data.enabled ? `SerpApi credits used ${serpStatus.data.used}/${serpStatus.data.limit}` : "SerpApi disabled"}>
                 {!serpStatus.data.enabled
-                  ? "SerpApi: off"
+                  ? L.body.news.serpOff
                   : serpStatus.data.quotaBlocked
-                  ? "SerpApi quota protection"
-                  : `Enhanced by SerpApi · ${serpStatus.data.remaining} left`}
+                  ? L.body.news.serpQuotaProtect
+                  : L.body.news.serpEnhanced.replace("{n}", String(serpStatus.data.remaining))}
               </span>
             )}
             <Button variant="outline" size="sm" onClick={() => refresh.mutate()} disabled={refresh.isPending}>
               {refresh.isPending ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
-              Refresh now
+              {L.body.news.refreshNow}
             </Button>
           </div>
         }
       />
+
 
 
       {/* Pipeline status */}
@@ -194,24 +195,24 @@ function NewsHub() {
           "border-border text-muted-foreground";
         return (
           <div className="panel p-3 flex flex-wrap items-center gap-3 text-xs">
-            <span className={`px-2 py-0.5 rounded border font-medium ${tone}`}>Pipeline: {status}</span>
+            <span className={`px-2 py-0.5 rounded border font-medium ${tone}`}>{L.body.news.pipelinePrefix} {status}</span>
             <span className="text-muted-foreground">
-              Last run: <span className="font-mono text-foreground">{finishedAt ? formatDateTimeWIB(finishedAt) : "—"}</span>
-              {minsAgo != null && <span className="ml-1">({minsAgo}m ago)</span>}
+              {L.body.news.lastRun} <span className="font-mono text-foreground">{finishedAt ? formatDateTimeWIB(finishedAt) : "—"}</span>
+              {minsAgo != null && <span className="ml-1">({minsAgo}{L.body.news.minsAgo})</span>}
             </span>
             <span className="text-muted-foreground">
-              Sources: <span className="text-bull font-mono">{lr?.successful_sources ?? 0} ok</span>
+              {L.body.news.sources} <span className="text-bull font-mono">{lr?.successful_sources ?? 0} {L.body.news.ok}</span>
               {" · "}
-              <span className="text-bear font-mono">{lr?.failed_sources ?? 0} failed</span>
-              {(lr?.fallback_sources ?? 0) > 0 && <> · <span className="text-amber-500 font-mono">{lr.fallback_sources} fallback</span></>}
-              {(lr?.quota_protected_sources ?? 0) > 0 && <> · <span className="text-muted-foreground font-mono">{lr.quota_protected_sources} quota-protected</span></>}
+              <span className="text-bear font-mono">{lr?.failed_sources ?? 0} {L.body.news.failed}</span>
+              {(lr?.fallback_sources ?? 0) > 0 && <> · <span className="text-amber-500 font-mono">{lr.fallback_sources} {L.body.news.fallback}</span></>}
+              {(lr?.quota_protected_sources ?? 0) > 0 && <> · <span className="text-muted-foreground font-mono">{lr.quota_protected_sources} {L.body.news.quotaProtected}</span></>}
             </span>
             <span className="text-muted-foreground">
-              Inserted last run: <span className="font-mono text-foreground">{lr?.inserted_count ?? 0}</span>
+              {L.body.news.insertedLastRun} <span className="font-mono text-foreground">{lr?.inserted_count ?? 0}</span>
             </span>
             {stale && snap?.created_at && (
               <span className="px-2 py-0.5 rounded border border-amber-500/40 bg-amber-500/10 text-amber-500 font-medium">
-                Showing snapshot from {formatDateTimeWIB(snap.created_at)} — no fresh 24h articles
+                {L.body.news.snapshotFrom.replace("{t}", formatDateTimeWIB(snap.created_at))}
               </span>
             )}
             {lr?.error_message && (
@@ -221,33 +222,34 @@ function NewsHub() {
         );
       })()}
 
+
       {/* Sentiment overview */}
       <div className="grid md:grid-cols-3 gap-3">
 
         <ScoreCard
-          title="Market Sentiment (24h)"
+          title={L.body.news.marketSentiment24h}
           value={sentimentQ.data?.sentimentScore ?? 0}
           label={sentimentQ.data?.label ?? "—"}
           range={[-100, 100]}
           tone={(sentimentQ.data?.sentimentScore ?? 0) > 10 ? "bull" : (sentimentQ.data?.sentimentScore ?? 0) < -10 ? "bear" : "neutral"}
         />
         <div className="panel p-4">
-          <div className="text-xs text-muted-foreground">Distribusi (24h)</div>
+          <div className="text-xs text-muted-foreground">{L.body.news.distribution24h}</div>
           <div className="mt-3 space-y-2 text-sm">
-            <Row icon={<TrendingUp className="size-4 text-bull" />} label="Positive" v={sentimentQ.data?.counts.positive ?? 0} />
-            <Row icon={<Minus className="size-4 text-muted-foreground" />} label="Neutral" v={sentimentQ.data?.counts.neutral ?? 0} />
-            <Row icon={<TrendingDown className="size-4 text-bear" />} label="Negative" v={sentimentQ.data?.counts.negative ?? 0} />
+            <Row icon={<TrendingUp className="size-4 text-bull" />} label={L.body.news.positive} v={sentimentQ.data?.counts.positive ?? 0} />
+            <Row icon={<Minus className="size-4 text-muted-foreground" />} label={L.body.news.neutral} v={sentimentQ.data?.counts.neutral ?? 0} />
+            <Row icon={<TrendingDown className="size-4 text-bear" />} label={L.body.news.negative} v={sentimentQ.data?.counts.negative ?? 0} />
             <div className="pt-2 mt-2 border-t border-border flex items-center justify-between text-xs">
-              <span className="text-muted-foreground flex items-center gap-1"><Activity className="size-3" /> High impact</span>
+              <span className="text-muted-foreground flex items-center gap-1"><Activity className="size-3" /> {L.body.news.highImpact}</span>
               <span className="font-mono">{sentimentQ.data?.highImpactCount ?? 0}</span>
             </div>
           </div>
         </div>
         <div className="panel p-4">
-          <div className="text-xs text-muted-foreground mb-2">Top tickers (24h)</div>
+          <div className="text-xs text-muted-foreground mb-2">{L.body.news.topTickers24h}</div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <div className="text-[10px] uppercase tracking-wide text-bull mb-1">Bullish</div>
+              <div className="text-[10px] uppercase tracking-wide text-bull mb-1">{L.body.news.bullish}</div>
               <ul className="space-y-1 text-sm">
                 {(sentimentQ.data?.topPositive ?? []).map(t => (
                   <li key={t.symbol} className="flex items-center justify-between">
@@ -259,7 +261,7 @@ function NewsHub() {
               </ul>
             </div>
             <div>
-              <div className="text-[10px] uppercase tracking-wide text-bear mb-1">Bearish</div>
+              <div className="text-[10px] uppercase tracking-wide text-bear mb-1">{L.body.news.bearish}</div>
               <ul className="space-y-1 text-sm">
                 {(sentimentQ.data?.topNegative ?? []).map(t => (
                   <li key={t.symbol} className="flex items-center justify-between">
@@ -274,9 +276,10 @@ function NewsHub() {
         </div>
       </div>
 
+
       {/* Source health */}
       <div className="panel p-4">
-        <div className="text-xs text-muted-foreground mb-3">Source health</div>
+        <div className="text-xs text-muted-foreground mb-3">{L.body.news.sourceHealth}</div>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
           {(sources.data ?? []).map(s => {
             const ok = s.status === "active";
@@ -287,10 +290,10 @@ function NewsHub() {
                   {ok ? <CheckCircle2 className="size-3.5 text-bull" /> : <AlertTriangle className="size-3.5 text-bear" />}
                 </div>
                 <div className="text-[10px] text-muted-foreground mt-1">
-                  {ok ? `${s.articles_today ?? 0} hari ini` : (s.last_error?.slice(0, 40) ?? "no data")}
+                  {ok ? `${s.articles_today ?? 0} ${L.body.news.today}` : (s.last_error?.slice(0, 40) ?? L.body.news.noData)}
                 </div>
                 <div className="text-[10px] text-muted-foreground mt-0.5">
-                  {s.last_success_at ? `Last: ${formatTimeWIB(s.last_success_at)}` : "—"}
+                  {s.last_success_at ? `${L.body.news.last} ${formatTimeWIB(s.last_success_at)}` : "—"}
                 </div>
               </div>
             );
@@ -298,12 +301,13 @@ function NewsHub() {
         </div>
       </div>
 
+
       {/* Filters */}
       <div className="panel p-3 flex flex-wrap items-center gap-2">
         {/* Language toggle */}
-        <div className="inline-flex rounded border border-border overflow-hidden text-xs" role="group" aria-label="News language">
+        <div className="inline-flex rounded border border-border overflow-hidden text-xs" role="group" aria-label={L.body.news.newsLanguageAria}>
           {([
-            { v: "", label: "Semua" },
+            { v: "", label: L.body.news.all },
             { v: "id", label: "🇮🇩 ID" },
             { v: "en", label: "🇬🇧 EN" },
           ] as const).map((opt) => (
@@ -314,65 +318,66 @@ function NewsHub() {
               className={`px-2 py-1.5 transition-colors ${
                 language === opt.v ? "bg-primary/15 text-primary font-medium" : "hover:bg-accent/40 text-muted-foreground"
               }`}
-              title={`Filter berita: ${opt.label}`}
+              title={`${L.body.news.filterNewsTooltip} ${opt.label}`}
             >
               {opt.label}
             </button>
           ))}
         </div>
         <select value={source} onChange={e => setSource(e.target.value)} className="text-xs bg-background border border-border rounded px-2 py-1.5">
-          {SOURCES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+          {SOURCES.map(s => <option key={s.id} value={s.id}>{s.id === "" ? L.body.news.allSources : s.label}</option>)}
         </select>
-        <select value={relevanceClass} onChange={e => setRelevanceClass(e.target.value)} className="text-xs bg-background border border-border rounded px-2 py-1.5" title="Relevance">
-          <option value="">All relevance</option>
-          <option value="direct_ticker_news">Direct ticker</option>
-          <option value="company_name_match">Company match</option>
-          <option value="sector_news">Sector news</option>
-          <option value="macro_news">Macro</option>
-          <option value="global_context">Global context</option>
+        <select value={relevanceClass} onChange={e => setRelevanceClass(e.target.value)} className="text-xs bg-background border border-border rounded px-2 py-1.5">
+          <option value="">{L.body.news.allRelevance}</option>
+          <option value="direct_ticker_news">{L.body.news.directTicker}</option>
+          <option value="company_name_match">{L.body.news.companyMatch}</option>
+          <option value="sector_news">{L.body.news.sectorNews}</option>
+          <option value="macro_news">{L.body.news.macro}</option>
+          <option value="global_context">{L.body.news.globalContext}</option>
         </select>
-        <select value={impactCategory} onChange={e => setImpactCategory(e.target.value)} className="text-xs bg-background border border-border rounded px-2 py-1.5" title="Impact category">
-          <option value="">All categories</option>
-          <option value="earnings">Earnings</option>
-          <option value="dividend">Dividend</option>
-          <option value="buyback">Buyback</option>
-          <option value="rights_issue">Rights issue</option>
-          <option value="merger_acquisition">M&amp;A</option>
-          <option value="corporate_action">Corporate action</option>
-          <option value="uma_suspension">UMA / Suspension</option>
-          <option value="governance_risk">Governance risk</option>
-          <option value="regulation">Regulation</option>
-          <option value="macro">Macro</option>
-          <option value="analyst_rating">Analyst rating</option>
+        <select value={impactCategory} onChange={e => setImpactCategory(e.target.value)} className="text-xs bg-background border border-border rounded px-2 py-1.5">
+          <option value="">{L.body.news.allCategories}</option>
+          <option value="earnings">{L.body.news.earnings}</option>
+          <option value="dividend">{L.body.news.dividend}</option>
+          <option value="buyback">{L.body.news.buyback}</option>
+          <option value="rights_issue">{L.body.news.rightsIssue}</option>
+          <option value="merger_acquisition">{L.body.news.ma}</option>
+          <option value="corporate_action">{L.body.news.corporateAction}</option>
+          <option value="uma_suspension">{L.body.news.umaSuspension}</option>
+          <option value="governance_risk">{L.body.news.governanceRisk}</option>
+          <option value="regulation">{L.body.news.regulation}</option>
+          <option value="macro">{L.body.news.macro}</option>
+          <option value="analyst_rating">{L.body.news.analystRating}</option>
         </select>
         <select value={sentiment} onChange={e => setSentiment(e.target.value as any)} className="text-xs bg-background border border-border rounded px-2 py-1.5">
-          <option value="">All sentiment</option>
-          <option value="positive">Positive</option>
-          <option value="neutral">Neutral</option>
-          <option value="negative">Negative</option>
+          <option value="">{L.body.news.allSentiment}</option>
+          <option value="positive">{L.body.news.sentPositive}</option>
+          <option value="neutral">{L.body.news.sentNeutral}</option>
+          <option value="negative">{L.body.news.sentNegative}</option>
         </select>
         <select value={impact} onChange={e => setImpact(e.target.value as any)} className="text-xs bg-background border border-border rounded px-2 py-1.5">
-          <option value="">All impact</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
+          <option value="">{L.body.news.allImpact}</option>
+          <option value="high">{L.body.news.impactHigh}</option>
+          <option value="medium">{L.body.news.impactMedium}</option>
+          <option value="low">{L.body.news.impactLow}</option>
         </select>
         <label className="text-xs flex items-center gap-1 px-2 py-1.5 border border-border rounded cursor-pointer">
           <input type="checkbox" checked={hideNoise} onChange={e => setHideNoise(e.target.checked)} />
-          Hide noise
+          {L.body.news.hideNoise}
         </label>
         <label className="text-xs flex items-center gap-1 px-2 py-1.5 border border-border rounded cursor-pointer">
           <input type="checkbox" checked={hideDuplicates} onChange={e => setHideDuplicates(e.target.checked)} />
-          Hide duplicates
+          {L.body.news.hideDuplicates}
         </label>
-        <Input value={ticker} onChange={e => setTicker(e.target.value)} placeholder="Ticker e.g. BBCA.JK" className="w-44 h-8 text-xs" />
-        <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search title…" className="flex-1 min-w-[180px] h-8 text-xs" />
+        <Input value={ticker} onChange={e => setTicker(e.target.value)} placeholder={L.body.news.tickerPlaceholder} className="w-44 h-8 text-xs" />
+        <Input value={search} onChange={e => setSearch(e.target.value)} placeholder={L.body.news.searchPlaceholder} className="flex-1 min-w-[180px] h-8 text-xs" />
         {(source || sentiment || impact || relevanceClass || impactCategory || ticker || search) && (
           <Button size="sm" variant="ghost" onClick={() => { setSource(""); setSentiment(""); setImpact(""); setRelevanceClass(""); setImpactCategory(""); setTicker(""); setSearch(""); }}>
-            Clear
+            {L.body.news.clear}
           </Button>
         )}
       </div>
+
 
       {/* Feed */}
       <div className="grid md:grid-cols-2 gap-3">
@@ -382,10 +387,11 @@ function NewsHub() {
         {!news.isLoading && rows.length === 0 && (
           <div className="panel p-8 text-center text-muted-foreground md:col-span-2">
             {dSearch || dTicker || source || sentiment || impact
-              ? "Tidak ada berita cocok dengan filter."
-              : (<>Belum ada berita. Klik <span className="font-medium">Refresh now</span> untuk mengambil data dari sumber.</>)}
+              ? L.body.news.noNewsFiltered
+              : (<>{L.body.news.noNewsEmptyPrefix} <span className="font-medium">{L.body.news.refreshNow}</span> {L.body.news.noNewsEmptySuffix}</>)}
           </div>
         )}
+
         {rows.map((n: any) => (
           <div key={n.id} className="panel p-4 hover:border-primary/40 transition-colors">
             <div className="flex items-start justify-between gap-3">
@@ -401,12 +407,12 @@ function NewsHub() {
             <div className="text-[10px] text-muted-foreground mt-2 flex items-center gap-2">
               <span>{n.source} · {formatDateTimeWIB(n.published_at)}</span>
               {typeof n.source_reliability_weight === "number" && (
-                <span title="Source reliability" className="font-mono">rel {Math.round(n.source_reliability_weight * 100)}%</span>
+                <span title={L.body.news.sourceReliability} className="font-mono">{L.body.news.relWord} {Math.round(n.source_reliability_weight * 100)}%</span>
               )}
             </div>
             <div className="mt-2 flex items-center flex-wrap gap-1.5">
               {n.relevance_class && n.relevance_class !== "irrelevant_noise" && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium" title={`Relevance score ${Math.round(n.ticker_relevance_score ?? 0)}`}>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium" title={`${L.body.news.relevanceScore} ${Math.round(n.ticker_relevance_score ?? 0)}`}>
                   {n.relevance_class.replace(/_/g, " ")}
                 </span>
               )}
@@ -416,15 +422,16 @@ function NewsHub() {
                 </span>
               )}
               {n.is_noise && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">noise</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{L.body.news.noise}</span>
               )}
               <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
                 n.impact_level === "high" ? "bg-primary/15 text-primary" :
                 n.impact_level === "medium" ? "bg-accent/40 text-foreground" :
                 "bg-accent/30 text-muted-foreground"
               }`}>
-                <Activity className="inline size-3 mr-0.5" />impact {Math.round(n.impact_score)}
+                <Activity className="inline size-3 mr-0.5" />{L.body.news.impactWord} {Math.round(n.impact_score)}
               </span>
+
               {(n.tickers ?? []).slice(0, 4).map((t: string) => (
                 <Link key={t} to="/chart/$symbol" params={{ symbol: t }}
                       className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-mono hover:bg-primary/20">
@@ -443,14 +450,15 @@ function NewsHub() {
       {total > 0 && (
         <div className="flex items-center justify-between text-xs text-muted-foreground pt-2">
           <div>
-            Showing <span className="text-foreground font-mono">{page * PAGE_SIZE + 1}–{Math.min(total, (page + 1) * PAGE_SIZE)}</span> of <span className="text-foreground font-mono">{total}</span> indexed
+            {L.body.news.showing} <span className="text-foreground font-mono">{page * PAGE_SIZE + 1}–{Math.min(total, (page + 1) * PAGE_SIZE)}</span> {L.body.news.of} <span className="text-foreground font-mono">{total}</span> {L.body.news.indexed}
           </div>
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" disabled={page === 0} onClick={() => setPage(p => Math.max(0, p - 1))}>Prev</Button>
+            <Button size="sm" variant="outline" disabled={page === 0} onClick={() => setPage(p => Math.max(0, p - 1))}>{L.body.news.prev}</Button>
             <span className="font-mono">{page + 1} / {totalPages}</span>
-            <Button size="sm" variant="outline" disabled={page + 1 >= totalPages} onClick={() => setPage(p => p + 1)}>Next</Button>
+            <Button size="sm" variant="outline" disabled={page + 1 >= totalPages} onClick={() => setPage(p => p + 1)}>{L.body.news.next}</Button>
           </div>
         </div>
+
       )}
     </div>
   );
