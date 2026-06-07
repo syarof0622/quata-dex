@@ -30,9 +30,9 @@ function ExpertPage() {
 
       <Tabs defaultValue="mtf">
         <TabsList>
-          <TabsTrigger value="mtf"><Layers className="size-4 mr-1" /> Multi-Timeframe</TabsTrigger>
-          <TabsTrigger value="size"><Calculator className="size-4 mr-1" /> Position Sizer</TabsTrigger>
-          <TabsTrigger value="corr"><Network className="size-4 mr-1" /> Correlation</TabsTrigger>
+          <TabsTrigger value="mtf"><Layers className="size-4 mr-1" /> {L.tools.expert.tabMtf}</TabsTrigger>
+          <TabsTrigger value="size"><Calculator className="size-4 mr-1" /> {L.tools.expert.tabSizer}</TabsTrigger>
+          <TabsTrigger value="corr"><Network className="size-4 mr-1" /> {L.tools.expert.tabCorr}</TabsTrigger>
         </TabsList>
         <TabsContent value="mtf"><MTF /></TabsContent>
         <TabsContent value="size"><Sizer /></TabsContent>
