@@ -59,8 +59,8 @@ function AlertsPage() {
 
   const create = useMutation({
     mutationFn: () => createAlert({ data: { symbol: symbol.toUpperCase(), rule: buildRule() } }),
-    onSuccess: () => { toast.success("Alert created"); qc.invalidateQueries({ queryKey: ["alerts"] }); },
-    onError: (e: Error) => toast.error(e?.message ?? "Failed"),
+    onSuccess: () => { toast.success(L.tools.alerts.created); qc.invalidateQueries({ queryKey: ["alerts"] }); },
+    onError: (e: Error) => toast.error(e?.message ?? L.tools.alerts.failed),
   });
   const del = useMutation({
     mutationFn: (id: string) => deleteAlert({ data: { id } }),
@@ -74,7 +74,7 @@ function AlertsPage() {
     mutationFn: () => checkAlerts(),
     onSuccess: (r: any) => {
       const list = Array.isArray(r?.triggered) ? r.triggered : [];
-      if (!list.length) toast.message("No alerts triggered.");
+      if (!list.length) toast.message(L.tools.alerts.noneTriggered);
       else list.forEach((t: any) => toast.success(`${t.symbol}: ${t.reason}`));
       qc.invalidateQueries({ queryKey: ["alerts"] });
     },
