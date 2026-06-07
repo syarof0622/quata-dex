@@ -30,7 +30,14 @@ const FilterSchema = z.object({
   impactCategory: z.string().max(40).optional(),
   hideNoise: z.boolean().optional(),
   hideDuplicates: z.boolean().optional(),
+  language: z.enum(["id", "en"]).optional(),
 });
+
+// Simple heuristic patterns used to filter news language at the SQL level.
+const LANG_PATTERNS = {
+  id: ["%saham%","%rupiah%","%bursa%","%emiten%","%miliar%","%persen%","% yang %","% dan %","% dari %","% untuk %","%laba%","%harga%"],
+  en: ["%stocks%","%shares%","%earnings%","%billion%","%percent%","% the %","% and %","% of %","%profit%","%market%","%price%"],
+} as const;
 
 export const listNews = createServerFn({ method: "POST" })
   .inputValidator((d) => FilterSchema.parse(d ?? {}))
@@ -63,6 +70,10 @@ export const listNews = createServerFn({ method: "POST" })
     }
     if (data.fromDate) q = q.gte("published_at", data.fromDate);
     if (data.toDate) q = q.lte("published_at", data.toDate);
+    if (data.language) {
+      const pats = LANG_PATTERNS[data.language];
+      q = q.or(pats.map((p) => `title.ilike.${p}`).join(","));
+    }
 
     const { data: rows, error, count } = await q;
     if (error) throw new Error(error.message);

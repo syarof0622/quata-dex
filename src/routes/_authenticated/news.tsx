@@ -40,6 +40,16 @@ function useDebounced<T>(value: T, ms = 300): T {
   return v;
 }
 
+function loadNewsLang(): "id" | "en" | "" {
+  if (typeof window === "undefined") return "";
+  try {
+    const raw = localStorage.getItem("quanta:prefs");
+    if (!raw) return "";
+    const p = JSON.parse(raw);
+    return p?.newsLang === "id" || p?.newsLang === "en" ? p.newsLang : "";
+  } catch { return ""; }
+}
+
 function NewsHub() {
   const qc = useQueryClient();
   const [source, setSource] = useState("");
@@ -52,11 +62,30 @@ function NewsHub() {
   const [ticker, setTicker] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
+  const [language, setLanguage] = useState<"" | "id" | "en">(loadNewsLang());
+
+  // Keep in sync if user changes preference in Settings (other tab / same tab).
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "quanta:prefs") setLanguage(loadNewsLang());
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  function updateLanguage(v: "" | "id" | "en") {
+    setLanguage(v);
+    try {
+      const raw = localStorage.getItem("quanta:prefs");
+      const prev = raw ? JSON.parse(raw) : {};
+      localStorage.setItem("quanta:prefs", JSON.stringify({ ...prev, newsLang: v || "id" }));
+    } catch {/* */}
+  }
 
   const dSearch = useDebounced(search.trim(), 350);
   const dTicker = useDebounced(ticker.trim(), 350);
 
-  useEffect(() => { setPage(0); }, [source, sentiment, impact, relevanceClass, impactCategory, hideNoise, hideDuplicates, dTicker, dSearch]);
+  useEffect(() => { setPage(0); }, [source, sentiment, impact, relevanceClass, impactCategory, hideNoise, hideDuplicates, dTicker, dSearch, language]);
 
   const filterArgs = {
     limit: PAGE_SIZE,
@@ -70,6 +99,7 @@ function NewsHub() {
     hideDuplicates,
     ticker: dTicker || undefined,
     search: dSearch || undefined,
+    language: (language || undefined) as "id" | "en" | undefined,
   };
 
   const news = useQuery({
@@ -268,6 +298,26 @@ function NewsHub() {
 
       {/* Filters */}
       <div className="panel p-3 flex flex-wrap items-center gap-2">
+        {/* Language toggle */}
+        <div className="inline-flex rounded border border-border overflow-hidden text-xs" role="group" aria-label="News language">
+          {([
+            { v: "", label: "Semua" },
+            { v: "id", label: "🇮🇩 ID" },
+            { v: "en", label: "🇬🇧 EN" },
+          ] as const).map((opt) => (
+            <button
+              key={opt.v}
+              type="button"
+              onClick={() => updateLanguage(opt.v)}
+              className={`px-2 py-1.5 transition-colors ${
+                language === opt.v ? "bg-primary/15 text-primary font-medium" : "hover:bg-accent/40 text-muted-foreground"
+              }`}
+              title={`Filter berita: ${opt.label}`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
         <select value={source} onChange={e => setSource(e.target.value)} className="text-xs bg-background border border-border rounded px-2 py-1.5">
           {SOURCES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
         </select>

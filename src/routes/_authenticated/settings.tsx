@@ -206,12 +206,12 @@ function SettingsPage() {
                 </SelectContent>
               </Select>
             </Row>
-            <Row label="News language" hint="Filters Yahoo Finance news feed">
+            <Row label="Bahasa Berita" hint="Memfilter feed di halaman News berdasarkan bahasa judul.">
               <Select value={prefs.newsLang} onValueChange={(v) => update("newsLang", v as Prefs["newsLang"])}>
                 <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="en">English</SelectItem>
-                  <SelectItem value="id">Bahasa Indonesia</SelectItem>
+                  <SelectItem value="id">🇮🇩 Bahasa Indonesia</SelectItem>
+                  <SelectItem value="en">🇬🇧 English</SelectItem>
                 </SelectContent>
               </Select>
             </Row>
