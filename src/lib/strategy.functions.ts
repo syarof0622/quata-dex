@@ -1,8 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
+import { currentUserId } from "@/lib/current-user.server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-const USER_ID = "00000000-0000-0000-0000-000000000001";
 
 const StrategyOutSchema = z.object({
   name: z.string(),
@@ -60,7 +60,7 @@ export const generateStrategy = createServerFn({ method: "POST" })
     const parsed = StrategyOutSchema.parse(typeof args === "string" ? JSON.parse(args) : args);
 
     const { data: row, error } = await supabaseAdmin.from("strategies").insert({
-      user_id: USER_ID,
+      user_id: currentUserId(),
       name: parsed.name,
       description: parsed.description + "\n\nRationale: " + parsed.rationale,
       rules_json: { rule: parsed.rule } as any,

@@ -9,6 +9,9 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as ChangePasswordRouteImport } from './routes/change-password'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
@@ -37,7 +40,23 @@ import { Route as ApiPublicCronFundamentalsRouteImport } from './routes/api/publ
 import { Route as ApiPublicCronDisclosureIngestRouteImport } from './routes/api/public/cron/disclosure-ingest'
 import { Route as ApiPublicCronAlertsRouteImport } from './routes/api/public/cron/alerts'
 import { Route as ApiPublicCronAiAgentRouteImport } from './routes/api/public/cron/ai-agent'
+import { Route as ApiPublicAuthBootstrapSuperadminRouteImport } from './routes/api/public/auth/bootstrap-superadmin'
 
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChangePasswordRoute = ChangePasswordRouteImport.update({
+  id: '/change-password',
+  path: '/change-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -183,10 +202,19 @@ const ApiPublicCronAiAgentRoute = ApiPublicCronAiAgentRouteImport.update({
   path: '/api/public/cron/ai-agent',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAuthBootstrapSuperadminRoute =
+  ApiPublicAuthBootstrapSuperadminRouteImport.update({
+    id: '/api/public/auth/bootstrap-superadmin',
+    path: '/api/public/auth/bootstrap-superadmin',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/change-password': typeof ChangePasswordRoute
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/ai': typeof AuthenticatedAiRoute
   '/alerts': typeof AuthenticatedAlertsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -202,6 +230,7 @@ export interface FileRoutesByFullPath {
   '/api/chat': typeof ApiChatRoute
   '/chart/$symbol': typeof AuthenticatedChartSymbolRoute
   '/api/serpapi/news': typeof ApiSerpapiNewsRoute
+  '/api/public/auth/bootstrap-superadmin': typeof ApiPublicAuthBootstrapSuperadminRoute
   '/api/public/cron/ai-agent': typeof ApiPublicCronAiAgentRoute
   '/api/public/cron/alerts': typeof ApiPublicCronAlertsRoute
   '/api/public/cron/disclosure-ingest': typeof ApiPublicCronDisclosureIngestRoute
@@ -216,6 +245,9 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/change-password': typeof ChangePasswordRoute
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/ai': typeof AuthenticatedAiRoute
   '/alerts': typeof AuthenticatedAlertsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -231,6 +263,7 @@ export interface FileRoutesByTo {
   '/api/chat': typeof ApiChatRoute
   '/chart/$symbol': typeof AuthenticatedChartSymbolRoute
   '/api/serpapi/news': typeof ApiSerpapiNewsRoute
+  '/api/public/auth/bootstrap-superadmin': typeof ApiPublicAuthBootstrapSuperadminRoute
   '/api/public/cron/ai-agent': typeof ApiPublicCronAiAgentRoute
   '/api/public/cron/alerts': typeof ApiPublicCronAlertsRoute
   '/api/public/cron/disclosure-ingest': typeof ApiPublicCronDisclosureIngestRoute
@@ -247,6 +280,9 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/auth': typeof AuthRoute
+  '/change-password': typeof ChangePasswordRoute
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/ai': typeof AuthenticatedAiRoute
   '/_authenticated/alerts': typeof AuthenticatedAlertsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
@@ -262,6 +298,7 @@ export interface FileRoutesById {
   '/api/chat': typeof ApiChatRoute
   '/_authenticated/chart/$symbol': typeof AuthenticatedChartSymbolRoute
   '/api/serpapi/news': typeof ApiSerpapiNewsRoute
+  '/api/public/auth/bootstrap-superadmin': typeof ApiPublicAuthBootstrapSuperadminRoute
   '/api/public/cron/ai-agent': typeof ApiPublicCronAiAgentRoute
   '/api/public/cron/alerts': typeof ApiPublicCronAlertsRoute
   '/api/public/cron/disclosure-ingest': typeof ApiPublicCronDisclosureIngestRoute
@@ -278,6 +315,9 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/change-password'
+    | '/forgot-password'
+    | '/reset-password'
     | '/ai'
     | '/alerts'
     | '/dashboard'
@@ -293,6 +333,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/chart/$symbol'
     | '/api/serpapi/news'
+    | '/api/public/auth/bootstrap-superadmin'
     | '/api/public/cron/ai-agent'
     | '/api/public/cron/alerts'
     | '/api/public/cron/disclosure-ingest'
@@ -307,6 +348,9 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/change-password'
+    | '/forgot-password'
+    | '/reset-password'
     | '/ai'
     | '/alerts'
     | '/dashboard'
@@ -322,6 +366,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/chart/$symbol'
     | '/api/serpapi/news'
+    | '/api/public/auth/bootstrap-superadmin'
     | '/api/public/cron/ai-agent'
     | '/api/public/cron/alerts'
     | '/api/public/cron/disclosure-ingest'
@@ -337,6 +382,9 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/change-password'
+    | '/forgot-password'
+    | '/reset-password'
     | '/_authenticated/ai'
     | '/_authenticated/alerts'
     | '/_authenticated/dashboard'
@@ -352,6 +400,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/_authenticated/chart/$symbol'
     | '/api/serpapi/news'
+    | '/api/public/auth/bootstrap-superadmin'
     | '/api/public/cron/ai-agent'
     | '/api/public/cron/alerts'
     | '/api/public/cron/disclosure-ingest'
@@ -368,8 +417,12 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ChangePasswordRoute: typeof ChangePasswordRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiSerpapiNewsRoute: typeof ApiSerpapiNewsRoute
+  ApiPublicAuthBootstrapSuperadminRoute: typeof ApiPublicAuthBootstrapSuperadminRoute
   ApiPublicCronAiAgentRoute: typeof ApiPublicCronAiAgentRoute
   ApiPublicCronAlertsRoute: typeof ApiPublicCronAlertsRoute
   ApiPublicCronDisclosureIngestRoute: typeof ApiPublicCronDisclosureIngestRoute
@@ -384,6 +437,27 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/change-password': {
+      id: '/change-password'
+      path: '/change-password'
+      fullPath: '/change-password'
+      preLoaderRoute: typeof ChangePasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -580,6 +654,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronAiAgentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/auth/bootstrap-superadmin': {
+      id: '/api/public/auth/bootstrap-superadmin'
+      path: '/api/public/auth/bootstrap-superadmin'
+      fullPath: '/api/public/auth/bootstrap-superadmin'
+      preLoaderRoute: typeof ApiPublicAuthBootstrapSuperadminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -623,8 +704,12 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   AuthRoute: AuthRoute,
+  ChangePasswordRoute: ChangePasswordRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   ApiChatRoute: ApiChatRoute,
   ApiSerpapiNewsRoute: ApiSerpapiNewsRoute,
+  ApiPublicAuthBootstrapSuperadminRoute: ApiPublicAuthBootstrapSuperadminRoute,
   ApiPublicCronAiAgentRoute: ApiPublicCronAiAgentRoute,
   ApiPublicCronAlertsRoute: ApiPublicCronAlertsRoute,
   ApiPublicCronDisclosureIngestRoute: ApiPublicCronDisclosureIngestRoute,

@@ -5,6 +5,7 @@
 // fundamental_signal_snapshots + fundamental_quality_scores rows.
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { currentUserId } from "@/lib/current-user.server";
 import {
   fetchFundamentalFromSources,
   upsertFundamentalSnapshot,
@@ -20,7 +21,7 @@ import type { FundamentalDTO } from "./fundamentals.functions";
 import { calculateFundamentalConfidence } from "./fundamental-confidence.server";
 import { linkFundamentalToNews } from "./fundamental-news-linker.server";
 
-const HARDCODED_USER = "00000000-0000-0000-0000-000000000001";
+const HARDCODED_USER = currentUserId();
 
 // ---------- universe selection ----------
 export async function selectUniverse(limit = 30): Promise<string[]> {

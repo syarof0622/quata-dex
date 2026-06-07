@@ -2,10 +2,10 @@
 // "Why AI Did Not Trade" diagnostics for the AI Trade Agent UI panels.
 // Read-only — no side effects. Paper trading only.
 import { createServerFn } from "@tanstack/react-start";
+import { currentUserId } from "@/lib/current-user.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getIDXMarketSession } from "@/lib/idx-market-session";
 
-const USER_ID = "00000000-0000-0000-0000-000000000001";
 
 export type WorkerLifecycle =
   | "auto_running"
@@ -46,7 +46,7 @@ export const getAutonomousAgentStatus = createServerFn({ method: "GET" }).handle
     .select(
       "id, name, status, trading_enabled, automation_enabled, risk_level, autonomous_risk_mode, last_worker_run_at, last_worker_status, last_worker_message, next_expected_worker_run_at, worker_error_count, last_blocked_reason, last_auto_decision_at, last_auto_execution_at",
     )
-    .eq("user_id", USER_ID)
+    .eq("user_id", currentUserId())
     .eq("trading_enabled", true)
     .order("updated_at", { ascending: false })
     .limit(1)
@@ -64,7 +64,7 @@ export const getAutonomousAgentStatus = createServerFn({ method: "GET" }).handle
   const { data: account } = await supabaseAdmin
     .from("paper_accounts")
     .select("id, cash, equity, currency")
-    .eq("user_id", USER_ID)
+    .eq("user_id", currentUserId())
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -73,7 +73,7 @@ export const getAutonomousAgentStatus = createServerFn({ method: "GET" }).handle
     supabaseAdmin
       .from("paper_positions")
       .select("id, symbol, qty, avg_price, opened_at")
-      .eq("user_id", USER_ID),
+      .eq("user_id", currentUserId()),
     supabaseAdmin
       .from("position_exit_plans")
       .select(

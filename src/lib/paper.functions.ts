@@ -1,15 +1,15 @@
 // Supabase-backed paper trading account. Shared across devices via single super-admin user_id.
 import { createServerFn } from "@tanstack/react-start";
+import { currentUserId } from "@/lib/current-user.server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getQuote, getQuotes } from "./market.functions";
 
-const USER_ID = "00000000-0000-0000-0000-000000000001";
 const DEFAULT_CASH = 100_000_000; // 100 juta IDR untuk default starter
 
 async function ensureAccount() {
   const { data, error } = await supabaseAdmin
-    .from("paper_accounts").select("*").eq("user_id", USER_ID).maybeSingle();
+    .from("paper_accounts").select("*").eq("user_id", currentUserId()).maybeSingle();
   if (error) throw new Error(error.message);
   if (data) {
     // Backfill initial_balance if missing (older accounts created before this column existed).
@@ -23,7 +23,7 @@ async function ensureAccount() {
   }
   const { data: created, error: e2 } = await supabaseAdmin
     .from("paper_accounts")
-    .insert({ user_id: USER_ID, cash: DEFAULT_CASH, equity: DEFAULT_CASH, initial_balance: DEFAULT_CASH })
+    .insert({ user_id: currentUserId(), cash: DEFAULT_CASH, equity: DEFAULT_CASH, initial_balance: DEFAULT_CASH })
     .select("*").single();
   if (e2) throw new Error(e2.message);
   return created;
@@ -33,10 +33,10 @@ async function ensureAccount() {
 export const getPaperAccount = createServerFn({ method: "GET" }).handler(async () => {
   const account = await ensureAccount();
   const [posRes, filledRes, pendingRes] = await Promise.all([
-    supabaseAdmin.from("paper_positions").select("*").eq("user_id", USER_ID),
-    supabaseAdmin.from("paper_orders").select("*").eq("user_id", USER_ID).eq("status", "filled")
+    supabaseAdmin.from("paper_positions").select("*").eq("user_id", currentUserId()),
+    supabaseAdmin.from("paper_orders").select("*").eq("user_id", currentUserId()).eq("status", "filled")
       .order("filled_at", { ascending: false }).limit(100),
-    supabaseAdmin.from("paper_orders").select("*").eq("user_id", USER_ID).eq("status", "pending")
+    supabaseAdmin.from("paper_orders").select("*").eq("user_id", currentUserId()).eq("status", "pending")
       .order("created_at", { ascending: false }),
   ]);
   const positions = posRes.data ?? [];
@@ -104,7 +104,7 @@ export const placeOrder = createServerFn({ method: "POST" })
     // Load existing position
     const { data: existing } = await supabaseAdmin
       .from("paper_positions").select("*")
-      .eq("user_id", USER_ID).eq("symbol", symbol).maybeSingle();
+      .eq("user_id", currentUserId()).eq("symbol", symbol).maybeSingle();
 
     if (data.side === "buy") {
       if (Number(account.cash) < notional + fee) throw new Error("Insufficient cash");
@@ -116,7 +116,7 @@ export const placeOrder = createServerFn({ method: "POST" })
           .eq("id", existing.id);
       } else {
         await supabaseAdmin.from("paper_positions").insert({
-          account_id: account.id, user_id: USER_ID, symbol,
+          account_id: account.id, user_id: currentUserId(), symbol,
           qty: data.qty, avg_price: fillPrice,
         });
       }
@@ -141,7 +141,7 @@ export const placeOrder = createServerFn({ method: "POST" })
       : 0;
 
     await supabaseAdmin.from("paper_orders").insert({
-      account_id: account.id, user_id: USER_ID, symbol,
+      account_id: account.id, user_id: currentUserId(), symbol,
       side: data.side, type: "market", qty: data.qty,
       price: quote.price, filled_price: fillPrice,
       status: "filled", filled_at: new Date().toISOString(),
@@ -177,7 +177,7 @@ export const placeAdvancedOrder = createServerFn({ method: "POST" })
     const quote: any = await getQuote({ data: { symbol } }).catch(() => null);
 
     const { data: inserted, error } = await supabaseAdmin.from("paper_orders").insert({
-      account_id: account.id, user_id: USER_ID, symbol,
+      account_id: account.id, user_id: currentUserId(), symbol,
       side: data.side, type: data.type, qty: data.qty,
       price: quote?.price ?? null,
       limit_price: data.limitPrice ?? null,
@@ -197,7 +197,7 @@ export const cancelOrder = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { error } = await supabaseAdmin.from("paper_orders")
       .update({ status: "cancelled" })
-      .eq("id", data.id).eq("user_id", USER_ID).eq("status", "pending");
+      .eq("id", data.id).eq("user_id", currentUserId()).eq("status", "pending");
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -214,8 +214,8 @@ export const resetPaperAccount = createServerFn({ method: "POST" })
     const currency = data?.currency ?? "IDR";
     const account = await ensureAccount();
     await Promise.all([
-      supabaseAdmin.from("paper_positions").delete().eq("user_id", USER_ID),
-      supabaseAdmin.from("paper_orders").delete().eq("user_id", USER_ID),
+      supabaseAdmin.from("paper_positions").delete().eq("user_id", currentUserId()),
+      supabaseAdmin.from("paper_orders").delete().eq("user_id", currentUserId()),
     ]);
     await supabaseAdmin.from("paper_accounts")
       .update({ cash, equity: cash, currency, initial_balance: cash, reset_at: new Date().toISOString() })

@@ -3,10 +3,10 @@
 // Shares the same `computeContextSummary` helper as the client header used
 // before, but now feeds it data through the service role.
 import { createServerFn } from "@tanstack/react-start";
+import { currentUserId } from "@/lib/current-user.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { computeContextSummary, type AIContextSummary } from "./ai-context-summary";
 
-const USER_ID = "00000000-0000-0000-0000-000000000001";
 
 /**
  * Single source-of-truth resolver for the "currently active" AI Trade Agent.
@@ -23,7 +23,7 @@ export async function getActiveAIAgent() {
   const { data: agents } = await supabaseAdmin
     .from("ai_trade_agents")
     .select("*")
-    .eq("user_id", USER_ID);
+    .eq("user_id", currentUserId());
   const list = (agents ?? []) as any[];
   if (!list.length) return null;
 
@@ -71,7 +71,7 @@ export const getAIContextSummaryServer = createServerFn({ method: "GET" })
       supabaseAdmin
         .from("paper_accounts")
         .select("id")
-        .eq("user_id", USER_ID)
+        .eq("user_id", currentUserId())
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle(),

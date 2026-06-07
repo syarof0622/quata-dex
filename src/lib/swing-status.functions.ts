@@ -1,15 +1,15 @@
 import { createServerFn } from "@tanstack/react-start";
+import { currentUserId } from "@/lib/current-user.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 // Returns Swing Max UI snapshot: agent config flag, recent open swing plans,
 // and the most recent High-Conviction allocation decisions (accepted +
 // rejected) so the UI can show WHY allocation is big/small/zero.
 export const getSwingMaxStatus = createServerFn({ method: "GET" }).handler(async () => {
-  const USER_ID = "00000000-0000-0000-0000-000000000001";
   const { data: agent } = await supabaseAdmin
     .from("ai_trade_agents")
     .select("id, swing_mode_active, swing_quality_threshold, target_holding_days, max_holding_days, max_trades_per_symbol_per_week, swing_protection_active, swing_protection_reason, swing_protection_until, consecutive_losses, diagnostic_status, protection_mode_active")
-    .eq("user_id", USER_ID).maybeSingle();
+    .eq("user_id", currentUserId()).maybeSingle();
 
   if (!agent) return { agent: null, plans: [], stats: null, allocationDecisions: [] };
 

@@ -1,11 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
+import { currentUserId } from "@/lib/current-user.server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getQuote, getCandles } from "./market.functions";
 import { rsi, ema, type Candle } from "./indicators";
 import { compositeSignal } from "@/features/signals/composite-engine";
 
-const USER_ID = "00000000-0000-0000-0000-000000000001";
 
 const RuleSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("price_above"), value: z.number() }),
@@ -30,7 +30,7 @@ export const listAlerts = createServerFn({ method: "GET" })
   .handler(async () => {
     const { data } = await supabaseAdmin
       .from("alerts").select("*")
-      .eq("user_id", USER_ID)
+      .eq("user_id", currentUserId())
       .order("created_at", { ascending: false });
     return data ?? [];
   });
@@ -40,7 +40,7 @@ export const createAlert = createServerFn({ method: "POST" })
     z.object({ symbol: z.string().min(1).toUpperCase(), rule: RuleSchema }).parse(d))
   .handler(async ({ data }) => {
     const { data: row, error } = await supabaseAdmin.from("alerts").insert({
-      user_id: USER_ID, symbol: data.symbol, rule_json: data.rule, active: true,
+      user_id: currentUserId(), symbol: data.symbol, rule_json: data.rule, active: true,
     }).select().single();
     if (error) throw new Error(error.message);
     return row;
@@ -49,7 +49,7 @@ export const createAlert = createServerFn({ method: "POST" })
 export const deleteAlert = createServerFn({ method: "POST" })
   .inputValidator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
-    await supabaseAdmin.from("alerts").delete().eq("id", data.id).eq("user_id", USER_ID);
+    await supabaseAdmin.from("alerts").delete().eq("id", data.id).eq("user_id", currentUserId());
     return { ok: true };
   });
 
@@ -61,7 +61,7 @@ export const toggleAlert = createServerFn({ method: "POST" })
       ? { active: true, triggered_at: null as string | null }
       : { active: false };
     await supabaseAdmin.from("alerts").update(update)
-      .eq("id", data.id).eq("user_id", USER_ID);
+      .eq("id", data.id).eq("user_id", currentUserId());
     return { ok: true };
   });
 
@@ -180,7 +180,7 @@ export const evaluateAlert = createServerFn({ method: "POST" })
 export const checkAlerts = createServerFn({ method: "POST" })
   .handler(async () => {
     const { data: alerts } = await supabaseAdmin.from("alerts")
-      .select("*").eq("user_id", USER_ID).eq("active", true).is("triggered_at", null);
+      .select("*").eq("user_id", currentUserId()).eq("active", true).is("triggered_at", null);
     if (!alerts?.length) return { triggered: [] };
     const triggered: { id: string; symbol: string; reason: string }[] = [];
     for (const a of alerts) {

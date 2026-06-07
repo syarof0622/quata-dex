@@ -3,13 +3,13 @@
 // paper_accounts. Every scenario run is persisted into
 // portfolio_scenario_results so the UI + AI Analyst can cite history.
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { currentUserId } from "@/lib/current-user.server";
 import { getPortfolioAnalytics, simulatePortfolioWhatIf } from "./analytics.functions";
 import { getQuotes } from "./market.functions";
 import { sectorOf } from "./sectors";
 import { SECTOR_BETA_PRIOR } from "./portfolio-attribution";
 import { calculatePortfolioHealth } from "./portfolio-intelligence.server";
 
-const USER_ID = "00000000-0000-0000-0000-000000000001";
 
 export type ScenarioType =
   | "IHSG_DOWN_2" | "IHSG_DOWN_5" | "IHSG_DOWN_10" | "IHSG_UP_2"
@@ -74,7 +74,7 @@ export async function runPortfolioScenario(input: ScenarioInput): Promise<Scenar
   }
 
   const { data: account } = await supabaseAdmin
-    .from("paper_accounts").select("id").eq("user_id", USER_ID).maybeSingle();
+    .from("paper_accounts").select("id").eq("user_id", currentUserId()).maybeSingle();
   const accountId = account?.id ?? null;
 
   let result: ScenarioResult;
@@ -330,7 +330,7 @@ export async function runPortfolioScenario(input: ScenarioInput): Promise<Scenar
   if (accountId) {
     await supabaseAdmin.from("portfolio_scenario_results").insert({
       account_id: accountId,
-      user_id: USER_ID,
+      user_id: currentUserId(),
       scenario_type: result.scenarioType,
       scenario_name: result.scenarioName,
       input_payload: input as any,

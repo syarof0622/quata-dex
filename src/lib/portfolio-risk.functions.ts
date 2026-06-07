@@ -1,11 +1,11 @@
 // Phase B: Portfolio risk snapshot. Computes exposure / concentration / drawdown
 // from current paper positions + recent orders. Saves to portfolio_risk_snapshots.
 import { createServerFn } from "@tanstack/react-start";
+import { currentUserId } from "@/lib/current-user.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getQuotes } from "./market.functions";
 import { sectorOf } from "./sectors";
 
-const USER_ID = "00000000-0000-0000-0000-000000000001";
 
 export type PortfolioRisk = {
   paper_account_id: string;
@@ -33,14 +33,14 @@ export const computePortfolioRisk = createServerFn({ method: "GET" }).handler(
     const { data: account } = await supabaseAdmin
       .from("paper_accounts")
       .select("*")
-      .eq("user_id", USER_ID)
+      .eq("user_id", currentUserId())
       .maybeSingle();
     if (!account) return null;
 
     const { data: positions } = await supabaseAdmin
       .from("paper_positions")
       .select("*")
-      .eq("user_id", USER_ID);
+      .eq("user_id", currentUserId());
     const pos = (positions ?? []) as any[];
 
     const symbols = Array.from(new Set(pos.map((p) => p.symbol as string)));
@@ -87,7 +87,7 @@ export const computePortfolioRisk = createServerFn({ method: "GET" }).handler(
     const { data: todayOrders } = await supabaseAdmin
       .from("paper_orders")
       .select("realized_pnl, created_at, side, status")
-      .eq("user_id", USER_ID)
+      .eq("user_id", currentUserId())
       .eq("status", "filled")
       .gte("created_at", since.toISOString());
     const dailyPnl = (todayOrders ?? []).reduce(
@@ -102,7 +102,7 @@ export const computePortfolioRisk = createServerFn({ method: "GET" }).handler(
     const { data: allFilled } = await supabaseAdmin
       .from("paper_orders")
       .select("realized_pnl")
-      .eq("user_id", USER_ID)
+      .eq("user_id", currentUserId())
       .eq("status", "filled");
     const realizedTotal = (allFilled ?? []).reduce(
       (s: number, o: any) => s + Number(o.realized_pnl ?? 0),
@@ -181,7 +181,7 @@ export const getLatestPortfolioRisk = createServerFn({ method: "GET" }).handler(
     const { data: account } = await supabaseAdmin
       .from("paper_accounts")
       .select("id")
-      .eq("user_id", USER_ID)
+      .eq("user_id", currentUserId())
       .maybeSingle();
     if (!account) return null;
     const { data } = await supabaseAdmin

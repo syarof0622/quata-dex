@@ -6,6 +6,7 @@
 // PAPER TRADING ONLY. This engine never authorises real-money execution.
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { currentUserId } from "@/lib/current-user.server";
 import { sectorOf } from "./sectors";
 import { isIDXSymbol, calculateEstimatedCost, LOT_SIZE_IDX } from "./lot-sizing";
 import { getEndOfCurrentIDXTradingDayWIB, formatWIB } from "./idx-market-session";
@@ -173,14 +174,13 @@ export async function finalRiskGuard(input: RiskInput): Promise<RiskGuardResult>
   const pauseActive = pausedUntil > Date.now();
 
   // ----- Portfolio snapshot -----
-  const USER_ID = "00000000-0000-0000-0000-000000000001";
   const { data: account } = await supabaseAdmin
     .from("paper_accounts")
     .select("cash, equity, initial_balance")
-    .eq("user_id", USER_ID).maybeSingle();
+    .eq("user_id", currentUserId()).maybeSingle();
   const { data: positions } = await supabaseAdmin
     .from("paper_positions").select("symbol, qty, avg_price")
-    .eq("user_id", USER_ID);
+    .eq("user_id", currentUserId());
 
   const cash = Number(account?.cash ?? 0);
   const posList = (positions ?? []) as Array<{ symbol: string; qty: number; avg_price: number }>;
