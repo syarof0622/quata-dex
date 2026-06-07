@@ -92,7 +92,7 @@ function Screener() {
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
+    <div className="min-w-0 max-w-full space-y-4 overflow-hidden p-3 sm:p-4 md:p-6">
       <PageHero
         eyebrow="Riset"
         icon={Filter}
@@ -101,18 +101,18 @@ function Screener() {
       />
 
 
-      <Tabs defaultValue="technical">
-        <TabsList>
-          <TabsTrigger value="technical"><Filter className="size-3.5 mr-1" /> Teknikal</TabsTrigger>
-          <TabsTrigger value="undervalued"><Gem className="size-3.5 mr-1" /> Undervalued (Fundamental)</TabsTrigger>
-          <TabsTrigger value="disclosure"><ShieldAlert className="size-3.5 mr-1" /> Disclosure / Corporate Action</TabsTrigger>
+      <Tabs defaultValue="technical" className="min-w-0 max-w-full">
+        <TabsList className="h-auto w-full max-w-full justify-start overflow-x-auto overflow-y-hidden rounded-xl p-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <TabsTrigger value="technical" className="h-8 shrink-0"><Filter className="size-3.5 mr-1" /> Teknikal</TabsTrigger>
+          <TabsTrigger value="undervalued" className="h-8 shrink-0"><Gem className="size-3.5 mr-1" /> Undervalued</TabsTrigger>
+          <TabsTrigger value="disclosure" className="h-8 shrink-0"><ShieldAlert className="size-3.5 mr-1" /> Disclosure</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="technical" className="space-y-4">
-      <div className="flex items-end justify-end flex-wrap gap-3">
-        <div className="inline-flex rounded-md border border-border p-0.5">
+        <TabsContent value="technical" className="min-w-0 space-y-4">
+      <div className="flex min-w-0 items-end justify-start gap-3 sm:justify-end">
+        <div className="flex w-full min-w-0 overflow-x-auto rounded-md border border-border p-0.5 sm:w-auto">
           {(["idx", "us", "global"] as const).map(m => (
-            <Button key={m} size="sm" variant={f.market === m ? "default" : "ghost"} onClick={() => setF({ ...f, market: m })} className="h-7 px-3">
+            <Button key={m} size="sm" variant={f.market === m ? "default" : "ghost"} onClick={() => setF({ ...f, market: m })} className="h-7 flex-1 shrink-0 px-3 sm:flex-none">
               {m === "idx" ? "🇮🇩 IDX" : m === "us" ? "🇺🇸 US" : "🌐 Global"}
             </Button>
           ))}
@@ -120,19 +120,19 @@ function Screener() {
       </div>
 
       {/* Presets */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex min-w-0 flex-wrap gap-2">
         {PRESETS.map(p => (
-          <Button key={p.name} size="sm" variant="outline" onClick={() => setF(p.apply(f))}>{p.name}</Button>
+          <Button key={p.name} size="sm" variant="outline" onClick={() => setF(p.apply(f))} className="min-w-0 whitespace-normal text-left leading-tight sm:whitespace-nowrap">{p.name}</Button>
         ))}
       </div>
 
       {/* Filters */}
-      <div className="panel p-4 grid md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <div className="md:col-span-3">
+      <div className="panel grid min-w-0 grid-cols-1 gap-3 p-3 sm:grid-cols-2 md:p-4 lg:grid-cols-3 xl:grid-cols-6">
+        <div className="min-w-0 sm:col-span-2 lg:col-span-3 xl:col-span-2">
           <label className="text-xs text-muted-foreground">Label sinyal</label>
           <div className="flex flex-wrap gap-1 mt-1">
             {LABELS.map(l => (
-              <Button key={l} size="sm" variant={f.labels.has(l) ? "default" : "outline"} className="h-7 text-[11px]" onClick={() => toggleLabel(l)}>
+              <Button key={l} size="sm" variant={f.labels.has(l) ? "default" : "outline"} className="h-7 min-w-0 text-[11px]" onClick={() => toggleLabel(l)}>
                 {l.replace("_", " ")}
               </Button>
             ))}
@@ -140,24 +140,24 @@ function Screener() {
         </div>
         <NumPair label="Score" min={f.minScore} max={f.maxScore} setMin={v => setF({ ...f, minScore: v })} setMax={v => setF({ ...f, maxScore: v })} />
         <NumPair label="RSI" min={f.minRsi} max={f.maxRsi} setMin={v => setF({ ...f, minRsi: v })} setMax={v => setF({ ...f, maxRsi: v })} />
-        <div>
+        <div className="min-w-0">
           <label className="text-xs text-muted-foreground" title="Relative Volume = volume hari ini ÷ rata-rata 20 hari. >1.5× menandakan partisipasi di atas normal.">
             Min Relative Volume <span className="opacity-60">(RVOL)</span>
           </label>
           <Input type="number" step="0.1" value={f.minVolRel} onChange={e => setF({ ...f, minVolRel: parseFloat(e.target.value || "0") })} />
         </div>
-        <div>
+        <div className="min-w-0">
           <label className="text-xs text-muted-foreground">Min Trend (ADX)</label>
           <Input type="number" value={f.minTrend} onChange={e => setF({ ...f, minTrend: parseFloat(e.target.value || "0") })} />
         </div>
-        <div>
+        <div className="min-w-0">
           <label className="text-xs text-muted-foreground">Sektor</label>
           <select value={f.sector} onChange={e => setF({ ...f, sector: e.target.value as any })} className="w-full h-9 px-2 rounded-md bg-background border border-border text-sm">
             <option value="all">Semua</option>
             {ALL_SECTORS.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
-        <div>
+        <div className="min-w-0">
           <label className="text-xs text-muted-foreground">Urutkan berdasarkan</label>
           <select value={f.sortBy} onChange={e => setF({ ...f, sortBy: e.target.value as any })} className="w-full h-9 px-2 rounded-md bg-background border border-border text-sm">
             <option value="score">AI Score</option>
@@ -167,7 +167,7 @@ function Screener() {
             <option value="trendStrength">Trend</option>
           </select>
         </div>
-        <div className="flex items-end justify-end text-xs text-muted-foreground md:col-span-6">
+        <div className="flex min-w-0 items-end justify-start text-xs text-muted-foreground sm:col-span-2 lg:col-span-3 xl:col-span-6 xl:justify-end">
           {data.isFetching ? "Menghitung…" : `${rows.length} / ${data.data?.length ?? 0} cocok`}
         </div>
       </div>
@@ -440,11 +440,11 @@ function UndervaluedPanel() {
 
 function NumPair({ label, min, max, setMin, setMax }: { label: string; min: number; max: number; setMin: (v: number) => void; setMax: (v: number) => void }) {
   return (
-    <div>
+    <div className="min-w-0">
       <label className="text-xs text-muted-foreground">{label}</label>
-      <div className="flex gap-1">
-        <Input type="number" value={min} onChange={e => setMin(parseFloat(e.target.value || "0"))} />
-        <Input type="number" value={max} onChange={e => setMax(parseFloat(e.target.value || "0"))} />
+      <div className="grid min-w-0 grid-cols-2 gap-1">
+        <Input className="min-w-0" type="number" value={min} onChange={e => setMin(parseFloat(e.target.value || "0"))} />
+        <Input className="min-w-0" type="number" value={max} onChange={e => setMax(parseFloat(e.target.value || "0"))} />
       </div>
     </div>
   );
