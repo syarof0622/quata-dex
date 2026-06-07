@@ -261,20 +261,19 @@ function TypingIndicator({ phase }: { phase: string }) {
   );
 }
 
-function WelcomeState({ onPick }: { onPick: (t: string) => void }) {
+type WelcomeCard = { icon: any; title: string; body: string };
+function WelcomeState({ onPick, cards, title, desc, badge }: { onPick: (t: string) => void; cards: WelcomeCard[]; title: string; desc: string; badge: string }) {
   return (
     <div className="py-6">
       <div className="text-center space-y-2 mb-6">
         <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[11px] text-primary uppercase tracking-wider">
-          <Sparkles className="h-3 w-3" /> AI Trading Analyst
+          <Sparkles className="h-3 w-3" /> {badge}
         </div>
-        <h2 className="text-xl font-semibold">Siap membantu membaca market.</h2>
-        <p className="text-sm text-muted-foreground max-w-md mx-auto">
-          Tanya seputar rekomendasi saham, analisis ticker, atau diagnosis AI Trade Agent. Jawaban grounded di live market context.
-        </p>
+        <h2 className="text-xl font-semibold">{title}</h2>
+        <p className="text-sm text-muted-foreground max-w-md mx-auto">{desc}</p>
       </div>
       <div className="grid sm:grid-cols-2 gap-2.5 max-w-2xl mx-auto">
-        {WELCOME_CARDS.map((c) => (
+        {cards.map((c) => (
           <button
             key={c.title}
             onClick={() => onPick(c.body)}
