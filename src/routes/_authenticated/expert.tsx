@@ -92,6 +92,7 @@ function MTF() {
 }
 
 function Sizer() {
+  const { L } = useLang();
   const [symbol, setSymbol] = useState("AAPL");
   const [account, setAccount] = useState("100000");
   const [risk, setRisk] = useState("1");
@@ -102,26 +103,26 @@ function Sizer() {
   return (
     <div className="space-y-3">
       <div className="panel p-4 grid md:grid-cols-5 gap-2 items-end">
-        <div className="md:col-span-1"><label className="text-xs text-muted-foreground">Symbol — search</label><TickerSearch initialValue={symbol} placeholder="AAPL…" onPick={(sym) => setSymbol(sym)} /></div>
-        <div><label className="text-xs text-muted-foreground">Account $</label><Input value={account} onChange={e => setAccount(e.target.value)} /></div>
-        <div><label className="text-xs text-muted-foreground">Risk %</label><Input value={risk} onChange={e => setRisk(e.target.value)} /></div>
-        <div><label className="text-xs text-muted-foreground">Entry (optional)</label><Input value={entry} onChange={e => setEntry(e.target.value)} placeholder="last close" /></div>
-        <Button onClick={() => m.mutate()} disabled={m.isPending}>{m.isPending ? "…" : "Calculate"}</Button>
+        <div className="md:col-span-1"><label className="text-xs text-muted-foreground">{L.tools.expert.symbolSearchShort}</label><TickerSearch initialValue={symbol} placeholder="AAPL…" onPick={(sym) => setSymbol(sym)} /></div>
+        <div><label className="text-xs text-muted-foreground">{L.tools.expert.account}</label><Input value={account} onChange={e => setAccount(e.target.value)} /></div>
+        <div><label className="text-xs text-muted-foreground">{L.tools.expert.riskPct}</label><Input value={risk} onChange={e => setRisk(e.target.value)} /></div>
+        <div><label className="text-xs text-muted-foreground">{L.tools.expert.entryOptional}</label><Input value={entry} onChange={e => setEntry(e.target.value)} placeholder={L.tools.expert.entryPh} /></div>
+        <Button onClick={() => m.mutate()} disabled={m.isPending}>{m.isPending ? "…" : L.tools.expert.calculate}</Button>
       </div>
       {m.data && (
         <div className="grid md:grid-cols-4 gap-2">
-          <Stat label="Entry" value={formatPrice(m.data.entry)} />
-          <Stat label="ATR(14)" value={m.data.atr.toFixed(2)} />
-          <Stat label="Stop (long)" value={formatPrice(m.data.suggestedStopLong)} tone="bear" />
-          <Stat label="Stop (short)" value={formatPrice(m.data.suggestedStopShort)} tone="bear" />
-          <Stat label="Target 1 (2× ATR)" value={formatPrice(m.data.target1)} tone="bull" />
-          <Stat label="Target 2 (3.5× ATR)" value={formatPrice(m.data.target2)} tone="bull" />
-          <Stat label="Risk $" value={"$" + m.data.riskDollar.toFixed(0)} />
-          <Stat label="Risk / share" value={"$" + m.data.perShareRisk.toFixed(2)} />
-          <Stat label="Position size" value={m.data.shares + " sh"} />
-          <Stat label="Notional" value={"$" + m.data.notional.toFixed(0)} />
-          <Stat label="R:R to T1" value={m.data.rr1.toFixed(2) + "R"} />
-          <Stat label="R:R to T2" value={m.data.rr2.toFixed(2) + "R"} />
+          <Stat label={L.tools.expert.statEntry} value={formatPrice(m.data.entry)} />
+          <Stat label={L.tools.expert.statAtr} value={m.data.atr.toFixed(2)} />
+          <Stat label={L.tools.expert.statStopLong} value={formatPrice(m.data.suggestedStopLong)} tone="bear" />
+          <Stat label={L.tools.expert.statStopShort} value={formatPrice(m.data.suggestedStopShort)} tone="bear" />
+          <Stat label={L.tools.expert.statT1} value={formatPrice(m.data.target1)} tone="bull" />
+          <Stat label={L.tools.expert.statT2} value={formatPrice(m.data.target2)} tone="bull" />
+          <Stat label={L.tools.expert.statRiskDollar} value={"$" + m.data.riskDollar.toFixed(0)} />
+          <Stat label={L.tools.expert.statPerShare} value={"$" + m.data.perShareRisk.toFixed(2)} />
+          <Stat label={L.tools.expert.statShares} value={m.data.shares + " sh"} />
+          <Stat label={L.tools.expert.statNotional} value={"$" + m.data.notional.toFixed(0)} />
+          <Stat label={L.tools.expert.statRR1} value={m.data.rr1.toFixed(2) + "R"} />
+          <Stat label={L.tools.expert.statRR2} value={m.data.rr2.toFixed(2) + "R"} />
         </div>
       )}
     </div>
