@@ -146,7 +146,7 @@ function Lab() {
                     <td className="p-2 text-right text-xs text-muted-foreground">{fmtWIBDateTime(p.opened_at)}</td>
                   </tr>
                 ))}
-                {positions.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">Belum ada posisi terbuka. Tempatkan paper trade dari grafik mana saja.</td></tr>}
+                {positions.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">{L.body.lab.emptyPositions}</td></tr>}
               </tbody>
             </table>
           </div>
