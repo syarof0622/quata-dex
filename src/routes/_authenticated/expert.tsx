@@ -139,6 +139,7 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: "bu
 }
 
 function Corr() {
+  const { L } = useLang();
   const [raw, setRaw] = useState("AAPL,MSFT,NVDA,TSLA,SPY,QQQ");
   const m = useMutation({
     mutationFn: () => correlationMatrix({ data: { symbols: raw.split(",").map(s => s.trim()).filter(Boolean) } }),
@@ -152,12 +153,12 @@ function Corr() {
   return (
     <div className="space-y-3">
       <div className="panel p-4 flex gap-2 items-end">
-        <div className="flex-1"><label className="text-xs text-muted-foreground">Symbols (comma separated, 2–12)</label><Input value={raw} onChange={e => setRaw(e.target.value)} /></div>
-        <Button onClick={() => m.mutate()} disabled={m.isPending}>{m.isPending ? "…" : "Compute"}</Button>
+        <div className="flex-1"><label className="text-xs text-muted-foreground">{L.tools.expert.symbolsLabel}</label><Input value={raw} onChange={e => setRaw(e.target.value)} /></div>
+        <Button onClick={() => m.mutate()} disabled={m.isPending}>{m.isPending ? "…" : L.tools.expert.compute}</Button>
       </div>
       {m.data && (
         <div className="panel p-3 overflow-auto">
-          <div className="text-xs text-muted-foreground mb-2">Pearson correlation, last {m.data.lookback} daily returns</div>
+          <div className="text-xs text-muted-foreground mb-2">{L.tools.expert.pearson.replace("{n}", String(m.data.lookback))}</div>
           <table className="text-xs font-mono">
             <thead><tr><th className="p-2"></th>{m.data.symbols.map((s: string) => <th key={s} className="p-2">{s}</th>)}</tr></thead>
             <tbody>
