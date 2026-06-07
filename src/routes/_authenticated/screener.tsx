@@ -344,9 +344,9 @@ function UndervaluedPanel() {
 
       <div className="panel p-4 flex flex-wrap items-end gap-3">
         <div>
-          <label className="text-xs text-muted-foreground">Universe</label>
+          <label className="text-xs text-muted-foreground">{L.tools.screener.universe}</label>
           <select value={universe} onChange={e => setUniverse(e.target.value as any)} className="h-9 px-2 rounded-md bg-background border border-border text-sm">
-            <option value="idx_lq45">IDX LQ45 (semua)</option>
+            <option value="idx_lq45">IDX LQ45</option>
             <option value="undervalued_candidates">Undervalued candidates</option>
             <option value="quality_undervalued">Quality + undervalued</option>
             <option value="dividend_undervalued">Dividend + undervalued</option>
@@ -356,26 +356,26 @@ function UndervaluedPanel() {
           </select>
         </div>
         <div>
-          <label className="text-xs text-muted-foreground">Klasifikasi</label>
+          <label className="text-xs text-muted-foreground">{L.tools.screener.classification}</label>
           <select value={classFilter} onChange={e => setClassFilter(e.target.value as any)} className="h-9 px-2 rounded-md bg-background border border-border text-sm">
-            <option value="Semua">Semua</option>
-            <option value="strong_undervalued">Strong Undervalue</option>
-            <option value="undervalued">Undervalued</option>
-            <option value="fair_value">Fair Value</option>
-            <option value="overvalued">Overvalued</option>
-            <option value="value_trap_risk">Value Trap</option>
-            <option value="insufficient_data">Data Tidak Cukup</option>
+            <option value="all">{L.tools.screener.all}</option>
+            <option value="strong_undervalued">{L.tools.screener.uvClassStrong}</option>
+            <option value="undervalued">{L.tools.screener.uvClassUnder}</option>
+            <option value="fair_value">{L.tools.screener.uvClassFair}</option>
+            <option value="overvalued">{L.tools.screener.uvClassOver}</option>
+            <option value="value_trap_risk">{L.tools.screener.uvClassTrap}</option>
+            <option value="insufficient_data">{L.tools.screener.classInsufficient}</option>
           </select>
         </div>
         <div>
-          <label className="text-xs text-muted-foreground">Batas</label>
+          <label className="text-xs text-muted-foreground">{L.tools.screener.limit}</label>
           <Input type="number" min={1} max={30} value={limit} onChange={e => setLimit(parseInt(e.target.value || "10", 10))} className="w-24" />
         </div>
         <Button onClick={() => scan.mutate()} disabled={scan.isPending}>
-          {scan.isPending ? "Memindai…" : "Jalankan Analisis Fundamental"}
+          {scan.isPending ? L.tools.screener.scanning : L.tools.screener.runFundamental}
         </Button>
         <div className="text-[11px] text-muted-foreground ml-auto">
-          Fundamental scan menggunakan data publik Yahoo Finance · skor dievaluasi 8 dimensi · saham dengan data tidak cukup ditandai INSUFFICIENT DATA, bukan undervalued.
+          {L.tools.screener.fundamentalFootnote}
         </div>
       </div>
 
@@ -384,19 +384,19 @@ function UndervaluedPanel() {
         <table className="w-full text-sm min-w-[1100px]">
           <thead className="text-xs text-muted-foreground">
             <tr>
-              <th className="text-left p-2">Symbol</th>
-              <th className="text-left p-2">Klasifikasi</th>
-              <th className="text-right p-2" title="Final undervalue score (0-100)">Skor</th>
-              <th className="text-right p-2" title="Valuation (PER/PBV)">Val</th>
-              <th className="text-right p-2" title="Quality (ROE/ROA/margin)">Qual</th>
-              <th className="text-right p-2" title="Financial health (DER/FCF)">Kesehatan</th>
-              <th className="text-right p-2" title="Growth (revenue/profit YoY)">Pertumbuhan</th>
-              <th className="text-right p-2" title="Dividend yield + payout">Div</th>
-              <th className="text-right p-2" title="Sector relative">Sektor</th>
-              <th className="text-right p-2" title="Technical timing">Timing</th>
-              <th className="text-right p-2" title="Value-trap risk (lower=better)">Trap</th>
-              <th className="text-left p-2" title="Latest official IDX/BEI disclosure">Disclosure</th>
-              <th className="text-left p-2">Alasan</th>
+              <th className="text-left p-2">{L.tools.screener.thSymbol}</th>
+              <th className="text-left p-2">{L.tools.screener.classification}</th>
+              <th className="text-right p-2" title="Final undervalue score (0-100)">{L.tools.screener.thScore}</th>
+              <th className="text-right p-2" title="Valuation (PER/PBV)">{L.tools.screener.thVal}</th>
+              <th className="text-right p-2" title="Quality (ROE/ROA/margin)">{L.tools.screener.thQual}</th>
+              <th className="text-right p-2" title="Financial health (DER/FCF)">{L.tools.screener.thHealth}</th>
+              <th className="text-right p-2" title="Growth (revenue/profit YoY)">{L.tools.screener.thGrowth}</th>
+              <th className="text-right p-2" title="Dividend yield + payout">{L.tools.screener.thDiv}</th>
+              <th className="text-right p-2" title="Sector relative">{L.tools.screener.thSectorRel}</th>
+              <th className="text-right p-2" title="Technical timing">{L.tools.screener.thTiming}</th>
+              <th className="text-right p-2" title="Value-trap risk (lower=better)">{L.tools.screener.thTrap}</th>
+              <th className="text-left p-2" title="Latest official IDX/BEI disclosure">{L.tools.screener.thDisclosure}</th>
+              <th className="text-left p-2">{L.tools.screener.thReason}</th>
             </tr>
           </thead>
           <tbody>
@@ -424,7 +424,7 @@ function UndervaluedPanel() {
                       : d.disclosure_type === "suspension" || d.disclosure_type === "uma" ? "text-bear"
                       : d.sentiment === "positive" ? "text-bull" : "text-muted-foreground";
                     return (
-                      <span className={tone} title={`${d.disclosure_type} · ${d.impact_level}/${d.sentiment} · ${new Date(d.published_at).toLocaleString("id-ID")}`}>
+                      <span className={tone} title={`${d.disclosure_type} · ${d.impact_level}/${d.sentiment} · ${new Date(d.published_at).toLocaleString()}`}>
                         {d.disclosure_type}
                       </span>
                     );
@@ -434,7 +434,7 @@ function UndervaluedPanel() {
               </tr>
             ))}
             {rows.length === 0 && !scan.isPending && (
-              <tr><td colSpan={13} className="p-8 text-center text-muted-foreground">Belum ada skor undervalued. Klik <em>Run Fundamental Scan</em> untuk memulai.</td></tr>
+              <tr><td colSpan={13} className="p-8 text-center text-muted-foreground">{L.tools.screener.noUndervalued}</td></tr>
             )}
           </tbody>
         </table>
