@@ -5,7 +5,7 @@ import { colorForChange, formatPct, formatMoneyByCurrency, formatMoneyCompact, f
 import { formatLocalPrice, symbolMarket } from "@/lib/symbols";
 import { displaySymbol } from "@/lib/display-symbol";
 import { Link } from "@tanstack/react-router";
-import { Sparkline } from "@/routes/_authenticated/screener";
+import { Sparkline } from "@/components/Sparkline";
 import { ShieldAlert, TrendingUp, Layers, Activity, Target, Wallet, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { PortfolioAttributionPanel } from "@/components/PortfolioAttributionPanel";
 import { PortfolioIntelligencePanel } from "@/components/PortfolioIntelligencePanel";
@@ -264,7 +264,9 @@ function Portfolio() {
             )}
           </div>
           {curve.length > 1 ? (
-            <Sparkline values={curve.map((c: any) => num(c.equity))} bull={pnlPct >= 0} width={600} height={140} />
+            <div className="w-full" style={{ height: 160 }}>
+              <Sparkline values={curve.map((c: any) => num(c.equity))} positive={pnlPct >= 0} height={160} strokeWidth={1.6} />
+            </div>
           ) : (
             <div className="text-sm text-muted-foreground py-12 text-center">
               Belum cukup histori untuk menampilkan equity curve.
