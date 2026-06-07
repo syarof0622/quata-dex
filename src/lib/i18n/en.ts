@@ -168,6 +168,61 @@ export const UI_LABELS_EN = {
     health: { title: "System Health", subtitle: "Workers, data freshness, source health, and audit trail", eyebrow: "Operations" },
     settings: { title: "Settings", subtitle: "Profile, preferences, and app configuration", eyebrow: "Account" },
   },
+
+  shell: {
+    loadingSession: "Loading session…",
+    marketsLive: "Markets · live",
+    signOut: "Sign out",
+    more: "More",
+    openAi: "Open AI",
+    closeAi: "Close AI",
+    close: "Close",
+  },
+
+  onboarding: {
+    title: "Welcome — start in Demo mode?",
+    description: "Demo mode seeds a default watchlist (BBCA, BBRI, TLKM, ASII, GOTO, ANTM, UNVR, MDKA) and turns on paper trading. All data is real market data, but execution is simulated — no real money. You can turn it off anytime.",
+    features: [
+      "AI Trade Agent + Autonomous Scanner",
+      "Technical & fundamental screener (undervalued)",
+      "Market Regime, Sector Rotation, Portfolio Risk",
+      "Post-trade Review & Lessons Learned",
+      "Multi-factor AI alerts",
+    ],
+    skip: "Skip",
+    start: "Start Demo",
+    preparing: "Preparing…",
+  },
+
+  chat: {
+    title: "AI Analyst",
+    subtitle: "Ask about markets, portfolio, or tickers",
+    greet: "Hi 👋 I can analyze tickers, read momentum, or diagnose the AI Agent. Pick a quick prompt below or type a question.",
+    placeholder: "Ask the AI…",
+    failed: "Chat failed",
+    networkError: "Network error",
+    quickPrompts: [
+      "Check my portfolio",
+      "Top momentum today",
+      "Undervalued stocks",
+      "Why isn't the AI Agent buying?",
+    ],
+  },
+
+  hero: {
+    dashboard: { eyebrow: "Control Center", title: "Market Dashboard", subtitle: "Realtime overview · IDX, indices, movers, and news" },
+    market: { eyebrow: "Live Market Intelligence", title: "Market Pulse", subtitle: "Sector rotation, breadth, and risk regime" },
+    screener: { eyebrow: "Research", title: "Stock Screener", subtitle: "Technical & fundamental filtering for trading opportunities and undervalued tickers" },
+    watchlist: { eyebrow: "AI Signal v2", title: "Watchlist Intelligence", subtitle: "Every stock is auto-ranked by AI Signal v2." },
+    portfolio: { eyebrow: "Portfolio", title: "Portfolio Risk Analysis", subtitle: "Mark-to-market equity, P/L breakdown, and risk analysis" },
+    ai: { eyebrow: "AI Assistant", title: "AI Trading Analyst", subtitle: "Market assistant powered by price, news, sentiment, and paper-trading context" },
+    lab: { eyebrow: "Paper Trading Only", title: "Simulation Lab", subtitle: "Paper trading · live P/L · advanced orders · journal · backtest · AI coach" },
+    expert: { eyebrow: "Expert", title: "Expert Tools", subtitle: "Advanced kit for deep analysis" },
+    news: { eyebrow: "Newsroom", title: "Market News & Sentiment", subtitle: "Realtime news stream with sentiment analysis" },
+    alerts: { eyebrow: "Alerts", title: "Smart Alerts", subtitle: "Price, RSI, EMA crosses, volume spikes, N-day breakouts, and AI Signal score crosses." },
+    health: { eyebrow: "Operations", title: "System Health", subtitle: "Workers, data freshness, source health, and audit trail" },
+    settings: { eyebrow: "Preferences", title: "Settings", subtitle: "Profile, preferences, paper trading account, and data integrations." },
+  },
 } as const;
 
 export function translateStatusEN(raw: string | null | undefined): string {
