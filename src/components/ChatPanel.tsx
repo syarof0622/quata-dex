@@ -180,8 +180,8 @@ export function ChatPanel({ system }: { system?: string }) {
             </Button>
           </div>
           <div className="text-[10.5px] text-muted-foreground/70 px-1 flex items-center justify-between">
-            <span>Enter to send · Shift+Enter for newline</span>
-            <span className="italic">Analisis untuk simulasi & riset — keputusan investasi tetap perlu validasi mandiri.</span>
+            <span>{T.enterHint}</span>
+            <span className="italic">{T.disclaimer}</span>
           </div>
         </div>
       </div>
