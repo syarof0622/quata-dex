@@ -59,10 +59,10 @@ function WL() {
 
   const addPreset = async (preset: string[]) => {
     const toAdd = preset.filter(s => !symbols.includes(s));
-    if (!toAdd.length) { toast.info("Semua sudah ada di watchlist"); return; }
+    if (!toAdd.length) { toast.info(L.body.watchlist.allAlreadyIn); return; }
     await Promise.all(toAdd.map(s => addToWatchlist({ data: { symbol: s } })));
     qc.invalidateQueries({ queryKey: ["watchlist"] });
-    toast.success(`Added ${toAdd.length} symbols`);
+    toast.success(L.body.watchlist.addedSymbols.replace("{n}", String(toAdd.length)));
   };
 
   return (
@@ -85,7 +85,7 @@ function WL() {
 
       {/* Quick presets */}
       <div className="panel p-3">
-        <div className="text-xs text-muted-foreground mb-2">Quick add presets</div>
+        <div className="text-xs text-muted-foreground mb-2">{L.body.watchlist.quickAddPresets}</div>
         <div className="flex flex-wrap gap-2">
           {PRESETS.map(p => (
             <Button key={p.label} size="sm" variant="outline" onClick={() => addPreset(p.symbols)}>
@@ -97,8 +97,9 @@ function WL() {
 
       {symbols.length === 0 ? (
         <div className="panel p-8 text-center text-muted-foreground">
-          Empty. Pilih preset di atas atau buka chart dan klik <span className="text-foreground">★</span>.
+          {L.body.watchlist.emptyPickPreset} <span className="text-foreground">★</span>.
         </div>
+
       ) : view === "smart" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {rankedRows.map(r => (
@@ -129,7 +130,7 @@ function WL() {
                     r.bias === "BUY" ? "bg-bull-soft text-bull" :
                     r.bias === "SELL" ? "bg-bear-soft text-bear" :
                     "bg-accent/40 text-muted-foreground"
-                  }`}>{r.bias ?? "—"} BIAS</span>
+                  }`}>{r.bias ?? "—"} {L.body.watchlist.bias}</span>
                   <span className={`text-[10px] px-1.5 py-0.5 rounded ${
                     r.action === "READY" ? "bg-bull text-primary-foreground" :
                     r.action === "NO TRADE" ? "bg-accent/40 text-muted-foreground" :
@@ -137,13 +138,14 @@ function WL() {
                   }`}>{r.action ?? "—"}</span>
                 </div>
                 <div className="text-[11px] text-muted-foreground">
-                  Setup <span className={`font-medium ${
+                  {L.body.watchlist.setup} <span className={`font-medium ${
                     r.setupGrade === "Excellent" ? "text-bull" :
                     r.setupGrade === "Good" ? "text-bull" :
                     r.setupGrade === "Fair" ? "text-yellow-500" :
                     r.setupGrade === "Poor" ? "text-bear" : ""
                   }`}>{r.setupGrade ?? "—"}</span>
                 </div>
+
               </div>
               <div className="mt-2 grid grid-cols-3 gap-1 text-[10px] text-muted-foreground">
                 <Mini label="RSI" value={r.rsi ?? "—"} highlight={(r.rsi ?? 50) > 70 || (r.rsi ?? 50) < 30} />
@@ -164,9 +166,10 @@ function WL() {
                     </span>
                     {trap >= 60 && (
                       <span className="inline-flex items-center gap-1 text-bear">
-                        <AlertTriangle className="size-3" /> value trap
+                        <AlertTriangle className="size-3" /> {L.body.watchlist.valueTrap}
                       </span>
                     )}
+
                   </div>
                 );
               })()}
@@ -178,15 +181,16 @@ function WL() {
           <table className="w-full text-sm">
             <thead className="text-xs text-muted-foreground">
               <tr>
-                <th className="text-left p-2">Symbol</th>
-                <th className="text-left p-2">Name</th>
-                <th className="text-right p-2">Price</th>
-                <th className="text-right p-2">Change</th>
-                <th className="text-left p-2">Fundamental</th>
-                <th className="text-right p-2" title="Final undervalue score">Score</th>
-                <th className="text-right p-2" title="Value-trap risk (lower=better)">Trap</th>
+                <th className="text-left p-2">{L.body.watchlist.thSymbol}</th>
+                <th className="text-left p-2">{L.body.watchlist.thName}</th>
+                <th className="text-right p-2">{L.body.watchlist.thPrice}</th>
+                <th className="text-right p-2">{L.body.watchlist.thChange}</th>
+                <th className="text-left p-2">{L.body.watchlist.thFundamental}</th>
+                <th className="text-right p-2" title={L.body.watchlist.scoreTooltip}>{L.body.watchlist.thScore}</th>
+                <th className="text-right p-2" title={L.body.watchlist.trapTooltip}>{L.body.watchlist.thTrap}</th>
                 <th></th>
               </tr>
+
             </thead>
             <tbody>
               {rankedRows.map(r => {
