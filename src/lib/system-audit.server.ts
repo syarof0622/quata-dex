@@ -3,9 +3,9 @@
 // returns secret values; only presence/absence of secrets is reported.
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { currentUserId } from "@/lib/current-user.server";
 import { getSystemHealth, type HealthStatus } from "@/lib/system-health.functions";
 
-const USER_ID = "00000000-0000-0000-0000-000000000001";
 
 export type AuditStatus =
   | "healthy"
@@ -121,7 +121,7 @@ async function auditAIAgent(): Promise<AuditModule> {
   const { data: agent } = await supabaseAdmin
     .from("ai_trade_agents")
     .select("*")
-    .eq("user_id", USER_ID)
+    .eq("user_id", currentUserId())
     .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -409,7 +409,7 @@ async function auditPortfolio(): Promise<AuditModule> {
   const { data: acc } = await supabaseAdmin
     .from("paper_accounts")
     .select("id, cash_balance, equity_value, holdings_value")
-    .eq("user_id", USER_ID)
+    .eq("user_id", currentUserId())
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -843,7 +843,7 @@ export async function runSafeFix(key: SafeFixKey): Promise<SafeFixResult> {
         const { data: acc } = await supabaseAdmin
           .from("paper_accounts")
           .select("id, cash")
-          .eq("user_id", USER_ID)
+          .eq("user_id", currentUserId())
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle();

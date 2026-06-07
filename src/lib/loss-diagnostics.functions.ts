@@ -2,6 +2,7 @@
 // Reads diagnostic_summary persisted by recordTradeOutcome / refreshAgentDiagnostic,
 // plus live cooldowns and paused strategies.
 import { createServerFn } from "@tanstack/react-start";
+import { currentUserId } from "@/lib/current-user.server";
 
 export const getLossDiagnostics = createServerFn({ method: "GET" }).handler(async () => {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -9,7 +10,7 @@ export const getLossDiagnostics = createServerFn({ method: "GET" }).handler(asyn
 
   const { data: agent } = await supabaseAdmin
     .from("ai_trade_agents").select("*")
-    .eq("user_id", "00000000-0000-0000-0000-000000000001")
+    .eq("user_id", currentUserId())
     .order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (!agent) return { agent: null, summary: null, cooldowns: [], pausedStrategies: [] };
 

@@ -1,6 +1,7 @@
 // Server-only helper: aggregates app state into a compact JSON context for the AI Trading Analyst.
 // Read-only. Per-section try/catch so a single failing query never breaks the chat.
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { currentUserId } from "@/lib/current-user.server";
 import { getIDXMarketSession, canExecutePaperTrade } from "@/lib/idx-market-session";
 import { buildStrategyIntelligence } from "@/lib/strategy-intelligence.functions";
 import { summarizeSourceHealth } from "@/lib/source-health";
@@ -8,7 +9,6 @@ import { getPortfolioAnalytics } from "@/lib/analytics.functions";
 import { getSystemHealth } from "@/lib/system-health.functions";
 import { calculatePortfolioHealth, generatePortfolioInsights } from "@/lib/portfolio-intelligence.server";
 
-const USER_ID = "00000000-0000-0000-0000-000000000001";
 
 type Status = "connected" | "empty" | "stale" | "error" | "inactive" | "fresh" | "partial" | "unavailable" | "available" | "insufficient_data";
 
@@ -53,7 +53,7 @@ export async function getAIAppContext(userText: string) {
   // ---------- PORTFOLIO + PAPER TRADING ----------
   const paperRes = await safe("paper", async () => {
     const { data: account } = await supabaseAdmin
-      .from("paper_accounts").select("*").eq("user_id", USER_ID).maybeSingle();
+      .from("paper_accounts").select("*").eq("user_id", currentUserId()).maybeSingle();
     if (!account) return { account: null, positions: [], orders: [], risk: null };
     const [{ data: positions }, { data: orders }, { data: risk }] = await Promise.all([
       supabaseAdmin.from("paper_positions").select("*").eq("account_id", account.id),
@@ -472,7 +472,7 @@ export async function getAIAppContext(userText: string) {
   // ---------- WATCHLIST ----------
   const watchlistRes = await safe("watchlist", async () => {
     const { data } = await supabaseAdmin
-      .from("watchlist").select("symbol, added_at").eq("user_id", USER_ID).order("added_at", { ascending: false }).limit(20);
+      .from("watchlist").select("symbol, added_at").eq("user_id", currentUserId()).order("added_at", { ascending: false }).limit(20);
     return data ?? [];
   });
   const watchlist: any = watchlistRes.ok
@@ -607,7 +607,7 @@ export async function getAIAppContext(userText: string) {
   const alertsRes = await safe("alerts", async () => {
     const { data } = await supabaseAdmin
       .from("alerts").select("symbol, rule_json, active, triggered_at, created_at")
-      .eq("user_id", USER_ID).order("created_at", { ascending: false }).limit(10);
+      .eq("user_id", currentUserId()).order("created_at", { ascending: false }).limit(10);
     return data ?? [];
   });
   const alerts: any = alertsRes.ok
@@ -625,7 +625,7 @@ export async function getAIAppContext(userText: string) {
   const backtestRes = await safe("backtest", async () => {
     const { data } = await supabaseAdmin
       .from("backtests").select("symbol, timeframe, strategy_version, metrics_json, regime, ran_at")
-      .eq("user_id", USER_ID).order("ran_at", { ascending: false }).limit(5);
+      .eq("user_id", currentUserId()).order("ran_at", { ascending: false }).limit(5);
     return data ?? [];
   });
   const backtest: any = backtestRes.ok

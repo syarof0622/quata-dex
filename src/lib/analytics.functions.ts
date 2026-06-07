@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { currentUserId } from "@/lib/current-user.server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getQuotes, getCandles } from "./market.functions";
@@ -15,7 +16,6 @@ import {
   type AttribPosition,
 } from "./portfolio-attribution";
 
-const USER_ID = "00000000-0000-0000-0000-000000000001";
 
 type ClosedTrade = {
   symbol: string;
@@ -95,7 +95,7 @@ function fifoWalk(orders: any[], symbol: string): {
 
 export const getPortfolioAnalytics = createServerFn({ method: "GET" })
   .handler(async () => {
-    const { data: account } = await supabaseAdmin.from("paper_accounts").select("*").eq("user_id", USER_ID).maybeSingle();
+    const { data: account } = await supabaseAdmin.from("paper_accounts").select("*").eq("user_id", currentUserId()).maybeSingle();
     if (!account) return null;
 
     // Self-heal initial_balance if NULL (legacy accounts).
@@ -436,7 +436,7 @@ export const simulatePortfolioWhatIf = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const { data: account } = await supabaseAdmin
-      .from("paper_accounts").select("*").eq("user_id", USER_ID).maybeSingle();
+      .from("paper_accounts").select("*").eq("user_id", currentUserId()).maybeSingle();
     if (!account) return { error: "Paper account belum diinisialisasi." };
     const { data: positions } = await supabaseAdmin
       .from("paper_positions").select("*").eq("account_id", account.id);

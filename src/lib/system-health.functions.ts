@@ -1,6 +1,7 @@
 // System Health aggregator — pulls worker, data freshness, source, audit,
 // and consistency signals into a single payload for the Health Dashboard.
 import { createServerFn } from "@tanstack/react-start";
+import { currentUserId } from "@/lib/current-user.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { summarizeSourceHealth, overallStatusLabel, type OverallStatus } from "./source-health";
 import { formatWIB, getIDXMarketSession } from "./idx-market-session";
@@ -337,12 +338,11 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
       },
     });
 
-    // 5) Portfolio Sync — scoped to the active paper account for USER_ID.
-    const USER_ID = "00000000-0000-0000-0000-000000000001";
+    // 5) Portfolio Sync — scoped to the active paper account for currentUserId().
     const { data: acc } = await supabaseAdmin
       .from("paper_accounts")
       .select("id, cash, equity")
-      .eq("user_id", USER_ID)
+      .eq("user_id", currentUserId())
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -460,7 +460,7 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
     // 8) Database Consistency — scoped to active account.
     const positionsQ = acc?.id
       ? supabaseAdmin.from("paper_positions").select("id, qty, avg_price").eq("account_id", acc.id)
-      : supabaseAdmin.from("paper_positions").select("id, qty, avg_price").eq("user_id", USER_ID);
+      : supabaseAdmin.from("paper_positions").select("id, qty, avg_price").eq("user_id", currentUserId());
     const { data: positions } = await positionsQ;
     let invalidPos = 0;
     for (const p of (positions ?? []) as any[]) {
@@ -471,7 +471,7 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
 
     const ordersQ = acc?.id
       ? supabaseAdmin.from("paper_orders").select("id, price, qty, status").eq("account_id", acc.id).eq("status", "filled")
-      : supabaseAdmin.from("paper_orders").select("id, price, qty, status").eq("user_id", USER_ID).eq("status", "filled");
+      : supabaseAdmin.from("paper_orders").select("id, price, qty, status").eq("user_id", currentUserId()).eq("status", "filled");
     const { data: orphanOrders } = await ordersQ;
     let invalidOrders = 0;
     for (const o of (orphanOrders ?? []) as any[]) {

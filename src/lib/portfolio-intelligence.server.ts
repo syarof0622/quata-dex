@@ -7,9 +7,9 @@
 // Read-only against trading state: never writes to paper_orders /
 // paper_positions / paper_accounts. Paper-trading-only by construction.
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { currentUserId } from "@/lib/current-user.server";
 import { getPortfolioAnalytics } from "./analytics.functions";
 
-const USER_ID = "00000000-0000-0000-0000-000000000001";
 
 export type RiskLevel = "Healthy" | "Stable" | "Caution" | "Risky" | "Critical";
 
@@ -117,7 +117,7 @@ export async function calculatePortfolioHealth(): Promise<{ health: PortfolioHea
   const { data: account } = await supabaseAdmin
     .from("paper_accounts")
     .select("id, cash, equity, initial_balance")
-    .eq("user_id", USER_ID)
+    .eq("user_id", currentUserId())
     .maybeSingle();
   const accountId = account?.id ?? null;
 
@@ -355,7 +355,7 @@ export async function snapshotPortfolioIntelligence(): Promise<{ snapshotId: str
     .from("portfolio_intelligence_snapshots")
     .insert({
       account_id: accountId,
-      user_id: USER_ID,
+      user_id: currentUserId(),
       equity, cash, holdings_value: holdingsValue,
       cash_ratio: health.cashRatio,
       invested_ratio: health.investedRatio,
@@ -391,7 +391,7 @@ export async function snapshotPortfolioIntelligence(): Promise<{ snapshotId: str
   if (attribPositions.length) {
     const rows = attribPositions.map((p: any) => ({
       account_id: accountId,
-      user_id: USER_ID,
+      user_id: currentUserId(),
       symbol: p.symbol,
       sector: p.sector ?? null,
       quantity: Number(p.qty ?? 0),

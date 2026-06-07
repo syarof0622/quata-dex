@@ -1,10 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
+import { currentUserId } from "@/lib/current-user.server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getCandles } from "./market.functions";
 import { ema, rsi, macd, type Candle } from "./indicators";
 
-const USER_ID = "00000000-0000-0000-0000-000000000001";
 
 export type BacktestResult = {
   metrics: {
@@ -128,7 +128,7 @@ export const runBacktest = createServerFn({ method: "POST" })
 
     if (data.persist) {
       await supabaseAdmin.from("backtests").insert({
-        user_id: USER_ID, symbol: data.symbol, timeframe: data.timeframe,
+        user_id: currentUserId(), symbol: data.symbol, timeframe: data.timeframe,
         strategy_id: (data.strategyId ?? null) as any,
         regime: data.marketRegime ?? null,
         sector: data.sector ?? null,
@@ -180,7 +180,7 @@ export const runBacktest = createServerFn({ method: "POST" })
 
 export const listStrategies = createServerFn({ method: "GET" })
   .handler(async () => {
-    const { data } = await supabaseAdmin.from("strategies").select("*").eq("user_id", USER_ID).order("created_at", { ascending: false });
+    const { data } = await supabaseAdmin.from("strategies").select("*").eq("user_id", currentUserId()).order("created_at", { ascending: false });
     return data ?? [];
   });
 
@@ -189,7 +189,7 @@ export const saveStrategy = createServerFn({ method: "POST" })
     z.object({ name: z.string().min(1), description: z.string().optional(), rule: z.enum(["ema_cross", "rsi_reversal", "macd_cross"]) }).parse(d))
   .handler(async ({ data }) => {
     const { data: row, error } = await supabaseAdmin.from("strategies").insert({
-      user_id: USER_ID, name: data.name, description: data.description ?? null,
+      user_id: currentUserId(), name: data.name, description: data.description ?? null,
       rules_json: { rule: data.rule }, ai_generated: false,
     }).select().single();
     if (error) throw new Error(error.message);

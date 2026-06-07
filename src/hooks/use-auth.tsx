@@ -1,7 +1,8 @@
 import { createContext, useContext, type ReactNode } from "react";
+import { currentUserId } from "@/lib/current-user.server";
 
 const SUPER_ADMIN = {
-  id: "00000000-0000-0000-0000-000000000001",
+  id: currentUserId(),
   email: "superadmin@quanta.local",
   user_metadata: { display_name: "Super Admin" },
   app_metadata: { role: "super_admin" },

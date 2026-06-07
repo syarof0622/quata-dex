@@ -1,6 +1,7 @@
 // AI Trade Agent server functions. Start/pause/stop/status/decisions/perf + a
 // runOnce primitive shared by the cron worker. Single super-admin user pattern.
 import { createServerFn } from "@tanstack/react-start";
+import { currentUserId } from "@/lib/current-user.server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { evaluateSymbol, type AgentConfig, type AgentDecision, type Position } from "./ai-agent-decision-engine";
@@ -10,14 +11,13 @@ import { canExecutePaperTrade, getIDXMarketSession } from "./idx-market-session"
 import { runAutonomousScan } from "./ai-autonomous-scanner.server";
 import { resolveAgentKnobs, toLegacyRiskMode, getPreset, type AggressionMode } from "./agent-aggression-modes";
 
-const USER_ID = "00000000-0000-0000-0000-000000000001";
 const COOLDOWN_MS = { BUY: 15 * 60_000, SELL: 10 * 60_000, EXIT: 10 * 60_000 };
 
 async function ensurePaperAccount() {
-  const { data } = await supabaseAdmin.from("paper_accounts").select("*").eq("user_id", USER_ID).maybeSingle();
+  const { data } = await supabaseAdmin.from("paper_accounts").select("*").eq("user_id", currentUserId()).maybeSingle();
   if (data) return data;
   const { data: created } = await supabaseAdmin
-    .from("paper_accounts").insert({ user_id: USER_ID, cash: 100_000_000, equity: 100_000_000 })
+    .from("paper_accounts").insert({ user_id: currentUserId(), cash: 100_000_000, equity: 100_000_000 })
     .select("*").single();
   return created!;
 }
@@ -62,9 +62,9 @@ export const startAgent = createServerFn({ method: "POST" })
     }
     // Single active agent: deactivate any other running agent for this user
     await supabaseAdmin.from("ai_trade_agents").update({ status: "stopped", stopped_at: new Date().toISOString() })
-      .eq("user_id", USER_ID).neq("status", "stopped");
+      .eq("user_id", currentUserId()).neq("status", "stopped");
     const { data: agent, error } = await supabaseAdmin.from("ai_trade_agents").insert({
-      user_id: USER_ID, paper_account_id: acct.id,
+      user_id: currentUserId(), paper_account_id: acct.id,
       status: "active_market_open",
       mode: "paper_trading",
       selected_symbols: data.selectedSymbols.map(s => s.toUpperCase()),
@@ -112,7 +112,7 @@ export const updateAgentSymbols = createServerFn({ method: "POST" })
     const symbols = Array.from(new Set(data.selectedSymbols.map(s => s.toUpperCase()))).slice(0, 20);
     const { error } = await supabaseAdmin.from("ai_trade_agents")
       .update({ selected_symbols: symbols })
-      .eq("id", data.id).eq("user_id", USER_ID);
+      .eq("id", data.id).eq("user_id", currentUserId());
     if (error) throw new Error(error.message);
     return { ok: true, symbols };
   });
@@ -122,7 +122,7 @@ export const pauseAgent = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await supabaseAdmin.from("ai_trade_agents")
       .update({ status: "paused", paused_at: new Date().toISOString() })
-      .eq("id", data.id).eq("user_id", USER_ID);
+      .eq("id", data.id).eq("user_id", currentUserId());
     return { ok: true };
   });
 
@@ -134,7 +134,7 @@ export const setAutomationEnabled = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { error } = await supabaseAdmin.from("ai_trade_agents")
       .update({ automation_enabled: data.enabled })
-      .eq("id", data.id).eq("user_id", USER_ID);
+      .eq("id", data.id).eq("user_id", currentUserId());
     if (error) throw new Error(error.message);
     return { ok: true, enabled: data.enabled };
   });
@@ -145,7 +145,7 @@ export const stopAgent = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await supabaseAdmin.from("ai_trade_agents")
       .update({ status: "stopped", stopped_at: new Date().toISOString(), trading_enabled: false })
-      .eq("id", data.id).eq("user_id", USER_ID);
+      .eq("id", data.id).eq("user_id", currentUserId());
     await supabaseAdmin.from("ai_agent_risk_logs").insert({
       agent_id: data.id, risk_type: "lifecycle", risk_level: "info",
       message: data.closeAll ? "Agent stopped (close-all requested by user)" : "Agent stopped by user",
@@ -160,10 +160,10 @@ export const emergencyStop = createServerFn({ method: "POST" })
     await supabaseAdmin.from("ai_trade_agents")
       .update({ status: "error", trading_enabled: false, stopped_at: new Date().toISOString(),
                 last_error: "Emergency stop by user" })
-      .eq("id", data.id).eq("user_id", USER_ID);
+      .eq("id", data.id).eq("user_id", currentUserId());
     // Cancel pending paper orders
     await supabaseAdmin.from("paper_orders").update({ status: "cancelled" })
-      .eq("user_id", USER_ID).eq("status", "pending");
+      .eq("user_id", currentUserId()).eq("status", "pending");
     await supabaseAdmin.from("ai_agent_risk_logs").insert({
       agent_id: data.id, risk_type: "emergency_stop", risk_level: "critical",
       message: "Emergency stop triggered; pending paper orders cancelled.",
@@ -174,13 +174,13 @@ export const emergencyStop = createServerFn({ method: "POST" })
 
 export const getAgentStatus = createServerFn({ method: "GET" }).handler(async () => {
   const { data: agent } = await supabaseAdmin.from("ai_trade_agents")
-    .select("*").eq("user_id", USER_ID).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    .select("*").eq("user_id", currentUserId()).order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (!agent) return { agent: null, session: getIDXMarketSession(), decisions: [], risks: [], performance: null, paperPositions: [], agentOrders: [], orderCounts: { executed: 0, openPositions: 0, closedTrades: 0 } };
   const [{ data: decisions }, { data: risks }, { data: performance }, { data: paperPositions }, { data: agentOrders }] = await Promise.all([
     supabaseAdmin.from("ai_agent_decisions").select("*").eq("agent_id", agent.id).order("created_at", { ascending: false }).limit(50),
     supabaseAdmin.from("ai_agent_risk_logs").select("*").eq("agent_id", agent.id).order("created_at", { ascending: false }).limit(20),
     supabaseAdmin.from("ai_agent_performance").select("*").eq("agent_id", agent.id).maybeSingle(),
-    supabaseAdmin.from("paper_positions").select("*").eq("user_id", USER_ID),
+    supabaseAdmin.from("paper_positions").select("*").eq("user_id", currentUserId()),
     supabaseAdmin.from("paper_orders").select("*").eq("agent_id", agent.id).eq("status", "filled")
       .order("filled_at", { ascending: false }).limit(100),
   ]);
@@ -272,7 +272,7 @@ async function executePaperFill(opts: {
         .from("ai_trade_agents").select("*").eq("id", agentId).maybeSingle();
       const { data: posRow } = await supabaseAdmin
         .from("paper_positions").select("opened_at")
-        .eq("user_id", USER_ID).eq("symbol", symbol).maybeSingle();
+        .eq("user_id", currentUserId()).eq("symbol", symbol).maybeSingle();
       if (agentRow && posRow?.opened_at) {
         const { evaluateSellGuards } = await import("./loss-protection.server");
         const guard = evaluateSellGuards({
@@ -305,10 +305,10 @@ async function executePaperFill(opts: {
       const newQty = Number(existing.qty) + shares;
       const newAvg = (Number(existing.avg_price) * Number(existing.qty) + fillPrice * shares) / newQty;
       await supabaseAdmin.from("paper_positions").update({ qty: newQty, avg_price: newAvg, opened_by_agent_id: agentId, source: "ai_agent" })
-        .eq("user_id", USER_ID).eq("symbol", symbol);
+        .eq("user_id", currentUserId()).eq("symbol", symbol);
     } else {
       await supabaseAdmin.from("paper_positions").insert({
-        account_id: paperAccountId, user_id: USER_ID, symbol, qty: shares, avg_price: fillPrice,
+        account_id: paperAccountId, user_id: currentUserId(), symbol, qty: shares, avg_price: fillPrice,
         opened_by_agent_id: agentId, source: "ai_agent",
       });
     }
@@ -319,14 +319,14 @@ async function executePaperFill(opts: {
     entryAvgPrice = Number(existing.avg_price);
     realizedPnl = +((fillPrice - entryAvgPrice) * shares - fee).toFixed(2);
     const remaining = Number(existing.qty) - shares;
-    if (remaining === 0) await supabaseAdmin.from("paper_positions").delete().eq("user_id", USER_ID).eq("symbol", symbol);
-    else await supabaseAdmin.from("paper_positions").update({ qty: remaining }).eq("user_id", USER_ID).eq("symbol", symbol);
+    if (remaining === 0) await supabaseAdmin.from("paper_positions").delete().eq("user_id", currentUserId()).eq("symbol", symbol);
+    else await supabaseAdmin.from("paper_positions").update({ qty: remaining }).eq("user_id", currentUserId()).eq("symbol", symbol);
     cashAfter = cashBefore + notional - fee;
     await supabaseAdmin.from("paper_accounts").update({ cash: cashAfter }).eq("id", paperAccountId);
   }
 
   const { data: order } = await supabaseAdmin.from("paper_orders").insert({
-    account_id: paperAccountId, user_id: USER_ID, agent_id: agentId, source: "ai_agent",
+    account_id: paperAccountId, user_id: currentUserId(), agent_id: agentId, source: "ai_agent",
     symbol, side, type: "market", qty: shares,
     price, filled_price: fillPrice, status: "filled", filled_at: new Date().toISOString(),
     realized_pnl: realizedPnl, slippage_pct: slipPct, fee,
@@ -468,7 +468,7 @@ async function executePaperFill(opts: {
           ? +(((fillPrice - entryAvgPrice) / entryAvgPrice) * 100).toFixed(3)
           : null;
         await recordTradeOutcome({
-          agentId, userId: USER_ID, symbol,
+          agentId, userId: currentUserId(), symbol,
           strategy: decision?.strategy ?? "unknown",
           realizedPnl, realizedPnlPct: pnlPct,
           marketRegime: (decision as any)?.marketRegime ?? null,
@@ -484,7 +484,7 @@ async function executePaperFill(opts: {
 
 async function loadActivePosition(symbol: string): Promise<Position | undefined> {
   const { data } = await supabaseAdmin.from("paper_positions").select("*")
-    .eq("user_id", USER_ID).eq("symbol", symbol).maybeSingle();
+    .eq("user_id", currentUserId()).eq("symbol", symbol).maybeSingle();
   return data ? { symbol: data.symbol, qty: Number(data.qty), avg_price: Number(data.avg_price) } : undefined;
 }
 
@@ -551,7 +551,7 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
   const dailyTradesLeft = Math.max(0, Number(agent.max_daily_trades) - (todayCount ?? 0));
 
   const { data: acct } = await supabaseAdmin.from("paper_accounts").select("*").eq("id", agent.paper_account_id).single();
-  const { data: positions } = await supabaseAdmin.from("paper_positions").select("*").eq("user_id", USER_ID);
+  const { data: positions } = await supabaseAdmin.from("paper_positions").select("*").eq("user_id", currentUserId());
   const posList: Position[] = (positions ?? []).map((p: any) => ({ symbol: p.symbol, qty: Number(p.qty), avg_price: Number(p.avg_price) }));
 
   // Mark-to-market equity: cash + sum(qty * latest price) instead of stale DB equity.
@@ -1431,7 +1431,7 @@ export const setSelectionMode = createServerFn({ method: "POST" })
     if (data.autonomousUniverse) patch.autonomous_universe = data.autonomousUniverse;
     if (data.acknowledge) patch.autonomous_mode_acknowledged = true;
     const { error } = await supabaseAdmin.from("ai_trade_agents")
-      .update(patch).eq("id", data.id).eq("user_id", USER_ID);
+      .update(patch).eq("id", data.id).eq("user_id", currentUserId());
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -1440,7 +1440,7 @@ export const runAutonomousScanNow = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
     const { data: agent } = await supabaseAdmin.from("ai_trade_agents")
-      .select("*").eq("id", data.id).eq("user_id", USER_ID).maybeSingle();
+      .select("*").eq("id", data.id).eq("user_id", currentUserId()).maybeSingle();
     if (!agent) throw new Error("agent not found");
     // Force immediate rescan by clearing the timestamp guard.
     await supabaseAdmin.from("ai_trade_agents")
@@ -1504,7 +1504,7 @@ export const setAutonomousRiskMode = createServerFn({ method: "POST" })
     if (data.acknowledge) patch.autonomous_mode_acknowledged = true;
 
     const { error } = await supabaseAdmin.from("ai_trade_agents")
-      .update(patch).eq("id", data.id).eq("user_id", USER_ID);
+      .update(patch).eq("id", data.id).eq("user_id", currentUserId());
     if (error) throw new Error(error.message);
     return { ok: true, riskMode: data.riskMode };
   });
@@ -1674,7 +1674,7 @@ export const getRiskEngineSnapshot = createServerFn({ method: "GET" }).handler(a
   }
 
   const { data: positions } = await supabaseAdmin
-    .from("paper_positions").select("symbol, qty, avg_price").eq("user_id", USER_ID);
+    .from("paper_positions").select("symbol, qty, avg_price").eq("user_id", currentUserId());
   const { data: acct } = await supabaseAdmin
     .from("paper_accounts").select("cash, equity").eq("id", agent.paper_account_id).maybeSingle();
   const { data: latestRisk } = await supabaseAdmin
@@ -1758,7 +1758,7 @@ export const getRiskEngineSnapshot = createServerFn({ method: "GET" }).handler(a
 export const clearRiskPause = createServerFn({ method: "POST" }).handler(async () => {
   await supabaseAdmin.from("ai_trade_agents")
     .update({ risk_paused_until: null, risk_pause_reason: null, consecutive_losses: 0 })
-    .eq("user_id", USER_ID);
+    .eq("user_id", currentUserId());
   return { ok: true };
 });
 
@@ -1781,7 +1781,7 @@ export const setAgentAggressionMode = createServerFn({ method: "POST" })
       min_confidence_to_trade: preset.minBuyConfidence,
       min_autonomous_score: preset.minAutonomousScore,
       swing_mode_active: data.mode === "swing_max",
-    }).eq("id", data.id).eq("user_id", USER_ID);
+    }).eq("id", data.id).eq("user_id", currentUserId());
     if (error) throw new Error(error.message);
     return { ok: true, preset };
   });
@@ -1792,7 +1792,7 @@ export const setAgentAggressionMode = createServerFn({ method: "POST" })
  */
 export const getProfitDiagnostics = createServerFn({ method: "GET" }).handler(async () => {
   const { data: agent } = await supabaseAdmin
-    .from("ai_trade_agents").select("*").eq("user_id", USER_ID)
+    .from("ai_trade_agents").select("*").eq("user_id", currentUserId())
     .order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (!agent) return { checks: [], recommendation: "Agent belum dibuat." };
 
@@ -1805,7 +1805,7 @@ export const getProfitDiagnostics = createServerFn({ method: "GET" }).handler(as
   const exposurePct = 1 - cashRatio;
 
   const { data: positions } = await supabaseAdmin
-    .from("paper_positions").select("symbol, qty, avg_price").eq("user_id", USER_ID);
+    .from("paper_positions").select("symbol, qty, avg_price").eq("user_id", currentUserId());
   const posCount = positions?.length ?? 0;
 
   const since = new Date(Date.now() - 24 * 3600_000).toISOString();

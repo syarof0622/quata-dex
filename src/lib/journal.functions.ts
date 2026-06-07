@@ -1,13 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
+import { currentUserId } from "@/lib/current-user.server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { GLOBAL_FUNDAMENTAL_GUARD } from "@/lib/ai-fundamental-guard";
 
-const USER_ID = "00000000-0000-0000-0000-000000000001";
 
 export const listJournal = createServerFn({ method: "GET" }).handler(async () => {
   const { data, error } = await supabaseAdmin.from("trade_journal")
-    .select("*").eq("user_id", USER_ID).order("created_at", { ascending: false }).limit(200);
+    .select("*").eq("user_id", currentUserId()).order("created_at", { ascending: false }).limit(200);
   if (error) throw new Error(error.message);
   return data ?? [];
 });
@@ -27,7 +27,7 @@ export const updateJournal = createServerFn({ method: "POST" })
     if (data.notes !== undefined) patch.notes = data.notes;
     if (data.tags !== undefined) patch.tags = data.tags;
     const { error } = await supabaseAdmin.from("trade_journal")
-      .update(patch).eq("id", data.id).eq("user_id", USER_ID);
+      .update(patch).eq("id", data.id).eq("user_id", currentUserId());
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -35,7 +35,7 @@ export const updateJournal = createServerFn({ method: "POST" })
 export const journalStats = createServerFn({ method: "GET" }).handler(async () => {
   const { data } = await supabaseAdmin.from("trade_journal")
     .select("symbol,side,qty,price,pnl,pnl_pct,created_at,setup")
-    .eq("user_id", USER_ID).order("created_at", { ascending: false }).limit(500);
+    .eq("user_id", currentUserId()).order("created_at", { ascending: false }).limit(500);
   const rows = data ?? [];
   const closed = rows.filter(r => r.pnl != null);
   const wins = closed.filter(r => Number(r.pnl) > 0);
@@ -69,7 +69,7 @@ export const aiReviewJournal = createServerFn({ method: "POST" })
     let prompt = "";
     let target: any = null;
     if (data.mode === "trade" && data.id) {
-      const { data: row } = await supabaseAdmin.from("trade_journal").select("*").eq("id", data.id).eq("user_id", USER_ID).single();
+      const { data: row } = await supabaseAdmin.from("trade_journal").select("*").eq("id", data.id).eq("user_id", currentUserId()).single();
       if (!row) throw new Error("Trade not found");
       target = row;
       prompt = `Review this single trade and grade A-F.
@@ -84,7 +84,7 @@ Notes: ${row.notes ?? "n/a"}
 
 Output markdown with: Grade, What went right, What went wrong, Lesson, Next-time checklist.`;
     } else {
-      const { data: rows } = await supabaseAdmin.from("trade_journal").select("*").eq("user_id", USER_ID).order("created_at", { ascending: false }).limit(30);
+      const { data: rows } = await supabaseAdmin.from("trade_journal").select("*").eq("user_id", currentUserId()).order("created_at", { ascending: false }).limit(30);
       const closed = (rows ?? []).filter(r => r.pnl != null);
       if (closed.length < 3) throw new Error("Need at least 3 closed trades for a session review");
       const summary = closed.map(r => `${r.symbol} ${r.side} ${r.qty}@${r.price} → PnL ${r.pnl} (${r.pnl_pct}%) setup=${r.setup ?? "?"} emo=${r.emotion ?? "?"}`).join("\n");
