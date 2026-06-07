@@ -266,6 +266,7 @@ function Screener() {
 }
 
 function UndervaluedPanel() {
+  const { L } = useLang();
   const [universe, setUniverse] = useState<"idx_lq45" | "undervalued_candidates" | "quality_undervalued" | "dividend_undervalued" | "sector_discount" | "hybrid_trading_and_value" | "watchlist">("idx_lq45");
   const [limit, setLimit] = useState(15);
   const [classFilter, setClassFilter] = useState<"all" | "strong_undervalued" | "undervalued" | "fair_value" | "overvalued" | "value_trap_risk" | "insufficient_data">("all");
@@ -289,8 +290,8 @@ function UndervaluedPanel() {
   }, [disclosures.data]);
   const scan = useMutation({
     mutationFn: () => scanUndervalueUniverse({ data: { universe, limit } }),
-    onSuccess: (r: any) => { toast.success(`Scan selesai: ${r.scanned} dianalisis, ${r.candidates.length} kandidat`); latest.refetch(); },
-    onError: (e: any) => toast.error(e?.message ?? "Scan gagal"),
+    onSuccess: (r: any) => { toast.success(L.tools.screener.scanDone.replace("{scanned}", String(r.scanned)).replace("{n}", String(r.candidates.length))); latest.refetch(); },
+    onError: (e: any) => toast.error(e?.message ?? L.tools.screener.scanFailed),
   });
   const baseRows: any[] = (scan.data as any)?.candidates?.length
     ? (scan.data as any).candidates
