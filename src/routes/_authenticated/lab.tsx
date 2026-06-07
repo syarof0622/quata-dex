@@ -188,7 +188,7 @@ function Lab() {
           <div className="panel p-2">
             <table className="w-full text-sm">
               <thead className="text-xs text-muted-foreground">
-                <tr><th className="text-left p-2">Waktu</th><th className="text-left p-2">Symbol</th><th className="text-left p-2">Sisi</th><th className="text-right p-2">Lot</th><th className="text-right p-2">Terisi</th></tr>
+                <tr><th className="text-left p-2">{L.body.lab.thTime}</th><th className="text-left p-2">{L.body.lab.thSymbol}</th><th className="text-left p-2">{L.body.lab.thSide}</th><th className="text-right p-2">{L.body.lab.thLot}</th><th className="text-right p-2">{L.body.lab.thFilled}</th></tr>
               </thead>
               <tbody>
                 {orders.map((o: any) => (
