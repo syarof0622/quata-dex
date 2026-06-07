@@ -66,7 +66,7 @@ export function ChatPanel({ system }: { system?: string }) {
       });
       if (!resp.ok || !resp.body) {
         const j = await resp.json().catch(() => ({} as any));
-        toast.error(j.error ?? "Chat failed");
+        toast.error(j.error ?? T.chatFailed);
         setBusy(false);
         return;
       }
