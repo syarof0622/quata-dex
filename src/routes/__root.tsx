@@ -11,6 +11,7 @@ import {
 
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/hooks/use-auth";
+import { LanguageProvider } from "@/hooks/use-language";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -112,12 +113,14 @@ function RootComponent() {
   }, []);
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <TooltipProvider delayDuration={150}>
-          <Outlet />
-          <Toaster richColors closeButton position="top-right" theme="dark" />
-        </TooltipProvider>
-      </AuthProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <TooltipProvider delayDuration={150}>
+            <Outlet />
+            <Toaster richColors closeButton position="top-right" theme="dark" />
+          </TooltipProvider>
+        </AuthProvider>
+      </LanguageProvider>
     </QueryClientProvider>
   );
 }

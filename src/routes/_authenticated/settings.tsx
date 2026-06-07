@@ -18,6 +18,7 @@ import { PageHero } from "@/components/ui/page-hero";
 import { Settings as SettingsIcon } from "lucide-react";
 import { PaperBalanceCard } from "@/components/PaperBalanceCard";
 import { AiSettingsCard } from "@/components/AiSettingsCard";
+import { useLang } from "@/hooks/use-language";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({ meta: [{ title: "Settings — Quanta Terminal" }] }),
@@ -62,6 +63,7 @@ function applyTheme(t: Prefs["theme"]) {
 
 function SettingsPage() {
   const { user, signOut } = useAuth();
+  const { lang, setLang } = useLang();
   const qc = useQueryClient();
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs);
   const [displayName, setDisplayName] = useState(
@@ -213,8 +215,13 @@ function SettingsPage() {
                 </SelectContent>
               </Select>
             </Row>
-            <Row label="Bahasa Berita" hint="Memfilter feed di halaman News berdasarkan bahasa judul.">
-              <Select value={prefs.newsLang} onValueChange={(v) => update("newsLang", v as Prefs["newsLang"])}>
+            <Row
+              label={lang === "en" ? "System Language" : "Bahasa Sistem"}
+              hint={lang === "en"
+                ? "Switches the entire interface (navigation, settings, news feed filter)."
+                : "Mengubah seluruh antarmuka (navigasi, pengaturan, filter berita)."}
+            >
+              <Select value={lang} onValueChange={(v) => { setLang(v as "id" | "en"); update("newsLang", v as Prefs["newsLang"]); }}>
                 <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="id">🇮🇩 Bahasa Indonesia</SelectItem>
