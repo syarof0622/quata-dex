@@ -10,6 +10,7 @@ import { formatPrice } from "@/lib/format";
 import { TickerSearch } from "@/components/TickerSearch";
 import { PageHero } from "@/components/ui/page-hero";
 import { Sparkles } from "lucide-react";
+import { useLang } from "@/hooks/use-language";
 
 export const Route = createFileRoute("/_authenticated/expert")({
   head: () => ({ meta: [{ title: "Expert Tools — Quanta Terminal" }] }),
@@ -17,13 +18,14 @@ export const Route = createFileRoute("/_authenticated/expert")({
 });
 
 function ExpertPage() {
+  const { L } = useLang();
   return (
     <div className="p-4 md:p-6 space-y-4">
       <PageHero
-        eyebrow="Alat Ahli"
+        eyebrow={L.hero.expert.eyebrow}
         icon={Sparkles}
-        title="Alat Ahli"
-        subtitle="Analisis multi-timeframe · sizing posisi dengan kontrol risiko · korelasi lintas aset."
+        title={L.hero.expert.title}
+        subtitle={L.hero.expert.subtitle}
       />
 
       <Tabs defaultValue="mtf">

@@ -23,6 +23,7 @@ import { TickerSearch } from "@/components/TickerSearch";
 import { AiInsightsPanel } from "@/components/AiInsightsPanel";
 import { PageHero } from "@/components/ui/page-hero";
 import { FlaskConical } from "lucide-react";
+import { useLang } from "@/hooks/use-language";
 
 const MAX_AGENT_SYMBOLS = 5;
 
@@ -54,6 +55,7 @@ export const Route = createFileRoute("/_authenticated/lab")({
 });
 
 function Lab() {
+  const { L } = useLang();
   const search = Route.useSearch();
   const initialTab = (search as LabSearch)?.tab ?? "positions";
   const acct = useQuery({ queryKey: ["paper"], queryFn: () => getPaperAccount(), refetchInterval: 8000 });
@@ -76,10 +78,10 @@ function Lab() {
   return (
     <div className="p-4 md:p-6 space-y-4">
       <PageHero
-        eyebrow="Hanya Paper Trading"
+        eyebrow={L.hero.lab.eyebrow}
         icon={FlaskConical}
-        title="Lab Simulasi"
-        subtitle={`Paper trading ${currency} · laba/rugi langsung · order lanjutan · jurnal · uji balik · pelatih AI`}
+        title={L.hero.lab.title}
+        subtitle={L.hero.lab.subtitle.replace("{currency}", currency)}
         actions={<ResetAccountControl onDone={() => acct.refetch()} currentCash={cash || (currency === "IDR" ? 100_000_000 : 100_000)} currency={currency} />}
       />
 

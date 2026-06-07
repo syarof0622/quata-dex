@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { Trash2, Bell, Zap, Target } from "lucide-react";
 import { formatDateTimeWIB } from "@/lib/format";
 import { PageHero } from "@/components/ui/page-hero";
+import { useLang } from "@/hooks/use-language";
 
 export const Route = createFileRoute("/_authenticated/alerts")({
   head: () => ({ meta: [{ title: "Smart Alerts — Quanta Terminal" }] }),
@@ -39,6 +40,7 @@ const KIND_LABEL: Record<RuleKind, string> = {
 };
 
 function AlertsPage() {
+  const { L } = useLang();
   const qc = useQueryClient();
   const alerts = useQuery({ queryKey: ["alerts"], queryFn: () => listAlerts() });
   const alertRows: any[] = Array.isArray(alerts.data) ? alerts.data : [];
@@ -101,10 +103,10 @@ function AlertsPage() {
   return (
     <div className="p-4 md:p-6 space-y-4">
       <PageHero
-        eyebrow="Peringatan"
+        eyebrow={L.hero.alerts.eyebrow}
         icon={Bell}
-        title="Peringatan Cerdas"
-        subtitle="Harga, RSI, persilangan EMA, lonjakan volume, breakout N-hari, dan persilangan skor Sinyal AI."
+        title={L.hero.alerts.title}
+        subtitle={L.hero.alerts.subtitle}
         actions={
           <Button onClick={() => check.mutate()} disabled={check.isPending} variant="outline">
             <Zap className="size-4 mr-1" /> {check.isPending ? "Memindai…" : "Jalankan pemindaian"}

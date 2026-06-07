@@ -11,6 +11,7 @@ import { Activity, AlertTriangle, CheckCircle2, CircleSlash, Loader2, PlayCircle
 import { toast } from "sonner";
 import { PageHero } from "@/components/ui/page-hero";
 import { HeartPulse } from "lucide-react";
+import { useLang } from "@/hooks/use-language";
 
 export const Route = createFileRoute("/_authenticated/health")({
   component: HealthPage,
@@ -49,6 +50,7 @@ function fmtWIB(iso: string | null | undefined): string {
 
 
 function HealthPage() {
+  const { L } = useLang();
   const fetchHealth = useServerFn(getSystemHealth);
   const runWorker = useServerFn(triggerWorker);
   const [running, setRunning] = useState<WorkerKey | null>(null);
@@ -81,11 +83,11 @@ function HealthPage() {
   return (
     <div className="p-4 md:p-6 space-y-6">
       <PageHero
-        eyebrow="Intelijen Operasional"
+        eyebrow={L.hero.health.eyebrow}
         live
         icon={HeartPulse}
-        title="Kesehatan Sistem"
-        subtitle={`Worker, kesegaran data, kesehatan sumber, dan jejak audit. Diperbarui setiap 30 detik.${data ? ` · Diperbarui terakhir: ${fmtWIB(data.generatedAt)}` : ""}`}
+        title={L.hero.health.title}
+        subtitle={`${L.hero.health.subtitle}${data ? ` · ${L.hero.health.updatedSuffix}: ${fmtWIB(data.generatedAt)}` : ""}`}
         actions={
           <button
             onClick={() => refetch()}
