@@ -318,13 +318,14 @@ function UndervaluedPanel() {
   }, {} as Record<string, number>);
 
   const cards: { key: typeof classFilter; label: string; cls: string }[] = [
-    { key: "strong_undervalued", label: "Strong Undervalue", cls: "text-bull" },
-    { key: "undervalued",        label: "Undervalued",       cls: "text-bull" },
-    { key: "fair_value",         label: "Fair Value",        cls: "" },
-    { key: "overvalued",         label: "Overvalued",        cls: "text-amber-500" },
-    { key: "value_trap_risk",    label: "Value Trap",        cls: "text-bear" },
-    { key: "insufficient_data",  label: "Insufficient Data", cls: "text-muted-foreground" },
+    { key: "strong_undervalued", label: L.tools.screener.uvClassStrong, cls: "text-bull" },
+    { key: "undervalued",        label: L.tools.screener.uvClassUnder,  cls: "text-bull" },
+    { key: "fair_value",         label: L.tools.screener.uvClassFair,   cls: "" },
+    { key: "overvalued",         label: L.tools.screener.uvClassOver,   cls: "text-amber-500" },
+    { key: "value_trap_risk",    label: L.tools.screener.uvClassTrap,   cls: "text-bear" },
+    { key: "insufficient_data",  label: L.tools.screener.uvClassInsufficient, cls: "text-muted-foreground" },
   ];
+
 
   return (
     <div className="space-y-3">
