@@ -32,9 +32,10 @@ function Portfolio() {
     refetchInterval: 15000,
   });
 
-  if (a.isLoading) return <div className="p-6 text-muted-foreground">Loading analytics…</div>;
+  if (a.isLoading) return <div className="p-6 text-muted-foreground">{L.body.portfolio.loading}</div>;
   const d = a.data;
-  if (!d) return <div className="p-6 text-muted-foreground">No paper account yet.</div>;
+  if (!d) return <div className="p-6 text-muted-foreground">{L.body.portfolio.noPaperAccount}</div>;
+
 
   const num = (n: any, fb = 0) => (typeof n === "number" && isFinite(n) ? n : fb);
   const currency = (d.currency ?? "IDR") as "IDR" | "USD";
@@ -71,11 +72,11 @@ function Portfolio() {
 
   // Smarter concentration label
   const concentrationHint =
-    positions.length === 0 ? "No positions"
-      : positions.length === 1 ? "Single holding"
-      : concentration > 35 ? "High concentration"
-      : concentration > 20 ? "Moderate concentration"
-      : "Diversified";
+    positions.length === 0 ? L.body.portfolio.noPositionsHint
+      : positions.length === 1 ? L.body.portfolio.singleHolding
+      : concentration > 35 ? L.body.portfolio.highConcentration
+      : concentration > 20 ? L.body.portfolio.moderateConcentration
+      : L.body.portfolio.diversified;
   const concentrationTone: "bull" | "bear" | "warn" =
     positions.length <= 1 ? "warn"
       : concentration > 35 ? "bear"
@@ -83,16 +84,17 @@ function Portfolio() {
       : "bull";
 
   const exposureHint = !hasPositions
-    ? "No positions"
-    : exposure > 60 ? "High exposure"
-    : exposure >= 20 ? "Moderate exposure"
-    : "Low exposure";
+    ? L.body.portfolio.noPositions
+    : exposure > 60 ? L.body.portfolio.highExposure
+    : exposure >= 20 ? L.body.portfolio.moderateExposure
+    : L.body.portfolio.lowExposure;
 
   const riskTone =
     riskLevel === "high" ? "bear"
       : riskLevel === "elevated" ? "bear"
       : riskLevel === "moderate" ? "warn"
       : "bull";
+
 
   return (
     <div className="p-3 md:p-6 space-y-4 md:space-y-5">
@@ -103,15 +105,15 @@ function Portfolio() {
         subtitle={L.hero.portfolio.subtitle}
         actions={
           <div className="flex items-center gap-x-2 gap-y-1 text-[10.5px] md:text-[11px] text-muted-foreground flex-wrap">
-            <span>Mata uang <span className="font-mono text-foreground">{currency}</span></span>
+            <span>{L.body.portfolio.currency} <span className="font-mono text-foreground">{currency}</span></span>
             <span>·</span>
-            <span>{openPositionsCount} terbuka</span>
+            <span>{openPositionsCount} {L.body.portfolio.opened}</span>
             <span>·</span>
-            <span>{executedOrders} tereksekusi</span>
+            <span>{executedOrders} {L.body.portfolio.executed}</span>
             <span>·</span>
-            <span>{closedTrades} selesai</span>
+            <span>{closedTrades} {L.body.portfolio.closed}</span>
             <span>·</span>
-            <span>Diperbarui {formatTimeWIB(d.lastUpdated)}</span>
+            <span>{L.body.portfolio.updated} {formatTimeWIB(d.lastUpdated)}</span>
           </div>
         }
       />
@@ -119,121 +121,124 @@ function Portfolio() {
 
       {!hasActivity && (
         <div className="panel p-8 text-center space-y-3">
-          <div className="text-lg font-semibold">Belum ada aktivitas paper trading</div>
+          <div className="text-lg font-semibold">{L.body.portfolio.noActivityTitle}</div>
           <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            Mulai dengan paper trade dari halaman chart, atau aktifkan AI Trade Agent.
+            {L.body.portfolio.noActivityDesc}
           </p>
           <div className="flex justify-center gap-2 flex-wrap">
-            <Link to="/screener" className="text-xs px-3 py-1.5 rounded bg-primary text-primary-foreground hover:opacity-90">Screener</Link>
-            <Link to="/lab" className="text-xs px-3 py-1.5 rounded bg-accent/40 hover:bg-accent/60">AI Trade Agent</Link>
-            <Link to="/watchlist" className="text-xs px-3 py-1.5 rounded bg-accent/40 hover:bg-accent/60">Watchlist</Link>
+            <Link to="/screener" className="text-xs px-3 py-1.5 rounded bg-primary text-primary-foreground hover:opacity-90">{L.body.portfolio.goScreener}</Link>
+            <Link to="/lab" className="text-xs px-3 py-1.5 rounded bg-accent/40 hover:bg-accent/60">{L.body.portfolio.goAiAgent}</Link>
+            <Link to="/watchlist" className="text-xs px-3 py-1.5 rounded bg-accent/40 hover:bg-accent/60">{L.body.portfolio.goWatchlist}</Link>
           </div>
         </div>
       )}
 
+
       {/* Row 1: P&L / equity stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 md:gap-3">
-        <Stat label="Equity" value={money(equity)} title="Cash + holdings (mark-to-market)" />
-        <Stat label="Cash" value={money(num(d.cash))} />
-        <Stat label="Market Value" value={hasPositions ? money(num(d.totalValue)) : "—"} title="Current value of holdings" />
+        <Stat label={L.body.portfolio.equity} value={money(equity)} title={L.body.portfolio.tipEquity} />
+        <Stat label={L.body.portfolio.cash} value={money(num(d.cash))} />
+        <Stat label={L.body.portfolio.marketValue} value={hasPositions ? money(num(d.totalValue)) : "—"} title={L.body.portfolio.tipMarketValue} />
         <Stat
-          label="Unrealized P/L"
+          label={L.body.portfolio.unrealizedPL}
           value={hasPositions ? money(num(d.unrealized)) : "—"}
           tone={hasPositions ? (num(d.unrealized) >= 0 ? "bull" : "bear") : undefined}
-          title="From positions still open"
+          title={L.body.portfolio.tipUnrealized}
         />
         <Stat
-          label="Realized Gain"
+          label={L.body.portfolio.realizedGain}
           value={hasClosed ? money(num((d as any).realizedGain)) : "—"}
           tone={hasClosed && num((d as any).realizedGain) > 0 ? "bull" : undefined}
-          title="Total profit dari trade tertutup (winning closes)"
+          title={L.body.portfolio.tipRealizedGain}
         />
         <Stat
-          label="Realized Loss"
+          label={L.body.portfolio.realizedLoss}
           value={hasClosed ? money(num((d as any).realizedLoss)) : "—"}
           tone={hasClosed && num((d as any).realizedLoss) < 0 ? "bear" : undefined}
-          title="Total kerugian dari trade tertutup (losing closes)"
+          title={L.body.portfolio.tipRealizedLoss}
         />
         <Stat
-          label="Realized Net"
+          label={L.body.portfolio.realizedNet}
           value={hasClosed ? money(num(d.realized)) : "—"}
           tone={hasClosed ? (num(d.realized) >= 0 ? "bull" : "bear") : undefined}
-          title="Gain + Loss (net realized P/L)"
+          title={L.body.portfolio.tipRealizedNet}
         />
         <Stat
-          label="Total Return"
+          label={L.body.portfolio.totalReturn}
           value={hasBaseline ? formatPct(pnlPct) : "—"}
-          sub={hasBaseline ? money(totalReturnAmount) : `Baseline: ${money(initialBalance)}`}
+          sub={hasBaseline ? money(totalReturnAmount) : `${L.body.portfolio.baseline}: ${money(initialBalance)}`}
           tone={hasBaseline ? (pnlPct >= 0 ? "bull" : "bear") : undefined}
-          title={`Equity vs initial balance (${money(initialBalance)})`}
+          title={`${L.body.portfolio.tipTotalReturn} (${money(initialBalance)})`}
         />
       </div>
 
       {/* Row 2: trade counts + perf */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5 md:gap-3">
-        <Stat label="Executed Orders" value={String(executedOrders)} sub="paper fills (buy + sell)" />
-        <Stat label="Open Positions" value={String(openPositionsCount)} sub="from paper_positions" />
-        <Stat label="Closed Trades" value={String(closedTrades)} sub="sell fills (FIFO)" />
+        <Stat label={L.body.portfolio.executedOrders} value={String(executedOrders)} sub={L.body.portfolio.paperFills} />
+        <Stat label={L.body.portfolio.openPositions} value={String(openPositionsCount)} sub={L.body.portfolio.fromPositions} />
+        <Stat label={L.body.portfolio.closedTrades} value={String(closedTrades)} sub={L.body.portfolio.sellFifo} />
         <Stat
-          label="Win Rate"
+          label={L.body.portfolio.winRate}
           value={hasClosed ? winRate.toFixed(0) + "%" : "N/A"}
-          sub={hasClosed ? (closedTrades < 5 ? "Low sample size" : `${closedTrades} closed`) : "No closed trades yet"}
+          sub={hasClosed ? (closedTrades < 5 ? L.body.portfolio.lowSample : `${closedTrades} ${L.body.portfolio.closedSuffix}`) : L.body.portfolio.noClosedYet}
           tone={!hasClosed ? undefined : winRate >= 55 ? "bull" : winRate >= 45 ? undefined : "bear"}
         />
         <Stat
-          label="Profit Factor"
+          label={L.body.portfolio.profitFactor}
           value={!hasClosed ? "N/A" : profitFactor == null ? "∞" : profitFactor.toFixed(2)}
-          sub={hasClosed ? "gross profit ÷ |loss|" : "Needs closed trades"}
+          sub={hasClosed ? L.body.portfolio.grossProfitOverLoss : L.body.portfolio.needsClosed}
           tone={!hasClosed || profitFactor == null ? undefined : profitFactor >= 1.5 ? "bull" : profitFactor >= 1 ? undefined : "bear"}
         />
         <Stat
-          label="Risk Level"
+          label={L.body.portfolio.riskLevel}
           value={riskLevel.toUpperCase()}
-          sub={warnings.length ? `${warnings.length} warning${warnings.length === 1 ? "" : "s"}` : "no warnings"}
+          sub={warnings.length ? `${warnings.length} ${warnings.length === 1 ? L.body.portfolio.warningOne : L.body.portfolio.warningMany}` : L.body.portfolio.noWarnings}
           tone={riskTone === "bull" ? "bull" : riskTone === "bear" ? "bear" : undefined}
         />
       </div>
 
+
       {/* Risk cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5 md:gap-3">
-        <RiskCard icon={<Layers className="size-4" />} label="Exposure"
+        <RiskCard icon={<Layers className="size-4" />} label={L.body.portfolio.exposure}
           value={hasPositions ? exposure.toFixed(1) + "%" : "N/A"}
           tone={!hasPositions ? "warn" : exposure > 60 ? "bear" : exposure >= 20 ? "warn" : "bull"}
           hint={exposureHint}
         />
-        <RiskCard icon={<Wallet className="size-4" />} label="Cash Ratio"
+        <RiskCard icon={<Wallet className="size-4" />} label={L.body.portfolio.cashRatio}
           value={cashRatio.toFixed(1) + "%"}
           tone={cashRatio < 10 && hasPositions ? "bear" : cashRatio < 25 ? "warn" : "bull"}
-          hint={cashRatio < 10 ? "Low cash buffer" : cashRatio < 25 ? "Moderate cash" : "Healthy cash"}
+          hint={cashRatio < 10 ? L.body.portfolio.lowCashBuffer : cashRatio < 25 ? L.body.portfolio.moderateCash : L.body.portfolio.healthyCash}
         />
-        <RiskCard icon={<Target className="size-4" />} label="Top Concentration"
+        <RiskCard icon={<Target className="size-4" />} label={L.body.portfolio.topConcentration}
           value={hasPositions ? concentration.toFixed(1) + "%" : "N/A"}
           tone={concentrationTone}
           hint={concentrationHint}
         />
-        <RiskCard icon={<Layers className="size-4" />} label="Sector Exposure"
+        <RiskCard icon={<Layers className="size-4" />} label={L.body.portfolio.sectorExposure}
           value={hasPositions ? largestSectorPct.toFixed(1) + "%" : "N/A"}
           tone={!hasPositions ? "warn" : largestSectorPct > 40 ? "bear" : largestSectorPct > 25 ? "warn" : "bull"}
-          hint={hasPositions ? `Largest sector` : "—"}
+          hint={hasPositions ? L.body.portfolio.largestSector : "—"}
         />
-        <RiskCard icon={<Activity className="size-4" />} label="Drawdown"
+        <RiskCard icon={<Activity className="size-4" />} label={L.body.portfolio.drawdown}
           value={drawdown < 0 ? drawdown.toFixed(2) + "%" : "0.00%"}
           tone={drawdown < -8 ? "bear" : drawdown < -5 ? "warn" : "bull"}
-          hint={drawdown < -5 ? "Below peak" : "Near peak equity"}
+          hint={drawdown < -5 ? L.body.portfolio.belowPeak : L.body.portfolio.nearPeak}
         />
-        <RiskCard icon={<TrendingUp className="size-4" />} label="Daily P/L"
+        <RiskCard icon={<TrendingUp className="size-4" />} label={L.body.portfolio.dailyPL}
           value={hasActivity ? formatPct(dailyPnlPct) : "N/A"}
           tone={!hasActivity ? "warn" : dailyPnlPct >= 0 ? "bull" : dailyPnlPct > -2 ? "warn" : "bear"}
           hint={hasActivity ? money(dailyPnl) : "—"}
         />
       </div>
 
+
       {/* Risk warnings */}
       {warnings.length > 0 && (
         <div className="panel p-4 border-l-2 border-amber-500/60">
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="size-4 text-amber-400" />
-            <h3 className="font-semibold text-sm">Risk Warnings</h3>
+            <h3 className="font-semibold text-sm">{L.body.portfolio.riskWarnings}</h3>
           </div>
           <ul className="space-y-1 text-sm text-muted-foreground">
             {warnings.map((w, i) => (
@@ -245,18 +250,19 @@ function Portfolio() {
       {hasActivity && warnings.length === 0 && (
         <div className="panel p-3 flex items-center gap-2 text-sm text-muted-foreground">
           <CheckCircle2 className="size-4 text-bull" />
-          No active risk warnings. Portfolio within configured limits.
+          {L.body.portfolio.noRiskWarnings}
         </div>
       )}
+
 
       <div className="grid lg:grid-cols-3 gap-3">
         {/* Equity curve */}
         <div className="panel p-4 lg:col-span-2">
           <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
             <div>
-              <h3 className="font-semibold">Equity Curve</h3>
+              <h3 className="font-semibold">{L.body.portfolio.equityCurve}</h3>
               <div className="text-[11px] text-muted-foreground">
-                Baseline {money(initialBalance)} · Now {money(equity)}
+                {L.body.portfolio.baseline} {money(initialBalance)} · {L.body.portfolio.now} {money(equity)}
               </div>
             </div>
             {hasBaseline && (
@@ -271,16 +277,17 @@ function Portfolio() {
             </div>
           ) : (
             <div className="text-sm text-muted-foreground py-12 text-center">
-              Belum cukup histori untuk menampilkan equity curve.
+              {L.body.portfolio.noEquityHistory}
             </div>
           )}
+
         </div>
 
         {/* Sector exposure */}
         <div className="panel p-4">
-          <h3 className="font-semibold mb-3">Sector Exposure</h3>
+          <h3 className="font-semibold mb-3">{L.body.portfolio.sectorExposure}</h3>
           {sectorBreakdown.length === 0 ? (
-            <div className="text-sm text-muted-foreground">No positions.</div>
+            <div className="text-sm text-muted-foreground">{L.body.portfolio.sectorBreakdownNoPos}</div>
           ) : (
             <>
               <ul className="space-y-2 text-sm">
@@ -297,10 +304,11 @@ function Portfolio() {
                 ))}
               </ul>
               {sectorBreakdown.length === 1 && (
-                <div className="text-[10px] text-amber-400 mt-2">Hanya 1 sektor — belum terdiversifikasi.</div>
+                <div className="text-[10px] text-amber-400 mt-2">{L.body.portfolio.onlyOneSector}</div>
               )}
             </>
           )}
+
         </div>
       </div>
       {/* Portfolio Intelligence — health, insights, scenarios */}
@@ -313,28 +321,29 @@ function Portfolio() {
       {/* Open Positions table */}
       <div className="panel p-2">
         <div className="px-2 pt-2 pb-1 flex items-center justify-between">
-          <h3 className="font-semibold">Open Positions</h3>
+          <h3 className="font-semibold">{L.body.portfolio.openPositionsTitle}</h3>
           {positions.length > 1 && concentration > 35 && (
-            <span className="text-xs text-bear flex items-center gap-1"><ShieldAlert className="size-3" /> Concentration risk</span>
+            <span className="text-xs text-bear flex items-center gap-1"><ShieldAlert className="size-3" /> {L.body.portfolio.concentrationRisk}</span>
           )}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="text-xs text-muted-foreground">
               <tr>
-                <th className="text-left p-2">Symbol</th>
-                <th className="text-left p-2">Sector</th>
-                <th className="text-right p-2">Lot</th>
-                <th className="text-right p-2">Avg Entry</th>
-                <th className="text-right p-2">Last</th>
-                <th className="text-right p-2">Unrealized P/L</th>
-                <th className="text-right p-2">Stop Loss</th>
-                <th className="text-right p-2">Take Profit</th>
-                <th className="text-right p-2">Trailing</th>
-                <th className="text-left p-2">AI Status</th>
-                <th className="text-right p-2">Weight</th>
+                <th className="text-left p-2">{L.body.portfolio.thSector ? L.body.watchlist.thSymbol : "Symbol"}</th>
+                <th className="text-left p-2">{L.body.portfolio.thSector}</th>
+                <th className="text-right p-2">{L.body.portfolio.thLot}</th>
+                <th className="text-right p-2">{L.body.portfolio.thAvgEntry}</th>
+                <th className="text-right p-2">{L.body.portfolio.thLast}</th>
+                <th className="text-right p-2">{L.body.portfolio.unrealizedPL}</th>
+                <th className="text-right p-2">{L.body.portfolio.thStopLoss}</th>
+                <th className="text-right p-2">{L.body.portfolio.thTakeProfit}</th>
+                <th className="text-right p-2">{L.body.portfolio.thTrailing}</th>
+                <th className="text-left p-2">{L.body.portfolio.thAiStatus}</th>
+                <th className="text-right p-2">{L.body.portfolio.thWeight}</th>
               </tr>
             </thead>
+
             <tbody>
               {positions.map((p: any) => {
                 const weight = equity ? (num(p.value) / equity) * 100 : 0;
