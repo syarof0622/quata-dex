@@ -2,7 +2,7 @@
 // Populated by the global function middleware `withCurrentUser` (registered in src/start.ts)
 // or by `runAsUser(uid, fn)` for cron/admin code that iterates users.
 import { AsyncLocalStorage } from "node:async_hooks";
-import { createMiddleware } from "@tanstack/react-start";
+
 import { getRequest } from "@tanstack/react-start/server";
 
 type Store = { userId: string | null };
