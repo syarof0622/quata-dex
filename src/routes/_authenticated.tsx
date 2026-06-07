@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { TickerSearch } from "@/components/TickerSearch";
 import { OnboardingDialog } from "@/components/OnboardingDialog";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
+import { FloatingAIChat } from "@/components/FloatingAIChat";
 import { UI_LABELS_ID } from "@/lib/i18n/id";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -146,6 +147,9 @@ function AuthedLayout() {
 
         {/* Mobile bottom navigation — hidden on md+ */}
         <MobileBottomNav />
+
+        {/* Floating AI chat — bubble accessible from anywhere */}
+        <FloatingAIChat />
       </div>
     </SidebarProvider>
   );
