@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
-import { getMovers, getNews } from "@/lib/market.functions";
+import { useServerFn } from "@tanstack/react-start";
+import { useState, useMemo } from "react";
+import { getMovers, getNews, getSparklines } from "@/lib/market.functions";
 import { sectorPerformance, marketBreadth } from "@/lib/screener.functions";
 import { formatPct, formatCompact, colorForChange } from "@/lib/format";
 import { formatLocalPrice } from "@/lib/symbols";
@@ -10,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Activity, ArrowDownRight, ArrowUpRight, Newspaper } from "lucide-react";
 import { MobileEmptyState, MobileSkeletonRows } from "@/components/mobile-ui";
 import { PageHero } from "@/components/ui/page-hero";
+import { Sparkline } from "@/components/Sparkline";
 
 export const Route = createFileRoute("/_authenticated/market")({
   head: () => ({ meta: [{ title: "Market — Quanta Terminal" }] }),
