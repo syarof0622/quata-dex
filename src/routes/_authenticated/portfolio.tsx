@@ -264,7 +264,9 @@ function Portfolio() {
             )}
           </div>
           {curve.length > 1 ? (
-            <Sparkline values={curve.map((c: any) => num(c.equity))} bull={pnlPct >= 0} width={600} height={140} />
+            <div className="w-full" style={{ height: 160 }}>
+              <Sparkline values={curve.map((c: any) => num(c.equity))} positive={pnlPct >= 0} height={160} strokeWidth={1.6} />
+            </div>
           ) : (
             <div className="text-sm text-muted-foreground py-12 text-center">
               Belum cukup histori untuk menampilkan equity curve.
