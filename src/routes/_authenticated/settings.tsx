@@ -97,26 +97,50 @@ function SettingsPage() {
     mutationFn: (cash: number) => resetPaperAccount({ data: { cash, currency } }),
     onSuccess: (_r, cash) => {
       const sym = currency === "IDR" ? "Rp " : "$";
-      toast.success(`Paper account reset to ${sym}${cash.toLocaleString()}`);
+      toast.success(S.resetSuccess.replace("{amt}", `${sym}${cash.toLocaleString()}`));
       qc.invalidateQueries();
     },
-    onError: (e: Error) => toast.error(e?.message ?? "Reset failed"),
+    onError: (e: Error) => toast.error(e?.message ?? S.resetFailed),
   });
 
   const curMut = useMutation({
     mutationFn: (c: "IDR" | "USD") => updatePaperCurrency({ data: { currency: c } }),
-    onSuccess: (_r, c) => { toast.success(`Mata uang: ${c}`); qc.invalidateQueries(); },
-    onError: (e: Error) => toast.error(e?.message ?? "Failed"),
+    onSuccess: (_r, c) => { toast.success(`${S.currencyToast} ${c}`); qc.invalidateQueries(); },
+    onError: (e: Error) => toast.error(e?.message ?? S.resetFailed),
   });
 
   const scan = useMutation({
     mutationFn: () => checkAlerts(),
     onSuccess: (r: any) => {
       const list = Array.isArray(r?.triggered) ? r.triggered : [];
-      if (!list.length) toast.message("No alerts triggered.");
+      if (!list.length) toast.message(S.noAlerts);
       else list.forEach((t: any) => toast.success(`${t.symbol}: ${t.reason}`));
     },
   });
+
+  async function saveProfile() {
+    setSavingProfile(true);
+    const { error } = await supabase.auth.updateUser({ data: { full_name: displayName } });
+    setSavingProfile(false);
+    if (error) toast.error(error.message);
+    else toast.success(S.profileSaved);
+  }
+
+  async function changePassword() {
+    if (pwd.length < 8) return toast.error(S.pwdMin);
+    if (pwd !== pwd2) return toast.error(S.pwdMismatch);
+    const { error } = await supabase.auth.updateUser({ password: pwd });
+    if (error) toast.error(error.message);
+    else { toast.success(S.passwordUpdated); setPwd(""); setPwd2(""); }
+  }
+
+  async function requestDesktopPerm(v: boolean) {
+    update("notifyDesktop", v);
+    if (v && typeof Notification !== "undefined" && Notification.permission !== "granted") {
+      const p = await Notification.requestPermission();
+      if (p !== "granted") { update("notifyDesktop", false); toast.error(S.notifDenied); }
+    }
+  }
 
   async function saveProfile() {
     setSavingProfile(true);
