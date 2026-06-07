@@ -11,7 +11,7 @@ import { TickerSearch } from "@/components/TickerSearch";
 import { OnboardingDialog } from "@/components/OnboardingDialog";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { FloatingAIChat } from "@/components/FloatingAIChat";
-import { UI_LABELS_ID } from "@/lib/i18n/id";
+import { useLang } from "@/hooks/use-language";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -36,39 +36,30 @@ function AuthedLayoutGate() {
   return <AuthedLayout />;
 }
 
-const L = UI_LABELS_ID.nav;
-const NAV = [
-  { to: "/dashboard", icon: LayoutDashboard, label: L.dashboard },
-  { to: "/market", icon: TrendingUp, label: L.market },
-  { to: "/screener", icon: SlidersHorizontal, label: L.screener },
-  { to: "/watchlist", icon: Star, label: L.watchlist },
-  { to: "/portfolio", icon: PieChart, label: L.portfolio },
-  { to: "/ai", icon: Bot, label: L.aiAnalyst },
-  { to: "/lab", icon: FlaskConical, label: L.simulationLab },
-  { to: "/expert", icon: Sparkles, label: L.expertTools },
-  { to: "/news", icon: Newspaper, label: L.news },
-  { to: "/alerts", icon: Bell, label: L.alerts },
-  { to: "/health", icon: HeartPulse, label: L.systemHealth },
-  { to: "/settings", icon: Settings, label: L.settings },
-] as const;
-
-const PAGE_TITLES: Record<string, string> = {
-  "/dashboard": L.dashboard,
-  "/market": L.market,
-  "/screener": L.screener,
-  "/watchlist": L.watchlist,
-  "/portfolio": L.portfolio,
-  "/ai": L.aiAnalyst,
-  "/lab": L.simulationLab,
-  "/expert": L.expertTools,
-  "/news": L.news,
-  "/alerts": L.alerts,
-  "/health": L.systemHealth,
-  "/settings": L.settings,
-};
-
 function AuthedLayout() {
   const { signOut, isAdmin } = useAuth();
+  const { L: Labels } = useLang();
+  const L = Labels.nav;
+  const NAV = [
+    { to: "/dashboard", icon: LayoutDashboard, label: L.dashboard },
+    { to: "/market", icon: TrendingUp, label: L.market },
+    { to: "/screener", icon: SlidersHorizontal, label: L.screener },
+    { to: "/watchlist", icon: Star, label: L.watchlist },
+    { to: "/portfolio", icon: PieChart, label: L.portfolio },
+    { to: "/ai", icon: Bot, label: L.aiAnalyst },
+    { to: "/lab", icon: FlaskConical, label: L.simulationLab },
+    { to: "/expert", icon: Sparkles, label: L.expertTools },
+    { to: "/news", icon: Newspaper, label: L.news },
+    { to: "/alerts", icon: Bell, label: L.alerts },
+    { to: "/health", icon: HeartPulse, label: L.systemHealth },
+    { to: "/settings", icon: Settings, label: L.settings },
+  ] as const;
+  const PAGE_TITLES: Record<string, string> = {
+    "/dashboard": L.dashboard, "/market": L.market, "/screener": L.screener,
+    "/watchlist": L.watchlist, "/portfolio": L.portfolio, "/ai": L.aiAnalyst,
+    "/lab": L.simulationLab, "/expert": L.expertTools, "/news": L.news,
+    "/alerts": L.alerts, "/health": L.systemHealth, "/settings": L.settings,
+  };
   const nav = useNavigate();
   const path = useRouterState({ select: s => s.location.pathname });
   const pageTitle = Object.entries(PAGE_TITLES).find(([p]) => path.startsWith(p))?.[1] ?? "Quanta.Terminal";
