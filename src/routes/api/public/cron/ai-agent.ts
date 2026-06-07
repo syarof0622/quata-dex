@@ -15,6 +15,7 @@ import { runAgentOnce } from "@/lib/ai-trade-agent.functions";
 import { getIDXMarketSession } from "@/lib/idx-market-session";
 import { checkCronSecret } from "@/lib/cron-auth.server";
 import { audit } from "@/lib/audit.server";
+import { runAsUser } from "@/lib/current-user.server";
 
 type AgentResult = {
   id: string;
@@ -41,10 +42,11 @@ async function handler(request: Request) {
 
   const session = getIDXMarketSession();
 
-  // Select agents that are active AND have automation enabled.
+  // Select agents that are active AND have automation enabled. Each agent has a user_id;
+  // we wrap runAgentOnce in runAsUser so per-user serverFn helpers see the right uid.
   const { data: agents, error } = await supabaseAdmin
     .from("ai_trade_agents")
-    .select("id, status, trading_enabled, automation_enabled")
+    .select("id, user_id, status, trading_enabled, automation_enabled")
     .in("status", ["active_market_open", "active_market_break", "active_market_closed"])
     .eq("trading_enabled", true);
 
@@ -52,12 +54,13 @@ async function handler(request: Request) {
     return Response.json({ ok: false, error: error.message }, { status: 500 });
   }
 
-  const activeAgents = (agents ?? []).filter((a: any) => a.automation_enabled !== false);
+  const activeAgents = (agents ?? []).filter((a: any) => a.automation_enabled !== false && a.user_id);
   const results: AgentResult[] = [];
   const errors: string[] = [];
 
   for (const a of activeAgents) {
     const agentId = a.id as string;
+    const ownerId = a.user_id as string;
     const runStart = new Date();
     // Mark "running" up-front so UI can show a fresh heartbeat even on long ticks.
     await supabaseAdmin.from("ai_trade_agents").update({
@@ -68,7 +71,7 @@ async function handler(request: Request) {
     }).eq("id", agentId);
 
     try {
-      const r = await runAgentOnce(agentId);
+      const r = await runAsUser(ownerId, () => runAgentOnce(agentId));
       const decisions = r.decisions ?? [];
       const executedCount = r.executed ?? 0;
       const blocked = decisions.filter((d: any) =>

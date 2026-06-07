@@ -4,7 +4,7 @@ import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu,
   SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger, SidebarHeader, SidebarFooter,
 } from "@/components/ui/sidebar";
-import { Activity, Bell, Bot, FlaskConical, LayoutDashboard, Newspaper, PieChart, Settings, SlidersHorizontal, Star, TrendingUp, LogOut, Sparkles, HeartPulse } from "lucide-react";
+import { Activity, Bell, Bot, FlaskConical, LayoutDashboard, Newspaper, PieChart, Settings, SlidersHorizontal, Star, TrendingUp, LogOut, Sparkles, HeartPulse, Shield } from "lucide-react";
 import { useRouterState } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { TickerSearch } from "@/components/TickerSearch";
@@ -68,10 +68,11 @@ const PAGE_TITLES: Record<string, string> = {
 };
 
 function AuthedLayout() {
-  const { signOut } = useAuth();
+  const { signOut, isAdmin } = useAuth();
   const nav = useNavigate();
   const path = useRouterState({ select: s => s.location.pathname });
   const pageTitle = Object.entries(PAGE_TITLES).find(([p]) => path.startsWith(p))?.[1] ?? "Quanta.Terminal";
+  const navItems = isAdmin ? [...NAV, { to: "/admin" as const, icon: Shield, label: "Admin" }] : NAV;
 
   return (
     <SidebarProvider>
@@ -93,7 +94,7 @@ function AuthedLayout() {
               <SidebarGroup>
                 <SidebarGroupContent>
                   <SidebarMenu>
-                    {NAV.map(({ to, icon: Icon, label }) => (
+                    {navItems.map(({ to, icon: Icon, label }) => (
                       <SidebarMenuItem key={to}>
                         <SidebarMenuButton asChild isActive={path.startsWith(to)} tooltip={label}>
                           <Link to={to}><Icon className="size-4" /><span>{label}</span></Link>
