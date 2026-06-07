@@ -4,36 +4,32 @@ import { Button } from "@/components/ui/button";
 import { AIReportRenderer } from "@/components/AIReportRenderer";
 import { Send, Loader2, Copy, RotateCcw, Sparkles, TrendingUp, ShieldAlert, Search, Bot, User } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLang } from "@/hooks/use-language";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
-const PROMPT_CHIPS = [
-  { icon: ShieldAlert, label: "Cek portfolio saya" },
-  { icon: User, label: "Jelaskan open position" },
-  { icon: Bot, label: "Kenapa AI Agent tidak buy?" },
-  { icon: Bot, label: "Evaluasi performa AI Agent" },
-  { icon: TrendingUp, label: "Top momentum hari ini" },
-  { icon: Sparkles, label: "Saham undervalue" },
-  { icon: Search, label: "Saham dari screener terbaik" },
-  { icon: ShieldAlert, label: "Cek alert aktif" },
-  { icon: Search, label: "Cek data source" },
-];
-
-const WELCOME_CARDS = [
-  { icon: TrendingUp, title: "Market recommendation", body: "Saham apa yang layak dibeli sekarang?" },
-  { icon: Search, title: "Ticker analysis", body: "Analisis BBCA.JK secara teknikal & fundamental" },
-  { icon: ShieldAlert, title: "Portfolio risk", body: "Cek risiko portfolio saya hari ini" },
-  { icon: Bot, title: "AI Agent diagnosis", body: "Kenapa AI Trade Agent belum membeli apa-apa?" },
-];
-
-const STREAMING_PHASES = [
-  "Analyzing market context…",
-  "Checking news & sentiment…",
-  "Evaluating technical setup…",
-  "Preparing recommendation…",
-];
-
 export function ChatPanel({ system }: { system?: string }) {
+  const { L } = useLang();
+  const T = L.body.chat;
+  const promptChips = useMemo(() => ([
+    { icon: ShieldAlert, label: T.chips.checkPortfolio },
+    { icon: User, label: T.chips.explainOpenPos },
+    { icon: Bot, label: T.chips.whyNotBuy },
+    { icon: Bot, label: T.chips.evalAgent },
+    { icon: TrendingUp, label: T.chips.topMomentum },
+    { icon: Sparkles, label: T.chips.undervalued },
+    { icon: Search, label: T.chips.bestScreener },
+    { icon: ShieldAlert, label: T.chips.activeAlerts },
+    { icon: Search, label: T.chips.dataSource },
+  ]), [T]);
+  const welcomeCards = useMemo(() => ([
+    { icon: TrendingUp, title: T.cards.marketRec.title, body: T.cards.marketRec.body },
+    { icon: Search, title: T.cards.tickerAnalysis.title, body: T.cards.tickerAnalysis.body },
+    { icon: ShieldAlert, title: T.cards.portfolioRisk.title, body: T.cards.portfolioRisk.body },
+    { icon: Bot, title: T.cards.agentDiag.title, body: T.cards.agentDiag.body },
+  ]), [T]);
+  const phases = T.phases as readonly string[];
+
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -47,9 +43,9 @@ export function ChatPanel({ system }: { system?: string }) {
   useEffect(() => {
     if (!busy) return;
     setPhaseIdx(0);
-    const t = setInterval(() => setPhaseIdx(i => (i + 1) % STREAMING_PHASES.length), 1400);
+    const t = setInterval(() => setPhaseIdx(i => (i + 1) % phases.length), 1400);
     return () => clearInterval(t);
-  }, [busy]);
+  }, [busy, phases.length]);
 
   const lastAssistantStreaming = busy && messages[messages.length - 1]?.role === "assistant" && !messages[messages.length - 1]?.content;
 
@@ -70,7 +66,7 @@ export function ChatPanel({ system }: { system?: string }) {
       });
       if (!resp.ok || !resp.body) {
         const j = await resp.json().catch(() => ({} as any));
-        toast.error(j.error ?? "Chat failed");
+        toast.error(j.error ?? T.chatFailed);
         setBusy(false);
         return;
       }
@@ -101,7 +97,7 @@ export function ChatPanel({ system }: { system?: string }) {
         }
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Network error");
+      toast.error(e instanceof Error ? e.message : T.networkError);
     } finally {
       setBusy(false);
     }
@@ -119,8 +115,8 @@ export function ChatPanel({ system }: { system?: string }) {
   };
 
   const copy = async (txt: string) => {
-    try { await navigator.clipboard.writeText(txt); toast.success("Copied"); }
-    catch { toast.error("Copy failed"); }
+    try { await navigator.clipboard.writeText(txt); toast.success(T.copyOk); }
+    catch { toast.error(T.copyFail); }
   };
 
   const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -134,13 +130,13 @@ export function ChatPanel({ system }: { system?: string }) {
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 sm:px-6 py-5">
         <div className="mx-auto max-w-[1100px] space-y-5">
-          {showWelcome && <WelcomeState onPick={(t) => void sendText(t)} />}
+          {showWelcome && <WelcomeState cards={welcomeCards} title={T.welcomeTitle} desc={T.welcomeDesc} badge={T.welcomeBadge} onPick={(t) => void sendText(t)} />}
 
           {messages.map((m, i) => (
             <MessageRow key={i} message={m} onCopy={() => copy(m.content)} onRegenerate={i === messages.length - 1 && m.role === "assistant" && !busy ? regenerate : undefined} streaming={busy && i === messages.length - 1 && m.role === "assistant"} />
           ))}
 
-          {lastAssistantStreaming && <TypingIndicator phase={STREAMING_PHASES[phaseIdx]} />}
+          {lastAssistantStreaming && <TypingIndicator phase={phases[phaseIdx]} />}
           <div ref={endRef} />
         </div>
       </div>
@@ -150,7 +146,7 @@ export function ChatPanel({ system }: { system?: string }) {
         <div className="mx-auto max-w-[1100px] space-y-2.5">
           {/* Prompt chips */}
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-thin">
-            {PROMPT_CHIPS.map((p) => (
+            {promptChips.map((p) => (
               <button
                 key={p.label}
                 onClick={() => void sendText(p.label)}
@@ -170,7 +166,7 @@ export function ChatPanel({ system }: { system?: string }) {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKey}
               rows={1}
-              placeholder="Tanya AI: saham apa yang layak dibeli, risiko portfolio, atau analisis ticker…"
+              placeholder={T.placeholder}
               disabled={busy}
               className="flex-1 resize-none bg-transparent text-sm placeholder:text-muted-foreground/70 focus:outline-none max-h-32 py-1.5"
             />
@@ -184,8 +180,8 @@ export function ChatPanel({ system }: { system?: string }) {
             </Button>
           </div>
           <div className="text-[10.5px] text-muted-foreground/70 px-1 flex items-center justify-between">
-            <span>Enter to send · Shift+Enter for newline</span>
-            <span className="italic">Analisis untuk simulasi & riset — keputusan investasi tetap perlu validasi mandiri.</span>
+            <span>{T.enterHint}</span>
+            <span className="italic">{T.disclaimer}</span>
           </div>
         </div>
       </div>
@@ -265,20 +261,19 @@ function TypingIndicator({ phase }: { phase: string }) {
   );
 }
 
-function WelcomeState({ onPick }: { onPick: (t: string) => void }) {
+type WelcomeCard = { icon: any; title: string; body: string };
+function WelcomeState({ onPick, cards, title, desc, badge }: { onPick: (t: string) => void; cards: WelcomeCard[]; title: string; desc: string; badge: string }) {
   return (
     <div className="py-6">
       <div className="text-center space-y-2 mb-6">
         <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[11px] text-primary uppercase tracking-wider">
-          <Sparkles className="h-3 w-3" /> AI Trading Analyst
+          <Sparkles className="h-3 w-3" /> {badge}
         </div>
-        <h2 className="text-xl font-semibold">Siap membantu membaca market.</h2>
-        <p className="text-sm text-muted-foreground max-w-md mx-auto">
-          Tanya seputar rekomendasi saham, analisis ticker, atau diagnosis AI Trade Agent. Jawaban grounded di live market context.
-        </p>
+        <h2 className="text-xl font-semibold">{title}</h2>
+        <p className="text-sm text-muted-foreground max-w-md mx-auto">{desc}</p>
       </div>
       <div className="grid sm:grid-cols-2 gap-2.5 max-w-2xl mx-auto">
-        {WELCOME_CARDS.map((c) => (
+        {cards.map((c) => (
           <button
             key={c.title}
             onClick={() => onPick(c.body)}
