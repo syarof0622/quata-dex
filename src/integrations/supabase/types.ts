@@ -1295,6 +1295,36 @@ export type Database = {
         }
         Relationships: []
       }
+      app_settings: {
+        Row: {
+          default_ai_agent_mode: string
+          default_currency: string
+          default_language: string
+          default_starting_balance: number
+          id: boolean
+          registration_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          default_ai_agent_mode?: string
+          default_currency?: string
+          default_language?: string
+          default_starting_balance?: number
+          id?: boolean
+          registration_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          default_ai_agent_mode?: string
+          default_currency?: string
+          default_language?: string
+          default_starting_balance?: number
+          id?: boolean
+          registration_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       backtests: {
         Row: {
           drift_score: number | null
@@ -3301,25 +3331,46 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           created_at: string
           demo_mode: boolean
           display_name: string | null
+          email: string | null
+          full_name: string | null
           id: string
+          must_change_password: boolean
           onboarding_completed: boolean
+          status: string
+          updated_at: string
+          username: string | null
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string
           demo_mode?: boolean
           display_name?: string | null
+          email?: string | null
+          full_name?: string | null
           id: string
+          must_change_password?: boolean
           onboarding_completed?: boolean
+          status?: string
+          updated_at?: string
+          username?: string | null
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string
           demo_mode?: boolean
           display_name?: string | null
+          email?: string | null
+          full_name?: string | null
           id?: string
+          must_change_password?: boolean
           onboarding_completed?: boolean
+          status?: string
+          updated_at?: string
+          username?: string | null
         }
         Relationships: []
       }
@@ -4392,6 +4443,33 @@ export type Database = {
           },
         ]
       }
+      user_audit_logs: {
+        Row: {
+          action: string
+          actor_user_id: string | null
+          created_at: string
+          details: Json
+          id: string
+          target_user_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          created_at?: string
+          details?: Json
+          id?: string
+          target_user_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          created_at?: string
+          details?: Json
+          id?: string
+          target_user_id?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -4406,6 +4484,45 @@ export type Database = {
         Update: {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_settings: {
+        Row: {
+          ai_agent_mode: string
+          created_at: string
+          currency: string
+          id: string
+          language: string
+          risk_profile: string
+          theme: string
+          timezone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_agent_mode?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          language?: string
+          risk_profile?: string
+          theme?: string
+          timezone?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_agent_mode?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          language?: string
+          risk_profile?: string
+          theme?: string
+          timezone?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -4559,10 +4676,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_suspended: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "admin" | "user" | "super_admin"
+      app_role: "admin" | "user" | "super_admin" | "suspended"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4690,7 +4816,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user", "super_admin"],
+      app_role: ["admin", "user", "super_admin", "suspended"],
     },
   },
 } as const
