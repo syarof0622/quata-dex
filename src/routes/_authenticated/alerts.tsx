@@ -22,22 +22,6 @@ export const Route = createFileRoute("/_authenticated/alerts")({
 
 type RuleKind = AlertRule["kind"];
 
-const KIND_LABEL: Record<RuleKind, string> = {
-  price_above: "Price above",
-  price_below: "Price below",
-  rsi_above: "RSI(14) above",
-  rsi_below: "RSI(14) below",
-  ema_cross: "EMA cross",
-  volume_spike: "Volume spike (×avg)",
-  breakout: "Breakout (N-day high)",
-  breakdown: "Breakdown (N-day low)",
-  score_above: "AI Signal score above",
-  score_below: "AI Signal score below",
-  setup_long_ready: "Setup: LONG ready to trade",
-  setup_short_ready: "Setup: SHORT ready to trade",
-  pullback_to_support: "Setup: pullback to 20d support (BUY bias)",
-  breakout_confirmed: "Setup: confirmed breakout (BUY + volume)",
-};
 
 function AlertsPage() {
   const { L } = useLang();
