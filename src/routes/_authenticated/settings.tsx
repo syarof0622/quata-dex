@@ -142,29 +142,7 @@ function SettingsPage() {
     }
   }
 
-  async function saveProfile() {
-    setSavingProfile(true);
-    const { error } = await supabase.auth.updateUser({ data: { full_name: displayName } });
-    setSavingProfile(false);
-    if (error) toast.error(error.message);
-    else toast.success("Profile saved");
-  }
 
-  async function changePassword() {
-    if (pwd.length < 8) return toast.error("Password must be ≥ 8 characters");
-    if (pwd !== pwd2) return toast.error("Passwords do not match");
-    const { error } = await supabase.auth.updateUser({ password: pwd });
-    if (error) toast.error(error.message);
-    else { toast.success("Password updated"); setPwd(""); setPwd2(""); }
-  }
-
-  async function requestDesktopPerm(v: boolean) {
-    update("notifyDesktop", v);
-    if (v && typeof Notification !== "undefined" && Notification.permission !== "granted") {
-      const p = await Notification.requestPermission();
-      if (p !== "granted") { update("notifyDesktop", false); toast.error("Notification permission denied"); }
-    }
-  }
 
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-4xl">
