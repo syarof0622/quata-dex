@@ -1071,7 +1071,7 @@ export async function runAgentOnce(agentId: string): Promise<{ decisions: AgentD
 
   // Circuit breaker: trip risk pause if daily-loss / drawdown / loss-streak hit.
   try {
-    const { evaluateCircuitBreaker } = await import("./risk-engine");
+    const { evaluateCircuitBreaker } = await import("./risk-engine.server");
     const cb = await evaluateCircuitBreaker(agent.id);
     if (cb.paused) (metrics as any).riskPause = { reason: cb.reason, until: cb.untilISO };
   } catch { /* tolerate */ }
