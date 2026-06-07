@@ -46,7 +46,7 @@ export function FloatingAIChat() {
         body: JSON.stringify({ messages: next }),
       });
       if (!resp.ok || !resp.body) {
-        toast.error("Chat gagal");
+        toast.error(L.chat.failed);
         setBusy(false);
         return;
       }
@@ -77,7 +77,7 @@ export function FloatingAIChat() {
         }
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Network error");
+      toast.error(e instanceof Error ? e.message : L.chat.networkError);
     } finally {
       setBusy(false);
     }
