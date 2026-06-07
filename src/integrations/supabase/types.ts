@@ -2649,36 +2649,107 @@ export type Database = {
       }
       paper_accounts: {
         Row: {
+          account_name: string
           cash: number
           created_at: string
           currency: string
           equity: number
           id: string
           initial_balance: number | null
+          is_default: boolean
+          realized_pnl: number
           reset_at: string | null
+          starting_balance: number
+          status: string
+          unrealized_pnl: number
+          updated_at: string
           user_id: string
         }
         Insert: {
+          account_name?: string
           cash?: number
           created_at?: string
           currency?: string
           equity?: number
           id?: string
           initial_balance?: number | null
+          is_default?: boolean
+          realized_pnl?: number
           reset_at?: string | null
+          starting_balance?: number
+          status?: string
+          unrealized_pnl?: number
+          updated_at?: string
           user_id: string
         }
         Update: {
+          account_name?: string
           cash?: number
           created_at?: string
           currency?: string
           equity?: number
           id?: string
           initial_balance?: number | null
+          is_default?: boolean
+          realized_pnl?: number
           reset_at?: string | null
+          starting_balance?: number
+          status?: string
+          unrealized_pnl?: number
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
+      }
+      paper_balance_events: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          event_type: string
+          id: string
+          new_balance: number | null
+          new_equity: number | null
+          old_balance: number | null
+          old_equity: number | null
+          paper_account_id: string | null
+          reason: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          event_type: string
+          id?: string
+          new_balance?: number | null
+          new_equity?: number | null
+          old_balance?: number | null
+          old_equity?: number | null
+          paper_account_id?: string | null
+          reason?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          event_type?: string
+          id?: string
+          new_balance?: number | null
+          new_equity?: number | null
+          old_balance?: number | null
+          old_equity?: number | null
+          paper_account_id?: string | null
+          reason?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paper_balance_events_paper_account_id_fkey"
+            columns: ["paper_account_id"]
+            isOneToOne: false
+            referencedRelation: "paper_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       paper_orders: {
         Row: {
@@ -4439,6 +4510,116 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "paper_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_ai_settings: {
+        Row: {
+          agent_mode: string
+          ai_enabled: boolean
+          allocation_mode: string
+          allow_average_down: boolean
+          allow_pyramiding: boolean
+          created_at: string
+          id: string
+          max_active_positions: number
+          max_exposure_pct: number
+          max_holding_days: number
+          max_new_entries_per_day: number
+          max_position_weight_pct: number
+          max_trades_per_day: number
+          max_trades_per_symbol_per_week: number
+          min_position_weight_pct: number
+          min_risk_reward: number
+          min_trade_quality_score: number
+          paper_account_id: string | null
+          preferred_holding_days_max: number
+          preferred_holding_days_min: number
+          risk_per_trade_pct: number
+          risk_profile: string
+          target_exposure_pct: number
+          updated_at: string
+          use_partial_take_profit: boolean
+          use_recovery_mode: boolean
+          use_strategy_kill_switch: boolean
+          use_swing_max: boolean
+          use_symbol_cooldown: boolean
+          use_trailing_stop: boolean
+          user_id: string
+        }
+        Insert: {
+          agent_mode?: string
+          ai_enabled?: boolean
+          allocation_mode?: string
+          allow_average_down?: boolean
+          allow_pyramiding?: boolean
+          created_at?: string
+          id?: string
+          max_active_positions?: number
+          max_exposure_pct?: number
+          max_holding_days?: number
+          max_new_entries_per_day?: number
+          max_position_weight_pct?: number
+          max_trades_per_day?: number
+          max_trades_per_symbol_per_week?: number
+          min_position_weight_pct?: number
+          min_risk_reward?: number
+          min_trade_quality_score?: number
+          paper_account_id?: string | null
+          preferred_holding_days_max?: number
+          preferred_holding_days_min?: number
+          risk_per_trade_pct?: number
+          risk_profile?: string
+          target_exposure_pct?: number
+          updated_at?: string
+          use_partial_take_profit?: boolean
+          use_recovery_mode?: boolean
+          use_strategy_kill_switch?: boolean
+          use_swing_max?: boolean
+          use_symbol_cooldown?: boolean
+          use_trailing_stop?: boolean
+          user_id: string
+        }
+        Update: {
+          agent_mode?: string
+          ai_enabled?: boolean
+          allocation_mode?: string
+          allow_average_down?: boolean
+          allow_pyramiding?: boolean
+          created_at?: string
+          id?: string
+          max_active_positions?: number
+          max_exposure_pct?: number
+          max_holding_days?: number
+          max_new_entries_per_day?: number
+          max_position_weight_pct?: number
+          max_trades_per_day?: number
+          max_trades_per_symbol_per_week?: number
+          min_position_weight_pct?: number
+          min_risk_reward?: number
+          min_trade_quality_score?: number
+          paper_account_id?: string | null
+          preferred_holding_days_max?: number
+          preferred_holding_days_min?: number
+          risk_per_trade_pct?: number
+          risk_profile?: string
+          target_exposure_pct?: number
+          updated_at?: string
+          use_partial_take_profit?: boolean
+          use_recovery_mode?: boolean
+          use_strategy_kill_switch?: boolean
+          use_swing_max?: boolean
+          use_symbol_cooldown?: boolean
+          use_trailing_stop?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_ai_settings_paper_account_id_fkey"
+            columns: ["paper_account_id"]
+            isOneToOne: false
+            referencedRelation: "paper_accounts"
             referencedColumns: ["id"]
           },
         ]
