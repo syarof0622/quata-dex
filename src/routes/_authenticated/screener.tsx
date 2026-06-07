@@ -440,11 +440,11 @@ function UndervaluedPanel() {
 
 function NumPair({ label, min, max, setMin, setMax }: { label: string; min: number; max: number; setMin: (v: number) => void; setMax: (v: number) => void }) {
   return (
-    <div>
+    <div className="min-w-0">
       <label className="text-xs text-muted-foreground">{label}</label>
-      <div className="flex gap-1">
-        <Input type="number" value={min} onChange={e => setMin(parseFloat(e.target.value || "0"))} />
-        <Input type="number" value={max} onChange={e => setMax(parseFloat(e.target.value || "0"))} />
+      <div className="grid min-w-0 grid-cols-2 gap-1">
+        <Input className="min-w-0" type="number" value={min} onChange={e => setMin(parseFloat(e.target.value || "0"))} />
+        <Input className="min-w-0" type="number" value={max} onChange={e => setMax(parseFloat(e.target.value || "0"))} />
       </div>
     </div>
   );
