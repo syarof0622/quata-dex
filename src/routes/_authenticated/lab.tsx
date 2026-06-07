@@ -88,10 +88,10 @@ function Lab() {
 
       
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-        <div className="panel p-4"><div className="text-xs text-muted-foreground">Saldo Tersedia</div><div className="font-mono text-xl md:text-2xl">{fmtMoney(cash)}</div></div>
-        <div className="panel p-4"><div className="text-xs text-muted-foreground">Equity Total</div><div className="font-mono text-xl md:text-2xl">{fmtMoney(equity)}</div></div>
-        <div className="panel p-4"><div className="text-xs text-muted-foreground">Unrealized P/L</div><div className={`font-mono text-xl md:text-2xl ${colorForChange(pnl.unrealized)}`}>{fmtMoney(pnl.unrealized)}</div></div>
-        <div className="panel p-4"><div className="text-xs text-muted-foreground">Posisi</div><div className="font-mono text-xl md:text-2xl">{positions.length}</div></div>
+        <div className="panel p-4"><div className="text-xs text-muted-foreground">{L.body.lab.cashAvailable}</div><div className="font-mono text-xl md:text-2xl">{fmtMoney(cash)}</div></div>
+        <div className="panel p-4"><div className="text-xs text-muted-foreground">{L.body.lab.equityTotal}</div><div className="font-mono text-xl md:text-2xl">{fmtMoney(equity)}</div></div>
+        <div className="panel p-4"><div className="text-xs text-muted-foreground">{L.body.lab.unrealizedPL}</div><div className={`font-mono text-xl md:text-2xl ${colorForChange(pnl.unrealized)}`}>{fmtMoney(pnl.unrealized)}</div></div>
+        <div className="panel p-4"><div className="text-xs text-muted-foreground">{L.body.lab.positions}</div><div className="font-mono text-xl md:text-2xl">{positions.length}</div></div>
       </div>
       {(() => {
         const realizedGain = (orders as any[]).reduce((s, o) => s + Math.max(0, Number(o.realized_pnl ?? 0)), 0);
@@ -99,11 +99,11 @@ function Lab() {
         const realizedNet = realizedGain + realizedLoss;
         return (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-            <div className="panel p-4"><div className="text-xs text-muted-foreground">Keuntungan Terealisasi</div><div className="font-mono text-xl md:text-2xl text-emerald-400">{fmtMoney(realizedGain)}</div></div>
-            <div className="panel p-4"><div className="text-xs text-muted-foreground">Kerugian Terealisasi</div><div className="font-mono text-xl md:text-2xl text-rose-400">{fmtMoney(realizedLoss)}</div></div>
-            <div className="panel p-4"><div className="text-xs text-muted-foreground">Net Terealisasi</div><div className={`font-mono text-xl md:text-2xl ${colorForChange(realizedNet)}`}>{fmtMoney(realizedNet)}</div></div>
-            <div className="panel p-4"><div className="text-xs text-muted-foreground">Order Terisi</div><div className="font-mono text-xl md:text-2xl">{orders.length}</div></div>
-            <div className="panel p-4"><div className="text-xs text-muted-foreground">Tertunda</div><div className="font-mono text-xl md:text-2xl">{pending.length}</div></div>
+            <div className="panel p-4"><div className="text-xs text-muted-foreground">{L.body.lab.realizedGain}</div><div className="font-mono text-xl md:text-2xl text-emerald-400">{fmtMoney(realizedGain)}</div></div>
+            <div className="panel p-4"><div className="text-xs text-muted-foreground">{L.body.lab.realizedLoss}</div><div className="font-mono text-xl md:text-2xl text-rose-400">{fmtMoney(realizedLoss)}</div></div>
+            <div className="panel p-4"><div className="text-xs text-muted-foreground">{L.body.lab.realizedNet}</div><div className={`font-mono text-xl md:text-2xl ${colorForChange(realizedNet)}`}>{fmtMoney(realizedNet)}</div></div>
+            <div className="panel p-4"><div className="text-xs text-muted-foreground">{L.body.lab.ordersFilled}</div><div className="font-mono text-xl md:text-2xl">{orders.length}</div></div>
+            <div className="panel p-4"><div className="text-xs text-muted-foreground">{L.body.lab.pending}</div><div className="font-mono text-xl md:text-2xl">{pending.length}</div></div>
           </div>
         );
       })()}
