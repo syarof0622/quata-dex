@@ -325,7 +325,7 @@ function SettingsPage() {
         {/* DATA */}
         <TabsContent value="data" className="space-y-3 mt-3">
           <div className="panel p-4 space-y-2">
-            <h3 className="font-semibold">Data sources</h3>
+            <h3 className="font-semibold">{S.dataSources}</h3>
             <ul className="text-sm text-muted-foreground space-y-1">
               <li>• Quotes & candles · <span className="text-foreground">Yahoo Finance</span> (cached 8–30s)</li>
               <li>• Charts · <span className="text-foreground">TradingView</span> embed widget</li>
@@ -334,7 +334,7 @@ function SettingsPage() {
             </ul>
           </div>
           <div className="panel p-4 space-y-2">
-            <h3 className="font-semibold">User ID</h3>
+            <h3 className="font-semibold">{S.userId}</h3>
             <code className="text-xs font-mono break-all bg-accent/40 p-2 rounded block">{user?.id}</code>
           </div>
         </TabsContent>
