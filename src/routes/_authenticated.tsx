@@ -20,10 +20,11 @@ export const Route = createFileRoute("/_authenticated")({
 
 function AuthedLayoutGate() {
   const { loading, isAuthenticated, profile } = useAuth();
+  const { L } = useLang();
   const nav = useNavigate();
   const path = useRouterState({ select: s => s.location.pathname });
   if (loading) {
-    return <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">Memuat sesi…</div>;
+    return <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">{L.shell.loadingSession}</div>;
   }
   if (!isAuthenticated) {
     if (typeof window !== "undefined") nav({ to: "/auth" });
