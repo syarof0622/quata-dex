@@ -4,17 +4,13 @@ import { Bot, Loader2, Send, Sparkles, X, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AIReportRenderer } from "@/components/AIReportRenderer";
 import { cn } from "@/lib/utils";
+import { useLang } from "@/hooks/use-language";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
-const QUICK_PROMPTS = [
-  "Cek portfolio saya",
-  "Top momentum hari ini",
-  "Saham undervalue",
-  "Kenapa AI Agent tidak buy?",
-];
-
 export function FloatingAIChat() {
+  const { L } = useLang();
+  const QUICK_PROMPTS = L.chat.quickPrompts;
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
