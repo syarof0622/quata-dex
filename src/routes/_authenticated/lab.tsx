@@ -111,14 +111,14 @@ function Lab() {
       <Tabs defaultValue={initialTab}>
         <TabsList className="flex-wrap h-auto no-scrollbar overflow-x-auto max-w-full">
 
-          <TabsTrigger value="positions">Posisi</TabsTrigger>
-          <TabsTrigger value="pending">Order Tertunda</TabsTrigger>
-          <TabsTrigger value="orders">Riwayat Order</TabsTrigger>
-          <TabsTrigger value="journal">Jurnal Trading</TabsTrigger>
-          <TabsTrigger value="backtest">Backtest</TabsTrigger>
-          <TabsTrigger value="coach">AI Coach</TabsTrigger>
-          <TabsTrigger value="agent"><Bot className="size-3 mr-1" />AI Trade Agent</TabsTrigger>
-          <TabsTrigger value="insights"><Sparkles className="size-3 mr-1" />AI Insights</TabsTrigger>
+          <TabsTrigger value="positions">{L.body.lab.tabPositions}</TabsTrigger>
+          <TabsTrigger value="pending">{L.body.lab.tabPending}</TabsTrigger>
+          <TabsTrigger value="orders">{L.body.lab.tabOrders}</TabsTrigger>
+          <TabsTrigger value="journal">{L.body.lab.tabJournal}</TabsTrigger>
+          <TabsTrigger value="backtest">{L.body.lab.tabBacktest}</TabsTrigger>
+          <TabsTrigger value="coach">{L.body.lab.tabCoach}</TabsTrigger>
+          <TabsTrigger value="agent"><Bot className="size-3 mr-1" />{L.body.lab.tabAgent}</TabsTrigger>
+          <TabsTrigger value="insights"><Sparkles className="size-3 mr-1" />{L.body.lab.tabInsights}</TabsTrigger>
         </TabsList>
         <TabsContent value="positions">
           <div className="panel p-2 overflow-x-auto">
