@@ -125,13 +125,13 @@ function Lab() {
             <table className="w-full text-sm min-w-[640px]">
               <thead className="text-xs text-muted-foreground">
                 <tr>
-                  <th className="text-left p-2">Symbol</th>
-                  <th className="text-right p-2">Qty</th>
-                  <th className="text-right p-2">Harga Rata-rata</th>
-                  <th className="text-right p-2">Mark</th>
-                  <th className="text-right p-2">P/L</th>
-                  <th className="text-right p-2">%</th>
-                  <th className="text-right p-2">Dibuka</th>
+                  <th className="text-left p-2">{L.body.lab.thSymbol}</th>
+                  <th className="text-right p-2">{L.body.lab.thQty}</th>
+                  <th className="text-right p-2">{L.body.lab.thAvgPrice}</th>
+                  <th className="text-right p-2">{L.body.lab.thMark}</th>
+                  <th className="text-right p-2">{L.body.lab.thPL}</th>
+                  <th className="text-right p-2">{L.body.lab.thPct}</th>
+                  <th className="text-right p-2">{L.body.lab.thOpened}</th>
                 </tr>
               </thead>
               <tbody>
