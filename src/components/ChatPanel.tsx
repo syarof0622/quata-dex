@@ -130,7 +130,7 @@ export function ChatPanel({ system }: { system?: string }) {
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 sm:px-6 py-5">
         <div className="mx-auto max-w-[1100px] space-y-5">
-          {showWelcome && <WelcomeState onPick={(t) => void sendText(t)} />}
+          {showWelcome && <WelcomeState cards={welcomeCards} title={T.welcomeTitle} desc={T.welcomeDesc} badge={T.welcomeBadge} onPick={(t) => void sendText(t)} />}
 
           {messages.map((m, i) => (
             <MessageRow key={i} message={m} onCopy={() => copy(m.content)} onRegenerate={i === messages.length - 1 && m.role === "assistant" && !busy ? regenerate : undefined} streaming={busy && i === messages.length - 1 && m.role === "assistant"} />
