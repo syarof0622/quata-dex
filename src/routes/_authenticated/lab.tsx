@@ -179,7 +179,7 @@ function Lab() {
                     </td>
                   </tr>
                 ))}
-                {pending.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">Belum ada order tertunda. Tempatkan order limit/stop dari grafik mana saja.</td></tr>}
+                {pending.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">{L.body.lab.emptyPending}</td></tr>}
               </tbody>
             </table>
           </div>
