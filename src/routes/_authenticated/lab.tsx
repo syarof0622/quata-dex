@@ -156,8 +156,8 @@ function Lab() {
             <table className="w-full text-sm">
               <thead className="text-xs text-muted-foreground">
                 <tr>
-                  <th className="text-left p-2">Symbol</th><th className="text-left p-2">Sisi</th><th className="text-left p-2">Jenis</th>
-                  <th className="text-right p-2">Lot</th><th className="text-right p-2">Pemicu</th><th className="text-right p-2">Dibuat</th><th></th>
+                  <th className="text-left p-2">{L.body.lab.thSymbol}</th><th className="text-left p-2">{L.body.lab.thSide}</th><th className="text-left p-2">{L.body.lab.thType}</th>
+                  <th className="text-right p-2">{L.body.lab.thLot}</th><th className="text-right p-2">{L.body.lab.thTrigger}</th><th className="text-right p-2">{L.body.lab.thCreated}</th><th></th>
                 </tr>
               </thead>
               <tbody>
