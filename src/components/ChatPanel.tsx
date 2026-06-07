@@ -115,8 +115,8 @@ export function ChatPanel({ system }: { system?: string }) {
   };
 
   const copy = async (txt: string) => {
-    try { await navigator.clipboard.writeText(txt); toast.success("Copied"); }
-    catch { toast.error("Copy failed"); }
+    try { await navigator.clipboard.writeText(txt); toast.success(T.copyOk); }
+    catch { toast.error(T.copyFail); }
   };
 
   const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
