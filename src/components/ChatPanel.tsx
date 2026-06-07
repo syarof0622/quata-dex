@@ -146,7 +146,7 @@ export function ChatPanel({ system }: { system?: string }) {
         <div className="mx-auto max-w-[1100px] space-y-2.5">
           {/* Prompt chips */}
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-thin">
-            {PROMPT_CHIPS.map((p) => (
+            {promptChips.map((p) => (
               <button
                 key={p.label}
                 onClick={() => void sendText(p.label)}
