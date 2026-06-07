@@ -4,7 +4,7 @@ import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu,
   SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger, SidebarHeader, SidebarFooter,
 } from "@/components/ui/sidebar";
-import { Activity, Bell, Bot, FlaskConical, LayoutDashboard, Newspaper, PieChart, Settings, SlidersHorizontal, Star, TrendingUp, LogOut, Sparkles, HeartPulse } from "lucide-react";
+import { Activity, Bell, Bot, FlaskConical, LayoutDashboard, Newspaper, PieChart, Settings, SlidersHorizontal, Star, TrendingUp, LogOut, Sparkles, HeartPulse, Shield } from "lucide-react";
 import { useRouterState } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { TickerSearch } from "@/components/TickerSearch";
