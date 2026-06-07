@@ -14,8 +14,27 @@ import { FloatingAIChat } from "@/components/FloatingAIChat";
 import { UI_LABELS_ID } from "@/lib/i18n/id";
 
 export const Route = createFileRoute("/_authenticated")({
-  component: AuthedLayout,
+  ssr: false,
+  component: AuthedLayoutGate,
 });
+
+function AuthedLayoutGate() {
+  const { loading, isAuthenticated, profile } = useAuth();
+  const nav = useNavigate();
+  const path = useRouterState({ select: s => s.location.pathname });
+  if (loading) {
+    return <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">Memuat sesi…</div>;
+  }
+  if (!isAuthenticated) {
+    if (typeof window !== "undefined") nav({ to: "/auth" });
+    return null;
+  }
+  if (profile?.must_change_password && path !== "/change-password") {
+    if (typeof window !== "undefined") nav({ to: "/change-password" });
+    return null;
+  }
+  return <AuthedLayout />;
+}
 
 const L = UI_LABELS_ID.nav;
 const NAV = [
