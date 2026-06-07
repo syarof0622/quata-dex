@@ -94,7 +94,7 @@ function AuthedLayout() {
               <SidebarGroup>
                 <SidebarGroupContent>
                   <SidebarMenu>
-                    {NAV.map(({ to, icon: Icon, label }) => (
+                    {navItems.map(({ to, icon: Icon, label }) => (
                       <SidebarMenuItem key={to}>
                         <SidebarMenuButton asChild isActive={path.startsWith(to)} tooltip={label}>
                           <Link to={to}><Icon className="size-4" /><span>{label}</span></Link>
