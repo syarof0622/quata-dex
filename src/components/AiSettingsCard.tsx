@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Bot } from "lucide-react";
 import { toast } from "sonner";
 import { getMyAiSettings, updateMyAiSettings } from "@/lib/ai-settings.functions";
+import { useLang } from "@/hooks/use-language";
 
 const MODES = [
   { v: "conservative", l: "Conservative" },
@@ -30,6 +31,8 @@ const RISK = [
 ];
 
 export function AiSettingsCard() {
+  const { L } = useLang();
+  const T = L.body.aiSettings;
   const qc = useQueryClient();
   const get = useServerFn(getMyAiSettings);
   const upd = useServerFn(updateMyAiSettings);
@@ -40,48 +43,71 @@ export function AiSettingsCard() {
 
   const save = useMutation({
     mutationFn: async (payload: any) => upd({ data: payload }),
-    onSuccess: () => { toast.success("Pengaturan Agen AI disimpan"); qc.invalidateQueries({ queryKey: ["my-ai-settings"] }); },
-    onError: (e: any) => toast.error("Gagal menyimpan", { description: e?.message }),
+    onSuccess: () => { toast.success(T.saveOk); qc.invalidateQueries({ queryKey: ["my-ai-settings"] }); },
+    onError: (e: any) => toast.error(T.saveFail, { description: e?.message }),
   });
 
-  if (isLoading || !form) return <div className="text-sm text-muted-foreground">Memuat pengaturan AI…</div>;
+  if (isLoading || !form) return <div className="text-sm text-muted-foreground">{T.loading}</div>;
 
   function set<K extends string>(k: K, v: any) { setForm((f: any) => ({ ...f, [k]: v })); }
+
+  const numericFields: Array<[string, string, number]> = [
+    ["target_exposure_pct", T.targetExposure, 0.01],
+    ["max_exposure_pct", T.maxExposure, 0.01],
+    ["risk_per_trade_pct", T.riskPerTrade, 0.001],
+    ["max_active_positions", T.maxActivePositions, 1],
+    ["max_trades_per_day", T.maxTradesPerDay, 1],
+    ["max_trades_per_symbol_per_week", T.maxTradesPerSymbolWeek, 1],
+    ["min_trade_quality_score", T.minQualityScore, 1],
+    ["min_risk_reward", T.minRR, 0.1],
+    ["max_holding_days", T.maxHoldingDays, 1],
+  ];
+
+  const toggleFields: Array<[string, string]> = [
+    ["use_swing_max", T.useSwingMax],
+    ["use_recovery_mode", T.useRecovery],
+    ["use_symbol_cooldown", T.useCooldown],
+    ["use_strategy_kill_switch", T.useKillSwitch],
+    ["use_trailing_stop", T.useTrailing],
+    ["use_partial_take_profit", T.usePartialTP],
+    ["allow_pyramiding", T.allowPyramiding],
+    ["allow_average_down", T.allowAvgDown],
+  ];
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2"><Bot className="size-4" /> Pengaturan Agen AI</CardTitle>
+        <CardTitle className="flex items-center gap-2"><Bot className="size-4" /> {T.title}</CardTitle>
         <CardDescription>
-          Konfigurasi Agen AI khusus untuk akun Anda. <Badge variant="outline" className="ml-1">Paper Trading Only</Badge>
+          {T.desc} <Badge variant="outline" className="ml-1">{T.paperOnly}</Badge>
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center justify-between panel p-3">
           <div>
-            <div className="font-medium text-sm">Agen AI Aktif</div>
-            <div className="text-xs text-muted-foreground">Jika dimatikan, agen tidak akan membuat keputusan otomatis untuk akun Anda.</div>
+            <div className="font-medium text-sm">{T.enabled}</div>
+            <div className="text-xs text-muted-foreground">{T.enabledHint}</div>
           </div>
           <Switch checked={!!form.ai_enabled} onCheckedChange={(v) => set("ai_enabled", v)} />
         </div>
 
         <div className="grid sm:grid-cols-3 gap-3">
           <div className="space-y-1.5">
-            <Label>Mode AI</Label>
+            <Label>{T.aiMode}</Label>
             <Select value={form.agent_mode} onValueChange={(v) => set("agent_mode", v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>{MODES.map(m => <SelectItem key={m.v} value={m.v}>{m.l}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label>Mode Alokasi</Label>
+            <Label>{T.allocationMode}</Label>
             <Select value={form.allocation_mode} onValueChange={(v) => set("allocation_mode", v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>{ALLOC.map(m => <SelectItem key={m.v} value={m.v}>{m.l}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label>Profil Risiko</Label>
+            <Label>{T.riskProfile}</Label>
             <Select value={form.risk_profile} onValueChange={(v) => set("risk_profile", v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>{RISK.map(m => <SelectItem key={m.v} value={m.v}>{m.l}</SelectItem>)}</SelectContent>
@@ -90,46 +116,27 @@ export function AiSettingsCard() {
         </div>
 
         <div className="grid sm:grid-cols-3 gap-3">
-          {[
-            ["target_exposure_pct", "Target Eksposur (0-1)", 0.01],
-            ["max_exposure_pct", "Eksposur Maksimal (0-1)", 0.01],
-            ["risk_per_trade_pct", "Risiko per Transaksi (0-1)", 0.001],
-            ["max_active_positions", "Maksimal Posisi Aktif", 1],
-            ["max_trades_per_day", "Maksimal Trade per Hari", 1],
-            ["max_trades_per_symbol_per_week", "Maks Trade per Emiten/Minggu", 1],
-            ["min_trade_quality_score", "Skor Kualitas Minimum", 1],
-            ["min_risk_reward", "Risk/Reward Minimum", 0.1],
-            ["max_holding_days", "Maks Hari Tahan Posisi", 1],
-          ].map(([k, label, step]) => (
-            <div key={k as string} className="space-y-1.5">
-              <Label className="text-xs">{label as string}</Label>
-              <Input type="number" step={step as number}
-                value={form[k as string] ?? ""} onChange={e => set(k as string, Number(e.target.value))} />
+          {numericFields.map(([k, label, step]) => (
+            <div key={k} className="space-y-1.5">
+              <Label className="text-xs">{label}</Label>
+              <Input type="number" step={step}
+                value={form[k] ?? ""} onChange={e => set(k, Number(e.target.value))} />
             </div>
           ))}
         </div>
 
         <div className="grid sm:grid-cols-2 gap-2">
-          {[
-            ["use_swing_max", "Aktifkan Swing Max"],
-            ["use_recovery_mode", "Aktifkan Recovery Mode"],
-            ["use_symbol_cooldown", "Jeda Emiten (Symbol Cooldown)"],
-            ["use_strategy_kill_switch", "Penghenti Strategi Rugi"],
-            ["use_trailing_stop", "Trailing Stop"],
-            ["use_partial_take_profit", "Take Profit Bertahap"],
-            ["allow_pyramiding", "Izinkan Pyramiding (hanya setelah profit)"],
-            ["allow_average_down", "Izinkan Average Down"],
-          ].map(([k, label]) => (
-            <div key={k as string} className="flex items-center justify-between panel p-2.5">
-              <span className="text-xs">{label as string}</span>
-              <Switch checked={!!form[k as string]} onCheckedChange={(v) => set(k as string, v)} />
+          {toggleFields.map(([k, label]) => (
+            <div key={k} className="flex items-center justify-between panel p-2.5">
+              <span className="text-xs">{label}</span>
+              <Switch checked={!!form[k]} onCheckedChange={(v) => set(k, v)} />
             </div>
           ))}
         </div>
 
         <div className="flex justify-end">
           <Button onClick={() => save.mutate(form)} disabled={save.isPending}>
-            {save.isPending && <Loader2 className="size-4 mr-2 animate-spin" />} Simpan Pengaturan
+            {save.isPending && <Loader2 className="size-4 mr-2 animate-spin" />} {T.saveBtn}
           </Button>
         </div>
       </CardContent>
