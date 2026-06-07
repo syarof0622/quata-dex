@@ -200,7 +200,7 @@ function Lab() {
                     <td className="p-2 text-right font-mono">{formatPrice(o.filled_price)}</td>
                   </tr>
                 ))}
-                {orders.length === 0 && <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">Belum ada order.</td></tr>}
+                {orders.length === 0 && <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">{L.body.lab.emptyOrders}</td></tr>}
               </tbody>
             </table>
           </div>
