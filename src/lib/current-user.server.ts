@@ -25,29 +25,28 @@ export function runAsUser<T>(userId: string, fn: () => Promise<T> | T): Promise<
   return als.run({ userId }, fn as () => any) as any;
 }
 
-/** Function middleware: resolve bearer -> user id and stash in ALS for the handler. */
-export const withCurrentUser = createMiddleware({ type: "function" }).server(
-  async ({ next }) => {
-    let userId: string | null = null;
-    try {
-      const request = getRequest();
-      const authHeader = request?.headers.get("authorization");
-      if (authHeader?.startsWith("Bearer ")) {
-        const token = authHeader.slice(7);
-        const { createClient } = await import("@supabase/supabase-js");
-        const url = process.env.SUPABASE_URL;
-        const key = process.env.SUPABASE_PUBLISHABLE_KEY;
-        if (url && key) {
-          const c = createClient(url, key, {
-            auth: { persistSession: false, autoRefreshToken: false },
-          });
-          const { data } = await c.auth.getUser(token);
-          userId = data.user?.id ?? null;
-        }
+/** Internal: resolve bearer -> user id and stash in ALS for the handler. */
+export async function runWithCurrentUser<T>(next: () => Promise<T>): Promise<T> {
+  let userId: string | null = null;
+  try {
+    const request = getRequest();
+    const authHeader = request?.headers.get("authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      const token = authHeader.slice(7);
+      const { createClient } = await import("@supabase/supabase-js");
+      const url = process.env.SUPABASE_URL;
+      const key = process.env.SUPABASE_PUBLISHABLE_KEY;
+      if (url && key) {
+        const c = createClient(url, key, {
+          auth: { persistSession: false, autoRefreshToken: false },
+        });
+        const { data } = await c.auth.getUser(token);
+        userId = data.user?.id ?? null;
       }
-    } catch {
-      userId = null;
     }
-    return als.run({ userId }, () => next() as Promise<any>) as any;
-  },
-);
+  } catch {
+    userId = null;
+  }
+  return als.run({ userId }, () => next()) as Promise<T>;
+}
+
