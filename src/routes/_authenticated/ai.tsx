@@ -8,6 +8,7 @@ import { AutonomousAgentPanel } from "@/components/AutonomousAgentPanel";
 import { getAIContextSummaryServer } from "@/lib/ai-context-summary.server";
 import { Activity, Database, Newspaper, BarChart3, ShieldCheck, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLang } from "@/hooks/use-language";
 
 export const Route = createFileRoute("/_authenticated/ai")({
   head: () => ({ meta: [{ title: "AI Trading Analyst — Quanta Terminal" }] }),
@@ -15,6 +16,8 @@ export const Route = createFileRoute("/_authenticated/ai")({
 });
 
 function AIAnalystPage() {
+  const { L } = useLang();
+  const T = L.tools.ai;
   const fetchSummary = useServerFn(getAIContextSummaryServer);
   const { data: ctx } = useQuery({
     queryKey: ["ai-context-summary"],
@@ -32,22 +35,22 @@ function AIAnalystPage() {
             <Activity className="h-4 w-4 text-primary-foreground" />
           </div>
           <div className="min-w-0">
-            <h1 className="text-[17px] font-semibold leading-tight truncate">AI Trading Analyst</h1>
-            <p className="text-[11.5px] text-muted-foreground truncate">Ask about market, portfolio, risk, or AI Agent decisions.</p>
+            <h1 className="text-[17px] font-semibold leading-tight truncate">{T.title}</h1>
+            <p className="text-[11.5px] text-muted-foreground truncate">{T.subtitleMobile}</p>
           </div>
         </div>
         {/* Compact status chip strip */}
         <div className="mt-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar px-1 pb-1">
-          <Chip tone={ctx?.idxSession.tone ?? "slate"} label={`IDX: ${ctx?.idxSession.label ?? "—"}`} />
-          <Chip tone={ctx?.sentiment.tone ?? "slate"} label={`Sentiment: ${ctx?.sentiment.label ?? "—"}`} />
-          <Chip tone={ctx?.dataQuality.tone ?? "amber"} label={`Data: ${ctx?.dataQuality.label ?? "—"}`} />
-          <Chip tone={ctx?.sourceHealth.tone ?? "slate"} label={`Source: ${ctx?.sourceHealth.label ?? "—"}`} />
-          <Chip tone="amber" label="Paper Only" />
+          <Chip tone={ctx?.idxSession.tone ?? "slate"} label={`${T.idxPrefix}: ${ctx?.idxSession.label ?? "—"}`} />
+          <Chip tone={ctx?.sentiment.tone ?? "slate"} label={`${T.sentimentPrefix}: ${ctx?.sentiment.label ?? "—"}`} />
+          <Chip tone={ctx?.dataQuality.tone ?? "amber"} label={`${T.dataPrefix}: ${ctx?.dataQuality.label ?? "—"}`} />
+          <Chip tone={ctx?.sourceHealth.tone ?? "slate"} label={`${T.sourcePrefix}: ${ctx?.sourceHealth.label ?? "—"}`} />
+          <Chip tone="amber" label={T.paperOnly} />
         </div>
         <details className="mt-2 rounded-xl border border-border/60 bg-card/40 px-3 py-2">
           <summary className="cursor-pointer list-none text-[11.5px] uppercase tracking-wider text-muted-foreground flex items-center justify-between">
-            <span>View AI Context</span>
-            <span className="text-primary text-[11px]">tap to expand</span>
+            <span>{T.viewContext}</span>
+            <span className="text-primary text-[11px]">{T.tapToExpand}</span>
           </summary>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {(ctx?.badges ?? []).map(b => {
@@ -72,34 +75,34 @@ function AIAnalystPage() {
               <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-md">
                 <Activity className="h-4 w-4 text-primary-foreground" />
               </div>
-              <h1 className="text-xl sm:text-2xl font-semibold">AI Trading Analyst</h1>
+              <h1 className="text-xl sm:text-2xl font-semibold">{T.title}</h1>
             </div>
             <p className="text-sm text-muted-foreground max-w-2xl">
-              Real-time market assistant grounded in live price, news, sentiment, technicals, and paper trading context.
+              {T.subtitleDesktop}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
-            <CapBadge icon={Database} label="Real Market Data" tone="emerald" />
-            <CapBadge icon={Newspaper} label="Sentiment" tone="teal" />
-            <CapBadge icon={BarChart3} label="Technical" tone="sky" />
-            <CapBadge icon={ShieldCheck} label="Paper Trading Only" tone="amber" />
-            <CapBadge icon={Clock} label={`Last update: ${ctx?.lastUpdateLabel ?? "—"}`} tone="slate" />
+            <CapBadge icon={Database} label={T.capRealData} tone="emerald" />
+            <CapBadge icon={Newspaper} label={T.capSentiment} tone="teal" />
+            <CapBadge icon={BarChart3} label={T.capTechnical} tone="sky" />
+            <CapBadge icon={ShieldCheck} label={T.capPaperOnly} tone="amber" />
+            <CapBadge icon={Clock} label={T.lastUpdate.replace("{t}", ctx?.lastUpdateLabel ?? "—")} tone="slate" />
           </div>
         </div>
       </div>
 
       {/* Desktop market context bar */}
       <div className="hidden md:grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-        <ContextCard title="IDX Session" value={ctx?.idxSession.label ?? "—"} tone={ctx?.idxSession.tone ?? "slate"} />
-        <ContextCard title="IHSG Bias" value={ctx?.ihsgBias.label ?? "PARTIAL DATA"} tone={ctx?.ihsgBias.tone ?? "slate"} />
-        <ContextCard title="Sentiment" value={ctx?.sentiment.label ?? "PARTIAL DATA"} tone={ctx?.sentiment.tone ?? "slate"} />
-        <ContextCard title="Data Quality" value={ctx?.dataQuality.label ?? "PARTIAL"} tone={ctx?.dataQuality.tone ?? "amber"} />
-        <ContextCard title="Source Health" value={ctx?.sourceHealth.label ?? "Unknown"} tone={ctx?.sourceHealth.tone ?? "slate"} subtext={ctx?.sourceHealth.subtext} />
+        <ContextCard title={T.idxSession} value={ctx?.idxSession.label ?? "—"} tone={ctx?.idxSession.tone ?? "slate"} />
+        <ContextCard title={T.ihsgBias} value={ctx?.ihsgBias.label ?? T.partialData} tone={ctx?.ihsgBias.tone ?? "slate"} />
+        <ContextCard title={T.sentiment} value={ctx?.sentiment.label ?? T.partialData} tone={ctx?.sentiment.tone ?? "slate"} />
+        <ContextCard title={T.dataQuality} value={ctx?.dataQuality.label ?? T.partial} tone={ctx?.dataQuality.tone ?? "amber"} />
+        <ContextCard title={T.sourceHealth} value={ctx?.sourceHealth.label ?? T.unknown} tone={ctx?.sourceHealth.tone ?? "slate"} subtext={ctx?.sourceHealth.subtext} />
       </div>
 
       {/* Desktop App Context status */}
       <div className="hidden md:block rounded-xl border border-border/60 bg-card/40 px-3 py-2">
-        <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">AI App Context (read-only)</div>
+        <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">{T.appContextRO}</div>
         <div className="flex flex-wrap gap-1.5">
           {(ctx?.badges ?? []).map(b => {
             const cls = TONE_BADGE[b.tone] ?? TONE_BADGE.slate;
@@ -123,7 +126,7 @@ function AIAnalystPage() {
       <ChatPanel />
       {/* Risk + replay collapsed on mobile to keep AI chat as the focus. */}
       <details className="md:hidden rounded-xl border border-border/60 bg-card/40">
-        <summary className="cursor-pointer list-none px-3 py-2 text-[12px] font-medium text-muted-foreground">Decision Replay & Risk Engine</summary>
+        <summary className="cursor-pointer list-none px-3 py-2 text-[12px] font-medium text-muted-foreground">{T.replayAndRisk}</summary>
         <div className="p-2 space-y-3">
           <DecisionReplayPanel defaultOpen={false} />
           <RiskEnginePanel />

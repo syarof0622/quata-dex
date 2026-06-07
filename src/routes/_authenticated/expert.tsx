@@ -30,9 +30,9 @@ function ExpertPage() {
 
       <Tabs defaultValue="mtf">
         <TabsList>
-          <TabsTrigger value="mtf"><Layers className="size-4 mr-1" /> Multi-Timeframe</TabsTrigger>
-          <TabsTrigger value="size"><Calculator className="size-4 mr-1" /> Position Sizer</TabsTrigger>
-          <TabsTrigger value="corr"><Network className="size-4 mr-1" /> Correlation</TabsTrigger>
+          <TabsTrigger value="mtf"><Layers className="size-4 mr-1" /> {L.tools.expert.tabMtf}</TabsTrigger>
+          <TabsTrigger value="size"><Calculator className="size-4 mr-1" /> {L.tools.expert.tabSizer}</TabsTrigger>
+          <TabsTrigger value="corr"><Network className="size-4 mr-1" /> {L.tools.expert.tabCorr}</TabsTrigger>
         </TabsList>
         <TabsContent value="mtf"><MTF /></TabsContent>
         <TabsContent value="size"><Sizer /></TabsContent>
@@ -43,22 +43,23 @@ function ExpertPage() {
 }
 
 function MTF() {
+  const { L } = useLang();
   const [s, setS] = useState("AAPL");
   const q = useQuery({ queryKey: ["mtf", s], queryFn: () => multiTimeframeSignal({ data: { symbol: s.toUpperCase() } }) });
   return (
     <div className="space-y-3">
       <div className="panel p-4 flex gap-2 items-end">
         <div className="flex-1">
-          <label className="text-xs text-muted-foreground">Symbol — type to search</label>
+          <label className="text-xs text-muted-foreground">{L.tools.expert.symbolSearch}</label>
           <TickerSearch initialValue={s} placeholder="AAPL, NVDA, BBCA.JK…" onPick={(sym) => setS(sym)} />
         </div>
-        <Button onClick={() => q.refetch()} disabled={q.isFetching}>{q.isFetching ? "Computing…" : "Analyze"}</Button>
+        <Button onClick={() => q.refetch()} disabled={q.isFetching}>{q.isFetching ? L.tools.expert.computing : L.tools.expert.analyze}</Button>
       </div>
       {q.data && (
         <div className="panel p-4">
           <div className="flex items-center gap-3 flex-wrap">
             <span className={`text-xl font-semibold ${q.data.composite >= 25 ? "text-bull" : q.data.composite <= -25 ? "text-bear" : "text-muted-foreground"}`}>{q.data.label}</span>
-            <span className="text-xs text-muted-foreground">composite {q.data.composite}</span>
+            <span className="text-xs text-muted-foreground">{L.tools.expert.composite} {q.data.composite}</span>
             {q.data.alignmentLabel && (
               <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded ${
                 q.data.alignmentTone === "bull" ? "bg-bull-soft text-bull" :
@@ -72,7 +73,7 @@ function MTF() {
             <p className="mt-2 text-xs text-muted-foreground">{q.data.recommendation}</p>
           )}
           <table className="w-full text-sm mt-3">
-            <thead className="text-xs text-muted-foreground"><tr><th className="text-left p-2">Timeframe</th><th className="text-left p-2">Label</th><th className="text-right p-2">Score</th><th className="text-right p-2">Confidence</th></tr></thead>
+            <thead className="text-xs text-muted-foreground"><tr><th className="text-left p-2">{L.tools.expert.thTimeframe}</th><th className="text-left p-2">{L.tools.expert.thLabel}</th><th className="text-right p-2">{L.tools.expert.thScore}</th><th className="text-right p-2">{L.tools.expert.thConfidence}</th></tr></thead>
             <tbody>
               {q.data.byTimeframe.map((r: any) => (
                 <tr key={r.tf} className="border-t border-border">
@@ -91,6 +92,7 @@ function MTF() {
 }
 
 function Sizer() {
+  const { L } = useLang();
   const [symbol, setSymbol] = useState("AAPL");
   const [account, setAccount] = useState("100000");
   const [risk, setRisk] = useState("1");
@@ -101,26 +103,26 @@ function Sizer() {
   return (
     <div className="space-y-3">
       <div className="panel p-4 grid md:grid-cols-5 gap-2 items-end">
-        <div className="md:col-span-1"><label className="text-xs text-muted-foreground">Symbol — search</label><TickerSearch initialValue={symbol} placeholder="AAPL…" onPick={(sym) => setSymbol(sym)} /></div>
-        <div><label className="text-xs text-muted-foreground">Account $</label><Input value={account} onChange={e => setAccount(e.target.value)} /></div>
-        <div><label className="text-xs text-muted-foreground">Risk %</label><Input value={risk} onChange={e => setRisk(e.target.value)} /></div>
-        <div><label className="text-xs text-muted-foreground">Entry (optional)</label><Input value={entry} onChange={e => setEntry(e.target.value)} placeholder="last close" /></div>
-        <Button onClick={() => m.mutate()} disabled={m.isPending}>{m.isPending ? "…" : "Calculate"}</Button>
+        <div className="md:col-span-1"><label className="text-xs text-muted-foreground">{L.tools.expert.symbolSearchShort}</label><TickerSearch initialValue={symbol} placeholder="AAPL…" onPick={(sym) => setSymbol(sym)} /></div>
+        <div><label className="text-xs text-muted-foreground">{L.tools.expert.account}</label><Input value={account} onChange={e => setAccount(e.target.value)} /></div>
+        <div><label className="text-xs text-muted-foreground">{L.tools.expert.riskPct}</label><Input value={risk} onChange={e => setRisk(e.target.value)} /></div>
+        <div><label className="text-xs text-muted-foreground">{L.tools.expert.entryOptional}</label><Input value={entry} onChange={e => setEntry(e.target.value)} placeholder={L.tools.expert.entryPh} /></div>
+        <Button onClick={() => m.mutate()} disabled={m.isPending}>{m.isPending ? "…" : L.tools.expert.calculate}</Button>
       </div>
       {m.data && (
         <div className="grid md:grid-cols-4 gap-2">
-          <Stat label="Entry" value={formatPrice(m.data.entry)} />
-          <Stat label="ATR(14)" value={m.data.atr.toFixed(2)} />
-          <Stat label="Stop (long)" value={formatPrice(m.data.suggestedStopLong)} tone="bear" />
-          <Stat label="Stop (short)" value={formatPrice(m.data.suggestedStopShort)} tone="bear" />
-          <Stat label="Target 1 (2× ATR)" value={formatPrice(m.data.target1)} tone="bull" />
-          <Stat label="Target 2 (3.5× ATR)" value={formatPrice(m.data.target2)} tone="bull" />
-          <Stat label="Risk $" value={"$" + m.data.riskDollar.toFixed(0)} />
-          <Stat label="Risk / share" value={"$" + m.data.perShareRisk.toFixed(2)} />
-          <Stat label="Position size" value={m.data.shares + " sh"} />
-          <Stat label="Notional" value={"$" + m.data.notional.toFixed(0)} />
-          <Stat label="R:R to T1" value={m.data.rr1.toFixed(2) + "R"} />
-          <Stat label="R:R to T2" value={m.data.rr2.toFixed(2) + "R"} />
+          <Stat label={L.tools.expert.statEntry} value={formatPrice(m.data.entry)} />
+          <Stat label={L.tools.expert.statAtr} value={m.data.atr.toFixed(2)} />
+          <Stat label={L.tools.expert.statStopLong} value={formatPrice(m.data.suggestedStopLong)} tone="bear" />
+          <Stat label={L.tools.expert.statStopShort} value={formatPrice(m.data.suggestedStopShort)} tone="bear" />
+          <Stat label={L.tools.expert.statT1} value={formatPrice(m.data.target1)} tone="bull" />
+          <Stat label={L.tools.expert.statT2} value={formatPrice(m.data.target2)} tone="bull" />
+          <Stat label={L.tools.expert.statRiskDollar} value={"$" + m.data.riskDollar.toFixed(0)} />
+          <Stat label={L.tools.expert.statPerShare} value={"$" + m.data.perShareRisk.toFixed(2)} />
+          <Stat label={L.tools.expert.statShares} value={m.data.shares + " sh"} />
+          <Stat label={L.tools.expert.statNotional} value={"$" + m.data.notional.toFixed(0)} />
+          <Stat label={L.tools.expert.statRR1} value={m.data.rr1.toFixed(2) + "R"} />
+          <Stat label={L.tools.expert.statRR2} value={m.data.rr2.toFixed(2) + "R"} />
         </div>
       )}
     </div>
@@ -137,6 +139,7 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: "bu
 }
 
 function Corr() {
+  const { L } = useLang();
   const [raw, setRaw] = useState("AAPL,MSFT,NVDA,TSLA,SPY,QQQ");
   const m = useMutation({
     mutationFn: () => correlationMatrix({ data: { symbols: raw.split(",").map(s => s.trim()).filter(Boolean) } }),
@@ -150,12 +153,12 @@ function Corr() {
   return (
     <div className="space-y-3">
       <div className="panel p-4 flex gap-2 items-end">
-        <div className="flex-1"><label className="text-xs text-muted-foreground">Symbols (comma separated, 2–12)</label><Input value={raw} onChange={e => setRaw(e.target.value)} /></div>
-        <Button onClick={() => m.mutate()} disabled={m.isPending}>{m.isPending ? "…" : "Compute"}</Button>
+        <div className="flex-1"><label className="text-xs text-muted-foreground">{L.tools.expert.symbolsLabel}</label><Input value={raw} onChange={e => setRaw(e.target.value)} /></div>
+        <Button onClick={() => m.mutate()} disabled={m.isPending}>{m.isPending ? "…" : L.tools.expert.compute}</Button>
       </div>
       {m.data && (
         <div className="panel p-3 overflow-auto">
-          <div className="text-xs text-muted-foreground mb-2">Pearson correlation, last {m.data.lookback} daily returns</div>
+          <div className="text-xs text-muted-foreground mb-2">{L.tools.expert.pearson.replace("{n}", String(m.data.lookback))}</div>
           <table className="text-xs font-mono">
             <thead><tr><th className="p-2"></th>{m.data.symbols.map((s: string) => <th key={s} className="p-2">{s}</th>)}</tr></thead>
             <tbody>

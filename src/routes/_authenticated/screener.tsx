@@ -105,9 +105,9 @@ function Screener() {
 
       <Tabs defaultValue="technical" className="min-w-0 max-w-full">
         <TabsList className="h-auto w-full max-w-full justify-start overflow-x-auto overflow-y-hidden rounded-xl p-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <TabsTrigger value="technical" className="h-8 shrink-0"><Filter className="size-3.5 mr-1" /> Teknikal</TabsTrigger>
-          <TabsTrigger value="undervalued" className="h-8 shrink-0"><Gem className="size-3.5 mr-1" /> Undervalued</TabsTrigger>
-          <TabsTrigger value="disclosure" className="h-8 shrink-0"><ShieldAlert className="size-3.5 mr-1" /> Disclosure</TabsTrigger>
+          <TabsTrigger value="technical" className="h-8 shrink-0"><Filter className="size-3.5 mr-1" /> {L.tools.screener.tabTechnical}</TabsTrigger>
+          <TabsTrigger value="undervalued" className="h-8 shrink-0"><Gem className="size-3.5 mr-1" /> {L.tools.screener.tabUndervalued}</TabsTrigger>
+          <TabsTrigger value="disclosure" className="h-8 shrink-0"><ShieldAlert className="size-3.5 mr-1" /> {L.tools.screener.tabDisclosure}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="technical" className="min-w-0 space-y-4">
@@ -131,7 +131,7 @@ function Screener() {
       {/* Filters */}
       <div className="panel grid min-w-0 grid-cols-1 gap-3 p-3 sm:grid-cols-2 md:p-4 lg:grid-cols-3 xl:grid-cols-6">
         <div className="min-w-0 sm:col-span-2 lg:col-span-3 xl:col-span-2">
-          <label className="text-xs text-muted-foreground">Label sinyal</label>
+          <label className="text-xs text-muted-foreground">{L.tools.screener.labelSignal}</label>
           <div className="flex flex-wrap gap-1 mt-1">
             {LABELS.map(l => (
               <Button key={l} size="sm" variant={f.labels.has(l) ? "default" : "outline"} className="h-7 min-w-0 text-[11px]" onClick={() => toggleLabel(l)}>
@@ -140,37 +140,37 @@ function Screener() {
             ))}
           </div>
         </div>
-        <NumPair label="Score" min={f.minScore} max={f.maxScore} setMin={v => setF({ ...f, minScore: v })} setMax={v => setF({ ...f, maxScore: v })} />
-        <NumPair label="RSI" min={f.minRsi} max={f.maxRsi} setMin={v => setF({ ...f, minRsi: v })} setMax={v => setF({ ...f, maxRsi: v })} />
+        <NumPair label={L.tools.screener.thScore} min={f.minScore} max={f.maxScore} setMin={v => setF({ ...f, minScore: v })} setMax={v => setF({ ...f, maxScore: v })} />
+        <NumPair label={L.tools.screener.thRsi} min={f.minRsi} max={f.maxRsi} setMin={v => setF({ ...f, minRsi: v })} setMax={v => setF({ ...f, maxRsi: v })} />
         <div className="min-w-0">
-          <label className="text-xs text-muted-foreground" title="Relative Volume = volume hari ini ÷ rata-rata 20 hari. >1.5× menandakan partisipasi di atas normal.">
-            Min Relative Volume <span className="opacity-60">(RVOL)</span>
+          <label className="text-xs text-muted-foreground" title={L.tools.screener.rvolTooltip}>
+            {L.tools.screener.minRvol} <span className="opacity-60">(RVOL)</span>
           </label>
           <Input type="number" step="0.1" value={f.minVolRel} onChange={e => setF({ ...f, minVolRel: parseFloat(e.target.value || "0") })} />
         </div>
         <div className="min-w-0">
-          <label className="text-xs text-muted-foreground">Min Trend (ADX)</label>
+          <label className="text-xs text-muted-foreground">{L.tools.screener.minTrend}</label>
           <Input type="number" value={f.minTrend} onChange={e => setF({ ...f, minTrend: parseFloat(e.target.value || "0") })} />
         </div>
         <div className="min-w-0">
-          <label className="text-xs text-muted-foreground">Sektor</label>
+          <label className="text-xs text-muted-foreground">{L.tools.screener.sector}</label>
           <select value={f.sector} onChange={e => setF({ ...f, sector: e.target.value as any })} className="w-full h-9 px-2 rounded-md bg-background border border-border text-sm">
-            <option value="all">Semua</option>
+            <option value="all">{L.tools.screener.all}</option>
             {ALL_SECTORS.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
         <div className="min-w-0">
-          <label className="text-xs text-muted-foreground">Urutkan berdasarkan</label>
+          <label className="text-xs text-muted-foreground">{L.tools.screener.sortBy}</label>
           <select value={f.sortBy} onChange={e => setF({ ...f, sortBy: e.target.value as any })} className="w-full h-9 px-2 rounded-md bg-background border border-border text-sm">
-            <option value="score">AI Score</option>
-            <option value="changePct">% Perubahan</option>
-            <option value="rsi">RSI</option>
-            <option value="volRel">Relative Volume (RVOL)</option>
-            <option value="trendStrength">Trend</option>
+            <option value="score">{L.tools.screener.sortScore}</option>
+            <option value="changePct">{L.tools.screener.sortChangePct}</option>
+            <option value="rsi">{L.tools.screener.sortRsi}</option>
+            <option value="volRel">{L.tools.screener.sortRvol}</option>
+            <option value="trendStrength">{L.tools.screener.sortTrend}</option>
           </select>
         </div>
         <div className="flex min-w-0 items-end justify-start text-xs text-muted-foreground sm:col-span-2 lg:col-span-3 xl:col-span-6 xl:justify-end">
-          {data.isFetching ? "Menghitung…" : `${rows.length} / ${data.data?.length ?? 0} cocok`}
+          {data.isFetching ? L.tools.screener.computing : L.tools.screener.matchCount.replace("{n}", String(rows.length)).replace("{total}", String(data.data?.length ?? 0))}
         </div>
       </div>
 
@@ -179,20 +179,20 @@ function Screener() {
         <table className="w-full text-sm min-w-[1100px]">
           <thead className="text-xs text-muted-foreground">
             <tr>
-              <th className="text-left p-2">Symbol</th>
-              <th className="text-left p-2">Sektor</th>
-              <th className="text-right p-2">Harga</th>
-              <th className="text-right p-2">Ubh%</th>
-              <th className="text-center p-2" title="Market direction bias — bukan instruksi entry langsung">Bias</th>
-              <th className="text-center p-2" title="Apakah setup sudah valid untuk eksekusi">Aksi</th>
-              <th className="text-center p-2" title="Trade setup quality grade">Setup</th>
-              <th className="text-center p-2">Risiko</th>
-              <th className="text-right p-2">Skor</th>
-              <th className="text-right p-2">Konf.</th>
-              <th className="text-right p-2">RSI</th>
-              <th className="text-right p-2">ADX</th>
-              <th className="text-right p-2" title="Relative Volume = volume hari ini ÷ rata-rata 20 hari">RVOL</th>
-              <th className="text-left p-2">Trend</th>
+              <th className="text-left p-2">{L.tools.screener.thSymbol}</th>
+              <th className="text-left p-2">{L.tools.screener.thSector}</th>
+              <th className="text-right p-2">{L.tools.screener.thPrice}</th>
+              <th className="text-right p-2">{L.tools.screener.thChange}</th>
+              <th className="text-center p-2" title={L.tools.screener.thBiasTip}>{L.tools.screener.thBias}</th>
+              <th className="text-center p-2" title={L.tools.screener.thActionTip}>{L.tools.screener.thAction}</th>
+              <th className="text-center p-2" title={L.tools.screener.thSetupTip}>{L.tools.screener.thSetup}</th>
+              <th className="text-center p-2">{L.tools.screener.thRisk}</th>
+              <th className="text-right p-2">{L.tools.screener.thScore}</th>
+              <th className="text-right p-2">{L.tools.screener.thConf}</th>
+              <th className="text-right p-2">{L.tools.screener.thRsi}</th>
+              <th className="text-right p-2">{L.tools.screener.thAdx}</th>
+              <th className="text-right p-2" title={L.tools.screener.rvolTooltip}>{L.tools.screener.thRvol}</th>
+              <th className="text-left p-2">{L.tools.screener.thTrend}</th>
             </tr>
           </thead>
           <tbody>
@@ -240,17 +240,18 @@ function Screener() {
                 <td className="p-2 text-right font-mono">{q.confidence}</td>
                 <td className={`p-2 text-right font-mono ${q.rsi > 70 ? "text-bear" : q.rsi < 30 ? "text-bull" : ""}`}>{q.rsi}</td>
                 <td className="p-2 text-right font-mono">{q.trendStrength}</td>
-                <td className={`p-2 text-right font-mono ${q.volRel > 1.5 ? "text-bull" : ""}`} title={`Relative Volume: ${q.volRel.toFixed(2)}× rata-rata 20D`}>{q.volRel.toFixed(2)}×</td>
+                <td className={`p-2 text-right font-mono ${q.volRel > 1.5 ? "text-bull" : ""}`} title={`Relative Volume: ${q.volRel.toFixed(2)}× 20D avg`}>{q.volRel.toFixed(2)}×</td>
                 <td className="p-2"><Sparkline values={q.sparkline} bull={q.score > 0} /></td>
               </tr>
             ))}
             {rows.length === 0 && !data.isFetching && (
-              <tr><td colSpan={14} className="p-8 text-center text-muted-foreground">Tidak ada saham yang cocok dengan filter.</td></tr>
+              <tr><td colSpan={14} className="p-8 text-center text-muted-foreground">{L.tools.screener.noMatch}</td></tr>
             )}
           </tbody>
         </table>
       </div>
         </TabsContent>
+
 
         <TabsContent value="undervalued" className="space-y-4">
           <UndervaluedPanel />
@@ -265,6 +266,7 @@ function Screener() {
 }
 
 function UndervaluedPanel() {
+  const { L } = useLang();
   const [universe, setUniverse] = useState<"idx_lq45" | "undervalued_candidates" | "quality_undervalued" | "dividend_undervalued" | "sector_discount" | "hybrid_trading_and_value" | "watchlist">("idx_lq45");
   const [limit, setLimit] = useState(15);
   const [classFilter, setClassFilter] = useState<"all" | "strong_undervalued" | "undervalued" | "fair_value" | "overvalued" | "value_trap_risk" | "insufficient_data">("all");
@@ -288,8 +290,8 @@ function UndervaluedPanel() {
   }, [disclosures.data]);
   const scan = useMutation({
     mutationFn: () => scanUndervalueUniverse({ data: { universe, limit } }),
-    onSuccess: (r: any) => { toast.success(`Scan selesai: ${r.scanned} dianalisis, ${r.candidates.length} kandidat`); latest.refetch(); },
-    onError: (e: any) => toast.error(e?.message ?? "Scan gagal"),
+    onSuccess: (r: any) => { toast.success(L.tools.screener.scanDone.replace("{scanned}", String(r.scanned)).replace("{n}", String(r.candidates.length))); latest.refetch(); },
+    onError: (e: any) => toast.error(e?.message ?? L.tools.screener.scanFailed),
   });
   const baseRows: any[] = (scan.data as any)?.candidates?.length
     ? (scan.data as any).candidates
@@ -316,13 +318,14 @@ function UndervaluedPanel() {
   }, {} as Record<string, number>);
 
   const cards: { key: typeof classFilter; label: string; cls: string }[] = [
-    { key: "strong_undervalued", label: "Strong Undervalue", cls: "text-bull" },
-    { key: "undervalued",        label: "Undervalued",       cls: "text-bull" },
-    { key: "fair_value",         label: "Fair Value",        cls: "" },
-    { key: "overvalued",         label: "Overvalued",        cls: "text-amber-500" },
-    { key: "value_trap_risk",    label: "Value Trap",        cls: "text-bear" },
-    { key: "insufficient_data",  label: "Insufficient Data", cls: "text-muted-foreground" },
+    { key: "strong_undervalued", label: L.tools.screener.uvClassStrong, cls: "text-bull" },
+    { key: "undervalued",        label: L.tools.screener.uvClassUnder,  cls: "text-bull" },
+    { key: "fair_value",         label: L.tools.screener.uvClassFair,   cls: "" },
+    { key: "overvalued",         label: L.tools.screener.uvClassOver,   cls: "text-amber-500" },
+    { key: "value_trap_risk",    label: L.tools.screener.uvClassTrap,   cls: "text-bear" },
+    { key: "insufficient_data",  label: L.tools.screener.uvClassInsufficient, cls: "text-muted-foreground" },
   ];
+
 
   return (
     <div className="space-y-3">
@@ -341,9 +344,9 @@ function UndervaluedPanel() {
 
       <div className="panel p-4 flex flex-wrap items-end gap-3">
         <div>
-          <label className="text-xs text-muted-foreground">Universe</label>
+          <label className="text-xs text-muted-foreground">{L.tools.screener.universe}</label>
           <select value={universe} onChange={e => setUniverse(e.target.value as any)} className="h-9 px-2 rounded-md bg-background border border-border text-sm">
-            <option value="idx_lq45">IDX LQ45 (semua)</option>
+            <option value="idx_lq45">IDX LQ45</option>
             <option value="undervalued_candidates">Undervalued candidates</option>
             <option value="quality_undervalued">Quality + undervalued</option>
             <option value="dividend_undervalued">Dividend + undervalued</option>
@@ -353,26 +356,26 @@ function UndervaluedPanel() {
           </select>
         </div>
         <div>
-          <label className="text-xs text-muted-foreground">Klasifikasi</label>
+          <label className="text-xs text-muted-foreground">{L.tools.screener.classification}</label>
           <select value={classFilter} onChange={e => setClassFilter(e.target.value as any)} className="h-9 px-2 rounded-md bg-background border border-border text-sm">
-            <option value="Semua">Semua</option>
-            <option value="strong_undervalued">Strong Undervalue</option>
-            <option value="undervalued">Undervalued</option>
-            <option value="fair_value">Fair Value</option>
-            <option value="overvalued">Overvalued</option>
-            <option value="value_trap_risk">Value Trap</option>
-            <option value="insufficient_data">Data Tidak Cukup</option>
+            <option value="all">{L.tools.screener.all}</option>
+            <option value="strong_undervalued">{L.tools.screener.uvClassStrong}</option>
+            <option value="undervalued">{L.tools.screener.uvClassUnder}</option>
+            <option value="fair_value">{L.tools.screener.uvClassFair}</option>
+            <option value="overvalued">{L.tools.screener.uvClassOver}</option>
+            <option value="value_trap_risk">{L.tools.screener.uvClassTrap}</option>
+            <option value="insufficient_data">{L.tools.screener.classInsufficient}</option>
           </select>
         </div>
         <div>
-          <label className="text-xs text-muted-foreground">Batas</label>
+          <label className="text-xs text-muted-foreground">{L.tools.screener.limit}</label>
           <Input type="number" min={1} max={30} value={limit} onChange={e => setLimit(parseInt(e.target.value || "10", 10))} className="w-24" />
         </div>
         <Button onClick={() => scan.mutate()} disabled={scan.isPending}>
-          {scan.isPending ? "Memindai…" : "Jalankan Analisis Fundamental"}
+          {scan.isPending ? L.tools.screener.scanning : L.tools.screener.runFundamental}
         </Button>
         <div className="text-[11px] text-muted-foreground ml-auto">
-          Fundamental scan menggunakan data publik Yahoo Finance · skor dievaluasi 8 dimensi · saham dengan data tidak cukup ditandai INSUFFICIENT DATA, bukan undervalued.
+          {L.tools.screener.fundamentalFootnote}
         </div>
       </div>
 
@@ -381,19 +384,19 @@ function UndervaluedPanel() {
         <table className="w-full text-sm min-w-[1100px]">
           <thead className="text-xs text-muted-foreground">
             <tr>
-              <th className="text-left p-2">Symbol</th>
-              <th className="text-left p-2">Klasifikasi</th>
-              <th className="text-right p-2" title="Final undervalue score (0-100)">Skor</th>
-              <th className="text-right p-2" title="Valuation (PER/PBV)">Val</th>
-              <th className="text-right p-2" title="Quality (ROE/ROA/margin)">Qual</th>
-              <th className="text-right p-2" title="Financial health (DER/FCF)">Kesehatan</th>
-              <th className="text-right p-2" title="Growth (revenue/profit YoY)">Pertumbuhan</th>
-              <th className="text-right p-2" title="Dividend yield + payout">Div</th>
-              <th className="text-right p-2" title="Sector relative">Sektor</th>
-              <th className="text-right p-2" title="Technical timing">Timing</th>
-              <th className="text-right p-2" title="Value-trap risk (lower=better)">Trap</th>
-              <th className="text-left p-2" title="Latest official IDX/BEI disclosure">Disclosure</th>
-              <th className="text-left p-2">Alasan</th>
+              <th className="text-left p-2">{L.tools.screener.thSymbol}</th>
+              <th className="text-left p-2">{L.tools.screener.classification}</th>
+              <th className="text-right p-2" title="Final undervalue score (0-100)">{L.tools.screener.thScore}</th>
+              <th className="text-right p-2" title="Valuation (PER/PBV)">{L.tools.screener.thVal}</th>
+              <th className="text-right p-2" title="Quality (ROE/ROA/margin)">{L.tools.screener.thQual}</th>
+              <th className="text-right p-2" title="Financial health (DER/FCF)">{L.tools.screener.thHealth}</th>
+              <th className="text-right p-2" title="Growth (revenue/profit YoY)">{L.tools.screener.thGrowth}</th>
+              <th className="text-right p-2" title="Dividend yield + payout">{L.tools.screener.thDiv}</th>
+              <th className="text-right p-2" title="Sector relative">{L.tools.screener.thSectorRel}</th>
+              <th className="text-right p-2" title="Technical timing">{L.tools.screener.thTiming}</th>
+              <th className="text-right p-2" title="Value-trap risk (lower=better)">{L.tools.screener.thTrap}</th>
+              <th className="text-left p-2" title="Latest official IDX/BEI disclosure">{L.tools.screener.thDisclosure}</th>
+              <th className="text-left p-2">{L.tools.screener.thReason}</th>
             </tr>
           </thead>
           <tbody>
@@ -421,7 +424,7 @@ function UndervaluedPanel() {
                       : d.disclosure_type === "suspension" || d.disclosure_type === "uma" ? "text-bear"
                       : d.sentiment === "positive" ? "text-bull" : "text-muted-foreground";
                     return (
-                      <span className={tone} title={`${d.disclosure_type} · ${d.impact_level}/${d.sentiment} · ${new Date(d.published_at).toLocaleString("id-ID")}`}>
+                      <span className={tone} title={`${d.disclosure_type} · ${d.impact_level}/${d.sentiment} · ${new Date(d.published_at).toLocaleString()}`}>
                         {d.disclosure_type}
                       </span>
                     );
@@ -431,7 +434,7 @@ function UndervaluedPanel() {
               </tr>
             ))}
             {rows.length === 0 && !scan.isPending && (
-              <tr><td colSpan={13} className="p-8 text-center text-muted-foreground">Belum ada skor undervalued. Klik <em>Run Fundamental Scan</em> untuk memulai.</td></tr>
+              <tr><td colSpan={13} className="p-8 text-center text-muted-foreground">{L.tools.screener.noUndervalued}</td></tr>
             )}
           </tbody>
         </table>
@@ -475,6 +478,7 @@ export function Sparkline({ values, bull, width = 80, height = 24 }: { values: n
 }
 
 function DisclosurePanel() {
+  const { L } = useLang();
   const [filter, setFilter] = useState<"all" | "high_impact" | "uma_suspension" | "dividend_buyback" | "rights_issue">("all");
   const q = useQuery({
     queryKey: ["disclosure-screener"],
@@ -505,11 +509,11 @@ function DisclosurePanel() {
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
         {([
-          ["all", "Semua"],
-          ["high_impact", "Dampak Tinggi"],
-          ["uma_suspension", "UMA / Suspension"],
-          ["dividend_buyback", "Dividend / Buyback"],
-          ["rights_issue", "Rights Issue"],
+          ["all", L.tools.screener.dscAll],
+          ["high_impact", L.tools.screener.dscHighImpact],
+          ["uma_suspension", L.tools.screener.dscUma],
+          ["dividend_buyback", L.tools.screener.dscDivBuyback],
+          ["rights_issue", L.tools.screener.dscRights],
         ] as const).map(([key, label]) => (
           <Button key={key} size="sm" variant={filter === key ? "default" : "outline"} onClick={() => setFilter(key)}>
             {label}
@@ -517,12 +521,13 @@ function DisclosurePanel() {
         ))}
       </div>
 
-      {q.isLoading && <div className="text-sm text-muted-foreground">Memuat…</div>}
+      {q.isLoading && <div className="text-sm text-muted-foreground">{L.tools.screener.loading}</div>}
       {!q.isLoading && rows.length === 0 && (
         <div className="panel p-6 text-center text-sm text-muted-foreground">
-          Tidak ada disclosure / corporate action / regulatory event yang cocok.
+          {L.tools.screener.noDisclosure}
         </div>
       )}
+
 
       <div className="grid gap-2 md:grid-cols-2">
         {rows.map((d: any) => (

@@ -22,22 +22,6 @@ export const Route = createFileRoute("/_authenticated/alerts")({
 
 type RuleKind = AlertRule["kind"];
 
-const KIND_LABEL: Record<RuleKind, string> = {
-  price_above: "Price above",
-  price_below: "Price below",
-  rsi_above: "RSI(14) above",
-  rsi_below: "RSI(14) below",
-  ema_cross: "EMA cross",
-  volume_spike: "Volume spike (×avg)",
-  breakout: "Breakout (N-day high)",
-  breakdown: "Breakdown (N-day low)",
-  score_above: "AI Signal score above",
-  score_below: "AI Signal score below",
-  setup_long_ready: "Setup: LONG ready to trade",
-  setup_short_ready: "Setup: SHORT ready to trade",
-  pullback_to_support: "Setup: pullback to 20d support (BUY bias)",
-  breakout_confirmed: "Setup: confirmed breakout (BUY + volume)",
-};
 
 function AlertsPage() {
   const { L } = useLang();
@@ -75,8 +59,8 @@ function AlertsPage() {
 
   const create = useMutation({
     mutationFn: () => createAlert({ data: { symbol: symbol.toUpperCase(), rule: buildRule() } }),
-    onSuccess: () => { toast.success("Alert created"); qc.invalidateQueries({ queryKey: ["alerts"] }); },
-    onError: (e: Error) => toast.error(e?.message ?? "Failed"),
+    onSuccess: () => { toast.success(L.tools.alerts.created); qc.invalidateQueries({ queryKey: ["alerts"] }); },
+    onError: (e: Error) => toast.error(e?.message ?? L.tools.alerts.failed),
   });
   const del = useMutation({
     mutationFn: (id: string) => deleteAlert({ data: { id } }),
@@ -90,7 +74,7 @@ function AlertsPage() {
     mutationFn: () => checkAlerts(),
     onSuccess: (r: any) => {
       const list = Array.isArray(r?.triggered) ? r.triggered : [];
-      if (!list.length) toast.message("No alerts triggered.");
+      if (!list.length) toast.message(L.tools.alerts.noneTriggered);
       else list.forEach((t: any) => toast.success(`${t.symbol}: ${t.reason}`));
       qc.invalidateQueries({ queryKey: ["alerts"] });
     },
@@ -99,6 +83,23 @@ function AlertsPage() {
   const isPriceLike = kind === "price_above" || kind === "price_below";
   const isRsi = kind === "rsi_above" || kind === "rsi_below";
   const isScore = kind === "score_above" || kind === "score_below";
+
+  const KIND_LABEL: Record<RuleKind, string> = {
+    price_above: L.tools.alerts.kPriceAbove,
+    price_below: L.tools.alerts.kPriceBelow,
+    rsi_above: L.tools.alerts.kRsiAbove,
+    rsi_below: L.tools.alerts.kRsiBelow,
+    ema_cross: L.tools.alerts.kEmaCross,
+    volume_spike: L.tools.alerts.kVolSpike,
+    breakout: L.tools.alerts.kBreakout,
+    breakdown: L.tools.alerts.kBreakdown,
+    score_above: L.tools.alerts.kScoreAbove,
+    score_below: L.tools.alerts.kScoreBelow,
+    setup_long_ready: L.tools.alerts.kSetupLong,
+    setup_short_ready: L.tools.alerts.kSetupShort,
+    pullback_to_support: L.tools.alerts.kPullback,
+    breakout_confirmed: L.tools.alerts.kBreakoutConf,
+  };
 
   return (
     <div className="p-4 md:p-6 space-y-4">
@@ -109,7 +110,7 @@ function AlertsPage() {
         subtitle={L.hero.alerts.subtitle}
         actions={
           <Button onClick={() => check.mutate()} disabled={check.isPending} variant="outline">
-            <Zap className="size-4 mr-1" /> {check.isPending ? "Memindai…" : "Jalankan pemindaian"}
+            <Zap className="size-4 mr-1" /> {check.isPending ? L.tools.alerts.scanning : L.tools.alerts.runScan}
           </Button>
         }
       />
@@ -118,11 +119,11 @@ function AlertsPage() {
       <div className="panel p-4 space-y-3">
         <div className="grid md:grid-cols-6 gap-2 items-end">
           <div className="col-span-1">
-            <label className="text-xs text-muted-foreground">Symbol</label>
+            <label className="text-xs text-muted-foreground">{L.tools.alerts.symbol}</label>
             <Input value={symbol} onChange={e => setSymbol(e.target.value)} placeholder="AAPL" />
           </div>
           <div className="col-span-2">
-            <label className="text-xs text-muted-foreground">Trigger</label>
+            <label className="text-xs text-muted-foreground">{L.tools.alerts.trigger}</label>
             <Select value={kind} onValueChange={(v) => setKind(v as RuleKind)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -134,54 +135,54 @@ function AlertsPage() {
           </div>
           {kind === "ema_cross" ? (
             <>
-              <div><label className="text-xs text-muted-foreground">Fast EMA</label><Input value={fast} onChange={e => setFast(e.target.value)} /></div>
-              <div><label className="text-xs text-muted-foreground">Slow EMA</label><Input value={slow} onChange={e => setSlow(e.target.value)} /></div>
+              <div><label className="text-xs text-muted-foreground">{L.tools.alerts.fastEma}</label><Input value={fast} onChange={e => setFast(e.target.value)} /></div>
+              <div><label className="text-xs text-muted-foreground">{L.tools.alerts.slowEma}</label><Input value={slow} onChange={e => setSlow(e.target.value)} /></div>
             </>
           ) : kind === "breakout" || kind === "breakdown" ? (
             <div className="col-span-2">
-              <label className="text-xs text-muted-foreground">Lookback (days)</label>
+              <label className="text-xs text-muted-foreground">{L.tools.alerts.lookbackDays}</label>
               <Input value={lookback} onChange={e => setLookback(e.target.value)} />
             </div>
           ) : kind === "setup_long_ready" || kind === "setup_short_ready" || kind === "breakout_confirmed" ? (
             <div className="col-span-2 text-xs text-muted-foreground self-end pb-2">
-              No threshold needed — fires when AI engine reports a Ready-to-Trade setup.
+              {L.tools.alerts.noThreshold}
             </div>
           ) : kind === "pullback_to_support" ? (
             <div className="col-span-2">
-              <label className="text-xs text-muted-foreground">Tolerance % above 20d support</label>
+              <label className="text-xs text-muted-foreground">{L.tools.alerts.toleranceLabel}</label>
               <Input value={value} onChange={e => setValue(e.target.value)} placeholder="1.5" />
             </div>
           ) : (
             <div className="col-span-2">
               <label className="text-xs text-muted-foreground">
-                {kind === "volume_spike" ? "Multiplier (×avg vol)" : isRsi ? "RSI threshold (0–100)" : isScore ? "Score threshold (-100…100)" : "Price"}
+                {kind === "volume_spike" ? L.tools.alerts.multiplierLabel : isRsi ? L.tools.alerts.rsiThreshold : isScore ? L.tools.alerts.scoreThreshold : L.tools.alerts.price}
               </label>
               <Input value={value} onChange={e => setValue(e.target.value)} />
             </div>
           )}
-          <Button onClick={() => create.mutate()} disabled={create.isPending}>Create alert</Button>
+          <Button onClick={() => create.mutate()} disabled={create.isPending}>{L.tools.alerts.createAlert}</Button>
         </div>
 
         {/* Live preview */}
         <div className="flex items-center gap-3 text-sm border-t border-border pt-3">
           <Target className="size-4 text-muted-foreground" />
-          <div className="text-muted-foreground">Live preview:</div>
+          <div className="text-muted-foreground">{L.tools.alerts.livePreview}</div>
           {preview.isLoading ? (
-            <div className="text-muted-foreground">checking…</div>
+            <div className="text-muted-foreground">{L.tools.alerts.checking}</div>
           ) : preview.data && preview.data.current != null ? (
             <>
               <div>
-                Current <span className="font-mono text-foreground">{String(preview.data.current)}</span>
+                {L.tools.alerts.current} <span className="font-mono text-foreground">{String(preview.data.current)}</span>
                 {preview.data.target != null && (
-                  <> · target <span className="font-mono text-foreground">{String(preview.data.target)}</span></>
+                  <> · {L.tools.alerts.target} <span className="font-mono text-foreground">{String(preview.data.target)}</span></>
                 )}
               </div>
               <span className={`text-xs px-2 py-0.5 rounded font-semibold ${preview.data.hit ? "bg-bull-soft text-bull" : "bg-accent/40 text-muted-foreground"}`}>
-                {preview.data.hit ? "WOULD TRIGGER" : "armed"}
+                {preview.data.hit ? L.tools.alerts.wouldTrigger : L.tools.alerts.armed}
               </span>
             </>
           ) : (
-            <div className="text-muted-foreground">Need more data — try a different symbol or trigger.</div>
+            <div className="text-muted-foreground">{L.tools.alerts.needMoreData}</div>
           )}
         </div>
       </div>
@@ -190,11 +191,11 @@ function AlertsPage() {
         <table className="w-full text-sm">
           <thead className="text-xs text-muted-foreground">
             <tr>
-              <th className="text-left p-2">Symbol</th>
-              <th className="text-left p-2">Rule</th>
-              <th className="text-left p-2">Status</th>
-              <th className="text-left p-2">Created</th>
-              <th className="text-center p-2">Active</th>
+              <th className="text-left p-2">{L.tools.alerts.thSymbol}</th>
+              <th className="text-left p-2">{L.tools.alerts.thRule}</th>
+              <th className="text-left p-2">{L.tools.alerts.thStatus}</th>
+              <th className="text-left p-2">{L.tools.alerts.thCreated}</th>
+              <th className="text-center p-2">{L.tools.alerts.thActive}</th>
               <th></th>
             </tr>
           </thead>
@@ -205,8 +206,8 @@ function AlertsPage() {
                 <td className="p-2 font-mono text-xs">{describeRule(a.rule_json as AlertRule)}</td>
                 <td className="p-2 text-xs">
                   {a.triggered_at
-                    ? <span className="text-bull">✓ triggered {formatDateTimeWIB(a.triggered_at)}</span>
-                    : a.active ? <span className="text-muted-foreground">armed</span> : <span className="text-muted-foreground">paused</span>}
+                    ? <span className="text-bull">✓ {L.tools.alerts.triggered} {formatDateTimeWIB(a.triggered_at)}</span>
+                    : a.active ? <span className="text-muted-foreground">{L.tools.alerts.armed}</span> : <span className="text-muted-foreground">{L.tools.alerts.paused}</span>}
                 </td>
                 <td className="p-2 text-xs text-muted-foreground">{formatDateTimeWIB(a.created_at)}</td>
                 <td className="p-2 text-center">
@@ -218,7 +219,7 @@ function AlertsPage() {
               </tr>
             ))}
             {!alertRows.length && (
-              <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No alerts yet. Create one above.</td></tr>
+              <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">{L.tools.alerts.noAlerts}</td></tr>
             )}
           </tbody>
         </table>
