@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { MobileEmptyState, MobileSkeletonRows } from "@/components/mobile-ui";
 import { PageHero } from "@/components/ui/page-hero";
 import { Sparkline } from "@/components/Sparkline";
+import { useLang } from "@/hooks/use-language";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — Quanta Terminal" }] }),
@@ -19,6 +20,7 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 });
 
 function Dashboard() {
+  const { L } = useLang();
   const [market, setMarket] = useState<"idx" | "us" | "global">("idx");
   const indices = useQuery({ queryKey: ["indices"], queryFn: () => getIndices(), refetchInterval: 5000, refetchIntervalInBackground: false });
   const movers = useQuery({
@@ -73,11 +75,12 @@ function Dashboard() {
   return (
     <div className="p-3 md:p-6 space-y-4 md:space-y-6">
       <PageHero
-        eyebrow="Pusat Kendali"
+      <PageHero
+        eyebrow={L.hero.dashboard.eyebrow}
         live
         icon={TrendingUp}
-        title="Dasbor Pasar"
-        subtitle="Ringkasan real-time · IDX, indeks, mover, dan berita"
+        title={L.hero.dashboard.title}
+        subtitle={L.hero.dashboard.subtitle}
         actions={marketToggle}
       />
 
