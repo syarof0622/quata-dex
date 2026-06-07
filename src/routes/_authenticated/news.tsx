@@ -298,6 +298,26 @@ function NewsHub() {
 
       {/* Filters */}
       <div className="panel p-3 flex flex-wrap items-center gap-2">
+        {/* Language toggle */}
+        <div className="inline-flex rounded border border-border overflow-hidden text-xs" role="group" aria-label="News language">
+          {([
+            { v: "", label: "Semua" },
+            { v: "id", label: "🇮🇩 ID" },
+            { v: "en", label: "🇬🇧 EN" },
+          ] as const).map((opt) => (
+            <button
+              key={opt.v}
+              type="button"
+              onClick={() => updateLanguage(opt.v)}
+              className={`px-2 py-1.5 transition-colors ${
+                language === opt.v ? "bg-primary/15 text-primary font-medium" : "hover:bg-accent/40 text-muted-foreground"
+              }`}
+              title={`Filter berita: ${opt.label}`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
         <select value={source} onChange={e => setSource(e.target.value)} className="text-xs bg-background border border-border rounded px-2 py-1.5">
           {SOURCES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
         </select>
