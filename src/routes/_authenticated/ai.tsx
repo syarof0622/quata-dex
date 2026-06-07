@@ -8,6 +8,7 @@ import { AutonomousAgentPanel } from "@/components/AutonomousAgentPanel";
 import { getAIContextSummaryServer } from "@/lib/ai-context-summary.server";
 import { Activity, Database, Newspaper, BarChart3, ShieldCheck, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLang } from "@/hooks/use-language";
 
 export const Route = createFileRoute("/_authenticated/ai")({
   head: () => ({ meta: [{ title: "AI Trading Analyst — Quanta Terminal" }] }),
