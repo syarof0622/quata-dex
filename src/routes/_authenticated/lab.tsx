@@ -72,8 +72,8 @@ function Lab() {
 
   const cancel = useMutation({
     mutationFn: (id: string) => cancelOrder({ data: { id } }),
-    onSuccess: () => { toast.success("Order dibatalkan"); acct.refetch(); },
-    onError: (e: any) => toast.error(e?.message ?? "Gagal membatalkan"),
+    onSuccess: () => { toast.success(L.body.lab.toastOrderCanceled); acct.refetch(); },
+    onError: (e: any) => toast.error(e?.message ?? L.body.lab.toastCancelFailed),
   });
   return (
     <div className="p-4 md:p-6 space-y-4">
@@ -88,10 +88,10 @@ function Lab() {
 
       
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-        <div className="panel p-4"><div className="text-xs text-muted-foreground">Saldo Tersedia</div><div className="font-mono text-xl md:text-2xl">{fmtMoney(cash)}</div></div>
-        <div className="panel p-4"><div className="text-xs text-muted-foreground">Equity Total</div><div className="font-mono text-xl md:text-2xl">{fmtMoney(equity)}</div></div>
-        <div className="panel p-4"><div className="text-xs text-muted-foreground">Unrealized P/L</div><div className={`font-mono text-xl md:text-2xl ${colorForChange(pnl.unrealized)}`}>{fmtMoney(pnl.unrealized)}</div></div>
-        <div className="panel p-4"><div className="text-xs text-muted-foreground">Posisi</div><div className="font-mono text-xl md:text-2xl">{positions.length}</div></div>
+        <div className="panel p-4"><div className="text-xs text-muted-foreground">{L.body.lab.cashAvailable}</div><div className="font-mono text-xl md:text-2xl">{fmtMoney(cash)}</div></div>
+        <div className="panel p-4"><div className="text-xs text-muted-foreground">{L.body.lab.equityTotal}</div><div className="font-mono text-xl md:text-2xl">{fmtMoney(equity)}</div></div>
+        <div className="panel p-4"><div className="text-xs text-muted-foreground">{L.body.lab.unrealizedPL}</div><div className={`font-mono text-xl md:text-2xl ${colorForChange(pnl.unrealized)}`}>{fmtMoney(pnl.unrealized)}</div></div>
+        <div className="panel p-4"><div className="text-xs text-muted-foreground">{L.body.lab.positions}</div><div className="font-mono text-xl md:text-2xl">{positions.length}</div></div>
       </div>
       {(() => {
         const realizedGain = (orders as any[]).reduce((s, o) => s + Math.max(0, Number(o.realized_pnl ?? 0)), 0);
@@ -99,11 +99,11 @@ function Lab() {
         const realizedNet = realizedGain + realizedLoss;
         return (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-            <div className="panel p-4"><div className="text-xs text-muted-foreground">Keuntungan Terealisasi</div><div className="font-mono text-xl md:text-2xl text-emerald-400">{fmtMoney(realizedGain)}</div></div>
-            <div className="panel p-4"><div className="text-xs text-muted-foreground">Kerugian Terealisasi</div><div className="font-mono text-xl md:text-2xl text-rose-400">{fmtMoney(realizedLoss)}</div></div>
-            <div className="panel p-4"><div className="text-xs text-muted-foreground">Net Terealisasi</div><div className={`font-mono text-xl md:text-2xl ${colorForChange(realizedNet)}`}>{fmtMoney(realizedNet)}</div></div>
-            <div className="panel p-4"><div className="text-xs text-muted-foreground">Order Terisi</div><div className="font-mono text-xl md:text-2xl">{orders.length}</div></div>
-            <div className="panel p-4"><div className="text-xs text-muted-foreground">Tertunda</div><div className="font-mono text-xl md:text-2xl">{pending.length}</div></div>
+            <div className="panel p-4"><div className="text-xs text-muted-foreground">{L.body.lab.realizedGain}</div><div className="font-mono text-xl md:text-2xl text-emerald-400">{fmtMoney(realizedGain)}</div></div>
+            <div className="panel p-4"><div className="text-xs text-muted-foreground">{L.body.lab.realizedLoss}</div><div className="font-mono text-xl md:text-2xl text-rose-400">{fmtMoney(realizedLoss)}</div></div>
+            <div className="panel p-4"><div className="text-xs text-muted-foreground">{L.body.lab.realizedNet}</div><div className={`font-mono text-xl md:text-2xl ${colorForChange(realizedNet)}`}>{fmtMoney(realizedNet)}</div></div>
+            <div className="panel p-4"><div className="text-xs text-muted-foreground">{L.body.lab.ordersFilled}</div><div className="font-mono text-xl md:text-2xl">{orders.length}</div></div>
+            <div className="panel p-4"><div className="text-xs text-muted-foreground">{L.body.lab.pending}</div><div className="font-mono text-xl md:text-2xl">{pending.length}</div></div>
           </div>
         );
       })()}
@@ -111,27 +111,27 @@ function Lab() {
       <Tabs defaultValue={initialTab}>
         <TabsList className="flex-wrap h-auto no-scrollbar overflow-x-auto max-w-full">
 
-          <TabsTrigger value="positions">Posisi</TabsTrigger>
-          <TabsTrigger value="pending">Order Tertunda</TabsTrigger>
-          <TabsTrigger value="orders">Riwayat Order</TabsTrigger>
-          <TabsTrigger value="journal">Jurnal Trading</TabsTrigger>
-          <TabsTrigger value="backtest">Backtest</TabsTrigger>
-          <TabsTrigger value="coach">AI Coach</TabsTrigger>
-          <TabsTrigger value="agent"><Bot className="size-3 mr-1" />AI Trade Agent</TabsTrigger>
-          <TabsTrigger value="insights"><Sparkles className="size-3 mr-1" />AI Insights</TabsTrigger>
+          <TabsTrigger value="positions">{L.body.lab.tabPositions}</TabsTrigger>
+          <TabsTrigger value="pending">{L.body.lab.tabPending}</TabsTrigger>
+          <TabsTrigger value="orders">{L.body.lab.tabOrders}</TabsTrigger>
+          <TabsTrigger value="journal">{L.body.lab.tabJournal}</TabsTrigger>
+          <TabsTrigger value="backtest">{L.body.lab.tabBacktest}</TabsTrigger>
+          <TabsTrigger value="coach">{L.body.lab.tabCoach}</TabsTrigger>
+          <TabsTrigger value="agent"><Bot className="size-3 mr-1" />{L.body.lab.tabAgent}</TabsTrigger>
+          <TabsTrigger value="insights"><Sparkles className="size-3 mr-1" />{L.body.lab.tabInsights}</TabsTrigger>
         </TabsList>
         <TabsContent value="positions">
           <div className="panel p-2 overflow-x-auto">
             <table className="w-full text-sm min-w-[640px]">
               <thead className="text-xs text-muted-foreground">
                 <tr>
-                  <th className="text-left p-2">Symbol</th>
-                  <th className="text-right p-2">Qty</th>
-                  <th className="text-right p-2">Harga Rata-rata</th>
-                  <th className="text-right p-2">Mark</th>
-                  <th className="text-right p-2">P/L</th>
-                  <th className="text-right p-2">%</th>
-                  <th className="text-right p-2">Dibuka</th>
+                  <th className="text-left p-2">{L.body.lab.thSymbol}</th>
+                  <th className="text-right p-2">{L.body.lab.thQty}</th>
+                  <th className="text-right p-2">{L.body.lab.thAvgPrice}</th>
+                  <th className="text-right p-2">{L.body.lab.thMark}</th>
+                  <th className="text-right p-2">{L.body.lab.thPL}</th>
+                  <th className="text-right p-2">{L.body.lab.thPct}</th>
+                  <th className="text-right p-2">{L.body.lab.thOpened}</th>
                 </tr>
               </thead>
               <tbody>
@@ -146,7 +146,7 @@ function Lab() {
                     <td className="p-2 text-right text-xs text-muted-foreground">{fmtWIBDateTime(p.opened_at)}</td>
                   </tr>
                 ))}
-                {positions.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">Belum ada posisi terbuka. Tempatkan paper trade dari grafik mana saja.</td></tr>}
+                {positions.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">{L.body.lab.emptyPositions}</td></tr>}
               </tbody>
             </table>
           </div>
@@ -156,8 +156,8 @@ function Lab() {
             <table className="w-full text-sm">
               <thead className="text-xs text-muted-foreground">
                 <tr>
-                  <th className="text-left p-2">Symbol</th><th className="text-left p-2">Sisi</th><th className="text-left p-2">Jenis</th>
-                  <th className="text-right p-2">Lot</th><th className="text-right p-2">Pemicu</th><th className="text-right p-2">Dibuat</th><th></th>
+                  <th className="text-left p-2">{L.body.lab.thSymbol}</th><th className="text-left p-2">{L.body.lab.thSide}</th><th className="text-left p-2">{L.body.lab.thType}</th>
+                  <th className="text-right p-2">{L.body.lab.thLot}</th><th className="text-right p-2">{L.body.lab.thTrigger}</th><th className="text-right p-2">{L.body.lab.thCreated}</th><th></th>
                 </tr>
               </thead>
               <tbody>
@@ -179,7 +179,7 @@ function Lab() {
                     </td>
                   </tr>
                 ))}
-                {pending.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">Belum ada order tertunda. Tempatkan order limit/stop dari grafik mana saja.</td></tr>}
+                {pending.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">{L.body.lab.emptyPending}</td></tr>}
               </tbody>
             </table>
           </div>
@@ -188,7 +188,7 @@ function Lab() {
           <div className="panel p-2">
             <table className="w-full text-sm">
               <thead className="text-xs text-muted-foreground">
-                <tr><th className="text-left p-2">Waktu</th><th className="text-left p-2">Symbol</th><th className="text-left p-2">Sisi</th><th className="text-right p-2">Lot</th><th className="text-right p-2">Terisi</th></tr>
+                <tr><th className="text-left p-2">{L.body.lab.thTime}</th><th className="text-left p-2">{L.body.lab.thSymbol}</th><th className="text-left p-2">{L.body.lab.thSide}</th><th className="text-right p-2">{L.body.lab.thLot}</th><th className="text-right p-2">{L.body.lab.thFilled}</th></tr>
               </thead>
               <tbody>
                 {orders.map((o: any) => (
@@ -200,7 +200,7 @@ function Lab() {
                     <td className="p-2 text-right font-mono">{formatPrice(o.filled_price)}</td>
                   </tr>
                 ))}
-                {orders.length === 0 && <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">Belum ada order.</td></tr>}
+                {orders.length === 0 && <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">{L.body.lab.emptyOrders}</td></tr>}
               </tbody>
             </table>
           </div>
