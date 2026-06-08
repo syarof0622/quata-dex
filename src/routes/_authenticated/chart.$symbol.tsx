@@ -462,15 +462,17 @@ function ChartPage() {
 }
 
 function DataQualityBadge({ q, notes }: { q: "high" | "medium" | "low"; notes?: string[] }) {
+  // Honest tones: low data quality is a warning, not a failure → amber, not red.
   const cls = q === "high" ? "bg-bull-soft text-bull"
-    : q === "medium" ? "bg-accent/40 text-foreground"
-    : "bg-bear-soft text-bear";
+    : q === "medium" ? "bg-amber-500/15 text-amber-500"
+    : "bg-muted/40 text-muted-foreground";
   return (
     <span title={notes?.join(" · ")} className={`ml-auto text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded ${cls}`}>
       Data {q}
     </span>
   );
 }
+
 
 function Stat({ label, value, suffix, hint, tip }: {
   label: string;
