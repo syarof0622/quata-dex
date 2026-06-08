@@ -56,6 +56,26 @@ type AdminClient = Awaited<
   typeof import("@/integrations/supabase/client.server")
 >["supabaseAdmin"];
 
+type DynamicMutationResult = PromiseLike<{
+  error: { message: string } | null;
+  count: number | null;
+}>;
+
+type DynamicMutationBuilder = {
+  eq: (column: string, value: string) => DynamicMutationResult;
+};
+
+type DynamicTable = {
+  update: (
+    values: Record<string, unknown>,
+    options?: { count?: "exact" },
+  ) => DynamicMutationBuilder;
+};
+
+function dynamicTable(supabaseAdmin: AdminClient, table: string): DynamicTable {
+  return (supabaseAdmin as unknown as { from: (name: string) => DynamicTable }).from(table);
+}
+
 async function firstUserId(supabaseAdmin: AdminClient): Promise<string | null> {
   const list = await supabaseAdmin.auth.admin.listUsers({
     page: 1,
@@ -87,8 +107,7 @@ async function mergeLegacyAccount(
   if (legacyAccount?.id && currentAccount?.id && legacyAccount.id !== currentAccount.id) {
     for (const ref of LEGACY_ACCOUNT_REFS) {
       try {
-        await supabaseAdmin
-          .from(ref.table)
+        await dynamicTable(supabaseAdmin, ref.table)
           .update({ [ref.column]: legacyAccount.id })
           .eq(ref.column, currentAccount.id);
       } catch (error) {
@@ -172,8 +191,7 @@ export const Route = createFileRoute("/api/public/auth/bootstrap-superadmin")({
 
         for (const table of LEGACY_USER_TABLES) {
           try {
-            const { error, count } = await supabaseAdmin
-              .from(table)
+            const { error, count } = await dynamicTable(supabaseAdmin, table)
               .update({ user_id: userId }, { count: "exact" })
               .eq("user_id", LEGACY_UID);
             reassigned[table] = error ? -1 : (count ?? 0);
