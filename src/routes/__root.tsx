@@ -73,6 +73,31 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/b3f622be-66cc-4fad-964d-f61082402db2" },
     ],
     links: [{ rel: "stylesheet", href: appCss }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          name: "Quanta Terminal",
+          url: "https://quata-dex.lovable.app",
+          logo: "https://quata-dex.lovable.app/favicon.ico",
+          description:
+            "AI-powered Indonesian stock research terminal with realtime market data, news sentiment, smart-money flow, screening, and an autonomous paper-trading simulation lab.",
+        }),
+      },
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: "Quanta Terminal",
+          url: "https://quata-dex.lovable.app",
+          description:
+            "AI institutional trading intelligence and paper-trading simulation for IDX markets.",
+        }),
+      },
+    ],
   }),
   shellComponent: RootShell,
   component: RootComponent,

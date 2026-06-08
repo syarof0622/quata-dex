@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as ChangePasswordRouteImport } from './routes/change-password'
@@ -44,6 +45,11 @@ import { Route as ApiPublicCronAlertsRouteImport } from './routes/api/public/cro
 import { Route as ApiPublicCronAiAgentRouteImport } from './routes/api/public/cron/ai-agent'
 import { Route as ApiPublicAuthBootstrapSuperadminRouteImport } from './routes/api/public/auth/bootstrap-superadmin'
 
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
@@ -228,6 +234,7 @@ export interface FileRoutesByFullPath {
   '/change-password': typeof ChangePasswordRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/ai': typeof AuthenticatedAiRoute
   '/alerts': typeof AuthenticatedAlertsRoute
@@ -263,6 +270,7 @@ export interface FileRoutesByTo {
   '/change-password': typeof ChangePasswordRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/ai': typeof AuthenticatedAiRoute
   '/alerts': typeof AuthenticatedAlertsRoute
@@ -300,6 +308,7 @@ export interface FileRoutesById {
   '/change-password': typeof ChangePasswordRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/ai': typeof AuthenticatedAiRoute
   '/_authenticated/alerts': typeof AuthenticatedAlertsRoute
@@ -337,6 +346,7 @@ export interface FileRouteTypes {
     | '/change-password'
     | '/forgot-password'
     | '/reset-password'
+    | '/sitemap.xml'
     | '/admin'
     | '/ai'
     | '/alerts'
@@ -372,6 +382,7 @@ export interface FileRouteTypes {
     | '/change-password'
     | '/forgot-password'
     | '/reset-password'
+    | '/sitemap.xml'
     | '/admin'
     | '/ai'
     | '/alerts'
@@ -408,6 +419,7 @@ export interface FileRouteTypes {
     | '/change-password'
     | '/forgot-password'
     | '/reset-password'
+    | '/sitemap.xml'
     | '/_authenticated/admin'
     | '/_authenticated/ai'
     | '/_authenticated/alerts'
@@ -445,6 +457,7 @@ export interface RootRouteChildren {
   ChangePasswordRoute: typeof ChangePasswordRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiSerpapiNewsRoute: typeof ApiSerpapiNewsRoute
   ApiPublicAuthBootstrapSuperadminRoute: typeof ApiPublicAuthBootstrapSuperadminRoute
@@ -463,6 +476,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
@@ -749,6 +769,7 @@ const rootRouteChildren: RootRouteChildren = {
   ChangePasswordRoute: ChangePasswordRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiChatRoute: ApiChatRoute,
   ApiSerpapiNewsRoute: ApiSerpapiNewsRoute,
   ApiPublicAuthBootstrapSuperadminRoute: ApiPublicAuthBootstrapSuperadminRoute,
