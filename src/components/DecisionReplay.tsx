@@ -241,8 +241,8 @@ export function DecisionReplayPanel({ defaultOpen = false, compactCount = 5 }: {
                 const d = deriveStatus(selected);
                 return (
                   <>
-                    <Badge variant="outline" className={cn("text-[10px]", ACTION_CLS[d.intent] ?? ACTION_CLS.NO_TRADE)}>{T.sheetIntent}: {d.intent}</Badge>
-                    <Badge variant="outline" className={cn("text-[10px]", ACTION_CLS[d.finalStatus] ?? ACTION_CLS.NO_TRADE)}>{T.sheetFinal}: {d.finalStatus}</Badge>
+                    <Badge variant="outline" className={cn("text-[10px]", ACTION_CLS[d.intent] ?? ACTION_CLS.NO_TRADE)}>{T.intentLbl}: {d.intent}</Badge>
+                    <Badge variant="outline" className={cn("text-[10px]", ACTION_CLS[d.finalStatus] ?? ACTION_CLS.NO_TRADE)}>{T.finalLbl}: {d.finalStatus}</Badge>
                   </>
                 );
               })()}
