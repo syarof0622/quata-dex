@@ -846,6 +846,27 @@ export const UI_LABELS_EN = {
       paperOnlyNote: "paper trading only — score, regime compatibility & sample size are used by AI Trade Agent before BUY.",
     },
 
+    disclosureBadge: {
+      severity: { high: "HIGH", medium: "MEDIUM", low: "LOW" },
+      types: {
+        dividend: "DIVIDEND", dividen: "DIVIDEND", buyback: "BUYBACK",
+        rights_issue: "RIGHTS ISSUE", rights: "RIGHTS ISSUE",
+        stock_split: "STOCK SPLIT", reverse_split: "REVERSE SPLIT",
+        merger: "MERGER", acquisition: "ACQUISITION",
+        suspension: "SUSPENSION", suspended: "SUSPENSION",
+        delisting: "DELISTING", relisting: "RELISTING",
+        uma: "UMA", rups: "AGM", rupslb: "EGM",
+        public_expose: "PUBLIC EXPOSE",
+        financial_report: "FINANCIAL REPORT",
+        annual_report: "ANNUAL REPORT",
+        corporate_action: "CORPORATE ACTION",
+        material_disclosure: "MATERIAL DISCLOSURE",
+        material: "MATERIAL DISCLOSURE",
+        announcement: "ANNOUNCEMENT", announce: "ANNOUNCEMENT",
+        regulatory: "REGULATORY", disclosure: "DISCLOSURE", other: "OTHER",
+      },
+    },
+
     portfolioIntel: {
       title: "Portfolio Intelligence",
       computing: "Computing portfolio health…",
