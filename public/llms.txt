@@ -1,0 +1,7 @@
+# Quanta Terminal
+
+> AI-powered Indonesian stock research terminal with realtime market data, news sentiment, smart-money flow, screening, and an autonomous paper-trading simulation lab. Paper trading only — no real-money execution.
+
+## Pages
+
+- [Home](/): Overview of Quanta Terminal — features, philosophy, and how the platform works.
