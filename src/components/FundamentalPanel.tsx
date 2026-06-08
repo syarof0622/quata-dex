@@ -72,14 +72,14 @@ function recColor(key: string | null): string {
   }
 }
 
-function StatementsTable<T extends { date: string }>({ rows, cols }: { rows: T[]; cols: { key: keyof T; label: string }[] }) {
-  if (!rows.length) return <div className="text-xs text-muted-foreground italic">Tidak ada data laporan.</div>;
+function StatementsTable<T extends { date: string }>({ rows, cols, periodLabel, emptyText }: { rows: T[]; cols: { key: keyof T; label: string }[]; periodLabel: string; emptyText: string }) {
+  if (!rows.length) return <div className="text-xs text-muted-foreground italic">{emptyText}</div>;
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-xs">
         <thead className="text-[10px] text-muted-foreground uppercase">
           <tr>
-            <th className="text-left p-1.5">Periode</th>
+            <th className="text-left p-1.5">{periodLabel}</th>
             {cols.map(c => (
               <th key={String(c.key)} className="text-right p-1.5">{c.label}</th>
             ))}
