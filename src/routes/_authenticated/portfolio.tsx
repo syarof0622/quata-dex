@@ -12,8 +12,17 @@ import { PortfolioIntelligencePanel } from "@/components/PortfolioIntelligencePa
 import { PageHero } from "@/components/ui/page-hero";
 import { useLang } from "@/hooks/use-language";
 
+import { seoHead } from "@/lib/seo-head";
+
 export const Route = createFileRoute("/_authenticated/portfolio")({
-  head: () => ({ meta: [{ title: "Portfolio — Quanta Terminal" }] }),
+  head: () => ({
+    ...seoHead({
+      path: "/portfolio",
+      title: "Portfolio — Quanta Terminal",
+      description: "Track paper-trading positions, P&L, risk exposure, and performance attribution across your simulated IDX portfolio.",
+      noindex: true,
+    }),
+  }),
   component: Portfolio,
 });
 

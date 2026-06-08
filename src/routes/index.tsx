@@ -18,14 +18,16 @@ import {
 } from "lucide-react";
 import { useLang } from "@/hooks/use-language";
 
+import { seoHead } from "@/lib/seo-head";
+
 export const Route = createFileRoute("/")({
   head: () => ({
-    meta: [
-      { title: "Quanta Terminal — AI Stock Research Terminal for Smarter Paper Trading" },
-      { name: "description", content: "AI-powered IDX stock research terminal: market pulse, news sentiment, portfolio risk, strategy intelligence, and autonomous paper trading in one transparent, auditable dashboard." },
-      { property: "og:title", content: "Quanta Terminal — AI Stock Research Terminal" },
-      { property: "og:description", content: "Research smarter. Trade safer in simulation. Paper trading only — no real-money execution." },
-    ],
+    ...seoHead({
+      path: "/",
+      title: "Quanta Terminal — AI Stock Research Terminal for Smarter Paper Trading",
+      description:
+        "AI-powered IDX stock research terminal: market pulse, news sentiment, portfolio risk, strategy intelligence, and autonomous paper trading in one transparent, auditable dashboard.",
+    }),
   }),
   component: Landing,
 });
@@ -72,14 +74,16 @@ function Landing() {
 
       <div className="relative z-10 lp-anim">
         <Nav />
-        <Hero />
-        <MockupSection />
-        <FeatureSection />
-        <AiAgentSection />
-        <RiskEngineSection />
-        <NewsSection />
-        <SafetySection />
-        <FinalCta />
+        <main>
+          <Hero />
+          <MockupSection />
+          <FeatureSection />
+          <AiAgentSection />
+          <RiskEngineSection />
+          <NewsSection />
+          <SafetySection />
+          <FinalCta />
+        </main>
         <Footer />
       </div>
     </div>

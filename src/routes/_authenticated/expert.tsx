@@ -12,8 +12,17 @@ import { PageHero } from "@/components/ui/page-hero";
 import { Sparkles } from "lucide-react";
 import { useLang } from "@/hooks/use-language";
 
+import { seoHead } from "@/lib/seo-head";
+
 export const Route = createFileRoute("/_authenticated/expert")({
-  head: () => ({ meta: [{ title: "Expert Tools — Quanta Terminal" }] }),
+  head: () => ({
+    ...seoHead({
+      path: "/expert",
+      title: "Expert Tools — Quanta Terminal",
+      description: "Advanced quantitative tools for IDX traders: factor analysis, regime detection, and strategy diagnostics.",
+      noindex: true,
+    }),
+  }),
   component: ExpertPage,
 });
 

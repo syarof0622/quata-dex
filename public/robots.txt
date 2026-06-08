@@ -1,0 +1,23 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /market
+Disallow: /portfolio
+Disallow: /watchlist
+Disallow: /alerts
+Disallow: /screener
+Disallow: /news
+Disallow: /ai
+Disallow: /lab
+Disallow: /expert
+Disallow: /settings
+Disallow: /admin
+Disallow: /health
+Disallow: /chart
+Disallow: /auth
+Disallow: /change-password
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /api/
+
+Sitemap: https://quata-dex.lovable.app/sitemap.xml

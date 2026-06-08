@@ -10,8 +10,17 @@ import { Activity, Database, Newspaper, BarChart3, ShieldCheck, Clock } from "lu
 import { cn } from "@/lib/utils";
 import { useLang } from "@/hooks/use-language";
 
+import { seoHead } from "@/lib/seo-head";
+
 export const Route = createFileRoute("/_authenticated/ai")({
-  head: () => ({ meta: [{ title: "AI Trading Analyst — Quanta Terminal" }] }),
+  head: () => ({
+    ...seoHead({
+      path: "/ai",
+      title: "AI Trading Analyst — Quanta Terminal",
+      description: "Chat with an AI analyst for IDX stocks: technical signals, fundamentals, news sentiment, and trade ideas grounded in live market data.",
+      noindex: true,
+    }),
+  }),
   component: AIAnalystPage,
 });
 

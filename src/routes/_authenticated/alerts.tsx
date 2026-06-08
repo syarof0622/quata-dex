@@ -15,8 +15,17 @@ import { formatDateTimeWIB } from "@/lib/format";
 import { PageHero } from "@/components/ui/page-hero";
 import { useLang } from "@/hooks/use-language";
 
+import { seoHead } from "@/lib/seo-head";
+
 export const Route = createFileRoute("/_authenticated/alerts")({
-  head: () => ({ meta: [{ title: "Smart Alerts — Quanta Terminal" }] }),
+  head: () => ({
+    ...seoHead({
+      path: "/alerts",
+      title: "Smart Alerts — Quanta Terminal",
+      description: "Configure price, volume, and AI-driven smart-money alerts for your IDX watchlist with realtime delivery.",
+      noindex: true,
+    }),
+  }),
   component: AlertsPage,
 });
 

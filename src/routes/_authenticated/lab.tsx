@@ -46,8 +46,17 @@ const fmtWIBDate = (d: string | number | Date) => {
 
 
 type LabSearch = { tab?: string };
+import { seoHead } from "@/lib/seo-head";
+
 export const Route = createFileRoute("/_authenticated/lab")({
-  head: () => ({ meta: [{ title: "Simulation Lab — Quanta Terminal" }] }),
+  head: () => ({
+    ...seoHead({
+      path: "/lab",
+      title: "Simulation Lab — Quanta Terminal",
+      description: "Paper-trade IDX stocks with AI agents, backtests, and strategy performance analytics — no real money at risk.",
+      noindex: true,
+    }),
+  }),
   validateSearch: (s: Record<string, unknown>): LabSearch => ({
     tab: typeof s.tab === "string" ? s.tab : undefined,
   }),

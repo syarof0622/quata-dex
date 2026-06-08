@@ -19,8 +19,17 @@ import { toast } from "sonner";
 import { PageHero } from "@/components/ui/page-hero";
 import { useLang } from "@/hooks/use-language";
 
+import { seoHead } from "@/lib/seo-head";
+
 export const Route = createFileRoute("/_authenticated/screener")({
-  head: () => ({ meta: [{ title: "Screener — Quanta Terminal" }] }),
+  head: () => ({
+    ...seoHead({
+      path: "/screener",
+      title: "Screener — Quanta Terminal",
+      description: "Filter IDX stocks by technical, fundamental, and AI-driven criteria to find actionable trade ideas.",
+      noindex: true,
+    }),
+  }),
   component: Screener,
 });
 
