@@ -118,6 +118,8 @@ async function handler(request: Request) {
       });
     } catch (e: any) {
       const msg = e?.message ?? "unknown error";
+      const stack = e?.stack ?? "";
+      console.error("[cron/ai-agent] agent failed", agentId, msg, stack);
       errors.push(`${agentId}: ${msg}`);
       // Mark error state and increment worker_error_count.
       const { data: row } = await supabaseAdmin
@@ -125,10 +127,11 @@ async function handler(request: Request) {
       await supabaseAdmin.from("ai_trade_agents").update({
         last_worker_run_at: new Date().toISOString(),
         last_worker_status: "error",
-        last_worker_message: msg.slice(0, 500),
+        last_worker_message: (msg + "\n" + stack).slice(0, 1500),
         next_expected_worker_run_at: new Date(Date.now() + 60_000).toISOString(),
         worker_error_count: Number((row as any)?.worker_error_count ?? 0) + 1,
       }).eq("id", agentId);
+
       results.push({
         id: agentId, decisionsCreated: 0, paperBuysExecuted: 0,
         blockedDecisions: 0, topBlockedReasons: [], lastBlockedReason: null,
