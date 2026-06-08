@@ -32,6 +32,8 @@ function rel(iso: string | null | undefined) {
 }
 
 export function AutonomousAgentPanel() {
+  const { L } = useLang();
+  const T = L.body.agentPanel;
   const fetchStatus = useServerFn(getAutonomousAgentStatus);
   const fetchDiag = useServerFn(getProfitDiagnostics);
   const setMode = useServerFn(setAgentAggressionMode);
