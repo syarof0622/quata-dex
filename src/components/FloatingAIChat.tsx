@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { AIReportRenderer } from "@/components/AIReportRenderer";
 import { cn } from "@/lib/utils";
 import { useLang } from "@/hooks/use-language";
+import { supabase } from "@/integrations/supabase/client";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -40,9 +41,14 @@ export function FloatingAIChat() {
     setInput("");
     setBusy(true);
     try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
       const resp = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ messages: next }),
       });
       if (!resp.ok || !resp.body) {

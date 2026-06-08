@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getAIAppContext } from "@/lib/ai-app-context.server";
 import { GLOBAL_FUNDAMENTAL_GUARD } from "@/lib/ai-fundamental-guard";
+import { runAsUser } from "@/lib/current-user.server";
 
 // Extract IDX-style tickers (3-4 uppercase letters, optional .JK) from text.
 function extractTickers(text: string): string[] {
@@ -204,6 +206,27 @@ function checkChatAccess(request: Request): Response | null {
   });
 }
 
+async function requireChatUser(request: Request): Promise<{ userId?: string; response?: Response }> {
+  const authHeader = request.headers.get("authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return { response: new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { "Content-Type": "application/json" } }) };
+  }
+
+  const token = authHeader.slice(7);
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !key) {
+    return { response: new Response(JSON.stringify({ error: "Auth is not configured" }), { status: 500, headers: { "Content-Type": "application/json" } }) };
+  }
+
+  const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data, error } = await client.auth.getUser(token);
+  if (error || !data.user) {
+    return { response: new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { "Content-Type": "application/json" } }) };
+  }
+  return { userId: data.user.id };
+}
+
 export const Route = createFileRoute("/api/chat")({
   server: {
     handlers: {
@@ -211,6 +234,8 @@ export const Route = createFileRoute("/api/chat")({
         try {
           const denied = checkChatAccess(request);
           if (denied) return denied;
+          const auth = await requireChatUser(request);
+          if (auth.response) return auth.response;
           const limited = checkRateLimit(getClientIp(request));
           if (limited) return limited;
           const { messages, system } = await request.json() as {
@@ -473,7 +498,7 @@ OUTPUT FORMAT — strict GitHub-Flavored Markdown (renderer supports tables, lis
 
           let appContextBlock = "";
           try {
-            const appCtx = await getAIAppContext(lastUser);
+            const appCtx = await runAsUser(auth.userId!, () => getAIAppContext(lastUser));
             appContextBlock = `APP CONTEXT (internal app state for this user — JSON):\n${JSON.stringify(appCtx)}`;
           } catch (e) {
             console.error("getAIAppContext failed", e);
