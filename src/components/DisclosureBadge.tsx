@@ -11,6 +11,7 @@
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, FileText, Megaphone, ShieldAlert, TrendingDown, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLang } from "@/hooks/use-language";
 
 export type DisclosureBadgeRecord = {
   id?: string;
