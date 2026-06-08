@@ -225,7 +225,7 @@ async function runPublicSource(
   extraFilter?: (q: any) => any,
 ): Promise<SourceRunResult> {
   const cursor = await getCursor(source_table);
-  let q: any = supabaseAdmin
+  let q: any = (supabaseAdmin as any)
     .from(source_table)
     .select(selectCols)
     .gt(timeCol, cursor)

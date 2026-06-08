@@ -39,11 +39,11 @@ export async function searchKnowledge(opts: {
   const { data, error } = await supabaseAdmin.rpc("match_knowledge", {
     query_embedding: vec as any,
     match_count: opts.k ?? 8,
-    filter_symbol: opts.symbol ?? null,
-    filter_user: opts.userId ?? null,
-    filter_tables: opts.tables ?? null,
+    filter_symbol: opts.symbol ?? undefined,
+    filter_user: opts.userId ?? undefined,
+    filter_tables: opts.tables ?? undefined,
     min_similarity: opts.minSimilarity ?? 0.3,
-  });
+  } as any);
   if (error) {
     console.error("[rag] match_knowledge error", error.message);
     return [];
