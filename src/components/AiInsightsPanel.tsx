@@ -141,7 +141,7 @@ export function AiInsightsPanel() {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">{T.sectorTitle}</CardTitle>
           <Button size="sm" variant="outline" disabled={busy === "sectors"} onClick={() => refresh("sectors")}>
-            {busy === "sectors" ? "..." : "Refresh"}
+            {busy === "sectors" ? "..." : T.refresh}
           </Button>
         </CardHeader>
         <CardContent>
@@ -149,10 +149,10 @@ export function AiInsightsPanel() {
             <table className="w-full text-xs">
               <thead className="text-muted-foreground">
                 <tr>
-                  <th className="text-left">Sector</th>
-                  <th className="text-right">RS%</th>
-                  <th className="text-right">Breadth</th>
-                  <th className="text-left">Status</th>
+                  <th className="text-left">{T.cols.sector}</th>
+                  <th className="text-right">{T.cols.rs}</th>
+                  <th className="text-right">{T.cols.breadth}</th>
+                  <th className="text-left">{T.cols.status}</th>
                 </tr>
               </thead>
               <tbody>
@@ -171,7 +171,7 @@ export function AiInsightsPanel() {
                 {(!sectors.data || sectors.data.length === 0) && (
                   <tr>
                     <td colSpan={4} className="text-muted-foreground py-4 text-center">
-                      Tidak ada data. Klik Refresh.
+                      {T.noSectorData}
                     </td>
                   </tr>
                 )}
