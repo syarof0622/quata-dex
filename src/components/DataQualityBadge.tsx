@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { qualityBadgeLabel, type DataQualityReport } from "@/lib/data-quality";
+import { useLang } from "@/hooks/use-language";
 
 const ROW_COLORS: Record<string, string> = {
   fresh: "text-emerald-500",
@@ -19,8 +20,10 @@ const VARIANTS: Record<string, "default" | "secondary" | "destructive" | "outlin
 };
 
 export function DataQualityBadge({ report }: { report: DataQualityReport | null | undefined }) {
+  const { L } = useLang();
+  const T = L.body.badge.dataQuality;
   if (!report) {
-    return <Badge variant="outline">No Quality Data</Badge>;
+    return <Badge variant="outline">{T.noData}</Badge>;
   }
   const label = qualityBadgeLabel(report);
   return (
@@ -33,17 +36,17 @@ export function DataQualityBadge({ report }: { report: DataQualityReport | null 
         </TooltipTrigger>
         <TooltipContent className="max-w-xs">
           <div className="space-y-1 text-xs">
-            <div className="font-semibold">Data Quality — {report.symbol}</div>
-            <Row label="Price"        v={report.priceDataQuality} />
-            <Row label="Technical"    v={report.technicalDataQuality} />
-            <Row label="News"         v={report.newsDataQuality} />
-            <Row label="Sentiment"    v={report.sentimentDataQuality} />
-            <Row label="Disclosure"   v={report.disclosureDataQuality} />
-            <Row label="Fundamental"  v={report.fundamentalDataQuality} />
+            <div className="font-semibold">{T.title} {report.symbol}</div>
+            <Row label={T.rows.price}       v={report.priceDataQuality} />
+            <Row label={T.rows.technical}   v={report.technicalDataQuality} />
+            <Row label={T.rows.news}        v={report.newsDataQuality} />
+            <Row label={T.rows.sentiment}   v={report.sentimentDataQuality} />
+            <Row label={T.rows.disclosure}  v={report.disclosureDataQuality} />
+            <Row label={T.rows.fundamental} v={report.fundamentalDataQuality} />
             <div className="pt-1 border-t border-border/50 text-muted-foreground">
-              Source reliability: {report.sourceReliabilityScore}
+              {T.sourceReliability} {report.sourceReliabilityScore}
               {" · "}
-              {report.decisionAllowed ? "decision allowed" : "decision blocked"}
+              {report.decisionAllowed ? T.decisionAllowed : T.decisionBlocked}
             </div>
             {report.warnings.length > 0 && (
               <ul className="list-disc list-inside text-amber-500">
@@ -65,3 +68,4 @@ function Row({ label, v }: { label: string; v: string }) {
     </div>
   );
 }
+
