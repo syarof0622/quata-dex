@@ -166,19 +166,23 @@ export function AutonomousAgentPanel() {
           swing.agent.swing_mode_active ? "border-sky-500/40 bg-sky-500/5" : "border-border/60 bg-card/50")}>
           <div className="flex items-center justify-between gap-2 mb-2">
             <h3 className="text-sm font-semibold flex items-center gap-2">
-              <Waves className="h-4 w-4 text-sky-400" /> Swing Max
+              <Waves className="h-4 w-4 text-sky-400" /> {T.swing.title}
               <span className={cn("ml-1 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-mono",
                 swing.agent.swing_mode_active ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" : "border-slate-500/30 bg-slate-500/10 text-slate-300")}>
-                {swing.agent.swing_mode_active ? "ACTIVE" : "INACTIVE"}
+                {swing.agent.swing_mode_active ? T.swing.active : T.swing.inactive}
               </span>
               {swing.agent.swing_protection_active && (
                 <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 text-amber-300 px-2 py-0.5 text-[10px] font-mono">
-                  PROTECTION
+                  {T.swing.protection}
                 </span>
               )}
             </h3>
             <span className="text-[10.5px] text-muted-foreground font-mono">
-              Q≥{swing.agent.swing_quality_threshold ?? 78} · hold {swing.agent.target_holding_days ?? 3}-{swing.agent.max_holding_days ?? 7}d · {swing.agent.max_trades_per_symbol_per_week ?? 1}/wk/sym
+              {T.swing.thresholds
+                .replace("{q}", String(swing.agent.swing_quality_threshold ?? 78))
+                .replace("{min}", String(swing.agent.target_holding_days ?? 3))
+                .replace("{max}", String(swing.agent.max_holding_days ?? 7))
+                .replace("{wk}", String(swing.agent.max_trades_per_symbol_per_week ?? 1))}
             </span>
           </div>
           {swing.agent.swing_protection_reason && (
@@ -186,15 +190,15 @@ export function AutonomousAgentPanel() {
           )}
           {swing.stats && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[11px] mb-2">
-              <Heart label="Open plans" value={String(swing.stats.openCount)} />
-              <Heart label="Closed" value={String(swing.stats.closedCount)} />
-              <Heart label="Win rate" value={`${(swing.stats.winRate * 100).toFixed(0)}%`} />
-              <Heart label="Avg hold" value={`${swing.stats.avgHoldDays.toFixed(1)}d`} />
+              <Heart label={T.swing.openPlans} value={String(swing.stats.openCount)} />
+              <Heart label={T.swing.closed} value={String(swing.stats.closedCount)} />
+              <Heart label={T.swing.winRate} value={`${(swing.stats.winRate * 100).toFixed(0)}%`} />
+              <Heart label={T.swing.avgHold} value={`${swing.stats.avgHoldDays.toFixed(1)}d`} />
             </div>
           )}
           {(swing.plans?.length ?? 0) > 0 && (
             <div className="space-y-1">
-              <div className="text-[10.5px] uppercase tracking-wider text-muted-foreground">Recent plans</div>
+              <div className="text-[10.5px] uppercase tracking-wider text-muted-foreground">{T.swing.recentPlans}</div>
               <div className="flex flex-col gap-1">
                 {swing.plans.slice(0, 6).map((p: any) => {
                   const closed = !!p.closed_at;
@@ -216,7 +220,8 @@ export function AutonomousAgentPanel() {
           )}
           {((swing as any)?.allocationDecisions?.length ?? 0) > 0 && (
             <div className="mt-3 space-y-1">
-              <div className="text-[10.5px] uppercase tracking-wider text-muted-foreground">Allocation decisions (24h)</div>
+              <div className="text-[10.5px] uppercase tracking-wider text-muted-foreground">{T.swing.allocationDecisions}</div>
+
               <div className="flex flex-col gap-1">
                 {(swing as any).allocationDecisions.map((d: any, i: number) => {
                   const tier = d.tier ?? 0;
