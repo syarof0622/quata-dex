@@ -18,10 +18,28 @@ const SUPER_EMAIL = "assist@uinws.or.id";
 const LEGACY_UID = "00000000-0000-0000-0000-000000000001";
 
 const LEGACY_USER_TABLES = [
-  "paper_accounts", "paper_orders", "paper_positions", "watchlist", "alerts",
+  "paper_orders", "paper_positions", "watchlist", "alerts",
   "ai_trade_agents", "trade_journal", "trading_journal",
   "portfolio_equity_snapshots", "portfolio_risk_snapshots",
   "strategy_mode_performance_snapshots",
+  "portfolio_holdings", "portfolio_intelligence_snapshots",
+  "portfolio_scenario_results", "position_attribution_snapshots",
+  "recent_searches", "strategies", "strategy_health",
+  "symbol_trade_cooldowns",
+];
+
+const LEGACY_ACCOUNT_REFS = [
+  { table: "paper_orders", column: "account_id" },
+  { table: "paper_positions", column: "account_id" },
+  { table: "ai_trade_agents", column: "paper_account_id" },
+  { table: "ai_agent_decisions", column: "paper_account_id" },
+  { table: "ai_agent_performance", column: "paper_account_id" },
+  { table: "ai_trade_reviews", column: "paper_account_id" },
+  { table: "paper_balance_events", column: "paper_account_id" },
+  { table: "portfolio_equity_snapshots", column: "paper_account_id" },
+  { table: "portfolio_risk_snapshots", column: "paper_account_id" },
+  { table: "swing_trade_plans", column: "paper_account_id" },
+  { table: "user_ai_settings", column: "paper_account_id" },
 ];
 
 export const Route = createFileRoute("/api/public/auth/bootstrap-superadmin")({
