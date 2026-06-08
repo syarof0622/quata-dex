@@ -20,7 +20,6 @@ function compactNumber(n: number | null | undefined, currency?: string | null): 
 }
 function pct(n: number | null | undefined, digits = 2): string {
   if (n == null || !isFinite(n)) return "—";
-  // Yahoo: profit/operating margins are decimals (0.23 => 23%)
   return `${(n * 100).toFixed(digits)}%`;
 }
 function ratio(n: number | null | undefined, digits = 2): string {
@@ -103,6 +102,10 @@ function StatementsTable<T extends { date: string }>({ rows, cols, periodLabel, 
 }
 
 export function FundamentalPanel({ symbol }: { symbol: string }) {
+  const { L } = useLang();
+  const T = L.body.fundamental;
+  const S = T.stats;
+  const SE = T.sections;
   const q = useQuery({
     queryKey: ["fundamentals", symbol],
     queryFn: () => getFundamentals({ data: { symbol } }),
@@ -123,7 +126,7 @@ export function FundamentalPanel({ symbol }: { symbol: string }) {
   if (q.isError) {
     return (
       <div className="panel p-4 mt-3 text-sm text-bear">
-        Gagal memuat data fundamental. {String((q.error as any)?.message ?? "")}
+        {T.loadFailed} {String((q.error as any)?.message ?? "")}
       </div>
     );
   }
@@ -131,9 +134,10 @@ export function FundamentalPanel({ symbol }: { symbol: string }) {
   const f: FundamentalDTO | null = q.data ?? null;
 
   if (!f) {
+    const [pre, post] = T.notAvailable.split("{symbol}");
     return (
       <div className="panel p-4 mt-3 text-sm text-muted-foreground">
-        Data fundamental tidak tersedia untuk <span className="font-mono">{symbol}</span>. Coba symbol lain (saham individual biasanya tersedia, indeks/ETF terbatas).
+        {pre}<span className="font-mono">{symbol}</span>{post}
       </div>
     );
   }
@@ -142,8 +146,7 @@ export function FundamentalPanel({ symbol }: { symbol: string }) {
 
   return (
     <div className="space-y-3 mt-3">
-      {/* Company Profile */}
-      <Section icon={Building2} title="Company Profile">
+      <Section icon={Building2} title={SE.profile} emptyText={T.noData}>
         <div className="space-y-2">
           {f.profile.longName && (
             <div className="font-semibold text-base">{f.profile.longName}</div>
@@ -153,7 +156,7 @@ export function FundamentalPanel({ symbol }: { symbol: string }) {
             {f.profile.industry && <span>· {f.profile.industry}</span>}
             {f.profile.country && <span>· {f.profile.country}</span>}
             {f.profile.fullTimeEmployees && (
-              <span><Users className="size-3 inline -mt-0.5 mr-1" />{f.profile.fullTimeEmployees.toLocaleString()} employees</span>
+              <span><Users className="size-3 inline -mt-0.5 mr-1" />{f.profile.fullTimeEmployees.toLocaleString()} {T.employees}</span>
             )}
             {f.profile.website && (
               <a href={f.profile.website} target="_blank" rel="noreferrer" className="text-primary hover:underline">
@@ -165,124 +168,122 @@ export function FundamentalPanel({ symbol }: { symbol: string }) {
             <p className="text-xs text-muted-foreground leading-relaxed line-clamp-6">{f.profile.summary}</p>
           )}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
-            <Stat label="Market Cap" value={compactNumber(f.price.marketCap, cur)} />
-            <Stat label="Currency" value={cur || "—"} />
-            <Stat label="Last Price" value={f.price.regularMarketPrice != null ? f.price.regularMarketPrice.toLocaleString() : "—"} />
+            <Stat label={S.marketCap} value={compactNumber(f.price.marketCap, cur)} />
+            <Stat label={S.currency} value={cur || "—"} />
+            <Stat label={S.lastPrice} value={f.price.regularMarketPrice != null ? f.price.regularMarketPrice.toLocaleString() : "—"} />
           </div>
         </div>
       </Section>
 
-      {/* Valuation */}
-      <Section icon={BarChart3} title="Valuation" empty={Object.values(f.valuation).every(v => v == null)}>
+      <Section icon={BarChart3} title={SE.valuation} empty={Object.values(f.valuation).every(v => v == null)} emptyText={T.noData}>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-          <Stat label="P/E (TTM)" value={ratio(f.valuation.trailingPE)} />
-          <Stat label="P/E Forward" value={ratio(f.valuation.forwardPE)} />
-          <Stat label="PEG" value={ratio(f.valuation.pegRatio)} />
-          <Stat label="P/B" value={ratio(f.valuation.priceToBook)} />
-          <Stat label="P/S" value={ratio(f.valuation.priceToSales)} />
-          <Stat label="EV/EBITDA" value={ratio(f.valuation.enterpriseToEbitda)} />
-          <Stat label="EV/Revenue" value={ratio(f.valuation.enterpriseToRevenue)} />
+          <Stat label={S.peTTM} value={ratio(f.valuation.trailingPE)} />
+          <Stat label={S.peFwd} value={ratio(f.valuation.forwardPE)} />
+          <Stat label={S.peg} value={ratio(f.valuation.pegRatio)} />
+          <Stat label={S.pb} value={ratio(f.valuation.priceToBook)} />
+          <Stat label={S.ps} value={ratio(f.valuation.priceToSales)} />
+          <Stat label={S.evEbitda} value={ratio(f.valuation.enterpriseToEbitda)} />
+          <Stat label={S.evRev} value={ratio(f.valuation.enterpriseToRevenue)} />
         </div>
       </Section>
 
-      {/* Profitability */}
-      <Section icon={TrendingUp} title="Profitability" empty={Object.values(f.profitability).every(v => v == null)}>
+      <Section icon={TrendingUp} title={SE.profitability} empty={Object.values(f.profitability).every(v => v == null)} emptyText={T.noData}>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-2">
-          <Stat label="Gross Margin" value={pct(f.profitability.grossMargin)} tone={(f.profitability.grossMargin ?? 0) > 0.3 ? "bull" : undefined} />
-          <Stat label="Operating Margin" value={pct(f.profitability.operatingMargin)} tone={(f.profitability.operatingMargin ?? 0) > 0.15 ? "bull" : undefined} />
-          <Stat label="Profit Margin" value={pct(f.profitability.profitMargin)} tone={(f.profitability.profitMargin ?? 0) > 0.1 ? "bull" : (f.profitability.profitMargin ?? 0) < 0 ? "bear" : undefined} />
-          <Stat label="ROE" value={pct(f.profitability.returnOnEquity)} tone={(f.profitability.returnOnEquity ?? 0) > 0.15 ? "bull" : undefined} />
-          <Stat label="ROA" value={pct(f.profitability.returnOnAssets)} />
-          <Stat label="EBITDA Margin" value={pct(f.profitability.ebitdaMargin)} />
+          <Stat label={S.grossMargin} value={pct(f.profitability.grossMargin)} tone={(f.profitability.grossMargin ?? 0) > 0.3 ? "bull" : undefined} />
+          <Stat label={S.opMargin} value={pct(f.profitability.operatingMargin)} tone={(f.profitability.operatingMargin ?? 0) > 0.15 ? "bull" : undefined} />
+          <Stat label={S.profitMargin} value={pct(f.profitability.profitMargin)} tone={(f.profitability.profitMargin ?? 0) > 0.1 ? "bull" : (f.profitability.profitMargin ?? 0) < 0 ? "bear" : undefined} />
+          <Stat label={S.roe} value={pct(f.profitability.returnOnEquity)} tone={(f.profitability.returnOnEquity ?? 0) > 0.15 ? "bull" : undefined} />
+          <Stat label={S.roa} value={pct(f.profitability.returnOnAssets)} />
+          <Stat label={S.ebitdaMargin} value={pct(f.profitability.ebitdaMargin)} />
         </div>
       </Section>
 
-      {/* Growth */}
-      <Section icon={TrendingUp} title="Growth (YoY)" empty={Object.values(f.growth).every(v => v == null)}>
+      <Section icon={TrendingUp} title={SE.growth} empty={Object.values(f.growth).every(v => v == null)} emptyText={T.noData}>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          <Stat label="Revenue Growth" value={pct(f.growth.revenueGrowth)} tone={(f.growth.revenueGrowth ?? 0) > 0.1 ? "bull" : (f.growth.revenueGrowth ?? 0) < 0 ? "bear" : undefined} />
-          <Stat label="Earnings Growth" value={pct(f.growth.earningsGrowth)} tone={(f.growth.earningsGrowth ?? 0) > 0.1 ? "bull" : (f.growth.earningsGrowth ?? 0) < 0 ? "bear" : undefined} />
-          <Stat label="EPS Q-Growth" value={pct(f.growth.earningsQuarterlyGrowth)} tone={(f.growth.earningsQuarterlyGrowth ?? 0) > 0 ? "bull" : "bear"} />
+          <Stat label={S.revGrowth} value={pct(f.growth.revenueGrowth)} tone={(f.growth.revenueGrowth ?? 0) > 0.1 ? "bull" : (f.growth.revenueGrowth ?? 0) < 0 ? "bear" : undefined} />
+          <Stat label={S.earnGrowth} value={pct(f.growth.earningsGrowth)} tone={(f.growth.earningsGrowth ?? 0) > 0.1 ? "bull" : (f.growth.earningsGrowth ?? 0) < 0 ? "bear" : undefined} />
+          <Stat label={S.epsQGrowth} value={pct(f.growth.earningsQuarterlyGrowth)} tone={(f.growth.earningsQuarterlyGrowth ?? 0) > 0 ? "bull" : "bear"} />
         </div>
       </Section>
 
-      {/* Financial Health */}
-      <Section icon={ShieldCheck} title="Financial Health" empty={Object.values(f.health).every(v => v == null)}>
+      <Section icon={ShieldCheck} title={SE.health} empty={Object.values(f.health).every(v => v == null)} emptyText={T.noData}>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-          <Stat label="Total Cash" value={compactNumber(f.health.totalCash, cur)} />
-          <Stat label="Total Debt" value={compactNumber(f.health.totalDebt, cur)} />
-          <Stat label="Debt / Equity" value={ratio(f.health.debtToEquity)} hint="< 100 sehat" tone={(f.health.debtToEquity ?? 0) < 100 ? "bull" : (f.health.debtToEquity ?? 0) > 200 ? "bear" : undefined} />
-          <Stat label="Current Ratio" value={ratio(f.health.currentRatio)} hint="> 1.5 sehat" tone={(f.health.currentRatio ?? 0) > 1.5 ? "bull" : (f.health.currentRatio ?? 0) < 1 ? "bear" : undefined} />
-          <Stat label="Quick Ratio" value={ratio(f.health.quickRatio)} />
-          <Stat label="Operating CF" value={compactNumber(f.health.operatingCashflow, cur)} />
-          <Stat label="Free CF" value={compactNumber(f.health.freeCashflow, cur)} tone={(f.health.freeCashflow ?? 0) > 0 ? "bull" : "bear"} />
+          <Stat label={S.totalCash} value={compactNumber(f.health.totalCash, cur)} />
+          <Stat label={S.totalDebt} value={compactNumber(f.health.totalDebt, cur)} />
+          <Stat label={S.debtEquity} value={ratio(f.health.debtToEquity)} hint={T.hints.debtHealthy} tone={(f.health.debtToEquity ?? 0) < 100 ? "bull" : (f.health.debtToEquity ?? 0) > 200 ? "bear" : undefined} />
+          <Stat label={S.currentRatio} value={ratio(f.health.currentRatio)} hint={T.hints.currentHealthy} tone={(f.health.currentRatio ?? 0) > 1.5 ? "bull" : (f.health.currentRatio ?? 0) < 1 ? "bear" : undefined} />
+          <Stat label={S.quickRatio} value={ratio(f.health.quickRatio)} />
+          <Stat label={S.opCF} value={compactNumber(f.health.operatingCashflow, cur)} />
+          <Stat label={S.freeCF} value={compactNumber(f.health.freeCashflow, cur)} tone={(f.health.freeCashflow ?? 0) > 0 ? "bull" : "bear"} />
         </div>
       </Section>
 
-      {/* Dividends & Earnings */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <Section icon={Coins} title="Dividends" empty={f.dividends.dividendRate == null && f.dividends.dividendYield == null}>
+        <Section icon={Coins} title={SE.dividends} empty={f.dividends.dividendRate == null && f.dividends.dividendYield == null} emptyText={T.noData}>
           <div className="grid grid-cols-2 gap-2">
-            <Stat label="Dividend Rate" value={f.dividends.dividendRate != null ? f.dividends.dividendRate.toFixed(2) : "—"} />
-            <Stat label="Dividend Yield" value={pct(f.dividends.dividendYield)} />
-            <Stat label="Payout Ratio" value={pct(f.dividends.payoutRatio)} />
-            <Stat label="Ex-Dividend" value={fmtDate(f.dividends.exDividendDate)} />
+            <Stat label={S.divRate} value={f.dividends.dividendRate != null ? f.dividends.dividendRate.toFixed(2) : "—"} />
+            <Stat label={S.divYield} value={pct(f.dividends.dividendYield)} />
+            <Stat label={S.payout} value={pct(f.dividends.payoutRatio)} />
+            <Stat label={S.exDiv} value={fmtDate(f.dividends.exDividendDate)} />
           </div>
         </Section>
 
-        <Section icon={CalendarClock} title="Earnings & Analyst">
+        <Section icon={CalendarClock} title={SE.earnings} emptyText={T.noData}>
           <div className="grid grid-cols-2 gap-2">
-            <Stat label="Next Earnings" value={fmtDate(f.earnings.nextEarningsDate)} />
-            <Stat label="EPS (TTM)" value={ratio(f.earnings.epsTrailing)} />
-            <Stat label="EPS Forward" value={ratio(f.earnings.epsForward)} />
-            <Stat label="Analysts" value={f.recommendation.numAnalysts != null ? String(f.recommendation.numAnalysts) : "—"} />
-            <Stat label="Recommendation" value={(f.recommendation.key ?? "—").replace("_", " ")} hint={`mean ${ratio(f.recommendation.mean)}`} />
-            <Stat label="Target Price" value={f.recommendation.targetMean != null ? `${f.recommendation.targetMean.toFixed(2)}` : "—"} hint={f.recommendation.targetLow != null && f.recommendation.targetHigh != null ? `${f.recommendation.targetLow.toFixed(0)}–${f.recommendation.targetHigh.toFixed(0)}` : undefined} tone={recColor(f.recommendation.key) === "text-bull" ? "bull" : recColor(f.recommendation.key) === "text-bear" ? "bear" : undefined} />
+            <Stat label={S.nextEarn} value={fmtDate(f.earnings.nextEarningsDate)} />
+            <Stat label={S.epsTTM} value={ratio(f.earnings.epsTrailing)} />
+            <Stat label={S.epsFwd} value={ratio(f.earnings.epsForward)} />
+            <Stat label={S.analysts} value={f.recommendation.numAnalysts != null ? String(f.recommendation.numAnalysts) : "—"} />
+            <Stat label={S.rec} value={(f.recommendation.key ?? "—").replace("_", " ")} hint={T.hints.mean.replace("{v}", ratio(f.recommendation.mean))} />
+            <Stat label={S.target} value={f.recommendation.targetMean != null ? `${f.recommendation.targetMean.toFixed(2)}` : "—"} hint={f.recommendation.targetLow != null && f.recommendation.targetHigh != null ? `${f.recommendation.targetLow.toFixed(0)}–${f.recommendation.targetHigh.toFixed(0)}` : undefined} tone={recColor(f.recommendation.key) === "text-bull" ? "bull" : recColor(f.recommendation.key) === "text-bear" ? "bear" : undefined} />
           </div>
         </Section>
       </div>
 
-      {/* Income Statement */}
-      <Section icon={BarChart3} title="Income Statement (Annual)">
+      <Section icon={BarChart3} title={SE.income} emptyText={T.noData}>
         <StatementsTable
+          periodLabel={T.period}
+          emptyText={T.noReport}
           rows={f.statements.income}
           cols={[
-            { key: "revenue", label: "Revenue" },
-            { key: "grossProfit", label: "Gross Profit" },
-            { key: "operatingIncome", label: "Operating Inc." },
-            { key: "netIncome", label: "Net Income" },
+            { key: "revenue", label: S.revenue },
+            { key: "grossProfit", label: S.grossProfit },
+            { key: "operatingIncome", label: S.opIncome },
+            { key: "netIncome", label: S.netIncome },
           ]}
         />
       </Section>
 
-      {/* Balance Sheet */}
-      <Section icon={ShieldCheck} title="Balance Sheet (Annual)">
+      <Section icon={ShieldCheck} title={SE.balance} emptyText={T.noData}>
         <StatementsTable
+          periodLabel={T.period}
+          emptyText={T.noReport}
           rows={f.statements.balance}
           cols={[
-            { key: "totalAssets", label: "Assets" },
-            { key: "totalLiab", label: "Liabilities" },
-            { key: "totalEquity", label: "Equity" },
-            { key: "cash", label: "Cash" },
+            { key: "totalAssets", label: S.assets },
+            { key: "totalLiab", label: S.liab },
+            { key: "totalEquity", label: S.equity },
+            { key: "cash", label: S.cash },
           ]}
         />
       </Section>
 
-      {/* Cashflow */}
-      <Section icon={Coins} title="Cashflow (Annual)">
+      <Section icon={Coins} title={SE.cashflow} emptyText={T.noData}>
         <StatementsTable
+          periodLabel={T.period}
+          emptyText={T.noReport}
           rows={f.statements.cashflow}
           cols={[
-            { key: "operating", label: "Operating" },
-            { key: "investing", label: "Investing" },
-            { key: "financing", label: "Financing" },
-            { key: "capex", label: "CapEx" },
+            { key: "operating", label: S.operating },
+            { key: "investing", label: S.investing },
+            { key: "financing", label: S.financing },
+            { key: "capex", label: S.capex },
           ]}
         />
       </Section>
 
       <div className="text-[10px] text-muted-foreground text-right">
-        Data: Yahoo Finance · diperbarui {formatTimeWIB(f.asOf)}
+        {T.footer.replace("{time}", formatTimeWIB(f.asOf))}
       </div>
     </div>
   );
