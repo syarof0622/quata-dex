@@ -108,7 +108,7 @@ export function AiInsightsPanel() {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">{T.regimeTitle}</CardTitle>
           <Button size="sm" variant="outline" disabled={busy === "regime"} onClick={() => refresh("regime")}>
-            {busy === "regime" ? "..." : "Refresh"}
+            {busy === "regime" ? "..." : T.refresh}
           </Button>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
@@ -118,9 +118,9 @@ export function AiInsightsPanel() {
                 <Badge variant={(regimeColor[r.regime_classification] as any) ?? "secondary"}>
                   {r.regime_classification}
                 </Badge>
-                <Badge variant="outline">Trend: {r.regime_trend}</Badge>
-                <Badge variant="outline">Vol: {r.regime_volatility}</Badge>
-                <Badge variant="outline">Breadth: {r.regime_breadth}</Badge>
+                <Badge variant="outline">{T.trend}: {r.regime_trend}</Badge>
+                <Badge variant="outline">{T.vol}: {r.regime_volatility}</Badge>
+                <Badge variant="outline">{T.breadth}: {r.regime_breadth}</Badge>
               </div>
               <div className="text-muted-foreground">{r.reasoning}</div>
               {r.idx_level && (
@@ -131,7 +131,7 @@ export function AiInsightsPanel() {
               )}
             </>
           ) : (
-            <div className="text-muted-foreground">Belum ada snapshot. Klik Refresh.</div>
+            <div className="text-muted-foreground">{T.regimeEmpty}</div>
           )}
         </CardContent>
       </Card>
@@ -141,7 +141,7 @@ export function AiInsightsPanel() {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">{T.sectorTitle}</CardTitle>
           <Button size="sm" variant="outline" disabled={busy === "sectors"} onClick={() => refresh("sectors")}>
-            {busy === "sectors" ? "..." : "Refresh"}
+            {busy === "sectors" ? "..." : T.refresh}
           </Button>
         </CardHeader>
         <CardContent>
@@ -149,10 +149,10 @@ export function AiInsightsPanel() {
             <table className="w-full text-xs">
               <thead className="text-muted-foreground">
                 <tr>
-                  <th className="text-left">Sector</th>
-                  <th className="text-right">RS%</th>
-                  <th className="text-right">Breadth</th>
-                  <th className="text-left">Status</th>
+                  <th className="text-left">{T.cols.sector}</th>
+                  <th className="text-right">{T.cols.rs}</th>
+                  <th className="text-right">{T.cols.breadth}</th>
+                  <th className="text-left">{T.cols.status}</th>
                 </tr>
               </thead>
               <tbody>
@@ -171,7 +171,7 @@ export function AiInsightsPanel() {
                 {(!sectors.data || sectors.data.length === 0) && (
                   <tr>
                     <td colSpan={4} className="text-muted-foreground py-4 text-center">
-                      Tidak ada data. Klik Refresh.
+                      {T.noSectorData}
                     </td>
                   </tr>
                 )}
@@ -186,7 +186,7 @@ export function AiInsightsPanel() {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">{T.riskTitle}</CardTitle>
           <Button size="sm" variant="outline" disabled={busy === "risk"} onClick={() => refresh("risk")}>
-            {busy === "risk" ? "..." : "Refresh"}
+            {busy === "risk" ? "..." : T.refresh}
           </Button>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
@@ -202,16 +202,16 @@ export function AiInsightsPanel() {
                         : "secondary"
                   }
                 >
-                  Portfolio Risk: {k.risk_level}
+                  {T.portfolioRisk}: {k.risk_level}
                 </Badge>
-                <Badge variant="outline">Cash: {Number(k.cash_pct).toFixed(0)}%</Badge>
-                <Badge variant="outline">Max pos: {Number(k.max_position_weight).toFixed(1)}%</Badge>
-                <Badge variant="outline">DD: {Number(k.current_drawdown).toFixed(2)}%</Badge>
-                <Badge variant="outline">Today: {Number(k.daily_pnl_pct).toFixed(2)}%</Badge>
+                <Badge variant="outline">{T.cash}: {Number(k.cash_pct).toFixed(0)}%</Badge>
+                <Badge variant="outline">{T.maxPos}: {Number(k.max_position_weight).toFixed(1)}%</Badge>
+                <Badge variant="outline">{T.dd}: {Number(k.current_drawdown).toFixed(2)}%</Badge>
+                <Badge variant="outline">{T.today}: {Number(k.daily_pnl_pct).toFixed(2)}%</Badge>
               </div>
               {r && (
                 <div className="rounded-md border border-border/60 bg-muted/30 p-2 text-xs text-muted-foreground">
-                  <span className="font-medium text-foreground">Market vs Portfolio:</span>{" "}
+                  <span className="font-medium text-foreground">{T.marketVsPortfolio}</span>{" "}
                   Market risk ({r.regime_classification}, vol {r.regime_volatility}, breadth {r.regime_breadth})
                   {" "}≠ portfolio risk. Portfolio Anda saat ini {k.risk_level} karena cash ratio{" "}
                   {Number(k.cash_pct).toFixed(0)}% dan posisi terbesar hanya{" "}
@@ -228,7 +228,7 @@ export function AiInsightsPanel() {
               )}
             </>
           ) : (
-            <div className="text-muted-foreground">Belum ada snapshot risk.</div>
+            <div className="text-muted-foreground">{T.riskEmpty}</div>
           )}
         </CardContent>
       </Card>
@@ -238,7 +238,7 @@ export function AiInsightsPanel() {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">{T.reviewsTitle}</CardTitle>
           <Button size="sm" variant="outline" disabled={busy === "review"} onClick={() => refresh("review")}>
-            {busy === "review" ? "..." : "Run Review"}
+            {busy === "review" ? "..." : T.runReview}
           </Button>
         </CardHeader>
         <CardContent>
@@ -259,11 +259,11 @@ export function AiInsightsPanel() {
                       <span className="font-medium">{r.symbol}</span>
                       <Badge variant={badgeVariant as any} className="text-[10px]">
                         {isPending
-                          ? "pending review data"
+                          ? T.pendingReviewData
                           : `${r.outcome} · ${pct.toFixed(2)}% · ${pnl >= 0 ? "+" : ""}${pnl.toFixed(2)}`}
                       </Badge>
                     </div>
-                    <div className="text-muted-foreground">Lesson: {r.lesson_label}</div>
+                    <div className="text-muted-foreground">{T.lesson}: {r.lesson_label}</div>
                     {r.what_went_wrong && (
                       <div className="text-amber-500">✗ {r.what_went_wrong}</div>
                     )}
@@ -274,13 +274,13 @@ export function AiInsightsPanel() {
                 );
               })}
               {(!reviews.data || reviews.data.length === 0) && (
-                <li className="text-muted-foreground">Belum ada closed trade untuk direview.</li>
+                <li className="text-muted-foreground">{T.reviewEmpty}</li>
               )}
             </ul>
           </ScrollArea>
           {lessons.data && lessons.data.length > 0 && (
             <div className="mt-3 text-xs">
-              <div className="font-semibold mb-1">Lessons Learned</div>
+              <div className="font-semibold mb-1">{T.lessonsLearned}</div>
               <div className="flex flex-wrap gap-1">
                 {lessons.data.slice(0, 6).map((l: any) => (
                   <Badge key={l.lesson} variant="outline" className="text-[10px]">
@@ -298,7 +298,7 @@ export function AiInsightsPanel() {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">{T.alertsTitle}</CardTitle>
           <Button size="sm" variant="outline" onClick={() => alerts.refetch()}>
-            Re-evaluate
+            {T.reEvaluate}
           </Button>
         </CardHeader>
         <CardContent>
@@ -329,20 +329,20 @@ export function AiInsightsPanel() {
                         </div>
                       )}
                       {a.risk_impact && (
-                        <div className="text-muted-foreground italic">Impact: {a.risk_impact}</div>
+                        <div className="text-muted-foreground italic">{T.impact}: {a.risk_impact}</div>
                       )}
                     </div>
                   </div>
                 </li>
               ))}
               {(!alerts.data || alerts.data.length === 0) && (
-                <li className="text-muted-foreground">Tidak ada alert aktif saat ini.</li>
+                <li className="text-muted-foreground">{T.alertsEmpty}</li>
               )}
             </ul>
           </ScrollArea>
           {defs.data && defs.data.length > 0 && (
             <div className="mt-3 text-xs text-muted-foreground">
-              {defs.data.length} alert types tersedia ·{" "}
+              {defs.data.length} {T.alertTypesAvailable} ·{" "}
               {Array.from(new Set(defs.data.map((d: any) => d.category))).join(" · ")}
             </div>
           )}
@@ -356,11 +356,11 @@ export function AiInsightsPanel() {
           <div className="flex items-center gap-2">
             {strategy.data?.marketRegime && (
               <Badge variant="outline" className="text-[10px] uppercase">
-                Regime: {strategy.data.marketRegime}
+                {T.regime}: {strategy.data.marketRegime}
               </Badge>
             )}
             <Button size="sm" variant="outline" onClick={() => strategy.refetch()}>
-              Refresh
+              {T.refresh}
             </Button>
           </div>
         </CardHeader>
@@ -371,7 +371,7 @@ export function AiInsightsPanel() {
           {strategy.data && (
             <div className="grid md:grid-cols-2 gap-4 text-xs">
               <div>
-                <div className="font-semibold mb-1 text-emerald-500">Terbaik untuk regime ini</div>
+                <div className="font-semibold mb-1 text-emerald-500">{T.bestRegime}</div>
                 <ul className="space-y-1">
                   {strategy.data.bestForThisRegime.map((s: any) => {
                     const noSample = s.sampleSize < 5;
@@ -380,32 +380,32 @@ export function AiInsightsPanel() {
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-mono">{s.strategyName}</span>
                         <Badge variant={noSample ? "outline" : "default"} className="text-[10px]">
-                          {noSample ? "insufficient_sample" : s.classification}
+                          {noSample ? T.insufficientSampleBadge : s.classification}
                         </Badge>
                       </div>
                       <div className="text-muted-foreground mt-0.5">
-                        Score <span className="text-foreground font-mono">{s.strategyScore}</span> ·{" "}
-                        Sample <span className="font-mono">{s.sampleSize}</span> ({s.sampleQuality}) ·{" "}
-                        WR {s.forwardWinRate != null ? `${Math.round(s.forwardWinRate)}%` : "—"} fwd /{" "}
-                        {s.backtestWinRate != null ? `${Math.round(s.backtestWinRate)}%` : "—"} bt ·{" "}
-                        PF {s.profitFactor != null ? Number(s.profitFactor).toFixed(2) : "—"} ·{" "}
-                        DD {s.maxDrawdown != null ? `${Number(s.maxDrawdown).toFixed(1)}%` : "—"}
+                        {T.score} <span className="text-foreground font-mono">{s.strategyScore}</span> ·{" "}
+                        {T.sample} <span className="font-mono">{s.sampleSize}</span> ({s.sampleQuality}) ·{" "}
+                        {T.wr} {s.forwardWinRate != null ? `${Math.round(s.forwardWinRate)}%` : "—"} {T.fwd} /{" "}
+                        {s.backtestWinRate != null ? `${Math.round(s.backtestWinRate)}%` : "—"} {T.bt} ·{" "}
+                        {T.pf} {s.profitFactor != null ? Number(s.profitFactor).toFixed(2) : "—"} ·{" "}
+                        {T.dd} {s.maxDrawdown != null ? `${Number(s.maxDrawdown).toFixed(1)}%` : "—"}
                       </div>
                       {noSample && (
                         <div className="text-amber-400/90 mt-0.5 text-[10px]">
-                          Insufficient sample — do not overtrust this strategy.
+                          {T.insufficientWarn}
                         </div>
                       )}
                     </li>
                     );
                   })}
                   {strategy.data.bestForThisRegime.length === 0 && (
-                    <li className="text-muted-foreground">Belum ada data.</li>
+                    <li className="text-muted-foreground">{T.noStrategy}</li>
                   )}
                 </ul>
               </div>
               <div>
-                <div className="font-semibold mb-1 text-rose-500">Hindari untuk regime ini</div>
+                <div className="font-semibold mb-1 text-rose-500">{T.avoidRegime}</div>
                 <ul className="space-y-1">
                   {strategy.data.avoidForThisRegime.map((s: any) => (
                     <li key={s.strategyName} className="rounded-md border border-border/60 p-2">
@@ -414,7 +414,7 @@ export function AiInsightsPanel() {
                         <Badge variant="destructive" className="text-[10px]">{s.classification}</Badge>
                       </div>
                       <div className="text-muted-foreground mt-0.5">
-                        Score <span className="text-foreground font-mono">{s.strategyScore}</span> · Sample{" "}
+                        {T.score} <span className="text-foreground font-mono">{s.strategyScore}</span> · {T.sample}{" "}
                         <span className="font-mono">{s.sampleSize}</span> ({s.sampleQuality})
                       </div>
                       {s.warnings?.length > 0 && (
@@ -423,30 +423,28 @@ export function AiInsightsPanel() {
                     </li>
                   ))}
                   {strategy.data.avoidForThisRegime.length === 0 && (
-                    <li className="text-muted-foreground">Belum ada strategi yang masuk kategori avoid.</li>
+                    <li className="text-muted-foreground">{T.noAvoid}</li>
                   )}
                 </ul>
               </div>
               <div className="md:col-span-2 flex flex-wrap gap-1 pt-1 border-t border-border/40">
                 {strategy.data.proven.filter((s: any) => s.sampleSize >= 5).map((s: any) => (
-                  <Badge key={`p-${s.strategyName}`} variant="default" className="text-[10px]">proven · {s.strategyName} (n={s.sampleSize})</Badge>
+                  <Badge key={`p-${s.strategyName}`} variant="default" className="text-[10px]">{T.classification.proven} · {s.strategyName} (n={s.sampleSize})</Badge>
                 ))}
                 {strategy.data.promising.filter((s: any) => s.sampleSize >= 5).map((s: any) => (
-                  <Badge key={`pr-${s.strategyName}`} variant="secondary" className="text-[10px]">promising · {s.strategyName} (n={s.sampleSize})</Badge>
+                  <Badge key={`pr-${s.strategyName}`} variant="secondary" className="text-[10px]">{T.classification.promising} · {s.strategyName} (n={s.sampleSize})</Badge>
                 ))}
                 {strategy.data.insufficient.map((s: any) => (
-                  <Badge key={`i-${s.strategyName}`} variant="outline" className="text-[10px]">insufficient · {s.strategyName}</Badge>
+                  <Badge key={`i-${s.strategyName}`} variant="outline" className="text-[10px]">{T.classification.insufficient} · {s.strategyName}</Badge>
                 ))}
               </div>
               {strategy.data.insufficient.length > 0 && (
                 <div className="md:col-span-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-[11px] text-amber-300">
-                  Insufficient sample untuk {strategy.data.insufficient.length} strategi — jangan overtrust label proven/promising.
-                  Sample &lt; 5 trade tidak signifikan secara statistik.
+                  {T.insufficientSummary(strategy.data.insufficient.length)}
                 </div>
               )}
               <div className="md:col-span-2 text-[10px] text-muted-foreground">
-                Generated {formatDateTimeWIB(strategy.data.generatedAt)} · paper trading only — score, regime
-                compatibility & sample size dipakai AI Trade Agent sebelum BUY.
+                {T.generated} {formatDateTimeWIB(strategy.data.generatedAt)} · {T.paperOnlyNote}
               </div>
             </div>
           )}
