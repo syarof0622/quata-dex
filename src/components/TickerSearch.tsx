@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Search, Loader2 } from "lucide-react";
 import { searchTicker } from "@/lib/market.functions";
+import { useLang } from "@/hooks/use-language";
 
 type Suggestion = { symbol: string; name?: string; exchange?: string; type?: string };
 
