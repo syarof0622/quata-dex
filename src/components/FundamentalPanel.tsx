@@ -42,7 +42,7 @@ function Stat({ label, value, hint, tone }: { label: string; value: string; hint
   );
 }
 
-function Section({ icon: Icon, title, children, empty, emptyText }: { icon: any; title: string; children: React.ReactNode; empty?: boolean; emptyText: string }) {
+function Section({ icon: Icon, title, children, empty, emptyText = "—" }: { icon: any; title: string; children: React.ReactNode; empty?: boolean; emptyText?: string }) {
   return (
     <section className="panel p-4">
       <div className="flex items-center gap-2 mb-3">
