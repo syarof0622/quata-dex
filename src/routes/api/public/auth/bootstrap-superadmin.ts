@@ -83,11 +83,12 @@ export const Route = createFileRoute("/api/public/auth/bootstrap-superadmin")({
         // NOTE: We intentionally do NOT reset the password on existing users.
         // Use Supabase's password-recovery flow if credentials are lost.
 
-        // 2) Ensure profile + super_admin role + must_change_password=true
+        // 2) Ensure profile + super_admin role. Only a newly-created account
+        // gets must_change_password; existing credentials are left usable.
         await supabaseAdmin.from("profiles").upsert({
           id: userId, email: SUPER_EMAIL,
           full_name: "Super Admin", display_name: "Super Admin",
-          status: "active", must_change_password: true,
+          status: "active", must_change_password: created,
         } as any, { onConflict: "id" });
 
         await supabaseAdmin.from("user_roles").upsert({ user_id: userId, role: "super_admin" } as any, { onConflict: "user_id,role" });
