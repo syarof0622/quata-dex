@@ -92,8 +92,44 @@ export const Route = createFileRoute("/api/public/auth/bootstrap-superadmin")({
 
         await supabaseAdmin.from("user_roles").upsert({ user_id: userId, role: "super_admin" } as any, { onConflict: "user_id,role" });
 
-        // 3) Reassign legacy data
+        // 3) If a real Super Admin account was created after legacy demo data,
+        // merge the empty new account into the legacy account first. Otherwise
+        // the `paper_accounts.user_id` uniqueness constraint blocks reassignment.
         const reassigned: Record<string, number> = {};
+        const { data: legacyAccount } = await supabaseAdmin
+          .from("paper_accounts")
+          .select("id")
+          .eq("user_id", LEGACY_UID)
+          .order("created_at", { ascending: true })
+          .maybeSingle();
+        const { data: currentAccount } = await supabaseAdmin
+          .from("paper_accounts")
+          .select("id")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: true })
+          .maybeSingle();
+
+        if (legacyAccount?.id && currentAccount?.id && legacyAccount.id !== currentAccount.id) {
+          for (const ref of LEGACY_ACCOUNT_REFS) {
+            try {
+              await (supabaseAdmin.from(ref.table as any) as any)
+                .update({ [ref.column]: legacyAccount.id })
+                .eq(ref.column, currentAccount.id);
+            } catch (e) {
+              console.warn(`[bootstrap] account ref merge skipped for ${ref.table}.${ref.column}`, e);
+            }
+          }
+          const { error } = await supabaseAdmin.from("paper_accounts").delete().eq("id", currentAccount.id);
+          if (error) console.warn("[bootstrap] empty current paper account delete skipped", error.message);
+        }
+
+        const { error: paperAccountError, count: paperAccountCount } = await supabaseAdmin
+          .from("paper_accounts")
+          .update({ user_id: userId, is_default: true } as any, { count: "exact" })
+          .eq("user_id", LEGACY_UID);
+        reassigned.paper_accounts = paperAccountError ? -1 : (paperAccountCount ?? 0);
+
+        // 4) Reassign legacy user-scoped data.
         for (const t of LEGACY_USER_TABLES) {
           try {
             const { error, count } = await (supabaseAdmin.from(t as any) as any).update({ user_id: userId }, { count: "exact" }).eq("user_id", LEGACY_UID);
@@ -101,7 +137,7 @@ export const Route = createFileRoute("/api/public/auth/bootstrap-superadmin")({
           } catch { reassigned[t] = -1; }
         }
 
-        // 4) Ensure paper_accounts row for super admin
+        // 5) Ensure paper_accounts row for super admin
         const { data: pa } = await supabaseAdmin.from("paper_accounts").select("id").eq("user_id", userId).maybeSingle();
         if (!pa) {
           await supabaseAdmin.from("paper_accounts").insert({
@@ -110,7 +146,7 @@ export const Route = createFileRoute("/api/public/auth/bootstrap-superadmin")({
           } as any);
         }
 
-        // 5) Ensure user_ai_settings + user_settings
+        // 6) Ensure user_ai_settings + user_settings
         await supabaseAdmin.from("user_ai_settings").upsert({ user_id: userId } as any, { onConflict: "user_id" });
         await supabaseAdmin.from("user_settings").upsert({ user_id: userId, language: "id", currency: "IDR" } as any, { onConflict: "user_id" });
 
