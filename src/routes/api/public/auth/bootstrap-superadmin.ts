@@ -52,9 +52,7 @@ const LEGACY_ACCOUNT_REFS = [
   { table: "user_ai_settings", column: "paper_account_id" },
 ] as const;
 
-type AdminClient = Awaited<
-  typeof import("@/integrations/supabase/client.server")
->["supabaseAdmin"];
+type AdminClient = Awaited<typeof import("@/integrations/supabase/client.server")>["supabaseAdmin"];
 
 type DynamicMutationResult = PromiseLike<{
   error: { message: string } | null;
@@ -81,16 +79,11 @@ async function firstUserId(supabaseAdmin: AdminClient): Promise<string | null> {
     page: 1,
     perPage: 200,
   });
-  const found = list.data.users.find(
-    (user) => (user.email ?? "").toLowerCase() === SUPER_EMAIL,
-  );
+  const found = list.data.users.find((user) => (user.email ?? "").toLowerCase() === SUPER_EMAIL);
   return found?.id ?? null;
 }
 
-async function mergeLegacyAccount(
-  supabaseAdmin: AdminClient,
-  userId: string,
-): Promise<number> {
+async function mergeLegacyAccount(supabaseAdmin: AdminClient, userId: string): Promise<number> {
   const { data: legacyAccount } = await supabaseAdmin
     .from("paper_accounts")
     .select("id")
@@ -111,10 +104,7 @@ async function mergeLegacyAccount(
           .update({ [ref.column]: legacyAccount.id })
           .eq(ref.column, currentAccount.id);
       } catch (error) {
-        console.warn(
-          `[bootstrap] account ref merge skipped for ${ref.table}.${ref.column}`,
-          error,
-        );
+        console.warn(`[bootstrap] account ref merge skipped for ${ref.table}.${ref.column}`, error);
       }
     }
     const { error } = await supabaseAdmin
@@ -146,9 +136,7 @@ export const Route = createFileRoute("/api/public/auth/bootstrap-superadmin")({
         let created = false;
 
         if (!userId) {
-          const initialPassword =
-            process.env.SUPER_ADMIN_BOOTSTRAP_PASSWORD ??
-            randomBytes(24).toString("base64url");
+          const initialPassword = process.env.SUPER_ADMIN_BOOTSTRAP_PASSWORD ?? randomBytes(24).toString("base64url");
           const { data, error } = await supabaseAdmin.auth.admin.createUser({
             email: SUPER_EMAIL,
             password: initialPassword,
@@ -180,10 +168,9 @@ export const Route = createFileRoute("/api/public/auth/bootstrap-superadmin")({
           { onConflict: "id" },
         );
 
-        await supabaseAdmin.from("user_roles").upsert(
-          { user_id: userId, role: "super_admin" },
-          { onConflict: "user_id,role" },
-        );
+        await supabaseAdmin
+          .from("user_roles")
+          .upsert({ user_id: userId, role: "super_admin" }, { onConflict: "user_id,role" });
 
         const reassigned: Record<string, number> = {
           paper_accounts: await mergeLegacyAccount(supabaseAdmin, userId),
