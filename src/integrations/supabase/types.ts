@@ -2065,6 +2065,78 @@ export type Database = {
         }
         Relationships: []
       }
+      knowledge_chunks: {
+        Row: {
+          chunk_index: number
+          content: string
+          created_at: string
+          embedding: string
+          id: string
+          metadata: Json
+          model_version: string
+          source_created_at: string | null
+          source_id: string
+          source_table: string
+          symbol: string | null
+          user_id: string | null
+        }
+        Insert: {
+          chunk_index?: number
+          content: string
+          created_at?: string
+          embedding: string
+          id?: string
+          metadata?: Json
+          model_version?: string
+          source_created_at?: string | null
+          source_id: string
+          source_table: string
+          symbol?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          chunk_index?: number
+          content?: string
+          created_at?: string
+          embedding?: string
+          id?: string
+          metadata?: Json
+          model_version?: string
+          source_created_at?: string | null
+          source_id?: string
+          source_table?: string
+          symbol?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      knowledge_embed_cursors: {
+        Row: {
+          last_error: string | null
+          last_inserted: number | null
+          last_processed_at: string
+          last_run_at: string | null
+          source_table: string
+          updated_at: string
+        }
+        Insert: {
+          last_error?: string | null
+          last_inserted?: number | null
+          last_processed_at?: string
+          last_run_at?: string | null
+          source_table: string
+          updated_at?: string
+        }
+        Update: {
+          last_error?: string | null
+          last_inserted?: number | null
+          last_processed_at?: string
+          last_run_at?: string | null
+          source_table?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       market_data_quality_snapshots: {
         Row: {
           created_at: string
@@ -5080,6 +5152,26 @@ export type Database = {
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       is_suspended: { Args: { _user_id: string }; Returns: boolean }
+      match_knowledge: {
+        Args: {
+          filter_symbol?: string
+          filter_tables?: string[]
+          filter_user?: string
+          match_count?: number
+          min_similarity?: number
+          query_embedding: string
+        }
+        Returns: {
+          content: string
+          id: string
+          metadata: Json
+          similarity: number
+          source_created_at: string
+          source_id: string
+          source_table: string
+          symbol: string
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "user" | "super_admin" | "suspended"

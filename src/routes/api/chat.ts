@@ -505,7 +505,18 @@ OUTPUT FORMAT — strict GitHub-Flavored Markdown (renderer supports tables, lis
             appContextBlock = `APP CONTEXT: unavailable (internal error). Tell the user app data could not be loaded right now.`;
           }
 
-          const sys = [GLOBAL_FUNDAMENTAL_GUARD, baseSystem, marketContextBlock, appContextBlock].filter(Boolean).join("\n\n");
+          // RAG: pull top hits from the unified knowledge base (news, fundamental,
+          // chart, disclosure, agent decisions, trade reviews) for this user.
+          let ragBlock = "";
+          try {
+            const { searchKnowledge, formatRagContext } = await import("@/lib/knowledge-rag.server");
+            const hits = await searchKnowledge({ query: lastUser, k: 8, userId: auth.userId ?? null });
+            ragBlock = formatRagContext(hits);
+          } catch (e) {
+            console.error("rag search failed", e);
+          }
+
+          const sys = [GLOBAL_FUNDAMENTAL_GUARD, baseSystem, marketContextBlock, appContextBlock, ragBlock].filter(Boolean).join("\n\n");
 
           const upstream = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
             method: "POST",
