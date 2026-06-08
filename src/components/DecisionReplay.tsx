@@ -94,12 +94,12 @@ function useReasonLabel() {
 
 
 type Derived = {
-  intent: string;            // original AI intent (BUY/SELL/HOLD/WATCH/…)
-  finalStatus: string;       // BUY only if executed; otherwise BLOCKED/HOLD/WATCH/NO_TRADE
-  reason: string | null;     // friendly label for display
-  rawReason: string | null;  // canonical reason tag
+  intent: string;
+  finalStatus: string;
+  rawReason: string | null;
   blocked: boolean;
 };
+
 
 function deriveStatus(row: DecisionReplayRow): Derived {
   const intent = (row.action || "NO_TRADE").toUpperCase();
@@ -139,6 +139,9 @@ function deriveStatus(row: DecisionReplayRow): Derived {
 
 
 export function DecisionReplayPanel({ defaultOpen = false, compactCount = 5 }: { defaultOpen?: boolean; compactCount?: number }) {
+  const { L } = useLang();
+  const T = L.body.decisionReplay;
+  const reasonLabel = useReasonLabel();
   const fetchRows = useServerFn(getDecisionReplays);
   const { data, isLoading } = useQuery({
     queryKey: ["decision-replays"],
@@ -158,14 +161,12 @@ export function DecisionReplayPanel({ defaultOpen = false, compactCount = 5 }: {
           <div className="min-w-0">
             <CardTitle className="text-sm flex items-center gap-2">
               <History className="h-4 w-4 text-muted-foreground" />
-              Decision Replay
+              {T.title}
               {rows.length > 0 && (
                 <Badge variant="outline" className="text-[10px] px-1.5 py-0">{rows.length}</Badge>
               )}
             </CardTitle>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Audit keputusan AI Agent — snapshot data, risk guard, dan paper order status.
-            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">{T.subtitle}</p>
           </div>
           <Button
             size="sm"
@@ -175,17 +176,17 @@ export function DecisionReplayPanel({ defaultOpen = false, compactCount = 5 }: {
             disabled={rows.length === 0}
           >
             {expanded ? (
-              <><ChevronUp className="h-3.5 w-3.5 mr-1" /> Collapse</>
+              <><ChevronUp className="h-3.5 w-3.5 mr-1" /> {T.collapse}</>
             ) : (
-              <><ChevronDown className="h-3.5 w-3.5 mr-1" /> Expand{rows.length > compactCount ? ` (${rows.length})` : ""}</>
+              <><ChevronDown className="h-3.5 w-3.5 mr-1" /> {T.expand}{rows.length > compactCount ? ` (${rows.length})` : ""}</>
             )}
           </Button>
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        {isLoading && <div className="p-4 text-sm text-muted-foreground">Memuat keputusan…</div>}
+        {isLoading && <div className="p-4 text-sm text-muted-foreground">{T.loading}</div>}
         {!isLoading && rows.length === 0 && (
-          <div className="p-4 text-sm text-muted-foreground">Belum ada keputusan AI tercatat.</div>
+          <div className="p-4 text-sm text-muted-foreground">{T.empty}</div>
         )}
         {!isLoading && rows.length > 0 && (
           <div className={cn("divide-y divide-border", expanded && "max-h-[420px] overflow-y-auto")}>
@@ -196,19 +197,19 @@ export function DecisionReplayPanel({ defaultOpen = false, compactCount = 5 }: {
                   <span className="text-muted-foreground tabular-nums w-28 shrink-0">{fmtWIB(row.created_at)}</span>
                   <span className="font-mono font-medium w-20 shrink-0">{row.symbol}</span>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] text-muted-foreground uppercase">Intent</span>
+                    <span className="text-[10px] text-muted-foreground uppercase">{T.intentLbl}</span>
                     <Badge variant="outline" className={cn("text-[10px] py-0", ACTION_CLS[d.intent] ?? ACTION_CLS.NO_TRADE)}>
                       {d.intent}
                     </Badge>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] text-muted-foreground uppercase">Final</span>
+                    <span className="text-[10px] text-muted-foreground uppercase">{T.finalLbl}</span>
                     <Badge variant="outline" className={cn("text-[10px] py-0", ACTION_CLS[d.finalStatus] ?? ACTION_CLS.NO_TRADE)}>
                       {d.finalStatus}
                     </Badge>
                   </div>
                   <span className="text-muted-foreground truncate">
-                    {d.reason ?? "—"} · conf {row.confidence != null ? Math.round(row.confidence * 100) : "—"}%
+                    {reasonLabel(d.rawReason)} · {T.conf} {row.confidence != null ? Math.round(row.confidence * 100) : "—"}%
                   </span>
                   <Button
                     size="sm"
@@ -216,19 +217,20 @@ export function DecisionReplayPanel({ defaultOpen = false, compactCount = 5 }: {
                     className="ml-auto h-7 px-2"
                     onClick={() => setSelected(row)}
                   >
-                    <Eye className="size-3.5 mr-1" /> Replay
+                    <Eye className="size-3.5 mr-1" /> {T.replay}
                   </Button>
                 </div>
               );
             })}
             {!expanded && rows.length > compactCount && (
               <div className="px-4 py-2 text-[11px] text-muted-foreground text-center">
-                +{rows.length - compactCount} keputusan lainnya — klik Expand untuk melihat semua.
+                +{rows.length - compactCount} {T.moreSuffix}
               </div>
             )}
           </div>
         )}
       </CardContent>
+
 
       <Sheet open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
         <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
