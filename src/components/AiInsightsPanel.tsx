@@ -108,7 +108,7 @@ export function AiInsightsPanel() {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">{T.regimeTitle}</CardTitle>
           <Button size="sm" variant="outline" disabled={busy === "regime"} onClick={() => refresh("regime")}>
-            {busy === "regime" ? "..." : "Refresh"}
+            {busy === "regime" ? "..." : T.refresh}
           </Button>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
@@ -118,9 +118,9 @@ export function AiInsightsPanel() {
                 <Badge variant={(regimeColor[r.regime_classification] as any) ?? "secondary"}>
                   {r.regime_classification}
                 </Badge>
-                <Badge variant="outline">Trend: {r.regime_trend}</Badge>
-                <Badge variant="outline">Vol: {r.regime_volatility}</Badge>
-                <Badge variant="outline">Breadth: {r.regime_breadth}</Badge>
+                <Badge variant="outline">{T.trend}: {r.regime_trend}</Badge>
+                <Badge variant="outline">{T.vol}: {r.regime_volatility}</Badge>
+                <Badge variant="outline">{T.breadth}: {r.regime_breadth}</Badge>
               </div>
               <div className="text-muted-foreground">{r.reasoning}</div>
               {r.idx_level && (
@@ -131,7 +131,7 @@ export function AiInsightsPanel() {
               )}
             </>
           ) : (
-            <div className="text-muted-foreground">Belum ada snapshot. Klik Refresh.</div>
+            <div className="text-muted-foreground">{T.regimeEmpty}</div>
           )}
         </CardContent>
       </Card>
