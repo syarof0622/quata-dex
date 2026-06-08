@@ -1,15 +1,37 @@
 // Server-only current-user resolver backed by AsyncLocalStorage.
 // Populated by the global function middleware `withCurrentUser` (registered in src/start.ts)
 // or by `runAsUser(uid, fn)` for cron/admin code that iterates users.
-import { AsyncLocalStorage } from "node:async_hooks";
-
-import { getRequest } from "@tanstack/react-start/server";
+//
+// NOTE: This file may be transitively imported by `.functions.ts` modules that
+// are also reachable from the client bundle. To avoid pulling `node:async_hooks`
+// into the browser, the AsyncLocalStorage is initialised lazily inside a
+// server-only guard. On the client these helpers throw if ever invoked (they
+// should never be — server functions only run server-side).
 
 type Store = { userId: string | null };
-const als = new AsyncLocalStorage<Store>();
+
+let alsInstance: { getStore(): Store | undefined; run<T>(s: Store, fn: () => T): T } | null = null;
+
+function isServer(): boolean {
+  return typeof window === "undefined";
+}
+
+function getAls() {
+  if (!isServer()) {
+    throw new Error("current-user.server.ts invoked in the browser — this module is server-only.");
+  }
+  if (!alsInstance) {
+    // Indirect require so bundlers don't statically analyse node:async_hooks
+    // into the client graph.
+    const mod = (0, eval)("require")("node:async_hooks");
+    alsInstance = new mod.AsyncLocalStorage();
+  }
+  return alsInstance!;
+}
 
 export function currentUserIdOrNull(): string | null {
-  return als.getStore()?.userId ?? null;
+  if (!isServer()) return null;
+  return getAls().getStore()?.userId ?? null;
 }
 
 export function currentUserId(): string {
@@ -22,11 +44,12 @@ export function currentUserId(): string {
 
 /** Run `fn` with a forced user id. Use in cron jobs that iterate over users. */
 export function runAsUser<T>(userId: string, fn: () => Promise<T> | T): Promise<T> | T {
-  return als.run({ userId }, fn as () => any) as any;
+  return getAls().run({ userId }, fn as () => any) as any;
 }
 
 /** Internal: resolve bearer -> user id and stash in ALS for the handler. */
 export async function runWithCurrentUser<T>(next: () => Promise<T>): Promise<T> {
+  const { getRequest } = await import("@tanstack/react-start/server");
   let userId: string | null = null;
   try {
     const request = getRequest();
@@ -47,6 +70,5 @@ export async function runWithCurrentUser<T>(next: () => Promise<T>): Promise<T> 
   } catch {
     userId = null;
   }
-  return als.run({ userId }, () => next()) as Promise<T>;
+  return getAls().run({ userId }, () => next()) as Promise<T>;
 }
-
