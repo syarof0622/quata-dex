@@ -252,7 +252,7 @@ async function runAgentScopedSource(
   render: (row: any, userId: string | null) => ChunkRow,
 ): Promise<SourceRunResult> {
   const cursor = await getCursor(source_table);
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await (supabaseAdmin as any)
     .from(source_table)
     .select("*")
     .gt("created_at", cursor)
