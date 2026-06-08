@@ -241,16 +241,16 @@ export function DecisionReplayPanel({ defaultOpen = false, compactCount = 5 }: {
                 const d = deriveStatus(selected);
                 return (
                   <>
-                    <Badge variant="outline" className={cn("text-[10px]", ACTION_CLS[d.intent] ?? ACTION_CLS.NO_TRADE)}>Intent: {d.intent}</Badge>
-                    <Badge variant="outline" className={cn("text-[10px]", ACTION_CLS[d.finalStatus] ?? ACTION_CLS.NO_TRADE)}>Final: {d.finalStatus}</Badge>
+                    <Badge variant="outline" className={cn("text-[10px]", ACTION_CLS[d.intent] ?? ACTION_CLS.NO_TRADE)}>{T.sheetIntent}: {d.intent}</Badge>
+                    <Badge variant="outline" className={cn("text-[10px]", ACTION_CLS[d.finalStatus] ?? ACTION_CLS.NO_TRADE)}>{T.sheetFinal}: {d.finalStatus}</Badge>
                   </>
                 );
               })()}
             </SheetTitle>
             <p className="text-xs text-muted-foreground">
               {selected && fmtWIB(selected.created_at)}
-              {selected?.decision_status && <> · {friendlyReason(selected.decision_status)} <span className="opacity-60">({selected.decision_status})</span></>}
-              {selected?.confidence != null && <> · conf {Math.round(selected.confidence * 100)}%</>}
+              {selected?.decision_status && <> · {reasonLabel(selected.decision_status)} <span className="opacity-60">({selected.decision_status})</span></>}
+              {selected?.confidence != null && <> · {T.conf} {Math.round(selected.confidence * 100)}%</>}
             </p>
           </SheetHeader>
           {selected && (
@@ -264,10 +264,11 @@ export function DecisionReplayPanel({ defaultOpen = false, compactCount = 5 }: {
                 const shares = (selected as any).suggested_shares ?? snap.shares ?? null;
                 const realized = snap.realizedPnl ?? snap.realized_pnl ?? null;
                 const exitReason = snap.exitReason ?? snap.reason ?? null;
+                const F = T.fields;
                 const fields: Array<[string, string | number | null]> = [
-                  ["Stop Loss", sl], ["Take Profit", tp], ["R/R", rr],
-                  ["Lot", lot], ["Shares", shares],
-                  ["Realized P/L", realized], ["Exit Reason", exitReason],
+                  [F.stopLoss, sl], [F.takeProfit, tp], [F.rr, rr],
+                  [F.lot, lot], [F.shares, shares],
+                  [F.realizedPnl, realized], [F.exitReason, exitReason],
                 ];
                 const has = fields.some(([, v]) => v != null);
                 if (!has) return null;
@@ -282,41 +283,42 @@ export function DecisionReplayPanel({ defaultOpen = false, compactCount = 5 }: {
                   </div>
                 );
               })()}
-              <Section title="Reasoning">
+              <Section title={T.sections.reasoning}>
                 <p className="whitespace-pre-wrap text-muted-foreground">{selected.reasoning ?? "—"}</p>
               </Section>
-              <Section title="Final Decision">
+              <Section title={T.sections.finalDecision}>
                 <pre className="text-xs bg-muted/30 p-2 rounded overflow-auto">
                   {JSON.stringify(selected.decision_replay_snapshot?.finalDecision ?? { action: selected.action, status: selected.decision_status }, null, 2)}
                 </pre>
               </Section>
-              <Section title="Risk Guard">
+              <Section title={T.sections.riskGuard}>
                 <pre className="text-xs bg-muted/30 p-2 rounded overflow-auto">
                   {JSON.stringify(selected.decision_replay_snapshot?.riskGuard ?? selected.risk_snapshot ?? {}, null, 2)}
                 </pre>
               </Section>
-              <Section title="Strategy Context">
+              <Section title={T.sections.strategy}>
                 <pre className="text-xs bg-muted/30 p-2 rounded overflow-auto">
                   {JSON.stringify(selected.strategy_context ?? selected.decision_replay_snapshot?.strategyContext ?? {}, null, 2)}
                 </pre>
               </Section>
-              <Section title="Technical">
+              <Section title={T.sections.technical}>
                 <pre className="text-xs bg-muted/30 p-2 rounded overflow-auto">
                   {JSON.stringify(selected.technical_snapshot ?? {}, null, 2)}
                 </pre>
               </Section>
-              <Section title="News & Sentiment">
+              <Section title={T.sections.news}>
                 <pre className="text-xs bg-muted/30 p-2 rounded overflow-auto">
                   {JSON.stringify(selected.sentiment_snapshot ?? {}, null, 2)}
                 </pre>
               </Section>
-              <Section title="Portfolio Snapshot">
+              <Section title={T.sections.portfolio}>
                 <pre className="text-xs bg-muted/30 p-2 rounded overflow-auto">
                   {JSON.stringify(selected.portfolio_snapshot ?? {}, null, 2)}
                 </pre>
               </Section>
             </div>
           )}
+
         </SheetContent>
       </Sheet>
     </Card>
