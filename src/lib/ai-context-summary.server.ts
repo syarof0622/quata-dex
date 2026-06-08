@@ -119,6 +119,26 @@ export const getAIContextSummaryServer = createServerFn({ method: "GET" })
       getRecentAgentDecisionCount((agent as any)?.id ?? null, 5),
     ]);
 
+    // Merge unified data_sources registry (Batch 1/2) so the header chip
+    // counts market/disclosure/fundamental sources too — and honest enums
+    // (market_closed/quota_protected/etc.) are not surfaced as failures.
+    const { data: unifiedSources } = await supabaseAdmin
+      .from("data_sources")
+      .select("source_key, source_name, health_status, is_enabled, last_success_at, last_failure_at, last_message");
+    const mergedSources = [
+      ...((sources ?? []) as any[]),
+      ...((unifiedSources ?? []) as any[]).map((r: any) => ({
+        id: r.source_key,
+        name: r.source_name,
+        status: r.health_status,
+        enabled: r.is_enabled,
+        last_success_at: r.last_success_at,
+        last_failed_at: r.last_failure_at,
+        last_error: r.last_message,
+        fail_count: null,
+      })),
+    ];
+
     // Closed trade = filled SELL with realized_pnl. Matches ai-app-context.server.ts.
     const closedTrades = (orders ?? []).filter(
       (o: any) =>
@@ -131,7 +151,7 @@ export const getAIContextSummaryServer = createServerFn({ method: "GET" })
     const summary = computeContextSummary({
       news: (news ?? []) as any,
       regime: (regime ?? []) as any,
-      sources: (sources ?? []) as any,
+      sources: mergedSources as any,
       agent: (agent ?? null) as any,
       portfolio: { openPositions: positions?.length ?? 0 },
       paperTrading: { openPositions: positions?.length ?? 0, closedTrades },
