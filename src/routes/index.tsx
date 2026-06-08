@@ -538,14 +538,14 @@ function SafetySection() {
   return (
     <section id="paper" className="max-w-[1440px] mx-auto px-6 lg:px-10 py-20 md:py-28">
       <div className="relative rounded-3xl p-8 md:p-12 grid grid-cols-1 md:grid-cols-12 gap-8 items-center overflow-hidden animate-fade-in"
-        style={{ background: `linear-gradient(135deg, ${C.surface} 0%, ${C.bg} 100%)`, border: `1px solid rgba(245,176,66,0.25)`,
-          boxShadow: "0 30px 80px -40px rgba(245,176,66,0.25)" }}>
+        style={{ background: `linear-gradient(135deg, ${C.surface} 0%, ${C.bg} 100%)`, border: `1px solid rgba(0,255,178,0.22)`,
+          boxShadow: "0 30px 80px -40px rgba(0,255,178,0.22)" }}>
         <div aria-hidden className="pointer-events-none absolute -top-24 -right-24 w-[420px] h-[420px] rounded-full blur-3xl opacity-30"
-          style={{ background: "radial-gradient(closest-side, rgba(245,176,66,0.45), transparent 70%)" }} />
+          style={{ background: "radial-gradient(closest-side, rgba(0,255,178,0.40), transparent 70%)" }} />
         <div className="md:col-span-2 flex md:justify-center relative">
           <div className="w-14 h-14 rounded-2xl flex items-center justify-center animate-scale-in"
-            style={{ background: "rgba(245,176,66,0.12)", border: `1px solid rgba(245,176,66,0.35)` }}>
-            <ShieldCheck className="w-6 h-6" style={{ color: C.amber }} />
+            style={{ background: "rgba(0,255,178,0.10)", border: `1px solid rgba(0,255,178,0.30)` }}>
+            <ShieldCheck className="w-6 h-6" style={{ color: C.green }} />
           </div>
         </div>
         <div className="md:col-span-10 relative">
@@ -556,7 +556,7 @@ function SafetySection() {
           <ul className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-6 text-[13.5px]" style={{ color: C.inkSoft }}>
             {S.points.map((p) => (
               <li key={p} className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full" style={{ background: C.amber }} /> {p}
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: C.green }} /> {p}
               </li>
             ))}
           </ul>
