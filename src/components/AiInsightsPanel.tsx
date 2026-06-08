@@ -356,11 +356,11 @@ export function AiInsightsPanel() {
           <div className="flex items-center gap-2">
             {strategy.data?.marketRegime && (
               <Badge variant="outline" className="text-[10px] uppercase">
-                Regime: {strategy.data.marketRegime}
+                {T.regime}: {strategy.data.marketRegime}
               </Badge>
             )}
             <Button size="sm" variant="outline" onClick={() => strategy.refetch()}>
-              Refresh
+              {T.refresh}
             </Button>
           </div>
         </CardHeader>
@@ -371,7 +371,7 @@ export function AiInsightsPanel() {
           {strategy.data && (
             <div className="grid md:grid-cols-2 gap-4 text-xs">
               <div>
-                <div className="font-semibold mb-1 text-emerald-500">Terbaik untuk regime ini</div>
+                <div className="font-semibold mb-1 text-emerald-500">{T.bestRegime}</div>
                 <ul className="space-y-1">
                   {strategy.data.bestForThisRegime.map((s: any) => {
                     const noSample = s.sampleSize < 5;
@@ -380,32 +380,32 @@ export function AiInsightsPanel() {
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-mono">{s.strategyName}</span>
                         <Badge variant={noSample ? "outline" : "default"} className="text-[10px]">
-                          {noSample ? "insufficient_sample" : s.classification}
+                          {noSample ? T.insufficientSampleBadge : s.classification}
                         </Badge>
                       </div>
                       <div className="text-muted-foreground mt-0.5">
-                        Score <span className="text-foreground font-mono">{s.strategyScore}</span> ·{" "}
-                        Sample <span className="font-mono">{s.sampleSize}</span> ({s.sampleQuality}) ·{" "}
-                        WR {s.forwardWinRate != null ? `${Math.round(s.forwardWinRate)}%` : "—"} fwd /{" "}
-                        {s.backtestWinRate != null ? `${Math.round(s.backtestWinRate)}%` : "—"} bt ·{" "}
-                        PF {s.profitFactor != null ? Number(s.profitFactor).toFixed(2) : "—"} ·{" "}
-                        DD {s.maxDrawdown != null ? `${Number(s.maxDrawdown).toFixed(1)}%` : "—"}
+                        {T.score} <span className="text-foreground font-mono">{s.strategyScore}</span> ·{" "}
+                        {T.sample} <span className="font-mono">{s.sampleSize}</span> ({s.sampleQuality}) ·{" "}
+                        {T.wr} {s.forwardWinRate != null ? `${Math.round(s.forwardWinRate)}%` : "—"} {T.fwd} /{" "}
+                        {s.backtestWinRate != null ? `${Math.round(s.backtestWinRate)}%` : "—"} {T.bt} ·{" "}
+                        {T.pf} {s.profitFactor != null ? Number(s.profitFactor).toFixed(2) : "—"} ·{" "}
+                        {T.dd} {s.maxDrawdown != null ? `${Number(s.maxDrawdown).toFixed(1)}%` : "—"}
                       </div>
                       {noSample && (
                         <div className="text-amber-400/90 mt-0.5 text-[10px]">
-                          Insufficient sample — do not overtrust this strategy.
+                          {T.insufficientWarn}
                         </div>
                       )}
                     </li>
                     );
                   })}
                   {strategy.data.bestForThisRegime.length === 0 && (
-                    <li className="text-muted-foreground">Belum ada data.</li>
+                    <li className="text-muted-foreground">{T.noStrategy}</li>
                   )}
                 </ul>
               </div>
               <div>
-                <div className="font-semibold mb-1 text-rose-500">Hindari untuk regime ini</div>
+                <div className="font-semibold mb-1 text-rose-500">{T.avoidRegime}</div>
                 <ul className="space-y-1">
                   {strategy.data.avoidForThisRegime.map((s: any) => (
                     <li key={s.strategyName} className="rounded-md border border-border/60 p-2">
@@ -414,7 +414,7 @@ export function AiInsightsPanel() {
                         <Badge variant="destructive" className="text-[10px]">{s.classification}</Badge>
                       </div>
                       <div className="text-muted-foreground mt-0.5">
-                        Score <span className="text-foreground font-mono">{s.strategyScore}</span> · Sample{" "}
+                        {T.score} <span className="text-foreground font-mono">{s.strategyScore}</span> · {T.sample}{" "}
                         <span className="font-mono">{s.sampleSize}</span> ({s.sampleQuality})
                       </div>
                       {s.warnings?.length > 0 && (
@@ -423,30 +423,28 @@ export function AiInsightsPanel() {
                     </li>
                   ))}
                   {strategy.data.avoidForThisRegime.length === 0 && (
-                    <li className="text-muted-foreground">Belum ada strategi yang masuk kategori avoid.</li>
+                    <li className="text-muted-foreground">{T.noAvoid}</li>
                   )}
                 </ul>
               </div>
               <div className="md:col-span-2 flex flex-wrap gap-1 pt-1 border-t border-border/40">
                 {strategy.data.proven.filter((s: any) => s.sampleSize >= 5).map((s: any) => (
-                  <Badge key={`p-${s.strategyName}`} variant="default" className="text-[10px]">proven · {s.strategyName} (n={s.sampleSize})</Badge>
+                  <Badge key={`p-${s.strategyName}`} variant="default" className="text-[10px]">{T.classification.proven} · {s.strategyName} (n={s.sampleSize})</Badge>
                 ))}
                 {strategy.data.promising.filter((s: any) => s.sampleSize >= 5).map((s: any) => (
-                  <Badge key={`pr-${s.strategyName}`} variant="secondary" className="text-[10px]">promising · {s.strategyName} (n={s.sampleSize})</Badge>
+                  <Badge key={`pr-${s.strategyName}`} variant="secondary" className="text-[10px]">{T.classification.promising} · {s.strategyName} (n={s.sampleSize})</Badge>
                 ))}
                 {strategy.data.insufficient.map((s: any) => (
-                  <Badge key={`i-${s.strategyName}`} variant="outline" className="text-[10px]">insufficient · {s.strategyName}</Badge>
+                  <Badge key={`i-${s.strategyName}`} variant="outline" className="text-[10px]">{T.classification.insufficient} · {s.strategyName}</Badge>
                 ))}
               </div>
               {strategy.data.insufficient.length > 0 && (
                 <div className="md:col-span-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-[11px] text-amber-300">
-                  Insufficient sample untuk {strategy.data.insufficient.length} strategi — jangan overtrust label proven/promising.
-                  Sample &lt; 5 trade tidak signifikan secara statistik.
+                  {T.insufficientSummary(strategy.data.insufficient.length)}
                 </div>
               )}
               <div className="md:col-span-2 text-[10px] text-muted-foreground">
-                Generated {formatDateTimeWIB(strategy.data.generatedAt)} · paper trading only — score, regime
-                compatibility & sample size dipakai AI Trade Agent sebelum BUY.
+                {T.generated} {formatDateTimeWIB(strategy.data.generatedAt)} · {T.paperOnlyNote}
               </div>
             </div>
           )}
