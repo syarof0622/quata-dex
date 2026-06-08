@@ -518,15 +518,63 @@ OUTPUT FORMAT — strict GitHub-Flavored Markdown (renderer supports tables, lis
 
           const sys = [GLOBAL_FUNDAMENTAL_GUARD, baseSystem, marketContextBlock, appContextBlock, ragBlock].filter(Boolean).join("\n\n");
 
+          // ---- Tool calling pre-pass ----
+          // Let the model call server-side tools (news, fundamentals, live
+          // price, disclosures, explicit RAG) before we stream the final
+          // answer. Bounded to 2 iterations to cap cost.
+          const { CHAT_TOOLS, executeChatTool } = await import("@/lib/chat-tools.server");
+          const MODEL_ID = "google/gemini-3.1-pro-preview";
+          const convo: any[] = [{ role: "system", content: sys }, ...messages];
+
+          for (let iter = 0; iter < 2; iter++) {
+            const pre = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+              method: "POST",
+              headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+              body: JSON.stringify({
+                model: MODEL_ID,
+                messages: convo,
+                tools: CHAT_TOOLS,
+                tool_choice: "auto",
+                stream: false,
+              }),
+            });
+            if (!pre.ok) {
+              if (pre.status === 429) return new Response(JSON.stringify({ error: "Rate limited. Try again shortly." }), { status: 429 });
+              if (pre.status === 402) return new Response(JSON.stringify({ error: "Out of AI credits. Add more in Settings → Workspace → Usage." }), { status: 402 });
+              const t = await pre.text();
+              console.error("AI tool pre-pass error", pre.status, t);
+              break; // fall through to final streaming pass
+            }
+            const j: any = await pre.json();
+            const msg = j?.choices?.[0]?.message;
+            const calls = msg?.tool_calls;
+            if (!Array.isArray(calls) || calls.length === 0) {
+              // Model produced a direct answer — emit as a single SSE chunk
+              // shaped like the streaming response the client already parses.
+              const text = String(msg?.content ?? "");
+              const sse =
+                `data: ${JSON.stringify({ choices: [{ delta: { content: text } }] })}\n\n` +
+                `data: [DONE]\n\n`;
+              return new Response(sse, { headers: { "Content-Type": "text/event-stream" } });
+            }
+            convo.push({ role: "assistant", content: msg.content ?? "", tool_calls: calls });
+            for (const c of calls) {
+              try {
+                const out = await executeChatTool(c.function?.name, c.function?.arguments ?? "{}", { userId: auth.userId ?? null });
+                convo.push({ role: "tool", tool_call_id: c.id, content: JSON.stringify(out).slice(0, 6000) });
+              } catch (e: any) {
+                convo.push({ role: "tool", tool_call_id: c.id, content: JSON.stringify({ ok: false, error: String(e?.message ?? e) }) });
+              }
+            }
+          }
+
+          // Final streaming pass (no tools — force a direct answer)
           const upstream = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
             method: "POST",
-            headers: {
-              Authorization: `Bearer ${LOVABLE_API_KEY}`,
-              "Content-Type": "application/json",
-            },
+            headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
             body: JSON.stringify({
-              model: "google/gemini-3-flash-preview",
-              messages: [{ role: "system", content: sys }, ...messages],
+              model: MODEL_ID,
+              messages: convo,
               stream: true,
             }),
           });
