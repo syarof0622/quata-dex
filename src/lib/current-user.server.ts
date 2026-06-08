@@ -41,8 +41,8 @@ function getAls() {
 }
 
 export function currentUserIdOrNull(): string | null {
-  if (!isServer()) return null;
-  return getAls().getStore()?.userId ?? null;
+  if (!isServer() || !alsInstance) return null;
+  return alsInstance.getStore()?.userId ?? null;
 }
 
 export function currentUserId(): string {
@@ -54,12 +54,14 @@ export function currentUserId(): string {
 }
 
 /** Run `fn` with a forced user id. Use in cron jobs that iterate over users. */
-export function runAsUser<T>(userId: string, fn: () => Promise<T> | T): Promise<T> | T {
+export async function runAsUser<T>(userId: string, fn: () => Promise<T> | T): Promise<T> {
+  await ensureAls();
   return getAls().run({ userId }, fn as () => any) as any;
 }
 
 /** Internal: resolve bearer -> user id and stash in ALS for the handler. */
 export async function runWithCurrentUser<T>(next: () => Promise<T>): Promise<T> {
+  await ensureAls();
   const { getRequest } = await import("@tanstack/react-start/server");
   let userId: string | null = null;
   try {
@@ -83,3 +85,4 @@ export async function runWithCurrentUser<T>(next: () => Promise<T>): Promise<T> 
   }
   return getAls().run({ userId }, () => next()) as Promise<T>;
 }
+
