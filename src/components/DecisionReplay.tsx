@@ -132,11 +132,11 @@ function deriveStatus(row: DecisionReplayRow): Derived {
   return {
     intent,
     finalStatus,
-    reason: friendlyReason(row.decision_status),
     rawReason: row.decision_status ?? null,
     blocked: isBlocked,
   };
 }
+
 
 export function DecisionReplayPanel({ defaultOpen = false, compactCount = 5 }: { defaultOpen?: boolean; compactCount?: number }) {
   const fetchRows = useServerFn(getDecisionReplays);
