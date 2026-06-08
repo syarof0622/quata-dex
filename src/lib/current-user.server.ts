@@ -11,9 +11,23 @@
 type Store = { userId: string | null };
 
 let alsInstance: { getStore(): Store | undefined; run<T>(s: Store, fn: () => T): T } | null = null;
+let alsInitPromise: Promise<void> | null = null;
 
 function isServer(): boolean {
   return typeof window === "undefined";
+}
+
+async function ensureAls(): Promise<void> {
+  if (alsInstance) return;
+  if (!alsInitPromise) {
+    alsInitPromise = (async () => {
+      // Dynamic import keeps node:async_hooks out of the client bundle while
+      // working in ESM (no `require` available on the Worker runtime).
+      const mod = await import(/* @vite-ignore */ "node:async_hooks");
+      alsInstance = new mod.AsyncLocalStorage();
+    })();
+  }
+  await alsInitPromise;
 }
 
 function getAls() {
@@ -21,17 +35,14 @@ function getAls() {
     throw new Error("current-user.server.ts invoked in the browser — this module is server-only.");
   }
   if (!alsInstance) {
-    // Indirect require so bundlers don't statically analyse node:async_hooks
-    // into the client graph.
-    const mod = (0, eval)("require")("node:async_hooks");
-    alsInstance = new mod.AsyncLocalStorage();
+    throw new Error("AsyncLocalStorage not initialised — call ensureAls() first.");
   }
-  return alsInstance!;
+  return alsInstance;
 }
 
 export function currentUserIdOrNull(): string | null {
-  if (!isServer()) return null;
-  return getAls().getStore()?.userId ?? null;
+  if (!isServer() || !alsInstance) return null;
+  return alsInstance.getStore()?.userId ?? null;
 }
 
 export function currentUserId(): string {
@@ -43,12 +54,14 @@ export function currentUserId(): string {
 }
 
 /** Run `fn` with a forced user id. Use in cron jobs that iterate over users. */
-export function runAsUser<T>(userId: string, fn: () => Promise<T> | T): Promise<T> | T {
+export async function runAsUser<T>(userId: string, fn: () => Promise<T> | T): Promise<T> {
+  await ensureAls();
   return getAls().run({ userId }, fn as () => any) as any;
 }
 
 /** Internal: resolve bearer -> user id and stash in ALS for the handler. */
 export async function runWithCurrentUser<T>(next: () => Promise<T>): Promise<T> {
+  await ensureAls();
   const { getRequest } = await import("@tanstack/react-start/server");
   let userId: string | null = null;
   try {
@@ -72,3 +85,4 @@ export async function runWithCurrentUser<T>(next: () => Promise<T>): Promise<T> 
   }
   return getAls().run({ userId }, () => next()) as Promise<T>;
 }
+
