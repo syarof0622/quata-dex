@@ -18,6 +18,8 @@ function useDebounced<T>(value: T, delay = 200) {
 }
 
 export function TickerSearch({ className, onPick, placeholder, initialValue }: { className?: string; onPick?: (symbol: string) => void; placeholder?: string; initialValue?: string }) {
+  const { L } = useLang();
+  const T = L.body.ticker;
   const nav = useNavigate();
   const [q, setQ] = useState(initialValue ?? "");
   const [open, setOpen] = useState(false);
