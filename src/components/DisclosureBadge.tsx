@@ -60,6 +60,11 @@ export function DisclosureBadge({
   className?: string;
   compact?: boolean;
 }) {
+  const { L } = useLang();
+  const T = (L.body as any).disclosureBadge as {
+    severity: Record<string, string>;
+    types: Record<string, string>;
+  };
   if (!disclosure) return null;
   const kind = eventKind(disclosure);
   const sev = severity(disclosure);
@@ -87,9 +92,12 @@ export function DisclosureBadge({
           ? "border-emerald-500/60 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
           : "border-muted-foreground/40 bg-muted text-muted-foreground";
 
-  const label = compact
-    ? kind.replace(/_/g, " ").toUpperCase()
-    : `${kind.replace(/_/g, " ").toUpperCase()} · ${sev.toUpperCase()}`;
+  const typeLabel =
+    T?.types?.[kind] ??
+    Object.entries(T?.types ?? {}).find(([k]) => kind.includes(k))?.[1] ??
+    kind.replace(/_/g, " ").toUpperCase();
+  const sevLabel = T?.severity?.[sev] ?? sev.toUpperCase();
+  const label = compact ? typeLabel : `${typeLabel} · ${sevLabel}`;
 
   return (
     <Badge
