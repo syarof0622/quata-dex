@@ -344,9 +344,9 @@ export function AutonomousAgentPanel() {
       {/* Why AI Did Not Trade + profit diagnostics */}
       <div className="rounded-2xl border border-border/60 bg-card/50 p-3 sm:p-4">
         <div className="flex items-center justify-between gap-2 mb-2">
-          <h3 className="text-sm font-semibold flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-amber-400" /> Why Profit Is Low</h3>
+          <h3 className="text-sm font-semibold flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-amber-400" /> {T.diag.title}</h3>
           <span className="text-[10.5px] text-muted-foreground">
-            24h: {data.decisions.executed24h} exec · {data.decisions.blocked24h} blocked
+            {T.diag.exec24h.replace("{exec}", String(data.decisions.executed24h)).replace("{blocked}", String(data.decisions.blocked24h))}
           </span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
@@ -359,7 +359,7 @@ export function AutonomousAgentPanel() {
         </div>
         {data.decisions.topBlockedReasons.length > 0 && (
           <div className="mt-3">
-            <div className="text-[10.5px] uppercase tracking-wider text-muted-foreground mb-1">Top blocked reasons</div>
+            <div className="text-[10.5px] uppercase tracking-wider text-muted-foreground mb-1">{T.diag.topBlocked}</div>
             <div className="flex flex-wrap gap-1.5">
               {data.decisions.topBlockedReasons.map((r) => (
                 <span key={r.reason} className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-400 px-2 py-0.5 text-[10.5px]">
@@ -374,11 +374,11 @@ export function AutonomousAgentPanel() {
       {/* Open Position Management */}
       <div className="rounded-2xl border border-border/60 bg-card/50 p-3 sm:p-4">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-semibold flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-emerald-400" /> Open Position Management</h3>
-          <span className="text-[10.5px] text-muted-foreground">Paper trading only · auto SL/TP/Trailing</span>
+          <h3 className="text-sm font-semibold flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-emerald-400" /> {T.open.title}</h3>
+          <span className="text-[10.5px] text-muted-foreground">{T.open.paperOnlyAuto}</span>
         </div>
         {data.positions.length === 0 ? (
-          <div className="text-[12px] text-muted-foreground py-6 text-center">No open positions.</div>
+          <div className="text-[12px] text-muted-foreground py-6 text-center">{T.open.noOpen}</div>
         ) : (
           <div className="space-y-1.5">
             {data.positions.map((p) => (
@@ -386,21 +386,21 @@ export function AutonomousAgentPanel() {
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="font-semibold text-sm">{displaySymbol(p.symbol)}</span>
-                    <span className="text-[10.5px] text-muted-foreground">{p.qty} sh · avg {fmt(p.avgEntry)}</span>
+                    <span className="text-[10.5px] text-muted-foreground">{p.qty} {T.open.sh.replace("{price}", fmt(p.avgEntry))}</span>
                   </div>
                   <span className={cn("text-[11.5px] font-mono", p.unrealizedPnl >= 0 ? "text-emerald-400" : "text-rose-400")}>
                     {p.unrealizedPnl >= 0 ? "+" : ""}{fmt(p.unrealizedPnl, 0)} ({fmt(p.unrealizedPnlPct)}%)
                   </span>
                 </div>
                 <div className="mt-1.5 grid grid-cols-2 sm:grid-cols-5 gap-1.5 text-[10.5px]">
-                  <Cell label="Last" value={fmt(p.lastPrice)} />
-                  <Cell label="Stop" value={p.stopLoss != null ? fmt(p.stopLoss) : "—"} tone={p.stopLoss != null ? "rose" : "slate"} sub={p.distanceToStopPct != null ? `${fmt(p.distanceToStopPct)}%` : undefined} />
-                  <Cell label="TP" value={p.takeProfit != null ? fmt(p.takeProfit) : "—"} tone={p.takeProfit != null ? "emerald" : "slate"} sub={p.distanceToTakeProfitPct != null ? `${fmt(p.distanceToTakeProfitPct)}%` : undefined} />
-                  <Cell label="Trailing" value={p.trailingStop != null ? fmt(p.trailingStop) : "—"} tone="sky" />
-                  <Cell label="Status" value={p.managementStatus} tone={/EXIT|TRIGGER/i.test(p.managementStatus) ? "rose" : /TRAILING/i.test(p.managementStatus) ? "sky" : /NEAR/i.test(p.managementStatus) ? "amber" : "emerald"} />
+                  <Cell label={T.open.cells.last} value={fmt(p.lastPrice)} />
+                  <Cell label={T.open.cells.stop} value={p.stopLoss != null ? fmt(p.stopLoss) : "—"} tone={p.stopLoss != null ? "rose" : "slate"} sub={p.distanceToStopPct != null ? `${fmt(p.distanceToStopPct)}%` : undefined} />
+                  <Cell label={T.open.cells.tp} value={p.takeProfit != null ? fmt(p.takeProfit) : "—"} tone={p.takeProfit != null ? "emerald" : "slate"} sub={p.distanceToTakeProfitPct != null ? `${fmt(p.distanceToTakeProfitPct)}%` : undefined} />
+                  <Cell label={T.open.cells.trailing} value={p.trailingStop != null ? fmt(p.trailingStop) : "—"} tone="sky" />
+                  <Cell label={T.open.cells.status} value={p.managementStatus} tone={/EXIT|TRIGGER/i.test(p.managementStatus) ? "rose" : /TRAILING/i.test(p.managementStatus) ? "sky" : /NEAR/i.test(p.managementStatus) ? "amber" : "emerald"} />
                 </div>
                 {!p.hasPlan && (
-                  <div className="mt-1.5 text-[10.5px] text-amber-400">No exit plan — will be generated on next worker run.</div>
+                  <div className="mt-1.5 text-[10.5px] text-amber-400">{T.open.noPlan}</div>
                 )}
                 {p.reason && (
                   <div className="mt-1 text-[10.5px] text-muted-foreground truncate">{p.reason}</div>
