@@ -31,11 +31,14 @@ import {
 import { getStrategyIntelligence } from "@/lib/strategy-intelligence.functions";
 import { formatDateTimeWIB } from "@/lib/format";
 
+import { useLang } from "@/hooks/use-language";
+
 const sevColor: Record<string, string> = {
   info: "secondary",
   warning: "outline",
   critical: "destructive",
 };
+
 
 const regimeColor: Record<string, string> = {
   risk_on: "default",
@@ -46,6 +49,8 @@ const regimeColor: Record<string, string> = {
 };
 
 export function AiInsightsPanel() {
+  const { L } = useLang();
+  const T = L.body.aiInsights;
   const fetchRegime = useServerFn(getLatestMarketRegime);
   const fetchSectors = useServerFn(getLatestSectorRotation);
   const fetchRisk = useServerFn(getLatestPortfolioRisk);
@@ -54,6 +59,7 @@ export function AiInsightsPanel() {
   const fetchAlerts = useServerFn(evaluateAiAlerts);
   const fetchDefs = useServerFn(listAlertDefinitions);
   const fetchStrategy = useServerFn(getStrategyIntelligence);
+
 
   const runRegime = useServerFn(computeMarketRegime);
   const runSectors = useServerFn(computeSectorRotation);
@@ -100,7 +106,7 @@ export function AiInsightsPanel() {
       {/* Market Regime */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">Market Regime (IDX)</CardTitle>
+          <CardTitle className="text-base">{T.regimeTitle}</CardTitle>
           <Button size="sm" variant="outline" disabled={busy === "regime"} onClick={() => refresh("regime")}>
             {busy === "regime" ? "..." : "Refresh"}
           </Button>
@@ -133,7 +139,7 @@ export function AiInsightsPanel() {
       {/* Sector Rotation */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">Sector Rotation</CardTitle>
+          <CardTitle className="text-base">{T.sectorTitle}</CardTitle>
           <Button size="sm" variant="outline" disabled={busy === "sectors"} onClick={() => refresh("sectors")}>
             {busy === "sectors" ? "..." : "Refresh"}
           </Button>
@@ -178,7 +184,7 @@ export function AiInsightsPanel() {
       {/* Portfolio Risk */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">Portfolio Risk</CardTitle>
+          <CardTitle className="text-base">{T.riskTitle}</CardTitle>
           <Button size="sm" variant="outline" disabled={busy === "risk"} onClick={() => refresh("risk")}>
             {busy === "risk" ? "..." : "Refresh"}
           </Button>
@@ -230,7 +236,7 @@ export function AiInsightsPanel() {
       {/* Trade Reviews */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">Post-Trade Reviews</CardTitle>
+          <CardTitle className="text-base">{T.reviewsTitle}</CardTitle>
           <Button size="sm" variant="outline" disabled={busy === "review"} onClick={() => refresh("review")}>
             {busy === "review" ? "..." : "Run Review"}
           </Button>
@@ -290,7 +296,7 @@ export function AiInsightsPanel() {
       {/* AI Alerts */}
       <Card className="md:col-span-2">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">AI Alerts — Actionable</CardTitle>
+          <CardTitle className="text-base">{T.alertsTitle}</CardTitle>
           <Button size="sm" variant="outline" onClick={() => alerts.refetch()}>
             Re-evaluate
           </Button>
@@ -346,7 +352,7 @@ export function AiInsightsPanel() {
       {/* Strategy Intelligence (Update 9) */}
       <Card className="md:col-span-2">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">Strategy Intelligence</CardTitle>
+          <CardTitle className="text-base">{T.strategyTitle}</CardTitle>
           <div className="flex items-center gap-2">
             {strategy.data?.marketRegime && (
               <Badge variant="outline" className="text-[10px] uppercase">
@@ -360,7 +366,7 @@ export function AiInsightsPanel() {
         </CardHeader>
         <CardContent>
           {!strategy.data && (
-            <div className="text-xs text-muted-foreground">Memuat strategy intelligence…</div>
+            <div className="text-xs text-muted-foreground">{T.strategyLoading}</div>
           )}
           {strategy.data && (
             <div className="grid md:grid-cols-2 gap-4 text-xs">

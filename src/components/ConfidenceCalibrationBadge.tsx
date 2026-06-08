@@ -1,4 +1,5 @@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useLang } from "@/hooks/use-language";
 
 export function ConfidenceCalibrationBadge({
   raw,
@@ -9,6 +10,8 @@ export function ConfidenceCalibrationBadge({
   calibrated: number | null | undefined;
   reason?: string | null;
 }) {
+  const { L } = useLang();
+  const T = L.body.badge.confidence;
   const r = raw == null ? null : Math.round(Number(raw) * 100);
   const c = calibrated == null ? null : Math.round(Number(calibrated) * 100);
   if (r == null && c == null) return <span className="text-muted-foreground text-xs">—</span>;
@@ -21,14 +24,12 @@ export function ConfidenceCalibrationBadge({
       <Tooltip>
         <TooltipTrigger asChild>
           <span className={`text-xs font-mono cursor-help ${tone}`}>
-            Raw {r ?? "—"}% {arrow} Cal {c ?? "—"}%
+            {T.raw} {r ?? "—"}% {arrow} {T.cal} {c ?? "—"}%
           </span>
         </TooltipTrigger>
         <TooltipContent className="max-w-xs text-xs">
-          <div className="font-semibold mb-1">Confidence Calibration</div>
-          <p className="text-muted-foreground">
-            {reason || "Confidence dikalibrasi berdasarkan performa historis strategi, ticker, sektor, data quality, dan market regime."}
-          </p>
+          <div className="font-semibold mb-1">{T.title}</div>
+          <p className="text-muted-foreground">{reason || T.defaultReason}</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

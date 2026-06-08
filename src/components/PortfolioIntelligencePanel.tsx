@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Activity, AlertTriangle, FlaskConical, Loader2, ShieldCheck, Sparkles } from "lucide-react";
+import { useLang } from "@/hooks/use-language";
 
 type ScenarioBtn = { label: string; input: Parameters<typeof runScenario>[0]["data"] };
 
@@ -34,6 +35,8 @@ function fmtPct(n: number | null | undefined, digits = 1) {
 }
 
 export function PortfolioIntelligencePanel() {
+  const { L } = useLang();
+  const T = L.body.portfolioIntel;
   const fetchHealth = useServerFn(getPortfolioHealth);
   const fetchInsights = useServerFn(getPortfolioInsights);
   const runScenarioFn = useServerFn(runScenario);
@@ -63,18 +66,18 @@ export function PortfolioIntelligencePanel() {
       <Card className="border-primary/30">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
-            <ShieldCheck className="size-4 text-primary" /> Portfolio Intelligence
+            <ShieldCheck className="size-4 text-primary" /> {T.title}
           </CardTitle>
         </CardHeader>
         <CardContent>
           {health.isLoading && (
             <div className="text-sm text-muted-foreground flex items-center gap-2">
-              <Loader2 className="size-4 animate-spin" /> Menghitung portfolio health…
+              <Loader2 className="size-4 animate-spin" /> {T.computing}
             </div>
           )}
           {health.isError && (
             <div className="text-sm text-rose-300 flex items-center gap-2">
-              <AlertTriangle className="size-4" /> Gagal memuat health score.
+              <AlertTriangle className="size-4" /> {T.loadFailed}
             </div>
           )}
           {h && (
@@ -86,28 +89,28 @@ export function PortfolioIntelligencePanel() {
                 </Badge>
                 {h.marketRegime && (
                   <span className="text-[11px] text-muted-foreground">
-                    Regime: <span className="text-foreground">{h.marketRegime}</span>
+                    {T.regime}: <span className="text-foreground">{h.marketRegime}</span>
                   </span>
                 )}
               </div>
               <p className="text-sm text-muted-foreground">{h.summary}</p>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[11px]">
-                <Metric label="Cash" value={fmtPct(h.cashRatio)} />
-                <Metric label="Invested" value={fmtPct(h.investedRatio)} />
-                <Metric label="Concentration" value={`${h.concentrationScore}/100`} />
-                <Metric label="Cash Drag" value={`${h.cashDragScore}/100`} />
-                <Metric label="Sector Risk" value={`${h.sectorRiskScore}/100`} />
-                <Metric label="Diversif." value={`${h.diversificationScore}/100`} />
-                <Metric label="Value Trap" value={fmtPct(h.valueTrapExposurePct)} />
-                <Metric label="Disclosure Risk" value={fmtPct(h.disclosureRiskExposurePct)} />
+                <Metric label={T.metrics.cash} value={fmtPct(h.cashRatio)} />
+                <Metric label={T.metrics.invested} value={fmtPct(h.investedRatio)} />
+                <Metric label={T.metrics.concentration} value={`${h.concentrationScore}/100`} />
+                <Metric label={T.metrics.cashDrag} value={`${h.cashDragScore}/100`} />
+                <Metric label={T.metrics.sectorRisk} value={`${h.sectorRiskScore}/100`} />
+                <Metric label={T.metrics.diversif} value={`${h.diversificationScore}/100`} />
+                <Metric label={T.metrics.valueTrap} value={fmtPct(h.valueTrapExposurePct)} />
+                <Metric label={T.metrics.disclosureRisk} value={fmtPct(h.disclosureRiskExposurePct)} />
               </div>
 
               {(h.criticalIssues.length > 0 || h.warnings.length > 0 || h.positives.length > 0) && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2 pt-1">
-                  <IssueList title="Critical" tone="rose" items={h.criticalIssues} />
-                  <IssueList title="Warnings" tone="amber" items={h.warnings} />
-                  <IssueList title="Positives" tone="emerald" items={h.positives} />
+                  <IssueList title={T.critical} tone="rose" items={h.criticalIssues} />
+                  <IssueList title={T.warnings} tone="amber" items={h.warnings} />
+                  <IssueList title={T.positives} tone="emerald" items={h.positives} />
                 </div>
               )}
             </div>
@@ -119,13 +122,13 @@ export function PortfolioIntelligencePanel() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
-              <Sparkles className="size-4 text-primary" /> AI Insights
+              <Sparkles className="size-4 text-primary" /> {T.aiInsightsTitle}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             {i.suggestedActions.length > 0 && (
               <div>
-                <div className="text-[11px] uppercase text-muted-foreground mb-1">Suggested actions</div>
+                <div className="text-[11px] uppercase text-muted-foreground mb-1">{T.suggestedActions}</div>
                 <ul className="list-disc pl-5 space-y-0.5">
                   {i.suggestedActions.map((s, idx) => <li key={idx}>{s}</li>)}
                 </ul>
@@ -133,7 +136,7 @@ export function PortfolioIntelligencePanel() {
             )}
             {i.monitorList.length > 0 && (
               <div>
-                <div className="text-[11px] uppercase text-muted-foreground mb-1">Monitor list</div>
+                <div className="text-[11px] uppercase text-muted-foreground mb-1">{T.monitorList}</div>
                 <ul className="list-disc pl-5 space-y-0.5">
                   {i.monitorList.map((m, idx) => (
                     <li key={idx}><span className="font-medium">{m.symbol}</span> — <span className="text-muted-foreground">{m.reason}</span></li>
@@ -148,11 +151,9 @@ export function PortfolioIntelligencePanel() {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
-            <FlaskConical className="size-4 text-primary" /> What-If Scenario Lab
+            <FlaskConical className="size-4 text-primary" /> {T.whatIfTitle}
           </CardTitle>
-          <p className="text-[11px] text-muted-foreground">
-            Simulasi read-only. Tidak ada order paper-trade yang dibuat.
-          </p>
+          <p className="text-[11px] text-muted-foreground">{T.simReadOnly}</p>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-wrap gap-2">
@@ -171,7 +172,7 @@ export function PortfolioIntelligencePanel() {
           </div>
 
           {scenario.isError && (
-            <div className="text-xs text-rose-300">Scenario gagal dijalankan.</div>
+            <div className="text-xs text-rose-300">{T.scenarioFailed}</div>
           )}
 
           {lastScenario && (
@@ -183,9 +184,9 @@ export function PortfolioIntelligencePanel() {
                 </Badge>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-[11px]">
-                <Metric label="Estimated PnL" value={`${lastScenario.estimatedPnlPct.toFixed(2)}%`} />
-                <Metric label="Equity After" value={Number(lastScenario.estimatedEquity).toLocaleString("id-ID", { maximumFractionDigits: 0 })} />
-                <Metric label="Confidence" value={lastScenario.confidence} />
+                <Metric label={T.estPnl} value={`${lastScenario.estimatedPnlPct.toFixed(2)}%`} />
+                <Metric label={T.equityAfter} value={Number(lastScenario.estimatedEquity).toLocaleString("id-ID", { maximumFractionDigits: 0 })} />
+                <Metric label={T.confidence} value={lastScenario.confidence} />
               </div>
               {lastScenario.notes?.length > 0 && (
                 <ul className="text-[11px] text-muted-foreground list-disc pl-5 space-y-0.5">
@@ -193,7 +194,7 @@ export function PortfolioIntelligencePanel() {
                 </ul>
               )}
               {lastScenario.recommendation && (
-                <div className="text-xs"><span className="text-muted-foreground">Recommendation: </span>{lastScenario.recommendation}</div>
+                <div className="text-xs"><span className="text-muted-foreground">{T.recommendation} </span>{lastScenario.recommendation}</div>
               )}
             </div>
           )}
