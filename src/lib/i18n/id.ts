@@ -918,6 +918,27 @@ export const UI_LABELS_ID = {
       paperOnlyNote: "paper trading only — skor, kompatibilitas regime & jumlah sample dipakai AI Trade Agent sebelum BUY.",
     },
 
+    disclosureBadge: {
+      severity: { high: "TINGGI", medium: "SEDANG", low: "RENDAH" },
+      types: {
+        dividend: "DIVIDEN", dividen: "DIVIDEN", buyback: "BUYBACK",
+        rights_issue: "RIGHTS ISSUE", rights: "RIGHTS ISSUE",
+        stock_split: "STOCK SPLIT", reverse_split: "REVERSE SPLIT",
+        merger: "MERGER", acquisition: "AKUISISI",
+        suspension: "SUSPENSI", suspended: "SUSPENSI",
+        delisting: "DELISTING", relisting: "RELISTING",
+        uma: "UMA", rups: "RUPS", rupslb: "RUPSLB",
+        public_expose: "PUBLIC EXPOSE",
+        financial_report: "LAPORAN KEUANGAN",
+        annual_report: "LAPORAN TAHUNAN",
+        corporate_action: "AKSI KORPORASI",
+        material_disclosure: "INFORMASI MATERIAL",
+        material: "INFORMASI MATERIAL",
+        announcement: "PENGUMUMAN", announce: "PENGUMUMAN",
+        regulatory: "REGULASI", disclosure: "KETERBUKAAN", other: "LAINNYA",
+      },
+    },
+
     portfolioIntel: {
       title: "Portfolio Intelligence",
       computing: "Menghitung portfolio health…",
