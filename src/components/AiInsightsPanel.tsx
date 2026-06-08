@@ -31,9 +31,14 @@ import {
 import { getStrategyIntelligence } from "@/lib/strategy-intelligence.functions";
 import { formatDateTimeWIB } from "@/lib/format";
 
+import { useLang } from "@/hooks/use-language";
+
 const sevColor: Record<string, string> = {
   info: "secondary",
   warning: "outline",
+  critical: "destructive",
+};
+
   critical: "destructive",
 };
 
@@ -46,6 +51,8 @@ const regimeColor: Record<string, string> = {
 };
 
 export function AiInsightsPanel() {
+  const { L } = useLang();
+  const T = L.body.aiInsights;
   const fetchRegime = useServerFn(getLatestMarketRegime);
   const fetchSectors = useServerFn(getLatestSectorRotation);
   const fetchRisk = useServerFn(getLatestPortfolioRisk);
@@ -54,6 +61,7 @@ export function AiInsightsPanel() {
   const fetchAlerts = useServerFn(evaluateAiAlerts);
   const fetchDefs = useServerFn(listAlertDefinitions);
   const fetchStrategy = useServerFn(getStrategyIntelligence);
+
 
   const runRegime = useServerFn(computeMarketRegime);
   const runSectors = useServerFn(computeSectorRotation);
