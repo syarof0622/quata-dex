@@ -18,11 +18,53 @@ export type NewsSourceCfg = {
   };
 };
 
-export const SPECIAL_HANDLING_SOURCES = ["kontan", "investor_id"] as const;
+export const SPECIAL_HANDLING_SOURCES = [
+  "kontan", "investor_id",
+  "bisnis_market", "detikfinance", "katadata", "pasardana", "emitennews",
+  "idx_channel", "kompas_money", "cnn_indonesia_ekonomi", "tempo_bisnis",
+  "beritasatu_ekonomi", "republika_ekonomi", "liputan6_saham",
+] as const;
 
 export function buildGoogleNewsSiteFallbackUrl(site: string, query: string): string {
   const finalQuery = `site:${site} ${query}`;
   return `https://news.google.com/rss/search?q=${encodeURIComponent(finalQuery)}&hl=id&gl=ID&ceid=ID:id`;
+}
+
+// Shared fallback query set for Indonesian stock/market news. Reused by all
+// new Indonesian news sources so each one falls back to a Google News
+// site:<domain> aggregation when the direct RSS endpoint is blocked or empty.
+const ID_STOCK_FALLBACK_QUERIES = [
+  "saham", "IHSG", "emiten", "pasar modal", "dividen saham",
+  "rekomendasi saham", "IPO", "right issue", "buyback",
+  "laporan keuangan emiten",
+  "BBCA saham", "BBRI saham", "BMRI saham", "TLKM saham", "GOTO saham",
+  "ANTM saham", "MDKA saham", "ADRO saham", "BREN saham", "AMMN saham",
+];
+
+function idNewsSource(
+  id: string,
+  name: string,
+  siteDomain: string,
+  directUrls: string[],
+  priority: number,
+  category = "stock_market",
+): NewsSourceCfg {
+  return {
+    id,
+    name,
+    type: "special_source",
+    url: directUrls[0],
+    fallbackUrls: directUrls.slice(1),
+    priority,
+    category,
+    enabled: true,
+    special: {
+      siteDomain,
+      directUrls,
+      fallbackPriority: Math.max(2, priority - 1),
+      fallbackQueries: ID_STOCK_FALLBACK_QUERIES,
+    },
+  };
 }
 
 export const NEWS_SOURCES: NewsSourceCfg[] = [
