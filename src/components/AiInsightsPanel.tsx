@@ -238,7 +238,7 @@ export function AiInsightsPanel() {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">{T.reviewsTitle}</CardTitle>
           <Button size="sm" variant="outline" disabled={busy === "review"} onClick={() => refresh("review")}>
-            {busy === "review" ? "..." : "Run Review"}
+            {busy === "review" ? "..." : T.runReview}
           </Button>
         </CardHeader>
         <CardContent>
@@ -259,11 +259,11 @@ export function AiInsightsPanel() {
                       <span className="font-medium">{r.symbol}</span>
                       <Badge variant={badgeVariant as any} className="text-[10px]">
                         {isPending
-                          ? "pending review data"
+                          ? T.pendingReviewData
                           : `${r.outcome} · ${pct.toFixed(2)}% · ${pnl >= 0 ? "+" : ""}${pnl.toFixed(2)}`}
                       </Badge>
                     </div>
-                    <div className="text-muted-foreground">Lesson: {r.lesson_label}</div>
+                    <div className="text-muted-foreground">{T.lesson}: {r.lesson_label}</div>
                     {r.what_went_wrong && (
                       <div className="text-amber-500">✗ {r.what_went_wrong}</div>
                     )}
@@ -274,13 +274,13 @@ export function AiInsightsPanel() {
                 );
               })}
               {(!reviews.data || reviews.data.length === 0) && (
-                <li className="text-muted-foreground">Belum ada closed trade untuk direview.</li>
+                <li className="text-muted-foreground">{T.reviewEmpty}</li>
               )}
             </ul>
           </ScrollArea>
           {lessons.data && lessons.data.length > 0 && (
             <div className="mt-3 text-xs">
-              <div className="font-semibold mb-1">Lessons Learned</div>
+              <div className="font-semibold mb-1">{T.lessonsLearned}</div>
               <div className="flex flex-wrap gap-1">
                 {lessons.data.slice(0, 6).map((l: any) => (
                   <Badge key={l.lesson} variant="outline" className="text-[10px]">
@@ -298,7 +298,7 @@ export function AiInsightsPanel() {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">{T.alertsTitle}</CardTitle>
           <Button size="sm" variant="outline" onClick={() => alerts.refetch()}>
-            Re-evaluate
+            {T.reEvaluate}
           </Button>
         </CardHeader>
         <CardContent>
@@ -329,20 +329,20 @@ export function AiInsightsPanel() {
                         </div>
                       )}
                       {a.risk_impact && (
-                        <div className="text-muted-foreground italic">Impact: {a.risk_impact}</div>
+                        <div className="text-muted-foreground italic">{T.impact}: {a.risk_impact}</div>
                       )}
                     </div>
                   </div>
                 </li>
               ))}
               {(!alerts.data || alerts.data.length === 0) && (
-                <li className="text-muted-foreground">Tidak ada alert aktif saat ini.</li>
+                <li className="text-muted-foreground">{T.alertsEmpty}</li>
               )}
             </ul>
           </ScrollArea>
           {defs.data && defs.data.length > 0 && (
             <div className="mt-3 text-xs text-muted-foreground">
-              {defs.data.length} alert types tersedia ·{" "}
+              {defs.data.length} {T.alertTypesAvailable} ·{" "}
               {Array.from(new Set(defs.data.map((d: any) => d.category))).join(" · ")}
             </div>
           )}
