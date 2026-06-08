@@ -136,7 +136,9 @@ export const Route = createFileRoute("/api/public/auth/bootstrap-superadmin")({
         let created = false;
 
         if (!userId) {
-          const initialPassword = process.env.SUPER_ADMIN_BOOTSTRAP_PASSWORD ?? randomBytes(24).toString("base64url");
+          const initialPassword =
+            process.env.SUPER_ADMIN_BOOTSTRAP_PASSWORD ??
+            randomBytes(24).toString("base64url");
           const { data, error } = await supabaseAdmin.auth.admin.createUser({
             email: SUPER_EMAIL,
             password: initialPassword,
