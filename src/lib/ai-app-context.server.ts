@@ -723,14 +723,40 @@ export async function getAIAppContext(userText: string) {
     };
   })() : { status: "unavailable", dataFreshnessStatus: "Unavailable", executionQualityScore: null, error: dqRes.ok ? null : dqRes.error };
 
+  // Source Health — merge legacy news_sources with the unified data_sources
+  // registry (Batch 1/2) so the AI sees honest enums across ALL pipelines:
+  // market_closed / no_event / quota_protected / not_configured are NOT errors.
   const shRes = await safe("sourceHealth", async () => {
-    const { data } = await supabaseAdmin
-      .from("news_sources").select("id, name, status, enabled, last_success_at, last_failed_at, last_error, fail_count");
-    return data ?? [];
+    const [legacy, unified] = await Promise.all([
+      supabaseAdmin
+        .from("news_sources")
+        .select("id, name, status, enabled, last_success_at, last_failed_at, last_error, fail_count"),
+      supabaseAdmin
+        .from("data_sources")
+        .select("source_key, source_name, source_type, health_status, is_enabled, last_success_at, last_failure_at, last_message"),
+    ]);
+    const adapted = (unified.data ?? []).map((r: any) => ({
+      id: r.source_key,
+      name: `${r.source_name} (${r.source_type})`,
+      status: r.health_status,
+      enabled: r.is_enabled,
+      last_success_at: r.last_success_at,
+      last_failed_at: r.last_failure_at,
+      last_error: r.last_message,
+      fail_count: null,
+      source_type: r.source_type,
+    }));
+    return [...((legacy.data ?? []) as any[]), ...adapted];
   });
   const sourceHealth: any = shRes.ok
     ? (() => {
         const sum = summarizeSourceHealth(shRes.data as any);
+        // Group counts by pipeline for AI context clarity.
+        const byPipeline: Record<string, number> = {};
+        for (const r of shRes.data as any[]) {
+          const t = r.source_type ?? "news";
+          byPipeline[t] = (byPipeline[t] ?? 0) + 1;
+        }
         return {
           overallStatus: sum.overallStatus,
           activeCount: sum.activeCount,
@@ -740,10 +766,47 @@ export async function getAIAppContext(userText: string) {
           failedCount: sum.failedCount,
           disabledCount: sum.disabledCount,
           lastUpdated: sum.lastUpdated,
-          sources: sum.sources.slice(0, 12),
+          totalSources: sum.sources.length,
+          sourcesByPipeline: byPipeline,
+          sources: sum.sources.slice(0, 16),
+          honestStatusNote:
+            "Statuses market_closed, no_event, quota_protected, not_configured, and not_run are intentional non-failures — do NOT treat as errors or pipeline outages.",
         };
       })()
     : { overallStatus: "unknown", sources: [], error: shRes.error };
+
+  // Market Snapshot — latest row from market_data_snapshots (Batch 2).
+  // Provides honest session/market status so AI agent does not confuse
+  // market_closed with a data outage.
+  const msRes = await safe("marketSnapshot", async () => {
+    const { data } = await supabaseAdmin
+      .from("market_data_snapshots")
+      .select("snapshot_at, session_status, market_status, source_primary, source_count, idx_composite, idx_composite_change_pct, ad_ratio, data_quality_score, freshness_status, source_status, message")
+      .order("snapshot_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return data ?? null;
+  });
+  const marketSnapshot: any = msRes.ok
+    ? msRes.data
+      ? {
+          snapshotAt: msRes.data.snapshot_at,
+          sessionStatus: msRes.data.session_status,
+          marketStatus: msRes.data.market_status,
+          sourceStatus: msRes.data.source_status,
+          sourcePrimary: msRes.data.source_primary,
+          freshnessStatus: msRes.data.freshness_status,
+          idxComposite: msRes.data.idx_composite,
+          idxCompositeChangePct: msRes.data.idx_composite_change_pct,
+          dataQualityScore: msRes.data.data_quality_score,
+          message: msRes.data.message,
+          honestStatusNote:
+            "sourceStatus=market_closed means IDX is not trading — this is NORMAL outside session hours. Do not raise an alert or downgrade execution score for market_closed.",
+        }
+      : { status: "not_run_yet" }
+    : { status: "unavailable", error: msRes.error };
+
+
 
   // ---------- AI INSIGHTS (aggregated intelligence layer) ----------
   const insightsRes = await safe("aiInsights", async () => {
@@ -1001,6 +1064,7 @@ export async function getAIAppContext(userText: string) {
     journal,
     dataQuality,
     sourceHealth,
+    marketSnapshot,
     aiInsights,
     aiAlerts,
     strategyIntelligence,
