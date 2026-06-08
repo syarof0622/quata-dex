@@ -263,10 +263,10 @@ export function AutonomousAgentPanel() {
               : "border-border/60 bg-card/50")}>
           <div className="flex items-center justify-between gap-2 mb-2">
             <h3 className="text-sm font-semibold flex items-center gap-2">
-              <ShieldAlert className="h-4 w-4 text-rose-400" /> Loss Protection · {loss.agent.mode}
+              <ShieldAlert className="h-4 w-4 text-rose-400" /> {T.loss.title} · {loss.agent.mode}
             </h3>
             <span className="text-[10.5px] text-muted-foreground font-mono">
-              streak {loss.agent.consecutiveLosses}/{loss.agent.maxConsecutiveLosses}
+              {T.loss.streak.replace("{n}", String(loss.agent.consecutiveLosses)).replace("{max}", String(loss.agent.maxConsecutiveLosses))}
             </span>
           </div>
           {loss.agent.protectionReason && (
@@ -274,15 +274,15 @@ export function AutonomousAgentPanel() {
           )}
           {loss.summary && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[11px]">
-              <Heart label="Closed (50)" value={String(loss.summary.closedTrades ?? 0)} />
-              <Heart label="Win rate" value={`${((loss.summary.winRate ?? 0) * 100).toFixed(0)}%`} />
-              <Heart label="Profit factor" value={fmt(loss.summary.profitFactor, 2)} />
-              <Heart label="W / L" value={`${loss.summary.wins ?? 0} / ${loss.summary.losses ?? 0}`} />
+              <Heart label={T.loss.closed50} value={String(loss.summary.closedTrades ?? 0)} />
+              <Heart label={T.loss.winRate} value={`${((loss.summary.winRate ?? 0) * 100).toFixed(0)}%`} />
+              <Heart label={T.loss.profitFactor} value={fmt(loss.summary.profitFactor, 2)} />
+              <Heart label={T.loss.wl} value={`${loss.summary.wins ?? 0} / ${loss.summary.losses ?? 0}`} />
             </div>
           )}
           {(loss.summary?.worstSymbols?.length ?? 0) > 0 && (
             <div className="mt-2">
-              <div className="text-[10.5px] uppercase tracking-wider text-muted-foreground mb-1">Worst symbols</div>
+              <div className="text-[10.5px] uppercase tracking-wider text-muted-foreground mb-1">{T.loss.worstSymbols}</div>
               <div className="flex flex-wrap gap-1.5">
                 {loss.summary.worstSymbols.map((s: any) => (
                   <span key={s.symbol} className="inline-flex items-center gap-1 rounded-full border border-rose-500/30 bg-rose-500/10 text-rose-300 px-2 py-0.5 text-[10.5px] font-mono">
@@ -294,12 +294,12 @@ export function AutonomousAgentPanel() {
           )}
           {loss.summary?.worstStrategy && (
             <div className="mt-2 text-[11px] text-muted-foreground">
-              Worst strategy: <span className="font-mono text-foreground">{loss.summary.worstStrategy.strategy}</span>
+              {T.loss.worstStrategy} <span className="font-mono text-foreground">{loss.summary.worstStrategy.strategy}</span>
               {" · PF "}{fmt(loss.summary.worstStrategy.profitFactor, 2)}
               {" · WR "}{((loss.summary.worstStrategy.winRate ?? 0) * 100).toFixed(0)}%
               {loss.summary.worstStrategy.status === "PAUSED_FOR_REVIEW" && (
                 <span className="ml-1 inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-300 px-1.5 text-[10px]">
-                  <Pause className="h-3 w-3" /> paused
+                  <Pause className="h-3 w-3" /> {T.loss.paused}
                 </span>
               )}
             </div>
@@ -307,7 +307,7 @@ export function AutonomousAgentPanel() {
           {(loss.cooldowns?.length ?? 0) > 0 && (
             <div className="mt-2">
               <div className="text-[10.5px] uppercase tracking-wider text-muted-foreground mb-1 flex items-center gap-1">
-                <Clock className="h-3 w-3" /> Active cooldowns
+                <Clock className="h-3 w-3" /> {T.loss.cooldowns}
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {loss.cooldowns.map((c: any) => (
@@ -320,7 +320,7 @@ export function AutonomousAgentPanel() {
           )}
           {(loss.pausedStrategies?.length ?? 0) > 0 && (
             <div className="mt-2">
-              <div className="text-[10.5px] uppercase tracking-wider text-muted-foreground mb-1">Strategies paused by kill-switch</div>
+              <div className="text-[10.5px] uppercase tracking-wider text-muted-foreground mb-1">{T.loss.pausedStrategies}</div>
               <div className="flex flex-wrap gap-1.5">
                 {loss.pausedStrategies.map((s: any) => (
                   <span key={s.strategy} className="inline-flex items-center gap-1 rounded-full border border-rose-500/30 bg-rose-500/10 text-rose-300 px-2 py-0.5 text-[10.5px]">
@@ -331,8 +331,13 @@ export function AutonomousAgentPanel() {
             </div>
           )}
           <div className="mt-2 text-[10.5px] text-muted-foreground border-t border-border/40 pt-2">
-            Guards: Q≥{loss.agent.minTradeQualityScore} · RR≥{loss.agent.minRiskReward.toFixed(1)} · min-hold {loss.agent.minHoldMinutes}m · daily-loss {(loss.agent.maxDailyLossPct * 100).toFixed(1)}%
+            {T.loss.guards
+              .replace("{q}", String(loss.agent.minTradeQualityScore))
+              .replace("{rr}", loss.agent.minRiskReward.toFixed(1))
+              .replace("{hold}", String(loss.agent.minHoldMinutes))
+              .replace("{dl}", (loss.agent.maxDailyLossPct * 100).toFixed(1))}
           </div>
+
         </div>
       )}
 
