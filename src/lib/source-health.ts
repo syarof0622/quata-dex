@@ -110,6 +110,33 @@ function severityFor(s: NormalizedStatus): NormalizedSource["severity"] {
   }
 }
 
+// Public helpers so the UI can render a single row honestly without
+// re-implementing the normalization logic.
+export function normalizeSourceRow(row: RawSourceRow): NormalizedSource {
+  const status = normalizeStatus(row);
+  return {
+    name: row.name,
+    status,
+    severity: severityFor(status),
+    lastSuccessAt: row.last_success_at ?? null,
+    lastErrorAt: row.last_failed_at ?? null,
+    message: row.last_error ?? null,
+  };
+}
+
+export function sourceStatusLabel(s: NormalizedStatus): string {
+  switch (s) {
+    case "active": return "Active";
+    case "fallback_active": return "Fallback";
+    case "quota_protected": return "Quota protected";
+    case "degraded": return "Degraded";
+    case "failed": return "Failed";
+    case "disabled_by_config": return "Disabled";
+    default: return "Unknown";
+  }
+}
+
+
 export function summarizeSourceHealth(rows: RawSourceRow[] | null | undefined): SourceHealthSummary {
   const list = Array.isArray(rows) ? rows : [];
   const sources: NormalizedSource[] = list.map((r) => {
