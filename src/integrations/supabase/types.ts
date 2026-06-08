@@ -1507,6 +1507,69 @@ export type Database = {
         }
         Relationships: []
       }
+      data_sources: {
+        Row: {
+          asset_scope: string
+          config: Json
+          created_at: string
+          fallback_source_key: string | null
+          health_status: string
+          id: string
+          is_enabled: boolean
+          last_failure_at: string | null
+          last_message: string | null
+          last_success_at: string | null
+          priority: number
+          quota_protected: boolean
+          region: string
+          requires_api_key: boolean
+          source_key: string
+          source_name: string
+          source_type: string
+          updated_at: string
+        }
+        Insert: {
+          asset_scope?: string
+          config?: Json
+          created_at?: string
+          fallback_source_key?: string | null
+          health_status?: string
+          id?: string
+          is_enabled?: boolean
+          last_failure_at?: string | null
+          last_message?: string | null
+          last_success_at?: string | null
+          priority?: number
+          quota_protected?: boolean
+          region?: string
+          requires_api_key?: boolean
+          source_key: string
+          source_name: string
+          source_type: string
+          updated_at?: string
+        }
+        Update: {
+          asset_scope?: string
+          config?: Json
+          created_at?: string
+          fallback_source_key?: string | null
+          health_status?: string
+          id?: string
+          is_enabled?: boolean
+          last_failure_at?: string | null
+          last_message?: string | null
+          last_success_at?: string | null
+          priority?: number
+          quota_protected?: boolean
+          region?: string
+          requires_api_key?: boolean
+          source_key?: string
+          source_name?: string
+          source_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       disclosure_pipeline_runs: {
         Row: {
           corporate_action_count: number
@@ -1951,6 +2014,57 @@ export type Database = {
         }
         Relationships: []
       }
+      internal_audit_runs: {
+        Row: {
+          audit_type: string
+          checks_failed: number
+          checks_passed: number
+          checks_total: number
+          created_at: string
+          detail: Json
+          duration_ms: number | null
+          finished_at: string | null
+          fixes_applied: number
+          id: string
+          started_at: string
+          status: string
+          summary: string | null
+          triggered_by: string | null
+        }
+        Insert: {
+          audit_type: string
+          checks_failed?: number
+          checks_passed?: number
+          checks_total?: number
+          created_at?: string
+          detail?: Json
+          duration_ms?: number | null
+          finished_at?: string | null
+          fixes_applied?: number
+          id?: string
+          started_at?: string
+          status?: string
+          summary?: string | null
+          triggered_by?: string | null
+        }
+        Update: {
+          audit_type?: string
+          checks_failed?: number
+          checks_passed?: number
+          checks_total?: number
+          created_at?: string
+          detail?: Json
+          duration_ms?: number | null
+          finished_at?: string | null
+          fixes_applied?: number
+          id?: string
+          started_at?: string
+          status?: string
+          summary?: string | null
+          triggered_by?: string | null
+        }
+        Relationships: []
+      }
       market_data_quality_snapshots: {
         Row: {
           created_at: string
@@ -2005,6 +2119,69 @@ export type Database = {
           symbols_missing_price?: number
           symbols_with_price?: number
           warnings?: string[]
+        }
+        Relationships: []
+      }
+      market_data_snapshots: {
+        Row: {
+          ad_ratio: number | null
+          advancing_count: number
+          created_at: string
+          data_quality_score: number
+          declining_count: number
+          flat_count: number
+          freshness_status: string
+          id: string
+          idx_composite: number | null
+          idx_composite_change_pct: number | null
+          market_status: string
+          message: string | null
+          raw_payload: Json
+          session_status: string
+          snapshot_at: string
+          source_count: number
+          source_primary: string | null
+          source_status: string
+        }
+        Insert: {
+          ad_ratio?: number | null
+          advancing_count?: number
+          created_at?: string
+          data_quality_score?: number
+          declining_count?: number
+          flat_count?: number
+          freshness_status?: string
+          id?: string
+          idx_composite?: number | null
+          idx_composite_change_pct?: number | null
+          market_status?: string
+          message?: string | null
+          raw_payload?: Json
+          session_status?: string
+          snapshot_at?: string
+          source_count?: number
+          source_primary?: string | null
+          source_status?: string
+        }
+        Update: {
+          ad_ratio?: number | null
+          advancing_count?: number
+          created_at?: string
+          data_quality_score?: number
+          declining_count?: number
+          flat_count?: number
+          freshness_status?: string
+          id?: string
+          idx_composite?: number | null
+          idx_composite_change_pct?: number | null
+          market_status?: string
+          message?: string | null
+          raw_payload?: Json
+          session_status?: string
+          snapshot_at?: string
+          source_count?: number
+          source_primary?: string | null
+          source_status?: string
         }
         Relationships: []
       }
@@ -3733,6 +3910,42 @@ export type Database = {
           score?: number
           symbol?: string
           timeframe?: string
+        }
+        Relationships: []
+      }
+      source_health_logs: {
+        Row: {
+          created_at: string
+          duration_ms: number | null
+          error_detail: Json | null
+          id: string
+          items_fetched: number
+          message: string | null
+          pipeline_name: string
+          source_key: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          duration_ms?: number | null
+          error_detail?: Json | null
+          id?: string
+          items_fetched?: number
+          message?: string | null
+          pipeline_name: string
+          source_key: string
+          status: string
+        }
+        Update: {
+          created_at?: string
+          duration_ms?: number | null
+          error_detail?: Json | null
+          id?: string
+          items_fetched?: number
+          message?: string | null
+          pipeline_name?: string
+          source_key?: string
+          status?: string
         }
         Relationships: []
       }
