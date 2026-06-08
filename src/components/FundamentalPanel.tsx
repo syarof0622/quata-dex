@@ -3,6 +3,7 @@ import { getFundamentals, type FundamentalDTO } from "@/lib/fundamentals.functio
 import { Skeleton } from "@/components/ui/skeleton";
 import { Building2, ExternalLink, Globe, Users, TrendingUp, ShieldCheck, Coins, CalendarClock, BarChart3 } from "lucide-react";
 import { formatDateWIB, formatTimeWIB } from "@/lib/format";
+import { useLang } from "@/hooks/use-language";
 
 function compactNumber(n: number | null | undefined, currency?: string | null): string {
   if (n == null || !isFinite(n)) return "—";
