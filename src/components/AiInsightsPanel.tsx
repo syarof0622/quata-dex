@@ -39,8 +39,6 @@ const sevColor: Record<string, string> = {
   critical: "destructive",
 };
 
-  critical: "destructive",
-};
 
 const regimeColor: Record<string, string> = {
   risk_on: "default",
