@@ -63,6 +63,13 @@ function normalizeStatus(row: RawSourceRow & { message?: string | null }): Norma
   // Explicit known states first
   if (raw === "active" || raw === "ok" || raw === "success" || raw === "idle" || raw === "healthy") return "active";
 
+  // Honest non-failure enums from the unified registry (Batch 2)
+  if (raw === "fallback_active") return "fallback_active";
+  if (raw === "quota_protected" || raw === "rate_limited") return raw === "rate_limited" ? "degraded" : "quota_protected";
+  if (raw === "market_closed" || raw === "no_event" || raw === "not_run" || raw === "not_configured") {
+    return "disabled_by_config";
+  }
+
   // Fallback (Kontan/Investor via Google etc.)
   if (
     blob.includes("fallback")

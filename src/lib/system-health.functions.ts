@@ -247,7 +247,16 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
       lastUpdatedAt: news?.fetched_at ?? null,
     });
 
-    // 3) Market Data — prefer market_data_quality_snapshots, fallback to data_quality_snapshots
+    // 3) Market Data — prefer the new market_data_snapshots registry
+    // (Batch 2), fall back to market_data_quality_snapshots, then
+    // data_quality_snapshots. Honor the honest enums: market_closed,
+    // fallback_active, quota_protected are NOT errors.
+    const { data: mds } = await supabaseAdmin
+      .from("market_data_snapshots")
+      .select("snapshot_at, session_status, market_status, source_primary, source_count, idx_composite, idx_composite_change_pct, ad_ratio, data_quality_score, freshness_status, source_status, message")
+      .order("snapshot_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
     const { data: mdq } = await supabaseAdmin
       .from("market_data_quality_snapshots")
       .select("created_at, status, data_quality_score, latest_price_at, symbols_checked, symbols_with_price, symbols_missing_price, stale_symbols, fresh_symbols, market_session, ihsg_value, ihsg_updated_at")
@@ -260,13 +269,40 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
+    const mdsMins = minutesAgo((mds as any)?.snapshot_at ?? null);
     const mdqMins = minutesAgo((mdq as any)?.created_at ?? null);
     const dqMins = minutesAgo(dq?.created_at ?? null);
     let mdStatus: HealthStatus;
     let mdDetail: string;
     let mdLastAt: string | null = null;
     let mdMetrics: Record<string, string | number | null> | undefined;
-    if (mdq) {
+    if (mds) {
+      const ss = String((mds as any).source_status ?? "unknown");
+      const qScore = Number((mds as any).data_quality_score ?? 0) * 100;
+      mdStatus =
+        ss === "active" ? "healthy" :
+        ss === "fallback_active" ? "partial" :
+        ss === "quota_protected" ? "partial" :
+        ss === "market_closed" ? "no_recent_event" :
+        ss === "rate_limited" ? "degraded" :
+        ss === "degraded" ? "degraded" :
+        ss === "failed" ? "failed" :
+        "unknown";
+      const sessLabel = (mds as any).session_status ?? "—";
+      mdDetail = ss === "market_closed"
+        ? `Pasar tutup (${sessLabel}). ${(mds as any).message ?? "Tidak ada error."}`
+        : `${ss} · IHSG ${(mds as any).idx_composite ?? "—"} · skor ${Math.round(qScore)} · ${mdsMins ?? "?"} mnt lalu`;
+      mdLastAt = (mds as any).snapshot_at;
+      mdMetrics = {
+        sourceStatus: ss,
+        session: sessLabel,
+        ihsg: (mds as any).idx_composite ?? null,
+        changePct: (mds as any).idx_composite_change_pct ?? null,
+        freshness: (mds as any).freshness_status ?? "—",
+        primarySource: (mds as any).source_primary ?? "—",
+        qualityScore: Math.round(qScore),
+      };
+    } else if (mdq) {
       const score = Number((mdq as any).data_quality_score ?? 0);
       mdStatus = score >= 70 ? "healthy" : score >= 40 ? "partial" : "degraded";
       mdDetail = `Skor ${Math.round(score)} · ${(mdq as any).fresh_symbols}/${(mdq as any).symbols_checked} fresh${(mdq as any).market_session ? ` · ${(mdq as any).market_session}` : ""}. ${mdqMins ?? "?"} menit lalu.`;
@@ -305,7 +341,24 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
     const { data: sources } = await supabaseAdmin
       .from("news_sources")
       .select("id, name, status, enabled, fail_count, last_success_at, last_failed_at, last_error");
-    const summary = summarizeSourceHealth((sources ?? []) as any);
+    // Merge unified registry rows (Batch 1) so non-news sources (market,
+    // disclosure, fundamental) are counted in the Source Health summary.
+    const { data: unifiedSources } = await supabaseAdmin
+      .from("data_sources")
+      .select("source_key, source_name, source_type, health_status, is_enabled, last_success_at, last_failure_at, last_message");
+    const unifiedAdapted = (unifiedSources ?? []).map((r: any) => ({
+      id: r.source_key,
+      name: `${r.source_name} (${r.source_type})`,
+      status: r.health_status,
+      enabled: r.is_enabled,
+      fail_count: null,
+      last_success_at: r.last_success_at,
+      last_failed_at: r.last_failure_at,
+      last_error: r.last_message,
+    }));
+    const summary = summarizeSourceHealth(
+      [...((sources ?? []) as any), ...unifiedAdapted] as any,
+    );
     const overallMap: Record<OverallStatus, HealthStatus> = {
       active: "healthy",
       partial: "partial",
@@ -335,6 +388,7 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
         degraded: summary.degradedCount,
         failed: summary.failedCount,
         disabled: summary.disabledCount,
+        totalSources: summary.sources.length,
       },
     });
 
