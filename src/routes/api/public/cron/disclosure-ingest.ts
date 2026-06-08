@@ -51,9 +51,22 @@ async function handle(request: Request) {
       source_results: [],
       trigger_source: "cron",
     });
+    // Mirror into unified registry with honest enum (no_event vs active).
+    const honest = total > 0 ? "active" : "no_event";
+    const msg = total > 0
+      ? `${total} disclosure dalam 7 hari terakhir`
+      : "Belum ada disclosure dalam 7 hari terakhir — bukan error";
+    try {
+      const { logSourceHealthBatch } = await import("@/lib/data-source-health.server");
+      await logSourceHealthBatch([
+        { source_key: "idx_keterbukaan", pipeline_name: "disclosure", status: honest as any, items_fetched: official_count, message: msg },
+        { source_key: "idx_corporate_actions", pipeline_name: "disclosure", status: honest as any, items_fetched: corporate_action_count, message: msg },
+        { source_key: "idx_announcements", pipeline_name: "disclosure", status: honest as any, items_fetched: regulatory_event_count, message: msg },
+      ]);
+    } catch { /* best-effort */ }
     return Response.json({
       ok: true,
-      status: total > 0 ? "success" : "success_no_events",
+      status: total > 0 ? "success" : "no_event",
       counts: { official_count, corporate_action_count, regulatory_event_count, high_impact_count },
     });
   } catch (e: any) {

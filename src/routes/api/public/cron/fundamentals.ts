@@ -11,7 +11,34 @@ async function run(request: Request) {
   const symbols = symbolsParam
     ? symbolsParam.split(",").map((s) => s.trim()).filter(Boolean)
     : undefined;
+  const startedAt = Date.now();
   const report = await runFundamentalBackfill({ limit, symbols });
+  // Mirror into unified registry with honest enums.
+  try {
+    const { logSourceHealth } = await import("@/lib/data-source-health.server");
+    const r: any = report;
+    const processed = Number(r?.processed ?? r?.updated ?? 0);
+    const failed = Number(r?.failed ?? r?.errors ?? 0);
+    const idxStatus = processed > 0
+      ? (failed > 0 ? "degraded" : "active")
+      : (failed > 0 ? "failed" : "no_event");
+    await logSourceHealth({
+      source_key: "idx_financial_data",
+      pipeline_name: "fundamental",
+      status: idxStatus as any,
+      duration_ms: Date.now() - startedAt,
+      items_fetched: processed,
+      message: `processed=${processed} failed=${failed}`,
+    });
+    await logSourceHealth({
+      source_key: "serpapi_fundamental",
+      pipeline_name: "fundamental",
+      status: process.env.SERPAPI_API_KEY ? "quota_protected" : "not_configured",
+      message: process.env.SERPAPI_API_KEY
+        ? "Dilindungi kuota bulanan — dipakai hanya untuk gap fundamental"
+        : "SERPAPI_API_KEY belum dikonfigurasi",
+    });
+  } catch { /* best-effort */ }
   return Response.json(report);
 }
 
