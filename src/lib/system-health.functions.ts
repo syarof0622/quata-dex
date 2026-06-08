@@ -195,6 +195,7 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
     const { data: agentTimes } = await supabaseAdmin
       .from("ai_trade_agents")
       .select("last_auto_decision_at, last_auto_execution_at")
+      .order("last_worker_run_at", { ascending: false, nullsFirst: false })
       .order("updated_at", { ascending: false })
       .limit(1)
       .maybeSingle();
