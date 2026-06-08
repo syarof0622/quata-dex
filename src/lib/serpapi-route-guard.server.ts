@@ -26,10 +26,7 @@ export function checkSerpApiAccess(request: Request): Response | null {
   const bearer = authHeader.toLowerCase().startsWith("bearer ")
     ? authHeader.slice(7).trim()
     : null;
-  const provided =
-    request.headers.get("x-cron-secret") ??
-    bearer ??
-    new URL(request.url).searchParams.get("secret");
+  const provided = request.headers.get("x-cron-secret") ?? bearer;
   if (provided && safeEqual(provided, cronSecret)) return null;
   return new Response("Forbidden", { status: 403 });
 }
