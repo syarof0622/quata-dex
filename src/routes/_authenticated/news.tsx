@@ -7,6 +7,8 @@ import { serpapiStatus } from "@/lib/serpapi.functions";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Newspaper, TrendingUp, TrendingDown, Minus, Activity, RefreshCw, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
+import { SourceHealthCell } from "@/components/SourceHealthCell";
+
 import { formatTimeWIB, formatDateTimeWIB } from "@/lib/format";
 import { PageHero } from "@/components/ui/page-hero";
 import { useLang } from "@/hooks/use-language";
@@ -281,29 +283,23 @@ function NewsHub() {
       </div>
 
 
-      {/* Source health */}
+      {/* Source health — honest enum colors: fallback=amber/info, quota=sky/info, disabled=neutral */}
       <div className="panel p-4">
         <div className="text-xs text-muted-foreground mb-3">{L.body.news.sourceHealth}</div>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-          {(sources.data ?? []).map(s => {
-            const ok = s.status === "active";
-            return (
-              <div key={s.id} className="rounded border border-border p-2 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">{s.name}</span>
-                  {ok ? <CheckCircle2 className="size-3.5 text-bull" /> : <AlertTriangle className="size-3.5 text-bear" />}
-                </div>
-                <div className="text-[10px] text-muted-foreground mt-1">
-                  {ok ? `${s.articles_today ?? 0} ${L.body.news.today}` : (s.last_error?.slice(0, 40) ?? L.body.news.noData)}
-                </div>
-                <div className="text-[10px] text-muted-foreground mt-0.5">
-                  {s.last_success_at ? `${L.body.news.last} ${formatTimeWIB(s.last_success_at)}` : "—"}
-                </div>
-              </div>
-            );
-          })}
+          {(sources.data ?? []).map(s => (
+            <SourceHealthCell
+              key={s.id}
+              row={s as any}
+              articlesToday={s.articles_today ?? 0}
+              lastLabel={L.body.news.last}
+              formatTime={formatTimeWIB}
+              noDataLabel={L.body.news.noData}
+            />
+          ))}
         </div>
       </div>
+
 
 
       {/* Filters */}
