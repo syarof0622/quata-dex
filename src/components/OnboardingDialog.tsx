@@ -27,11 +27,13 @@ export function OnboardingDialog() {
 
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [alreadyCompleted, setAlreadyCompleted] = useState(false);
 
   useEffect(() => {
     let alive = true;
     fetchStatus().then((s: any) => {
       if (!alive) return;
+      setAlreadyCompleted(Boolean(s?.onboarding_completed));
       if (!s?.onboarding_completed) setOpen(true);
     }).catch(() => {});
     return () => {
@@ -44,25 +46,30 @@ export function OnboardingDialog() {
     try {
       await setDemo({ data: { enabled: true } });
       await seed();
-      await finish();
-      setOpen(false);
     } finally {
       setBusy(false);
     }
+    setOpen(false);
   }
 
   async function skip() {
-    setBusy(true);
-    try {
-      await finish();
-      setOpen(false);
-    } finally {
-      setBusy(false);
+    setOpen(false);
+  }
+
+  async function handleOpenChange(val: boolean) {
+    setOpen(val);
+    if (!val && !alreadyCompleted) {
+      try {
+        await finish();
+        setAlreadyCompleted(true);
+      } catch {
+        // ignore
+      }
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{L.onboarding.title}</DialogTitle>
