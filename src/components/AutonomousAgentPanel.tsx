@@ -64,7 +64,7 @@ export function AutonomousAgentPanel() {
   const modeMutation = useMutation({
     mutationFn: async (mode: AggressionMode) => {
       const agentId = (data as any)?.agent?.id;
-      if (!agentId) throw new Error("Agent belum aktif.");
+      if (!agentId) throw new Error(T.aggression.agentNotActive);
       return setMode({ data: { id: agentId, mode } });
     },
     onSuccess: () => {
