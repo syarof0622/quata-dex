@@ -18,11 +18,53 @@ export type NewsSourceCfg = {
   };
 };
 
-export const SPECIAL_HANDLING_SOURCES = ["kontan", "investor_id"] as const;
+export const SPECIAL_HANDLING_SOURCES = [
+  "kontan", "investor_id",
+  "bisnis_market", "detikfinance", "katadata", "pasardana", "emitennews",
+  "idx_channel", "kompas_money", "cnn_indonesia_ekonomi", "tempo_bisnis",
+  "beritasatu_ekonomi", "republika_ekonomi", "liputan6_saham",
+] as const;
 
 export function buildGoogleNewsSiteFallbackUrl(site: string, query: string): string {
   const finalQuery = `site:${site} ${query}`;
   return `https://news.google.com/rss/search?q=${encodeURIComponent(finalQuery)}&hl=id&gl=ID&ceid=ID:id`;
+}
+
+// Shared fallback query set for Indonesian stock/market news. Reused by all
+// new Indonesian news sources so each one falls back to a Google News
+// site:<domain> aggregation when the direct RSS endpoint is blocked or empty.
+const ID_STOCK_FALLBACK_QUERIES = [
+  "saham", "IHSG", "emiten", "pasar modal", "dividen saham",
+  "rekomendasi saham", "IPO", "right issue", "buyback",
+  "laporan keuangan emiten",
+  "BBCA saham", "BBRI saham", "BMRI saham", "TLKM saham", "GOTO saham",
+  "ANTM saham", "MDKA saham", "ADRO saham", "BREN saham", "AMMN saham",
+];
+
+function idNewsSource(
+  id: string,
+  name: string,
+  siteDomain: string,
+  directUrls: string[],
+  priority: number,
+  category = "stock_market",
+): NewsSourceCfg {
+  return {
+    id,
+    name,
+    type: "special_source",
+    url: directUrls[0],
+    fallbackUrls: directUrls.slice(1),
+    priority,
+    category,
+    enabled: true,
+    special: {
+      siteDomain,
+      directUrls,
+      fallbackPriority: Math.max(2, priority - 1),
+      fallbackQueries: ID_STOCK_FALLBACK_QUERIES,
+    },
+  };
 }
 
 export const NEWS_SOURCES: NewsSourceCfg[] = [
@@ -105,6 +147,55 @@ export const NEWS_SOURCES: NewsSourceCfg[] = [
     category: "aggregator",
     enabled: true,
   },
+
+  // ---- Batch B: additional Indonesian news sources ----
+  // Each one tries direct RSS/public URLs first, then falls back to
+  // Google News site:<domain> aggregation when blocked or empty.
+  idNewsSource("bisnis_market", "Bisnis.com Market", "bisnis.com", [
+    "https://market.bisnis.com/rss",
+    "https://www.bisnis.com/rss",
+  ], 20),
+  idNewsSource("detikfinance", "DetikFinance", "finance.detik.com", [
+    "https://finance.detik.com/rss",
+  ], 25),
+  idNewsSource("katadata", "Katadata", "katadata.co.id", [
+    "https://katadata.co.id/rss",
+  ], 30, "macro_economy"),
+  idNewsSource("pasardana", "Pasardana", "pasardana.id", [
+    "https://pasardana.id/rss",
+    "https://pasardana.id/news/rss",
+  ], 35),
+  idNewsSource("emitennews", "EmitenNews", "emitennews.com", [
+    "https://www.emitennews.com/rss",
+    "https://emitennews.com/rss",
+  ], 35),
+  idNewsSource("idx_channel", "IDX Channel", "idxchannel.com", [
+    "https://www.idxchannel.com/rss",
+    "https://www.idxchannel.com/market-news/rss",
+  ], 35),
+  idNewsSource("kompas_money", "Kompas Money", "money.kompas.com", [
+    "https://money.kompas.com/rss",
+    "https://rss.kompas.com/rss/money",
+  ], 45),
+  idNewsSource("cnn_indonesia_ekonomi", "CNN Indonesia Ekonomi", "cnnindonesia.com", [
+    "https://www.cnnindonesia.com/ekonomi/rss",
+  ], 45),
+  idNewsSource("tempo_bisnis", "Tempo Bisnis", "bisnis.tempo.co", [
+    "https://rss.tempo.co/bisnis",
+    "https://bisnis.tempo.co/rss",
+  ], 50),
+  idNewsSource("beritasatu_ekonomi", "BeritaSatu Ekonomi", "beritasatu.com", [
+    "https://www.beritasatu.com/rss/ekonomi",
+    "https://www.beritasatu.com/rss",
+  ], 50),
+  idNewsSource("republika_ekonomi", "Republika Ekonomi", "republika.co.id", [
+    "https://ekonomi.republika.co.id/rss",
+    "https://www.republika.co.id/rss",
+  ], 55),
+  idNewsSource("liputan6_saham", "Liputan6 Saham", "liputan6.com", [
+    "https://feed.liputan6.com/rss/saham",
+    "https://feed.liputan6.com/rss/bisnis",
+  ], 55),
 ];
 
 // IDX tickers worth recognising in headlines (most-traded blue chips + popular tickers)
