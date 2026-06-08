@@ -72,14 +72,16 @@ function Landing() {
 
       <div className="relative z-10 lp-anim">
         <Nav />
-        <Hero />
-        <MockupSection />
-        <FeatureSection />
-        <AiAgentSection />
-        <RiskEngineSection />
-        <NewsSection />
-        <SafetySection />
-        <FinalCta />
+        <main>
+          <Hero />
+          <MockupSection />
+          <FeatureSection />
+          <AiAgentSection />
+          <RiskEngineSection />
+          <NewsSection />
+          <SafetySection />
+          <FinalCta />
+        </main>
         <Footer />
       </div>
     </div>
