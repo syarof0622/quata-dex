@@ -341,7 +341,24 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
     const { data: sources } = await supabaseAdmin
       .from("news_sources")
       .select("id, name, status, enabled, fail_count, last_success_at, last_failed_at, last_error");
-    const summary = summarizeSourceHealth((sources ?? []) as any);
+    // Merge unified registry rows (Batch 1) so non-news sources (market,
+    // disclosure, fundamental) are counted in the Source Health summary.
+    const { data: unifiedSources } = await supabaseAdmin
+      .from("data_sources")
+      .select("source_key, source_name, source_type, health_status, is_enabled, last_success_at, last_failure_at, last_message");
+    const unifiedAdapted = (unifiedSources ?? []).map((r: any) => ({
+      id: r.source_key,
+      name: `${r.source_name} (${r.source_type})`,
+      status: r.health_status,
+      enabled: r.is_enabled,
+      fail_count: null,
+      last_success_at: r.last_success_at,
+      last_failed_at: r.last_failure_at,
+      last_error: r.last_message,
+    }));
+    const summary = summarizeSourceHealth(
+      [...((sources ?? []) as any), ...unifiedAdapted] as any,
+    );
     const overallMap: Record<OverallStatus, HealthStatus> = {
       active: "healthy",
       partial: "partial",
@@ -371,6 +388,7 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
         degraded: summary.degradedCount,
         failed: summary.failedCount,
         disabled: summary.disabledCount,
+        totalSources: summary.sources.length,
       },
     });
 
