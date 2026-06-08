@@ -70,12 +70,15 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
     const marketClosed = !marketSession.isOpen;
 
 
-    // 1) AI Worker
+    // 1) AI Worker — prefer the agent that has actually run. A brand-new
+    // `stopped` agent inserted later would otherwise win the updated_at tie
+    // and mask a real failing worker as "Unknown".
     const { data: agent } = await supabaseAdmin
       .from("ai_trade_agents")
       .select(
         "id, status, automation_enabled, last_worker_run_at, last_worker_status, last_worker_message, worker_error_count, next_expected_worker_run_at, last_error",
       )
+      .order("last_worker_run_at", { ascending: false, nullsFirst: false })
       .order("updated_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -91,6 +94,7 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
       : workerMins != null
       ? "healthy"
       : "unknown";
+    const workerErrMsg = agent?.last_worker_message ?? agent?.last_error ?? null;
     cards.push({
       key: "ai_worker",
       label: "AI Worker",
@@ -98,12 +102,14 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
       detail:
         workerMins == null
           ? "Belum ada catatan run."
+          : (workerStatus === "failed" || workerStatus === "degraded")
+          ? `Run terakhir ${workerMins} menit lalu — ${agent?.last_worker_status ?? "error"}${workerErrMsg ? `: ${workerErrMsg}` : ""}.`
           : `Run terakhir ${workerMins} menit lalu — ${agent?.last_worker_status ?? "unknown"}.`,
       lastUpdatedAt: agent?.last_worker_run_at ?? null,
       metrics: {
         errorCount: agent?.worker_error_count ?? 0,
         automationEnabled: agent?.automation_enabled ? "yes" : "no",
-        lastMessage: agent?.last_worker_message ?? null,
+        lastMessage: workerErrMsg,
         lastRunWIB: formatWIB(agent?.last_worker_run_at ?? null),
       },
     });
