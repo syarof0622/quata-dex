@@ -24,7 +24,7 @@ function getAls() {
     // Indirect require so bundlers don't statically analyse node:async_hooks
     // into the client graph.
     const mod = (0, eval)("require")("node:async_hooks");
-    alsInstance = new mod.AsyncLocalStorage<Store>();
+    alsInstance = new mod.AsyncLocalStorage();
   }
   return alsInstance!;
 }
