@@ -42,7 +42,7 @@ function Stat({ label, value, hint, tone }: { label: string; value: string; hint
   );
 }
 
-function Section({ icon: Icon, title, children, empty }: { icon: any; title: string; children: React.ReactNode; empty?: boolean }) {
+function Section({ icon: Icon, title, children, empty, emptyText }: { icon: any; title: string; children: React.ReactNode; empty?: boolean; emptyText: string }) {
   return (
     <section className="panel p-4">
       <div className="flex items-center gap-2 mb-3">
@@ -50,7 +50,7 @@ function Section({ icon: Icon, title, children, empty }: { icon: any; title: str
         <h3 className="font-semibold text-sm">{title}</h3>
       </div>
       {empty ? (
-        <div className="text-xs text-muted-foreground italic">Tidak ada data tersedia.</div>
+        <div className="text-xs text-muted-foreground italic">{emptyText}</div>
       ) : (
         children
       )}
