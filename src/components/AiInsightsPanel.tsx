@@ -186,7 +186,7 @@ export function AiInsightsPanel() {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">{T.riskTitle}</CardTitle>
           <Button size="sm" variant="outline" disabled={busy === "risk"} onClick={() => refresh("risk")}>
-            {busy === "risk" ? "..." : "Refresh"}
+            {busy === "risk" ? "..." : T.refresh}
           </Button>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
@@ -202,16 +202,16 @@ export function AiInsightsPanel() {
                         : "secondary"
                   }
                 >
-                  Portfolio Risk: {k.risk_level}
+                  {T.portfolioRisk}: {k.risk_level}
                 </Badge>
-                <Badge variant="outline">Cash: {Number(k.cash_pct).toFixed(0)}%</Badge>
-                <Badge variant="outline">Max pos: {Number(k.max_position_weight).toFixed(1)}%</Badge>
-                <Badge variant="outline">DD: {Number(k.current_drawdown).toFixed(2)}%</Badge>
-                <Badge variant="outline">Today: {Number(k.daily_pnl_pct).toFixed(2)}%</Badge>
+                <Badge variant="outline">{T.cash}: {Number(k.cash_pct).toFixed(0)}%</Badge>
+                <Badge variant="outline">{T.maxPos}: {Number(k.max_position_weight).toFixed(1)}%</Badge>
+                <Badge variant="outline">{T.dd}: {Number(k.current_drawdown).toFixed(2)}%</Badge>
+                <Badge variant="outline">{T.today}: {Number(k.daily_pnl_pct).toFixed(2)}%</Badge>
               </div>
               {r && (
                 <div className="rounded-md border border-border/60 bg-muted/30 p-2 text-xs text-muted-foreground">
-                  <span className="font-medium text-foreground">Market vs Portfolio:</span>{" "}
+                  <span className="font-medium text-foreground">{T.marketVsPortfolio}</span>{" "}
                   Market risk ({r.regime_classification}, vol {r.regime_volatility}, breadth {r.regime_breadth})
                   {" "}≠ portfolio risk. Portfolio Anda saat ini {k.risk_level} karena cash ratio{" "}
                   {Number(k.cash_pct).toFixed(0)}% dan posisi terbesar hanya{" "}
@@ -228,7 +228,7 @@ export function AiInsightsPanel() {
               )}
             </>
           ) : (
-            <div className="text-muted-foreground">Belum ada snapshot risk.</div>
+            <div className="text-muted-foreground">{T.riskEmpty}</div>
           )}
         </CardContent>
       </Card>
