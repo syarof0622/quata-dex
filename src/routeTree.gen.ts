@@ -41,6 +41,7 @@ import { Route as ApiPublicCronNewsRouteImport } from './routes/api/public/cron/
 import { Route as ApiPublicCronMarketSnapshotRouteImport } from './routes/api/public/cron/market-snapshot'
 import { Route as ApiPublicCronFundamentalsRouteImport } from './routes/api/public/cron/fundamentals'
 import { Route as ApiPublicCronEmbedKnowledgeRouteImport } from './routes/api/public/cron/embed-knowledge'
+import { Route as ApiPublicCronEmbedBackfillRouteImport } from './routes/api/public/cron/embed-backfill'
 import { Route as ApiPublicCronDisclosureIngestRouteImport } from './routes/api/public/cron/disclosure-ingest'
 import { Route as ApiPublicCronAlertsRouteImport } from './routes/api/public/cron/alerts'
 import { Route as ApiPublicCronAiAgentRouteImport } from './routes/api/public/cron/ai-agent'
@@ -212,6 +213,12 @@ const ApiPublicCronEmbedKnowledgeRoute =
     path: '/api/public/cron/embed-knowledge',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCronEmbedBackfillRoute =
+  ApiPublicCronEmbedBackfillRouteImport.update({
+    id: '/api/public/cron/embed-backfill',
+    path: '/api/public/cron/embed-backfill',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicCronDisclosureIngestRoute =
   ApiPublicCronDisclosureIngestRouteImport.update({
     id: '/api/public/cron/disclosure-ingest',
@@ -262,6 +269,7 @@ export interface FileRoutesByFullPath {
   '/api/public/cron/ai-agent': typeof ApiPublicCronAiAgentRoute
   '/api/public/cron/alerts': typeof ApiPublicCronAlertsRoute
   '/api/public/cron/disclosure-ingest': typeof ApiPublicCronDisclosureIngestRoute
+  '/api/public/cron/embed-backfill': typeof ApiPublicCronEmbedBackfillRoute
   '/api/public/cron/embed-knowledge': typeof ApiPublicCronEmbedKnowledgeRoute
   '/api/public/cron/fundamentals': typeof ApiPublicCronFundamentalsRoute
   '/api/public/cron/market-snapshot': typeof ApiPublicCronMarketSnapshotRoute
@@ -299,6 +307,7 @@ export interface FileRoutesByTo {
   '/api/public/cron/ai-agent': typeof ApiPublicCronAiAgentRoute
   '/api/public/cron/alerts': typeof ApiPublicCronAlertsRoute
   '/api/public/cron/disclosure-ingest': typeof ApiPublicCronDisclosureIngestRoute
+  '/api/public/cron/embed-backfill': typeof ApiPublicCronEmbedBackfillRoute
   '/api/public/cron/embed-knowledge': typeof ApiPublicCronEmbedKnowledgeRoute
   '/api/public/cron/fundamentals': typeof ApiPublicCronFundamentalsRoute
   '/api/public/cron/market-snapshot': typeof ApiPublicCronMarketSnapshotRoute
@@ -338,6 +347,7 @@ export interface FileRoutesById {
   '/api/public/cron/ai-agent': typeof ApiPublicCronAiAgentRoute
   '/api/public/cron/alerts': typeof ApiPublicCronAlertsRoute
   '/api/public/cron/disclosure-ingest': typeof ApiPublicCronDisclosureIngestRoute
+  '/api/public/cron/embed-backfill': typeof ApiPublicCronEmbedBackfillRoute
   '/api/public/cron/embed-knowledge': typeof ApiPublicCronEmbedKnowledgeRoute
   '/api/public/cron/fundamentals': typeof ApiPublicCronFundamentalsRoute
   '/api/public/cron/market-snapshot': typeof ApiPublicCronMarketSnapshotRoute
@@ -377,6 +387,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/ai-agent'
     | '/api/public/cron/alerts'
     | '/api/public/cron/disclosure-ingest'
+    | '/api/public/cron/embed-backfill'
     | '/api/public/cron/embed-knowledge'
     | '/api/public/cron/fundamentals'
     | '/api/public/cron/market-snapshot'
@@ -414,6 +425,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/ai-agent'
     | '/api/public/cron/alerts'
     | '/api/public/cron/disclosure-ingest'
+    | '/api/public/cron/embed-backfill'
     | '/api/public/cron/embed-knowledge'
     | '/api/public/cron/fundamentals'
     | '/api/public/cron/market-snapshot'
@@ -452,6 +464,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/ai-agent'
     | '/api/public/cron/alerts'
     | '/api/public/cron/disclosure-ingest'
+    | '/api/public/cron/embed-backfill'
     | '/api/public/cron/embed-knowledge'
     | '/api/public/cron/fundamentals'
     | '/api/public/cron/market-snapshot'
@@ -477,6 +490,7 @@ export interface RootRouteChildren {
   ApiPublicCronAiAgentRoute: typeof ApiPublicCronAiAgentRoute
   ApiPublicCronAlertsRoute: typeof ApiPublicCronAlertsRoute
   ApiPublicCronDisclosureIngestRoute: typeof ApiPublicCronDisclosureIngestRoute
+  ApiPublicCronEmbedBackfillRoute: typeof ApiPublicCronEmbedBackfillRoute
   ApiPublicCronEmbedKnowledgeRoute: typeof ApiPublicCronEmbedKnowledgeRoute
   ApiPublicCronFundamentalsRoute: typeof ApiPublicCronFundamentalsRoute
   ApiPublicCronMarketSnapshotRoute: typeof ApiPublicCronMarketSnapshotRoute
@@ -714,6 +728,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronEmbedKnowledgeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/embed-backfill': {
+      id: '/api/public/cron/embed-backfill'
+      path: '/api/public/cron/embed-backfill'
+      fullPath: '/api/public/cron/embed-backfill'
+      preLoaderRoute: typeof ApiPublicCronEmbedBackfillRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cron/disclosure-ingest': {
       id: '/api/public/cron/disclosure-ingest'
       path: '/api/public/cron/disclosure-ingest'
@@ -797,6 +818,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCronAiAgentRoute: ApiPublicCronAiAgentRoute,
   ApiPublicCronAlertsRoute: ApiPublicCronAlertsRoute,
   ApiPublicCronDisclosureIngestRoute: ApiPublicCronDisclosureIngestRoute,
+  ApiPublicCronEmbedBackfillRoute: ApiPublicCronEmbedBackfillRoute,
   ApiPublicCronEmbedKnowledgeRoute: ApiPublicCronEmbedKnowledgeRoute,
   ApiPublicCronFundamentalsRoute: ApiPublicCronFundamentalsRoute,
   ApiPublicCronMarketSnapshotRoute: ApiPublicCronMarketSnapshotRoute,
