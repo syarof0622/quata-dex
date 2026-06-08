@@ -77,7 +77,7 @@ export function TickerSearch({ className, onPick, placeholder, initialValue }: {
         onChange={e => { setQ(e.target.value); setOpen(true); }}
         onFocus={() => q && setOpen(true)}
         onKeyDown={onKeyDown}
-        placeholder={placeholder ?? "Search ticker (AAPL, NVDA, BBCA.JK)…"}
+        placeholder={placeholder ?? T.placeholder}
         className="pl-9 pr-9"
         autoComplete="off"
         spellCheck={false}
@@ -89,7 +89,7 @@ export function TickerSearch({ className, onPick, placeholder, initialValue }: {
         <div className="absolute z-50 mt-1 left-0 right-0 panel p-1 max-h-80 overflow-auto shadow-xl">
           {items.length === 0 ? (
             <div className="px-3 py-2 text-xs text-muted-foreground">
-              {sug.isFetching ? "Searching…" : `No matches. Press Enter to open ${q.toUpperCase()}.`}
+              {sug.isFetching ? T.searching : T.noMatch.replace("{q}", q.toUpperCase())}
             </div>
           ) : (
             items.map((it, i) => (
