@@ -75,7 +75,7 @@ export function AutonomousAgentPanel() {
   });
 
   if (isLoading || !data) {
-    return <div className="rounded-xl border border-border/60 bg-card/40 p-4 text-sm text-muted-foreground">Loading autonomous agent status…</div>;
+    return <div className="rounded-xl border border-border/60 bg-card/40 p-4 text-sm text-muted-foreground">{T.loading}</div>;
   }
 
   const a = data.agent;
@@ -92,22 +92,22 @@ export function AutonomousAgentPanel() {
               <Bot className="h-4 w-4" />
             </div>
             <div className="min-w-0">
-              <div className="text-sm font-semibold truncate">{a?.name ?? "AI Trade Agent"}</div>
+              <div className="text-sm font-semibold truncate">{a?.name ?? T.defaultName}</div>
               <div className="text-[11px] text-muted-foreground truncate">
-                Risk mode: <span className="font-mono">{a?.riskMode ?? "—"}</span> · Session: {data.session.state}
+                {T.riskMode} <span className="font-mono">{a?.riskMode ?? "—"}</span> · {T.session} {data.session.state}
               </div>
             </div>
           </div>
           <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium", TONE[tone])}>
             <span className={cn("h-1.5 w-1.5 rounded-full", `bg-${tone === "emerald" ? "emerald" : tone}-400`)} />
-            {a?.worker.label ?? "Unknown"}
+            {a?.worker.label ?? "—"}
           </span>
         </div>
         <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
-          <Heart label="Last run" value={rel(a?.heartbeat.lastRunAt)} />
-          <Heart label="Last status" value={a?.heartbeat.lastStatus ?? "—"} />
-          <Heart label="Last auto decision" value={rel(a?.heartbeat.lastAutoDecisionAt)} />
-          <Heart label="Last auto execution" value={rel(a?.heartbeat.lastAutoExecutionAt)} />
+          <Heart label={T.heart.lastRun} value={rel(a?.heartbeat.lastRunAt)} />
+          <Heart label={T.heart.lastStatus} value={a?.heartbeat.lastStatus ?? "—"} />
+          <Heart label={T.heart.lastAutoDecision} value={rel(a?.heartbeat.lastAutoDecisionAt)} />
+          <Heart label={T.heart.lastAutoExec} value={rel(a?.heartbeat.lastAutoExecutionAt)} />
         </div>
         {a?.heartbeat.lastMessage && (
           <div className="mt-2 text-[11.5px] text-muted-foreground border-t border-border/40 pt-2 break-words">
@@ -118,19 +118,19 @@ export function AutonomousAgentPanel() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
-        <SumCard icon={Activity} label="Monitored" value={data.summary.monitored} />
-        <SumCard icon={ShieldCheck} label="With Plan" value={data.summary.withPlan} tone="emerald" />
-        <SumCard icon={TrendingDown} label="Near Stop" value={data.summary.nearStopLoss} tone="rose" />
-        <SumCard icon={Target} label="Near TP" value={data.summary.nearTakeProfit} tone="emerald" />
-        <SumCard icon={TrendingUp} label="Trailing" value={data.summary.trailingActive} tone="sky" />
-        <SumCard icon={Pause} label="Exit Pending" value={data.summary.exitPending} tone="amber" />
+        <SumCard icon={Activity} label={T.summary.monitored} value={data.summary.monitored} />
+        <SumCard icon={ShieldCheck} label={T.summary.withPlan} value={data.summary.withPlan} tone="emerald" />
+        <SumCard icon={TrendingDown} label={T.summary.nearStop} value={data.summary.nearStopLoss} tone="rose" />
+        <SumCard icon={Target} label={T.summary.nearTp} value={data.summary.nearTakeProfit} tone="emerald" />
+        <SumCard icon={TrendingUp} label={T.summary.trailing} value={data.summary.trailingActive} tone="sky" />
+        <SumCard icon={Pause} label={T.summary.exitPending} value={data.summary.exitPending} tone="amber" />
       </div>
 
       {/* Aggression mode selector — paper trading only */}
       <div className="rounded-2xl border border-border/60 bg-card/50 p-3 sm:p-4">
         <div className="flex items-center justify-between gap-2 mb-2">
-          <h3 className="text-sm font-semibold flex items-center gap-2"><Zap className="h-4 w-4 text-amber-400" /> Aggression Mode</h3>
-          <span className="text-[10.5px] text-muted-foreground">Paper trading only — no real money</span>
+          <h3 className="text-sm font-semibold flex items-center gap-2"><Zap className="h-4 w-4 text-amber-400" /> {T.aggression.title}</h3>
+          <span className="text-[10.5px] text-muted-foreground">{T.aggression.paperOnly}</span>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
           {(Object.keys(AGGRESSION_PRESETS) as AggressionMode[]).map((m) => {
@@ -143,7 +143,10 @@ export function AutonomousAgentPanel() {
                   active ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-300" : "border-border/40 bg-card/40 hover:border-border")}>
                 <div className="font-semibold">{p.label}</div>
                 <div className="text-[10px] text-muted-foreground mt-0.5">
-                  Exp {(p.targetExposurePct*100).toFixed(0)}% · Pos {(p.maxPositionWeightPct*100).toFixed(0)}% · {p.maxActivePositions} slots
+                  {T.aggression.expShort
+                    .replace("{exp}", (p.targetExposurePct*100).toFixed(0))
+                    .replace("{pos}", (p.maxPositionWeightPct*100).toFixed(0))
+                    .replace("{slots}", String(p.maxActivePositions))}
                 </div>
               </button>
             );
@@ -153,6 +156,7 @@ export function AutonomousAgentPanel() {
           <div className="mt-2 text-[11px] text-muted-foreground border-t border-border/40 pt-2">{diag.recommendation}</div>
         )}
       </div>
+
 
 
 
