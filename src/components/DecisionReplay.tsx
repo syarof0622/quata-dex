@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ChevronDown, ChevronUp, Eye, History } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLang } from "@/hooks/use-language";
+
 
 function fmtWIB(iso: string): string {
   if (!iso) return "—";
@@ -81,42 +83,15 @@ const REASON_ALIAS: Record<string, string> = {
   sector_exposure_limit: "max_sector_exposure_reached",
 };
 
-const REASON_LABEL: Record<string, string> = {
-  max_active_positions_reached: "Slot posisi penuh",
-  max_position_weight_reached: "Bobot posisi melebihi limit",
-  max_sector_exposure_reached: "Eksposur sektor melebihi limit",
-  cash_buffer_required: "Cash buffer kurang",
-  insufficient_cash: "Cash tidak cukup",
-  confidence_below_threshold: "Confidence di bawah threshold",
-  strategy_incompatible_with_regime: "Strategi tidak cocok regime",
-  risk_reward_invalid: "Risk/Reward tidak valid",
-  lot_below_minimum: "Lot di bawah minimum",
-  market_closed: "Pasar tutup",
-  data_quality_stale: "Data tidak fresh",
-  source_health_degraded: "Source health degraded",
-  negative_disclosure_detected: "Disclosure negatif",
-  news_shock_risk: "News shock risk",
-  liquidity_too_low: "Likuiditas terlalu rendah",
-  volatility_too_high: "Volatilitas terlalu tinggi",
-  daily_loss_limit_reached: "Daily loss limit",
-  drawdown_limit_reached: "Drawdown limit",
-  max_losses_per_day_reached: "Loss harian limit",
-  consecutive_losses_limit: "Loss beruntun limit",
-  pause_active: "Risk pause aktif",
-  cooldown_active: "Cooldown aktif",
-  risk_guard_blocked: "Risk guard memblokir",
-  executed: "Eksekusi paper order",
-  filled: "Order filled",
-  watch_only: "Watch only",
-  research_only: "Research only",
-  premarket_plan: "Pre-market plan",
-};
-
-function friendlyReason(raw?: string | null): string {
-  if (!raw) return "—";
-  const key = REASON_ALIAS[raw] ?? raw;
-  return REASON_LABEL[key] ?? key.replace(/_/g, " ");
+function useReasonLabel() {
+  const { L } = useLang();
+  return (raw?: string | null): string => {
+    if (!raw) return "—";
+    const key = REASON_ALIAS[raw] ?? raw;
+    return L.body.decisionReplay.reasons[key] ?? key.replace(/_/g, " ");
+  };
 }
+
 
 type Derived = {
   intent: string;            // original AI intent (BUY/SELL/HOLD/WATCH/…)
