@@ -14,8 +14,17 @@ import { PageHero } from "@/components/ui/page-hero";
 import { Sparkline } from "@/components/Sparkline";
 import { useLang } from "@/hooks/use-language";
 
+import { seoHead } from "@/lib/seo-head";
+
 export const Route = createFileRoute("/_authenticated/market")({
-  head: () => ({ meta: [{ title: "Market — Quanta Terminal" }] }),
+  head: () => ({
+    ...seoHead({
+      path: "/market",
+      title: "Market — Quanta Terminal",
+      description: "IDX market breadth, sector rotation, and smart-money flow with realtime signals across the Indonesian stock market.",
+      noindex: true,
+    }),
+  }),
   component: MarketPage,
 });
 

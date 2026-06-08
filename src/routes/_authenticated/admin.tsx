@@ -15,7 +15,17 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Loader2, RefreshCw, ShieldAlert, ShieldCheck, KeyRound, UserX, UserCheck } from "lucide-react";
 
+import { seoHead } from "@/lib/seo-head";
+
 export const Route = createFileRoute("/_authenticated/admin")({
+  head: () => ({
+    ...seoHead({
+      path: "/admin",
+      title: "Admin — Quanta Terminal",
+      description: "Administrative console for Quanta Terminal: user roles, system audits, and platform configuration.",
+      noindex: true,
+    }),
+  }),
   component: AdminPage,
 });
 

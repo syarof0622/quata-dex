@@ -11,12 +11,16 @@ import { formatTimeWIB, formatDateTimeWIB } from "@/lib/format";
 import { PageHero } from "@/components/ui/page-hero";
 import { useLang } from "@/hooks/use-language";
 
+import { seoHead } from "@/lib/seo-head";
+
 export const Route = createFileRoute("/_authenticated/news")({
   head: () => ({
-    meta: [
-      { title: "News & Sentiment — Quanta Terminal" },
-      { name: "description", content: "Indonesian stock market news aggregator with sentiment & impact scoring from multiple sources." },
-    ],
+    ...seoHead({
+      path: "/news",
+      title: "News & Sentiment — Quanta Terminal",
+      description: "Indonesian stock market news aggregator with sentiment and impact scoring from multiple sources.",
+      noindex: true,
+    }),
   }),
   component: NewsHub,
 });

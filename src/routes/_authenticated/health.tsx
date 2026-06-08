@@ -13,9 +13,18 @@ import { PageHero } from "@/components/ui/page-hero";
 import { HeartPulse } from "lucide-react";
 import { useLang } from "@/hooks/use-language";
 
+import { seoHead } from "@/lib/seo-head";
+
 export const Route = createFileRoute("/_authenticated/health")({
   component: HealthPage,
-  head: () => ({ meta: [{ title: "System Health · Quanta Terminal" }] }),
+  head: () => ({
+    ...seoHead({
+      path: "/health",
+      title: "System Health · Quanta Terminal",
+      description: "Operational health checks for Quanta Terminal: data feeds, AI workers, and background jobs.",
+      noindex: true,
+    }),
+  }),
 });
 
 type RunResult = { ok: boolean; status: number; message?: string; ranAt?: string; durationMs?: number };

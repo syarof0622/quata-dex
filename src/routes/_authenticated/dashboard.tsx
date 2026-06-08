@@ -14,8 +14,17 @@ import { PageHero } from "@/components/ui/page-hero";
 import { Sparkline } from "@/components/Sparkline";
 import { useLang } from "@/hooks/use-language";
 
+import { seoHead } from "@/lib/seo-head";
+
 export const Route = createFileRoute("/_authenticated/dashboard")({
-  head: () => ({ meta: [{ title: "Dashboard — Quanta Terminal" }] }),
+  head: () => ({
+    ...seoHead({
+      path: "/dashboard",
+      title: "Dashboard — Quanta Terminal",
+      description: "Live IDX market overview: indices, top movers, sector heatmap, and breaking news in a single institutional dashboard.",
+      noindex: true,
+    }),
+  }),
   component: Dashboard,
 });
 

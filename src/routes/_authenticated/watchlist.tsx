@@ -15,8 +15,17 @@ import { Sparkline } from "./screener";
 import { PageHero } from "@/components/ui/page-hero";
 import { useLang } from "@/hooks/use-language";
 
+import { seoHead } from "@/lib/seo-head";
+
 export const Route = createFileRoute("/_authenticated/watchlist")({
-  head: () => ({ meta: [{ title: "Watchlist — Quanta Terminal" }] }),
+  head: () => ({
+    ...seoHead({
+      path: "/watchlist",
+      title: "Watchlist — Quanta Terminal",
+      description: "Curate IDX stocks you're tracking with live prices, AI signals, and one-click access to charts and news.",
+      noindex: true,
+    }),
+  }),
   component: WL,
 });
 

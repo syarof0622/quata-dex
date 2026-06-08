@@ -20,8 +20,17 @@ import { PaperBalanceCard } from "@/components/PaperBalanceCard";
 import { AiSettingsCard } from "@/components/AiSettingsCard";
 import { useLang } from "@/hooks/use-language";
 
+import { seoHead } from "@/lib/seo-head";
+
 export const Route = createFileRoute("/_authenticated/settings")({
-  head: () => ({ meta: [{ title: "Settings — Quanta Terminal" }] }),
+  head: () => ({
+    ...seoHead({
+      path: "/settings",
+      title: "Settings — Quanta Terminal",
+      description: "Manage account preferences, language, AI agent configuration, and notification settings for Quanta Terminal.",
+      noindex: true,
+    }),
+  }),
   component: SettingsPage,
 });
 

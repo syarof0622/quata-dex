@@ -29,8 +29,17 @@ import { FundamentalPanel } from "@/components/FundamentalPanel";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 
+import { seoHead } from "@/lib/seo-head";
+
 export const Route = createFileRoute("/_authenticated/chart/$symbol")({
-  head: ({ params }) => ({ meta: [{ title: `${params.symbol} — Chart · Quanta Terminal` }] }),
+  head: ({ params }) => ({
+    ...seoHead({
+      path: `/chart/${params.symbol}`,
+      title: `${params.symbol} — Chart · Quanta Terminal`,
+      description: `Realtime ${params.symbol} chart with technical indicators, AI signals, news sentiment, and order flow on Quanta Terminal.`,
+      noindex: true,
+    }),
+  }),
   component: ChartPage,
 });
 
