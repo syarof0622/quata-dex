@@ -3,11 +3,12 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { getSystemHealth, type HealthStatus } from "@/lib/system-health.functions";
+import { getErrorLogs, type ErrorLogRow } from "@/lib/error-log.functions";
 import { triggerWorker, type WorkerKey } from "@/lib/worker-test.functions";
 import { formatDateTimeShortWIB } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Activity, AlertTriangle, CheckCircle2, CircleSlash, Loader2, PlayCircle } from "lucide-react";
+import { Activity, AlertTriangle, Bug, CheckCircle2, CircleSlash, Loader2, PlayCircle } from "lucide-react";
 import { toast } from "sonner";
 import { PageHero } from "@/components/ui/page-hero";
 import { HeartPulse } from "lucide-react";
@@ -51,6 +52,14 @@ const STATUS_STYLES: Record<HealthStatus, { label: string; cls: string }> = {
   no_recent_event: { label: "Tidak Ada Event Terbaru", cls: "bg-muted text-muted-foreground border-border" },
   no_new_data: { label: "Tidak Ada Data Baru", cls: "bg-muted text-muted-foreground border-border" },
   unknown: { label: "Tidak Diketahui", cls: "bg-muted text-muted-foreground border-border" },
+};
+
+const ERROR_LEVEL_STYLES: Record<string, string> = {
+  fatal: "bg-rose-500/15 text-rose-300 border-rose-500/40",
+  error: "bg-rose-500/15 text-rose-300 border-rose-500/40",
+  warning: "bg-amber-500/15 text-amber-300 border-amber-500/40",
+  info: "bg-sky-500/15 text-sky-300 border-sky-500/40",
+  debug: "bg-muted text-muted-foreground border-border",
 };
 
 function fmtWIB(iso: string | null | undefined): string {
