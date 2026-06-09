@@ -256,8 +256,7 @@ export const Route = createFileRoute("/api/chat")({
               return new Response(JSON.stringify({ error: "message too long" }), { status: 400 });
             }
           }
-          const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
-          if (!LOVABLE_API_KEY) {
+          if (!process.env.LOVABLE_API_KEY && !process.env.GEMINI_API_KEY) {
             return new Response(JSON.stringify({ error: "AI gateway not configured" }), { status: 500 });
           }
 
