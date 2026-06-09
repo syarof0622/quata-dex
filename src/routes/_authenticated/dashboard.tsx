@@ -120,7 +120,7 @@ function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
         {/* Gainers */}
         <div className="panel p-3 md:p-4">
-          <div className="flex items-center gap-2 mb-2"><ArrowUpRight className="size-4 text-bull" /><h3 className="font-semibold text-[13.5px] md:text-base">{L.body.dashboard.topGainers}</h3></div>
+          <div className="flex items-center gap-2 mb-2"><ArrowUpRight className="size-4 text-bull" /><h2 className="font-semibold text-[13.5px] md:text-base">{L.body.dashboard.topGainers}</h2></div>
           {movers.isLoading ? (
             <MobileSkeletonRows rows={4} />
           ) : gainers.length === 0 ? (
@@ -147,7 +147,7 @@ function Dashboard() {
 
         {/* Losers */}
         <div className="panel p-3 md:p-4">
-          <div className="flex items-center gap-2 mb-2"><ArrowDownRight className="size-4 text-bear" /><h3 className="font-semibold text-[13.5px] md:text-base">{L.body.dashboard.topLosers}</h3></div>
+          <div className="flex items-center gap-2 mb-2"><ArrowDownRight className="size-4 text-bear" /><h2 className="font-semibold text-[13.5px] md:text-base">{L.body.dashboard.topLosers}</h2></div>
           {movers.isLoading ? (
             <MobileSkeletonRows rows={4} />
           ) : losers.length === 0 ? (
@@ -174,7 +174,7 @@ function Dashboard() {
 
         {/* News — full width on mobile (spans 2 cols), single col at lg */}
         <div className="panel p-3 md:p-4 col-span-2 lg:col-span-1">
-          <div className="flex items-center gap-2 mb-2"><Newspaper className="size-4 text-primary" /><h3 className="font-semibold text-[13.5px] md:text-base">{L.body.dashboard.latestNews}</h3></div>
+          <div className="flex items-center gap-2 mb-2"><Newspaper className="size-4 text-primary" /><h2 className="font-semibold text-[13.5px] md:text-base">{L.body.dashboard.latestNews}</h2></div>
           {news.isLoading ? (
             <MobileSkeletonRows rows={4} height={32} />
           ) : newsItems.length === 0 ? (
@@ -197,7 +197,7 @@ function Dashboard() {
       {/* Heatmap mini */}
       <div className="panel p-3 md:p-4">
         <div className="flex items-center justify-between mb-2 md:mb-3 gap-2">
-          <h3 className="font-semibold text-[13.5px] md:text-base">{L.body.dashboard.marketHeatmap}</h3>
+          <h2 className="font-semibold text-[13.5px] md:text-base">{L.body.dashboard.marketHeatmap}</h2>
           <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
             <span className="relative flex h-1.5 w-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/70" />
