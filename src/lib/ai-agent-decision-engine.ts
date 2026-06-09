@@ -260,20 +260,31 @@ async function calibrateConfidence(agentId: string, symbol: string, raw: number,
     if (dirN >= 1) directionAccuracy = (past!.filter(p => p.was_correct === true).length) / dirN;
   }
 
-  // Case A: no completed trades yet — surface direction accuracy explicitly,
-  // but do NOT use it as trade win rate.
+  // Case A: no completed trades yet — bootstrap calibration so the agent is not
+  // locked in a deadlock (no completed trades → no calibration → no new trades).
+  // We blend the raw signal with direction accuracy (when available) and a
+  // conservative prior (0.5). The result is tagged `bootstrap_calibration` so
+  // downstream gating can size starter trades smaller instead of hard-blocking.
   if (tradeN < 5) {
-    if (dirN >= 5) {
-      return {
-        value: raw,
-        reason: `Direction accuracy tersedia (${(directionAccuracy*100).toFixed(0)}%, n=${dirN}), tetapi trade win rate belum cukup (n=${tradeN}). Confidence menggunakan raw signal.`,
-      };
-    }
-    return {
-      value: raw,
-      reason: `Calibration belum aktif: belum cukup completed trade untuk ticker ini (trade n=${tradeN}, direction n=${dirN}). Confidence menggunakan raw signal.`,
-    };
+    const prior = 0.5;
+    // Direction accuracy weight grows with sample size, capped at 0.4.
+    const dirWeight = dirN >= 5 ? Math.min(0.4, dirN / 50) : 0;
+    const rawWeight = 0.6 - dirWeight * 0.5; // keep raw signal dominant
+    const priorWeight = 1 - rawWeight - dirWeight;
+    const bootstrap = raw * rawWeight + directionAccuracy * dirWeight + prior * priorWeight;
+    // Never let bootstrap drop the raw signal by more than 25% — we want to
+    // allow STARTER_BUY when the technical setup is genuinely strong.
+    const floor = raw * 0.75;
+    const value = Math.max(floor, Math.min(0.95, bootstrap));
+    const reasonParts = [
+      `Kalibrasi ticker belum cukup (trade n=${tradeN})`,
+      dirN >= 5 ? `direction accuracy ${(directionAccuracy*100).toFixed(0)}% (n=${dirN})` : `direction sample minim (n=${dirN})`,
+      `mode bootstrap aktif — confidence menggunakan sinyal mentah + prior sektor/strategi`,
+    ];
+    return { value, reason: reasonParts.join("; ") + ".", bootstrap: true };
   }
+
+
 
   // Case B: use trade win rate as primary calibration source.
   let mult = 0.6 + tradeWinRate * 0.55;
