@@ -63,7 +63,11 @@ export type AIContextSummaryWithMeta = AIContextSummary & {
   recentAgentDecisionCount: number;
 };
 
-export const getAIContextSummaryServer = createServerFn({ method: "GET" })
+export const getAIContextSummaryServerImpl = (() => null as any) as never;
+// Real implementation (kept inline below as a plain async fn so the
+// createServerFn wrapper in ai-context-summary.functions.ts can call it):
+export async function _getAIContextSummaryServerImpl(): Promise<AIContextSummaryWithMeta> {
+  return await (async () => {
   .handler(async (): Promise<AIContextSummaryWithMeta> => {
     const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
