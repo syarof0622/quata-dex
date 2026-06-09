@@ -134,16 +134,20 @@ export const getAutonomousAgentStatus = createServerFn({ method: "GET" }).handle
     withoutPlan: openPositions.filter((p) => !p.hasPlan).length,
   };
 
-  // Recent decisions (last 24h).
+  // Recent decisions (last 24h) — scoped strictly to the active agent so we never leak other users' rows.
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const { data: decisions } = await supabaseAdmin
-    .from("ai_agent_decisions")
-    .select(
-      "id, created_at, symbol, action, decision_status, confidence, stop_loss, take_profit, risk_reward_ratio, reasoning, selection_reason",
-    )
-    .gte("created_at", since)
-    .order("created_at", { ascending: false })
-    .limit(50);
+  const { data: decisions } = agent?.id
+    ? await supabaseAdmin
+        .from("ai_agent_decisions")
+        .select(
+          "id, created_at, symbol, action, decision_status, confidence, stop_loss, take_profit, risk_reward_ratio, reasoning, selection_reason",
+        )
+        .eq("agent_id", agent.id)
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .limit(50)
+    : { data: [] as any[] };
+
 
   const blocked = (decisions ?? []).filter(
     (d: any) => d.decision_status === "blocked" || d.action === "BLOCKED" || d.action === "NO_TRADE",
