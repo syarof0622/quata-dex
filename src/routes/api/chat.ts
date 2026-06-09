@@ -605,23 +605,19 @@ BUDGET TOOL:
           const convo: any[] = [{ role: "system", content: sysWithIntent }, ...messages];
 
           for (let iter = 0; iter < toolBudget; iter++) {
-            const pre = await fetch(`${aiProvider.baseUrl}/chat/completions`, {
-              method: "POST",
-              headers: aiAuthHeaders(aiProvider),
-              body: JSON.stringify({
-                model: aiProvider.model,
-                messages: convo,
-                tools: CHAT_TOOLS,
-                tool_choice: "auto",
-                stream: false,
-              }),
-            });
+            const { response: pre, provider: usedProv } = await aiChatFetch(aiChain, (p) => ({
+              model: p.model,
+              messages: convo,
+              tools: CHAT_TOOLS,
+              tool_choice: "auto",
+              stream: false,
+            }));
             if (!pre.ok) {
               if (pre.status === 429) return new Response(JSON.stringify({ error: "Rate limited. Try again shortly." }), { status: 429 });
               if (pre.status === 402) return new Response(JSON.stringify({ error: "Out of AI credits. Add more in Settings → Workspace → Usage." }), { status: 402 });
               const t = await pre.text();
-              console.error("AI tool pre-pass error", pre.status, t);
-              break; // fall through to final streaming pass
+              console.error(`AI tool pre-pass error provider=${usedProv.provider}`, pre.status, t);
+              break;
             }
             const j: any = await pre.json();
             const msg = j?.choices?.[0]?.message;
