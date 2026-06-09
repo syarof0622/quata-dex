@@ -365,10 +365,15 @@ async function execAIDecisionHistory(args: any, userId: string | null) {
   const sym = typeof args?.symbol === "string" ? args.symbol.toUpperCase() : null;
   const since = sinceIso(Number(args?.since_days) || 30, 365);
   const limit = Math.max(1, Math.min(50, Number(args?.limit) || 15));
+  // Scope by this user's agents
+  const { data: agents } = await supabaseAdmin
+    .from("ai_trade_agents").select("id").eq("user_id", userId);
+  const agentIds = (agents ?? []).map((a: any) => a.id);
+  if (agentIds.length === 0) return { ok: true, count: 0, decisions: [] };
   let q: any = supabaseAdmin
     .from("ai_agent_decisions")
-    .select("symbol, intent, final_action, blocked_reason, confidence, strategy_name, created_at, rationale")
-    .eq("user_id", userId)
+    .select("symbol, action, blocked_reason, calibrated_confidence, strategy_name, created_at")
+    .in("agent_id", agentIds)
     .gte("created_at", since)
     .order("created_at", { ascending: false })
     .limit(limit);
