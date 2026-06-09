@@ -43,6 +43,7 @@ import { Route as ApiPublicCronFundamentalsRouteImport } from './routes/api/publ
 import { Route as ApiPublicCronEmbedKnowledgeRouteImport } from './routes/api/public/cron/embed-knowledge'
 import { Route as ApiPublicCronEmbedBackfillRouteImport } from './routes/api/public/cron/embed-backfill'
 import { Route as ApiPublicCronDisclosureIngestRouteImport } from './routes/api/public/cron/disclosure-ingest'
+import { Route as ApiPublicCronDailyLearningRouteImport } from './routes/api/public/cron/daily-learning'
 import { Route as ApiPublicCronAlertsRouteImport } from './routes/api/public/cron/alerts'
 import { Route as ApiPublicCronAiAgentRouteImport } from './routes/api/public/cron/ai-agent'
 import { Route as ApiPublicAuthBootstrapSuperadminRouteImport } from './routes/api/public/auth/bootstrap-superadmin'
@@ -225,6 +226,12 @@ const ApiPublicCronDisclosureIngestRoute =
     path: '/api/public/cron/disclosure-ingest',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCronDailyLearningRoute =
+  ApiPublicCronDailyLearningRouteImport.update({
+    id: '/api/public/cron/daily-learning',
+    path: '/api/public/cron/daily-learning',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicCronAlertsRoute = ApiPublicCronAlertsRouteImport.update({
   id: '/api/public/cron/alerts',
   path: '/api/public/cron/alerts',
@@ -268,6 +275,7 @@ export interface FileRoutesByFullPath {
   '/api/public/auth/bootstrap-superadmin': typeof ApiPublicAuthBootstrapSuperadminRoute
   '/api/public/cron/ai-agent': typeof ApiPublicCronAiAgentRoute
   '/api/public/cron/alerts': typeof ApiPublicCronAlertsRoute
+  '/api/public/cron/daily-learning': typeof ApiPublicCronDailyLearningRoute
   '/api/public/cron/disclosure-ingest': typeof ApiPublicCronDisclosureIngestRoute
   '/api/public/cron/embed-backfill': typeof ApiPublicCronEmbedBackfillRoute
   '/api/public/cron/embed-knowledge': typeof ApiPublicCronEmbedKnowledgeRoute
@@ -306,6 +314,7 @@ export interface FileRoutesByTo {
   '/api/public/auth/bootstrap-superadmin': typeof ApiPublicAuthBootstrapSuperadminRoute
   '/api/public/cron/ai-agent': typeof ApiPublicCronAiAgentRoute
   '/api/public/cron/alerts': typeof ApiPublicCronAlertsRoute
+  '/api/public/cron/daily-learning': typeof ApiPublicCronDailyLearningRoute
   '/api/public/cron/disclosure-ingest': typeof ApiPublicCronDisclosureIngestRoute
   '/api/public/cron/embed-backfill': typeof ApiPublicCronEmbedBackfillRoute
   '/api/public/cron/embed-knowledge': typeof ApiPublicCronEmbedKnowledgeRoute
@@ -346,6 +355,7 @@ export interface FileRoutesById {
   '/api/public/auth/bootstrap-superadmin': typeof ApiPublicAuthBootstrapSuperadminRoute
   '/api/public/cron/ai-agent': typeof ApiPublicCronAiAgentRoute
   '/api/public/cron/alerts': typeof ApiPublicCronAlertsRoute
+  '/api/public/cron/daily-learning': typeof ApiPublicCronDailyLearningRoute
   '/api/public/cron/disclosure-ingest': typeof ApiPublicCronDisclosureIngestRoute
   '/api/public/cron/embed-backfill': typeof ApiPublicCronEmbedBackfillRoute
   '/api/public/cron/embed-knowledge': typeof ApiPublicCronEmbedKnowledgeRoute
@@ -386,6 +396,7 @@ export interface FileRouteTypes {
     | '/api/public/auth/bootstrap-superadmin'
     | '/api/public/cron/ai-agent'
     | '/api/public/cron/alerts'
+    | '/api/public/cron/daily-learning'
     | '/api/public/cron/disclosure-ingest'
     | '/api/public/cron/embed-backfill'
     | '/api/public/cron/embed-knowledge'
@@ -424,6 +435,7 @@ export interface FileRouteTypes {
     | '/api/public/auth/bootstrap-superadmin'
     | '/api/public/cron/ai-agent'
     | '/api/public/cron/alerts'
+    | '/api/public/cron/daily-learning'
     | '/api/public/cron/disclosure-ingest'
     | '/api/public/cron/embed-backfill'
     | '/api/public/cron/embed-knowledge'
@@ -463,6 +475,7 @@ export interface FileRouteTypes {
     | '/api/public/auth/bootstrap-superadmin'
     | '/api/public/cron/ai-agent'
     | '/api/public/cron/alerts'
+    | '/api/public/cron/daily-learning'
     | '/api/public/cron/disclosure-ingest'
     | '/api/public/cron/embed-backfill'
     | '/api/public/cron/embed-knowledge'
@@ -489,6 +502,7 @@ export interface RootRouteChildren {
   ApiPublicAuthBootstrapSuperadminRoute: typeof ApiPublicAuthBootstrapSuperadminRoute
   ApiPublicCronAiAgentRoute: typeof ApiPublicCronAiAgentRoute
   ApiPublicCronAlertsRoute: typeof ApiPublicCronAlertsRoute
+  ApiPublicCronDailyLearningRoute: typeof ApiPublicCronDailyLearningRoute
   ApiPublicCronDisclosureIngestRoute: typeof ApiPublicCronDisclosureIngestRoute
   ApiPublicCronEmbedBackfillRoute: typeof ApiPublicCronEmbedBackfillRoute
   ApiPublicCronEmbedKnowledgeRoute: typeof ApiPublicCronEmbedKnowledgeRoute
@@ -742,6 +756,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronDisclosureIngestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/daily-learning': {
+      id: '/api/public/cron/daily-learning'
+      path: '/api/public/cron/daily-learning'
+      fullPath: '/api/public/cron/daily-learning'
+      preLoaderRoute: typeof ApiPublicCronDailyLearningRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cron/alerts': {
       id: '/api/public/cron/alerts'
       path: '/api/public/cron/alerts'
@@ -817,6 +838,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicAuthBootstrapSuperadminRoute: ApiPublicAuthBootstrapSuperadminRoute,
   ApiPublicCronAiAgentRoute: ApiPublicCronAiAgentRoute,
   ApiPublicCronAlertsRoute: ApiPublicCronAlertsRoute,
+  ApiPublicCronDailyLearningRoute: ApiPublicCronDailyLearningRoute,
   ApiPublicCronDisclosureIngestRoute: ApiPublicCronDisclosureIngestRoute,
   ApiPublicCronEmbedBackfillRoute: ApiPublicCronEmbedBackfillRoute,
   ApiPublicCronEmbedKnowledgeRoute: ApiPublicCronEmbedKnowledgeRoute,
