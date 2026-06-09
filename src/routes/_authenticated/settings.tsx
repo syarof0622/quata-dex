@@ -197,7 +197,7 @@ function SettingsPage() {
           </div>
 
           <div className="panel p-4 space-y-3">
-            <h3 className="font-semibold">{S.changePassword}</h3>
+            <h2 className="font-semibold">{S.changePassword}</h2>
             <div className="grid sm:grid-cols-2 gap-3">
               <div><Label>{S.newPassword}</Label><Input type="password" value={pwd} onChange={e => setPwd(e.target.value)} /></div>
               <div><Label>{S.confirm}</Label><Input type="password" value={pwd2} onChange={e => setPwd2(e.target.value)} /></div>
@@ -267,7 +267,7 @@ function SettingsPage() {
           </div>
 
           <div className="panel p-4 space-y-3">
-            <h3 className="font-semibold flex items-center gap-2"><RefreshCw className="size-4" /> {S.paperAccount}</h3>
+            <h2 className="font-semibold flex items-center gap-2"><RefreshCw className="size-4" /> {S.paperAccount}</h2>
             <div className="grid grid-cols-3 gap-3 text-sm">
               <Mini label={`${S.cashLabel} (${accountCurrency})`} value={accountCurrency === "IDR" ? formatIDRCompact(Number(account.data?.account?.cash ?? 0)) : fmt(account.data?.account?.cash)} />
               <Mini label={S.positions} value={String(account.data?.positions?.length ?? 0)} />
@@ -334,7 +334,7 @@ function SettingsPage() {
         {/* DATA */}
         <TabsContent value="data" className="space-y-3 mt-3">
           <div className="panel p-4 space-y-2">
-            <h3 className="font-semibold">{S.dataSources}</h3>
+            <h2 className="font-semibold">{S.dataSources}</h2>
             <ul className="text-sm text-muted-foreground space-y-1">
               <li>• Quotes & candles · <span className="text-foreground">Yahoo Finance</span> (cached 8–30s)</li>
               <li>• Charts · <span className="text-foreground">TradingView</span> embed widget</li>
@@ -343,7 +343,7 @@ function SettingsPage() {
             </ul>
           </div>
           <div className="panel p-4 space-y-2">
-            <h3 className="font-semibold">{S.userId}</h3>
+            <h2 className="font-semibold">{S.userId}</h2>
             <code className="text-xs font-mono break-all bg-accent/40 p-2 rounded block">{user?.id}</code>
           </div>
         </TabsContent>

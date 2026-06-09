@@ -180,6 +180,7 @@ export function ChatPanel({ system }: { system?: string }) {
               onClick={() => void sendText(input)}
               disabled={busy || !input.trim()}
               size="sm"
+              aria-label={busy ? "Mengirim pesan…" : "Kirim pesan"}
               className="h-9 rounded-xl bg-gradient-to-br from-primary to-primary/80 hover:opacity-90 shadow-md disabled:opacity-50"
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}

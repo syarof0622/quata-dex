@@ -111,7 +111,7 @@ function MarketPage() {
 
       {/* Sector performance — horizontal scroll on mobile */}
       <div className="panel p-3 md:p-4">
-        <h3 className="font-semibold text-[13.5px] md:text-base mb-2 md:mb-3">{L.body.market.sectorRotation}</h3>
+        <h2 className="font-semibold text-[13.5px] md:text-base mb-2 md:mb-3">{L.body.market.sectorRotation}</h2>
         {sectors.isLoading ? (
           <MobileSkeletonRows rows={3} height={72} />
         ) : (sectors.data ?? []).length === 0 ? (
@@ -147,7 +147,7 @@ function MarketPage() {
 
       {/* Heatmap */}
       <div className="panel p-3 md:p-4">
-        <h3 className="font-semibold text-[13.5px] md:text-base mb-2 md:mb-3">{L.body.market.stockHeatmap}</h3>
+        <h2 className="font-semibold text-[13.5px] md:text-base mb-2 md:mb-3">{L.body.market.stockHeatmap}</h2>
         {(movers.data?.all ?? []).length === 0 ? (
           <MobileEmptyState title={L.body.market.heatmapUnavailable} hint={L.body.market.awaitingMarketFeed} />
         ) : (
@@ -181,7 +181,7 @@ function MarketPage() {
       {/* Top gainers/losers + news */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
         <div className="panel p-3 md:p-4">
-          <div className="flex items-center gap-2 mb-2"><ArrowUpRight className="size-4 text-bull" /><h3 className="font-semibold text-[13.5px] md:text-base">{L.body.market.topGainers}</h3></div>
+          <div className="flex items-center gap-2 mb-2"><ArrowUpRight className="size-4 text-bull" /><h2 className="font-semibold text-[13.5px] md:text-base">{L.body.market.topGainers}</h2></div>
           {(movers.data?.gainers ?? []).length === 0 ? (
             <MobileSkeletonRows rows={4} />
           ) : (
@@ -204,7 +204,7 @@ function MarketPage() {
           )}
         </div>
         <div className="panel p-3 md:p-4">
-          <div className="flex items-center gap-2 mb-2"><ArrowDownRight className="size-4 text-bear" /><h3 className="font-semibold text-[13.5px] md:text-base">{L.body.market.topLosers}</h3></div>
+          <div className="flex items-center gap-2 mb-2"><ArrowDownRight className="size-4 text-bear" /><h2 className="font-semibold text-[13.5px] md:text-base">{L.body.market.topLosers}</h2></div>
           {(movers.data?.losers ?? []).length === 0 ? (
             <MobileSkeletonRows rows={4} />
           ) : (
@@ -227,7 +227,7 @@ function MarketPage() {
           )}
         </div>
         <div className="panel p-3 md:p-4 col-span-2 lg:col-span-1">
-          <div className="flex items-center gap-2 mb-2"><Newspaper className="size-4 text-primary" /><h3 className="font-semibold text-[13.5px] md:text-base">{L.body.market.latestNews}</h3></div>
+          <div className="flex items-center gap-2 mb-2"><Newspaper className="size-4 text-primary" /><h2 className="font-semibold text-[13.5px] md:text-base">{L.body.market.latestNews}</h2></div>
           {(news.data ?? []).length === 0 ? (
             <MobileSkeletonRows rows={4} height={32} />
           ) : (

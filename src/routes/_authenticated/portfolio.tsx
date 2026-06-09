@@ -247,7 +247,7 @@ function Portfolio() {
         <div className="panel p-4 border-l-2 border-amber-500/60">
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="size-4 text-amber-400" />
-            <h3 className="font-semibold text-sm">{L.body.portfolio.riskWarnings}</h3>
+            <h2 className="font-semibold text-sm">{L.body.portfolio.riskWarnings}</h2>
           </div>
           <ul className="space-y-1 text-sm text-muted-foreground">
             {warnings.map((w, i) => (
@@ -269,7 +269,7 @@ function Portfolio() {
         <div className="panel p-4 lg:col-span-2">
           <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
             <div>
-              <h3 className="font-semibold">{L.body.portfolio.equityCurve}</h3>
+              <h2 className="font-semibold">{L.body.portfolio.equityCurve}</h2>
               <div className="text-[11px] text-muted-foreground">
                 {L.body.portfolio.baseline} {money(initialBalance)} · {L.body.portfolio.now} {money(equity)}
               </div>
@@ -294,7 +294,7 @@ function Portfolio() {
 
         {/* Sector exposure */}
         <div className="panel p-4">
-          <h3 className="font-semibold mb-3">{L.body.portfolio.sectorExposure}</h3>
+          <h2 className="font-semibold mb-3">{L.body.portfolio.sectorExposure}</h2>
           {sectorBreakdown.length === 0 ? (
             <div className="text-sm text-muted-foreground">{L.body.portfolio.sectorBreakdownNoPos}</div>
           ) : (
@@ -330,7 +330,7 @@ function Portfolio() {
       {/* Open Positions table */}
       <div className="panel p-2">
         <div className="px-2 pt-2 pb-1 flex items-center justify-between">
-          <h3 className="font-semibold">{L.body.portfolio.openPositionsTitle}</h3>
+          <h2 className="font-semibold">{L.body.portfolio.openPositionsTitle}</h2>
           {positions.length > 1 && concentration > 35 && (
             <span className="text-xs text-bear flex items-center gap-1"><ShieldAlert className="size-3" /> {L.body.portfolio.concentrationRisk}</span>
           )}
@@ -432,7 +432,7 @@ function Portfolio() {
       {/* Recent Closed Trades */}
       <div className="panel p-2">
         <div className="px-2 pt-2 pb-1">
-          <h3 className="font-semibold">{L.body.portfolio.recentClosedTitle}</h3>
+          <h2 className="font-semibold">{L.body.portfolio.recentClosedTitle}</h2>
           <div className="text-[11px] text-muted-foreground">{L.body.portfolio.realizedNote}</div>
         </div>
         <div className="overflow-x-auto">

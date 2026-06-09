@@ -184,7 +184,7 @@ function Lab() {
                     </td>
                     <td className="p-2 text-right text-xs text-muted-foreground">{fmtWIBDateTime(o.created_at)}</td>
                     <td className="p-2 text-right">
-                      <Button size="sm" variant="ghost" onClick={() => cancel.mutate(o.id)}><X className="size-3" /></Button>
+                      <Button size="sm" variant="ghost" aria-label={`Batalkan order ${o.side} ${displaySymbol(o.symbol)}`} onClick={() => cancel.mutate(o.id)}><X className="size-3" /></Button>
                     </td>
                   </tr>
                 ))}

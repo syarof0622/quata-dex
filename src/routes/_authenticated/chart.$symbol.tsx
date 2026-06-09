@@ -207,7 +207,7 @@ function ChartPage() {
       >
         <div className="flex items-center gap-2">
           <TrendingUp className="size-4 text-primary" />
-          <h3 className="font-semibold">AI Signal · {TF_FULL[tf]}</h3>
+          <h2 className="font-semibold">AI Signal · {TF_FULL[tf]}</h2>
           {sig?.dataQuality && <DataQualityBadge q={sig.dataQuality} notes={sig.dataNotes} />}
         </div>
         <div className="text-[11px] text-muted-foreground mt-0.5">
@@ -338,7 +338,7 @@ function ChartPage() {
               {isIDX && !realtime && <span className="text-[10px] text-amber-400">~15m delay</span>}
               {isIDX && realtime && <span className="text-[10px] text-bull">~realtime</span>}
             </div>
-            <div className="text-2xl font-semibold">{displaySymbol(symbol)}</div>
+            <h1 className="text-2xl font-semibold">{displaySymbol(symbol)}</h1>
             <div className="text-xs text-muted-foreground">{quote.data?.shortName ?? ""}</div>
           </div>
           <div className="ml-auto flex items-end gap-6">
@@ -359,6 +359,7 @@ function ChartPage() {
             <Button
               variant="outline"
               size="sm"
+              aria-label={`Tambahkan ${displaySymbol(symbol)} ke watchlist`}
               onClick={async () => {
                 await addToWatchlist({ data: { symbol } });
                 qc.invalidateQueries({ queryKey: ["watchlist"] });
@@ -371,7 +372,7 @@ function ChartPage() {
             {isMobile ? (
               <Sheet open={mobilePanelOpen} onOpenChange={setMobilePanelOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="outline" size="sm" title="Buka panel AI">
+                  <Button variant="outline" size="sm" title="Buka panel AI" aria-label="Buka panel AI">
                     <PanelRightOpen className="size-4" />
                   </Button>
                 </SheetTrigger>
@@ -388,6 +389,7 @@ function ChartPage() {
                 size="sm"
                 onClick={() => setPanelOpen(o => !o)}
                 title={panelOpen ? "Tutup panel" : "Buka panel"}
+                aria-label={panelOpen ? "Tutup panel samping" : "Buka panel samping"}
                 className="hidden xl:inline-flex"
               >
                 {panelOpen ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />}
@@ -750,14 +752,14 @@ function ReasoningPanel({ signal, regime, mctx, setup, symbol, fmt }: {
       {/* BULLISH / BEARISH */}
       <div className="grid md:grid-cols-2 gap-4">
         <div className="rounded border border-bull/30 bg-bull-soft/20 p-3">
-          <h4 className="font-semibold text-bull mb-2 text-xs uppercase tracking-wide">Bullish ({signal.bullishFactors?.length ?? 0})</h4>
+          <h3 className="font-semibold text-bull mb-2 text-xs uppercase tracking-wide">Bullish ({signal.bullishFactors?.length ?? 0})</h3>
           <ul className="space-y-1 text-xs">
             {(signal.bullishFactors ?? []).map((r: string, i: number) => <li key={i}>• {r}</li>)}
             {(!signal.bullishFactors || signal.bullishFactors.length === 0) && <li className="text-muted-foreground">Tidak ada faktor bullish dominan.</li>}
           </ul>
         </div>
         <div className="rounded border border-bear/30 bg-bear-soft/20 p-3">
-          <h4 className="font-semibold text-bear mb-2 text-xs uppercase tracking-wide">Bearish ({signal.bearishFactors?.length ?? 0})</h4>
+          <h3 className="font-semibold text-bear mb-2 text-xs uppercase tracking-wide">Bearish ({signal.bearishFactors?.length ?? 0})</h3>
           <ul className="space-y-1 text-xs">
             {(signal.bearishFactors ?? []).map((r: string, i: number) => <li key={i}>• {r}</li>)}
             {(!signal.bearishFactors || signal.bearishFactors.length === 0) && <li className="text-muted-foreground">Tidak ada faktor bearish dominan.</li>}
@@ -767,7 +769,7 @@ function ReasoningPanel({ signal, regime, mctx, setup, symbol, fmt }: {
 
       {/* CONTEXT / NEUTRAL */}
       <div className="rounded border border-border bg-card/40 p-3">
-        <h4 className="font-semibold mb-2 text-xs uppercase tracking-wide text-muted-foreground">Context & invalidations</h4>
+        <h3 className="font-semibold mb-2 text-xs uppercase tracking-wide text-muted-foreground">Context & invalidations</h3>
         <ul className="grid md:grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
           {(signal.neutralFactors ?? []).map((r: string, i: number) => <li key={`n${i}`}>• {r}</li>)}
           {regime && (
@@ -840,7 +842,7 @@ function SRPanel({ zones, price, fmt }: { zones: any[]; price: number; fmt: (n: 
   return (
     <div className="grid md:grid-cols-2 gap-4 text-sm">
       <div>
-        <h4 className="font-semibold text-bear mb-2">Resistansi</h4>
+        <h3 className="font-semibold text-bear mb-2">Resistansi</h3>
         <ul className="space-y-1">
           {resistances.slice(0, 6).map((z, i) => (
             <li key={i} className="flex justify-between font-mono text-xs">
@@ -851,7 +853,7 @@ function SRPanel({ zones, price, fmt }: { zones: any[]; price: number; fmt: (n: 
         </ul>
       </div>
       <div>
-        <h4 className="font-semibold text-bull mb-2">Dukungan</h4>
+        <h3 className="font-semibold text-bull mb-2">Dukungan</h3>
         <ul className="space-y-1">
           {supports.slice(0, 6).map((z, i) => (
             <li key={i} className="flex justify-between font-mono text-xs">
@@ -973,7 +975,7 @@ function SentimentPanel({ symbol }: { symbol: string }) {
   return (
     <div className="panel p-4">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="font-semibold">Sentimen Berita</h3>
+        <h2 className="font-semibold">Sentimen Berita</h2>
         <div className="flex items-center gap-2">
           <span className={`text-sm font-semibold ${tone}`}>
             {d.label}{hasScore && d.relevantCount > 0 ? ` · ${d.score}` : ""}
@@ -1162,7 +1164,7 @@ function PaperTrade({ symbol, price, fmt, bias, signalLabel, conditional, qualit
   return (
     <div className="panel p-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold">Paper Trade</h3>
+        <h2 className="font-semibold">Paper Trade</h2>
         <span className={`text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded ${badge.cls}`}>{badge.text}</span>
       </div>
       {(cash != null || unrealizedPnl != null || realizedPnl != null) && (

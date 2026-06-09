@@ -216,7 +216,7 @@ function WL() {
                   <td className={`p-2 text-right font-mono ${score == null ? "text-muted-foreground" : score >= 65 ? "text-bull" : score < 50 ? "text-bear" : ""}`}>{score == null ? "—" : score.toFixed(0)}</td>
                   <td className={`p-2 text-right font-mono ${trap == null ? "text-muted-foreground" : trap >= 60 ? "text-bear" : trap >= 30 ? "text-yellow-500" : "text-bull"}`}>{trap == null ? "—" : trap.toFixed(0)}</td>
                   <td className="p-2 text-right">
-                    <Button size="icon" variant="ghost" onClick={async () => {
+                    <Button size="icon" variant="ghost" aria-label={`Hapus ${displaySymbol(r.symbol)} dari watchlist`} onClick={async () => {
                       await removeFromWatchlist({ data: { symbol: r.symbol } });
                       qc.invalidateQueries({ queryKey: ["watchlist"] });
                     }}>
