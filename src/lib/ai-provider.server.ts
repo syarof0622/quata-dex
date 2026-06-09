@@ -44,10 +44,11 @@ function modelFor(provider: AIProviderName, complexity: AIComplexity, hint?: str
       : "gemini-2.5-flash";
   }
   if (provider === "openrouter") {
-    // Use free Gemini-class models first to preserve credit on OpenRouter.
-    return complexity === "deep" ? "google/gemini-2.0-flash-exp:free"
-      : complexity === "light" ? "google/gemini-2.0-flash-exp:free"
-      : "google/gemini-2.0-flash-exp:free";
+    // OpenRouter free models rotate frequently; avoid the retired
+    // google/gemini-2.0-flash-exp:free endpoint that returns 404.
+    return complexity === "deep" ? "deepseek/deepseek-v4-flash:free"
+      : complexity === "light" ? "google/gemma-4-31b-it:free"
+      : "deepseek/deepseek-v4-flash:free";
   }
   // lovable
   return complexity === "deep" ? "google/gemini-3-flash-preview"
@@ -112,6 +113,7 @@ export function aiAuthHeaders(p: AIProviderInfo): Record<string, string> {
   if (p.provider === "lovable") {
     return {
       "Lovable-API-Key": p.apiKey,
+      "X-Lovable-AIG-SDK": "vercel-ai-sdk",
       "Content-Type": "application/json",
       ...(p.extraHeaders ?? {}),
     };
@@ -126,8 +128,8 @@ export function aiAuthHeaders(p: AIProviderInfo): Record<string, string> {
 /** True when the HTTP status indicates we should try the next provider. */
 export function shouldFailover(status: number): boolean {
   // 429 = rate limit / quota, 402 = credit exhausted, 5xx = upstream failure,
-  // 401/403 = invalid key (treat as quota for chain purposes).
-  return status === 429 || status === 402 || status === 401 || status === 403 || status >= 500;
+  // 401/403 = invalid key, 404/410 = model retired/not found.
+  return status === 429 || status === 402 || status === 401 || status === 403 || status === 404 || status === 410 || status >= 500;
 }
 
 /**
