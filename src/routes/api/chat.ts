@@ -256,8 +256,7 @@ export const Route = createFileRoute("/api/chat")({
               return new Response(JSON.stringify({ error: "message too long" }), { status: 400 });
             }
           }
-          const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
-          if (!LOVABLE_API_KEY) {
+          if (!process.env.LOVABLE_API_KEY && !process.env.GEMINI_API_KEY) {
             return new Response(JSON.stringify({ error: "AI gateway not configured" }), { status: 500 });
           }
 
@@ -523,15 +522,17 @@ OUTPUT FORMAT — strict GitHub-Flavored Markdown (renderer supports tables, lis
           // price, disclosures, explicit RAG) before we stream the final
           // answer. Bounded to 2 iterations to cap cost.
           const { CHAT_TOOLS, executeChatTool } = await import("@/lib/chat-tools.server");
-          const MODEL_ID = "google/gemini-3.1-pro-preview";
+          const { pickAIProvider, aiAuthHeaders } = await import("@/lib/ai-provider.server");
+          const aiProvider = pickAIProvider({ lastUserText: lastUser });
+          console.log(`[chat] provider=${aiProvider.provider} model=${aiProvider.model}`);
           const convo: any[] = [{ role: "system", content: sys }, ...messages];
 
           for (let iter = 0; iter < 2; iter++) {
-            const pre = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            const pre = await fetch(`${aiProvider.baseUrl}/chat/completions`, {
               method: "POST",
-              headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+              headers: aiAuthHeaders(aiProvider),
               body: JSON.stringify({
-                model: MODEL_ID,
+                model: aiProvider.model,
                 messages: convo,
                 tools: CHAT_TOOLS,
                 tool_choice: "auto",
@@ -569,11 +570,11 @@ OUTPUT FORMAT — strict GitHub-Flavored Markdown (renderer supports tables, lis
           }
 
           // Final streaming pass (no tools — force a direct answer)
-          const upstream = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          const upstream = await fetch(`${aiProvider.baseUrl}/chat/completions`, {
             method: "POST",
-            headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+            headers: aiAuthHeaders(aiProvider),
             body: JSON.stringify({
-              model: MODEL_ID,
+              model: aiProvider.model,
               messages: convo,
               stream: true,
             }),
