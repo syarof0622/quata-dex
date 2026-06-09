@@ -46,17 +46,18 @@ export async function getActiveAIAgent() {
   return [...list].sort((a, b) => score(b) - score(a))[0];
 }
 
-/** Count `ai_agent_decisions` rows in the last `minutes`. */
+/** Count `ai_agent_decisions` rows in the last `minutes`. Always scoped to a specific agent — returns 0 when no agent is provided to avoid leaking cross-user counts. */
 export async function getRecentAgentDecisionCount(agentId: string | null, minutes = 5) {
+  if (!agentId) return 0;
   const since = new Date(Date.now() - minutes * 60_000).toISOString();
-  let q: any = supabaseAdmin
+  const { count } = await supabaseAdmin
     .from("ai_agent_decisions")
     .select("id", { count: "exact", head: true })
+    .eq("agent_id", agentId)
     .gte("created_at", since);
-  if (agentId) q = q.eq("agent_id", agentId);
-  const { count } = await q;
   return count ?? 0;
 }
+
 
 export type AIContextSummaryWithMeta = AIContextSummary & {
   lastUpdateLabel: string;
