@@ -75,6 +75,16 @@ export function getAIProviderChain(opts: { lastUserText: string; modelHint?: str
   }
 
   const orKey = process.env.OPENROUTER_API_KEY;
+  const lovableKey = process.env.LOVABLE_API_KEY;
+  if (lovableKey) {
+    chain.push({
+      provider: "lovable",
+      baseUrl: LOVABLE_BASE,
+      apiKey: lovableKey,
+      model: modelFor("lovable", complexity, opts.modelHint),
+    });
+  }
+
   if (orKey) {
     chain.push({
       provider: "openrouter",
@@ -85,16 +95,6 @@ export function getAIProviderChain(opts: { lastUserText: string; modelHint?: str
         "HTTP-Referer": process.env.OPENROUTER_REFERRER ?? "https://quata-dex.lovable.app",
         "X-Title": "Quanta Terminal",
       },
-    });
-  }
-
-  const lovableKey = process.env.LOVABLE_API_KEY;
-  if (lovableKey) {
-    chain.push({
-      provider: "lovable",
-      baseUrl: LOVABLE_BASE,
-      apiKey: lovableKey,
-      model: modelFor("lovable", complexity, opts.modelHint),
     });
   }
 
