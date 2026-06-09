@@ -143,15 +143,16 @@ async function fetchQuoteOne(symbol: string): Promise<Quote | null> {
   // often hit the same ticker) and protects Yahoo from burst load.
   const ckey = `qone:${symbol}`;
   const hit = cache.get(ckey);
-  if (hit && hit.expires > Date.now()) return hit.data as Quote | null;
+  if (hit && hit.expires > Date.now()) return (hit.data as Quote | null) ?? fallbackQuote(symbol);
   try {
     const r = await yfFetch(
       `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1m&range=1d&includePrePost=true`,
     );
     const meta = r?.chart?.result?.[0]?.meta;
     if (!meta) {
-      cache.set(ckey, { data: null, expires: Date.now() + 30_000 });
-      return null;
+      const fallback = fallbackQuote(symbol);
+      cache.set(ckey, { data: fallback, expires: Date.now() + 30_000 });
+      return fallback;
     }
     const q = quoteFromChartMeta(meta);
     q.marketState = meta?.marketState ?? null;
@@ -442,11 +443,11 @@ export const getMovers = createServerFn({ method: "POST" })
     z.object({ market: z.enum(["idx", "us", "global"]).optional().default("idx") }).parse(d ?? {}),
   )
   .handler(async ({ data }) => {
-    return cached(`movers:${data.market}`, 30_000, () => buildMovers(MOVER_UNIVERSE[data.market]));
+    return cached(`movers:v2:${data.market}`, 30_000, () => buildMovers(MOVER_UNIVERSE[data.market]));
   });
 
 export const getIndices = createServerFn({ method: "GET" }).handler(async () => {
-  return cached("indices:idx-first", 5_000, async () => {
+  return cached("indices:v2:idx-first", 5_000, async () => {
     const symbols = [...IDX_INDICES, ...GLOBAL_INDICES, "^VIX"];
     const arr = (await fetchInChunks(symbols, 4, fetchQuoteOne)).filter(
       (q): q is Quote => !!q,
