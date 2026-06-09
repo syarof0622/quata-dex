@@ -18,146 +18,275 @@ export type Database = {
         Row: {
           action: string
           agent_id: string
+          agent_mode: string | null
+          agent_version: string | null
           allocation_amount: number | null
+          allowing_factors: Json | null
           autonomous_rank: number | null
           autonomous_risk_mode: string | null
           autonomous_scan_id: string | null
           autonomous_score: number | null
+          blocking_factors: Json | null
+          calculated_lot: number | null
           calibrated_confidence: number | null
+          calibration_confidence_score: number | null
           calibration_reason: string | null
+          calibration_state: string | null
           candidate_classification: string | null
           confidence: number | null
           confidence_adjustments: Json | null
           created_at: string
+          data_confidence_score: number | null
           data_freshness_seconds: number | null
           data_quality_snapshot: Json | null
           data_snapshot: Json | null
           data_source: string | null
           decision_replay_snapshot: Json | null
           decision_status: string | null
+          decision_type: string | null
+          disclosure_score: number | null
+          entry_engine: string | null
           entry_price: number | null
+          execution_confidence_score: number | null
+          exit_engine: string | null
           exploration_trade: boolean
+          final_decision_score: number | null
+          fundamental_score: number | null
           id: string
           idempotency_key: string | null
+          invalidation_level: number | null
+          liquidity_score: number | null
           market_regime: string | null
+          market_session: string | null
+          max_holding_days: number | null
+          min_holding_until: string | null
+          news_score: number | null
+          outcome: string | null
           paper_account_id: string
           paper_order_id: string | null
           portfolio_snapshot: Json | null
+          position_weight_pct: number | null
+          price_at_decision: number | null
           raw_confidence: number | null
+          raw_payload: Json | null
           reasoning: string | null
+          reference_price: number | null
+          required_action: string | null
           research_trade: boolean
+          risk_level: string | null
           risk_reward_ratio: number | null
+          risk_reward_score: number | null
           risk_snapshot: Json | null
+          scanner_score: number | null
+          sector: string | null
           selection_mode: string
           selection_reason: string | null
+          sentiment_score: number | null
           sentiment_snapshot: Json | null
           setup_type: string | null
           signal_source: string | null
+          source_confidence: Json | null
+          source_freshness: Json | null
           stop_loss: number | null
           strategy: string | null
           strategy_context: Json | null
+          strategy_mode: string | null
           strategy_name: string | null
           suggested_lot: number | null
           suggested_shares: number | null
           symbol: string
           take_profit: number | null
+          take_profit_1: number | null
+          take_profit_2: number | null
+          target_allocation_value: number | null
+          technical_score: number | null
           technical_snapshot: Json | null
+          time_stop_at: string | null
+          trailing_stop_rule: string | null
+          user_id: string | null
+          volatility_score: number | null
         }
         Insert: {
           action: string
           agent_id: string
+          agent_mode?: string | null
+          agent_version?: string | null
           allocation_amount?: number | null
+          allowing_factors?: Json | null
           autonomous_rank?: number | null
           autonomous_risk_mode?: string | null
           autonomous_scan_id?: string | null
           autonomous_score?: number | null
+          blocking_factors?: Json | null
+          calculated_lot?: number | null
           calibrated_confidence?: number | null
+          calibration_confidence_score?: number | null
           calibration_reason?: string | null
+          calibration_state?: string | null
           candidate_classification?: string | null
           confidence?: number | null
           confidence_adjustments?: Json | null
           created_at?: string
+          data_confidence_score?: number | null
           data_freshness_seconds?: number | null
           data_quality_snapshot?: Json | null
           data_snapshot?: Json | null
           data_source?: string | null
           decision_replay_snapshot?: Json | null
           decision_status?: string | null
+          decision_type?: string | null
+          disclosure_score?: number | null
+          entry_engine?: string | null
           entry_price?: number | null
+          execution_confidence_score?: number | null
+          exit_engine?: string | null
           exploration_trade?: boolean
+          final_decision_score?: number | null
+          fundamental_score?: number | null
           id?: string
           idempotency_key?: string | null
+          invalidation_level?: number | null
+          liquidity_score?: number | null
           market_regime?: string | null
+          market_session?: string | null
+          max_holding_days?: number | null
+          min_holding_until?: string | null
+          news_score?: number | null
+          outcome?: string | null
           paper_account_id: string
           paper_order_id?: string | null
           portfolio_snapshot?: Json | null
+          position_weight_pct?: number | null
+          price_at_decision?: number | null
           raw_confidence?: number | null
+          raw_payload?: Json | null
           reasoning?: string | null
+          reference_price?: number | null
+          required_action?: string | null
           research_trade?: boolean
+          risk_level?: string | null
           risk_reward_ratio?: number | null
+          risk_reward_score?: number | null
           risk_snapshot?: Json | null
+          scanner_score?: number | null
+          sector?: string | null
           selection_mode?: string
           selection_reason?: string | null
+          sentiment_score?: number | null
           sentiment_snapshot?: Json | null
           setup_type?: string | null
           signal_source?: string | null
+          source_confidence?: Json | null
+          source_freshness?: Json | null
           stop_loss?: number | null
           strategy?: string | null
           strategy_context?: Json | null
+          strategy_mode?: string | null
           strategy_name?: string | null
           suggested_lot?: number | null
           suggested_shares?: number | null
           symbol: string
           take_profit?: number | null
+          take_profit_1?: number | null
+          take_profit_2?: number | null
+          target_allocation_value?: number | null
+          technical_score?: number | null
           technical_snapshot?: Json | null
+          time_stop_at?: string | null
+          trailing_stop_rule?: string | null
+          user_id?: string | null
+          volatility_score?: number | null
         }
         Update: {
           action?: string
           agent_id?: string
+          agent_mode?: string | null
+          agent_version?: string | null
           allocation_amount?: number | null
+          allowing_factors?: Json | null
           autonomous_rank?: number | null
           autonomous_risk_mode?: string | null
           autonomous_scan_id?: string | null
           autonomous_score?: number | null
+          blocking_factors?: Json | null
+          calculated_lot?: number | null
           calibrated_confidence?: number | null
+          calibration_confidence_score?: number | null
           calibration_reason?: string | null
+          calibration_state?: string | null
           candidate_classification?: string | null
           confidence?: number | null
           confidence_adjustments?: Json | null
           created_at?: string
+          data_confidence_score?: number | null
           data_freshness_seconds?: number | null
           data_quality_snapshot?: Json | null
           data_snapshot?: Json | null
           data_source?: string | null
           decision_replay_snapshot?: Json | null
           decision_status?: string | null
+          decision_type?: string | null
+          disclosure_score?: number | null
+          entry_engine?: string | null
           entry_price?: number | null
+          execution_confidence_score?: number | null
+          exit_engine?: string | null
           exploration_trade?: boolean
+          final_decision_score?: number | null
+          fundamental_score?: number | null
           id?: string
           idempotency_key?: string | null
+          invalidation_level?: number | null
+          liquidity_score?: number | null
           market_regime?: string | null
+          market_session?: string | null
+          max_holding_days?: number | null
+          min_holding_until?: string | null
+          news_score?: number | null
+          outcome?: string | null
           paper_account_id?: string
           paper_order_id?: string | null
           portfolio_snapshot?: Json | null
+          position_weight_pct?: number | null
+          price_at_decision?: number | null
           raw_confidence?: number | null
+          raw_payload?: Json | null
           reasoning?: string | null
+          reference_price?: number | null
+          required_action?: string | null
           research_trade?: boolean
+          risk_level?: string | null
           risk_reward_ratio?: number | null
+          risk_reward_score?: number | null
           risk_snapshot?: Json | null
+          scanner_score?: number | null
+          sector?: string | null
           selection_mode?: string
           selection_reason?: string | null
+          sentiment_score?: number | null
           sentiment_snapshot?: Json | null
           setup_type?: string | null
           signal_source?: string | null
+          source_confidence?: Json | null
+          source_freshness?: Json | null
           stop_loss?: number | null
           strategy?: string | null
           strategy_context?: Json | null
+          strategy_mode?: string | null
           strategy_name?: string | null
           suggested_lot?: number | null
           suggested_shares?: number | null
           symbol?: string
           take_profit?: number | null
+          take_profit_1?: number | null
+          take_profit_2?: number | null
+          target_allocation_value?: number | null
+          technical_score?: number | null
           technical_snapshot?: Json | null
+          time_stop_at?: string | null
+          trailing_stop_rule?: string | null
+          user_id?: string | null
+          volatility_score?: number | null
         }
         Relationships: []
       }
@@ -1429,6 +1558,63 @@ export type Database = {
           },
         ]
       }
+      blocked_decision_outcomes: {
+        Row: {
+          blocked_at: string
+          decision_id: string | null
+          evaluated_at: string | null
+          id: string
+          max_drawdown_after_block_pct: number | null
+          max_upside_after_block_pct: number | null
+          missed_opportunity: boolean | null
+          notes: string[] | null
+          price_after_1h: number | null
+          price_after_3d: number | null
+          price_after_5d: number | null
+          price_eod: number | null
+          reference_price: number | null
+          symbol: string
+          user_id: string
+          was_good_block: boolean | null
+        }
+        Insert: {
+          blocked_at: string
+          decision_id?: string | null
+          evaluated_at?: string | null
+          id?: string
+          max_drawdown_after_block_pct?: number | null
+          max_upside_after_block_pct?: number | null
+          missed_opportunity?: boolean | null
+          notes?: string[] | null
+          price_after_1h?: number | null
+          price_after_3d?: number | null
+          price_after_5d?: number | null
+          price_eod?: number | null
+          reference_price?: number | null
+          symbol: string
+          user_id: string
+          was_good_block?: boolean | null
+        }
+        Update: {
+          blocked_at?: string
+          decision_id?: string | null
+          evaluated_at?: string | null
+          id?: string
+          max_drawdown_after_block_pct?: number | null
+          max_upside_after_block_pct?: number | null
+          missed_opportunity?: boolean | null
+          notes?: string[] | null
+          price_after_1h?: number | null
+          price_after_3d?: number | null
+          price_after_5d?: number | null
+          price_eod?: number | null
+          reference_price?: number | null
+          symbol?: string
+          user_id?: string
+          was_good_block?: boolean | null
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           content: string
@@ -1484,6 +1670,135 @@ export type Database = {
           id?: string
           title?: string
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      closed_trades: {
+        Row: {
+          agent_mode: string | null
+          ai_decision_id: string | null
+          closed_at: string | null
+          created_at: string
+          entry_decision_id: string | null
+          entry_engine: string | null
+          entry_order_id: string | null
+          entry_price: number | null
+          entry_reason: string | null
+          exit_decision_id: string | null
+          exit_engine: string | null
+          exit_order_id: string | null
+          exit_price: number | null
+          exit_reason: string | null
+          holding_days: number | null
+          id: string
+          market_regime_at_entry: string | null
+          market_regime_at_exit: string | null
+          max_adverse_excursion_pct: number | null
+          max_favorable_excursion_pct: number | null
+          mistake_label: string | null
+          notes: string[] | null
+          opened_at: string | null
+          outcome_label: string | null
+          paper_account_id: string | null
+          paper_position_id: string | null
+          planned_risk_pct: number | null
+          planned_stop_loss: number | null
+          planned_take_profit_1: number | null
+          planned_take_profit_2: number | null
+          qty: number | null
+          realized_pnl: number | null
+          realized_r_multiple: number | null
+          realized_return_pct: number | null
+          result_quality: string | null
+          sector: string | null
+          setup_label: string | null
+          strategy_mode: string | null
+          symbol: string
+          user_id: string
+        }
+        Insert: {
+          agent_mode?: string | null
+          ai_decision_id?: string | null
+          closed_at?: string | null
+          created_at?: string
+          entry_decision_id?: string | null
+          entry_engine?: string | null
+          entry_order_id?: string | null
+          entry_price?: number | null
+          entry_reason?: string | null
+          exit_decision_id?: string | null
+          exit_engine?: string | null
+          exit_order_id?: string | null
+          exit_price?: number | null
+          exit_reason?: string | null
+          holding_days?: number | null
+          id?: string
+          market_regime_at_entry?: string | null
+          market_regime_at_exit?: string | null
+          max_adverse_excursion_pct?: number | null
+          max_favorable_excursion_pct?: number | null
+          mistake_label?: string | null
+          notes?: string[] | null
+          opened_at?: string | null
+          outcome_label?: string | null
+          paper_account_id?: string | null
+          paper_position_id?: string | null
+          planned_risk_pct?: number | null
+          planned_stop_loss?: number | null
+          planned_take_profit_1?: number | null
+          planned_take_profit_2?: number | null
+          qty?: number | null
+          realized_pnl?: number | null
+          realized_r_multiple?: number | null
+          realized_return_pct?: number | null
+          result_quality?: string | null
+          sector?: string | null
+          setup_label?: string | null
+          strategy_mode?: string | null
+          symbol: string
+          user_id: string
+        }
+        Update: {
+          agent_mode?: string | null
+          ai_decision_id?: string | null
+          closed_at?: string | null
+          created_at?: string
+          entry_decision_id?: string | null
+          entry_engine?: string | null
+          entry_order_id?: string | null
+          entry_price?: number | null
+          entry_reason?: string | null
+          exit_decision_id?: string | null
+          exit_engine?: string | null
+          exit_order_id?: string | null
+          exit_price?: number | null
+          exit_reason?: string | null
+          holding_days?: number | null
+          id?: string
+          market_regime_at_entry?: string | null
+          market_regime_at_exit?: string | null
+          max_adverse_excursion_pct?: number | null
+          max_favorable_excursion_pct?: number | null
+          mistake_label?: string | null
+          notes?: string[] | null
+          opened_at?: string | null
+          outcome_label?: string | null
+          paper_account_id?: string | null
+          paper_position_id?: string | null
+          planned_risk_pct?: number | null
+          planned_stop_loss?: number | null
+          planned_take_profit_1?: number | null
+          planned_take_profit_2?: number | null
+          qty?: number | null
+          realized_pnl?: number | null
+          realized_r_multiple?: number | null
+          realized_return_pct?: number | null
+          result_quality?: string | null
+          sector?: string | null
+          setup_label?: string | null
+          strategy_mode?: string | null
+          symbol?: string
           user_id?: string
         }
         Relationships: []
@@ -1563,6 +1878,60 @@ export type Database = {
           symbol?: string
           title?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      daily_learning_runs: {
+        Row: {
+          cooldowns_created: number
+          created_at: string
+          error_detail: Json | null
+          errors_count: number
+          id: string
+          regimes_updated: number
+          run_finished_at: string | null
+          run_started_at: string
+          sectors_updated: number
+          status: string
+          strategies_updated: number
+          summary: string | null
+          symbols_updated: number
+          trades_processed: number
+          users_processed: number
+        }
+        Insert: {
+          cooldowns_created?: number
+          created_at?: string
+          error_detail?: Json | null
+          errors_count?: number
+          id?: string
+          regimes_updated?: number
+          run_finished_at?: string | null
+          run_started_at?: string
+          sectors_updated?: number
+          status?: string
+          strategies_updated?: number
+          summary?: string | null
+          symbols_updated?: number
+          trades_processed?: number
+          users_processed?: number
+        }
+        Update: {
+          cooldowns_created?: number
+          created_at?: string
+          error_detail?: Json | null
+          errors_count?: number
+          id?: string
+          regimes_updated?: number
+          run_finished_at?: string | null
+          run_started_at?: string
+          sectors_updated?: number
+          status?: string
+          strategies_updated?: number
+          summary?: string | null
+          symbols_updated?: number
+          trades_processed?: number
+          users_processed?: number
         }
         Relationships: []
       }
@@ -2301,6 +2670,54 @@ export type Database = {
         }
         Relationships: []
       }
+      learning_events: {
+        Row: {
+          allocation_delta: number | null
+          confidence_delta: number | null
+          cooldown_until: string | null
+          created_at: string
+          event_summary: string | null
+          event_title: string | null
+          event_type: string
+          id: string
+          related_decision_id: string | null
+          related_trade_id: string | null
+          strategy_mode: string | null
+          symbol: string | null
+          user_id: string | null
+        }
+        Insert: {
+          allocation_delta?: number | null
+          confidence_delta?: number | null
+          cooldown_until?: string | null
+          created_at?: string
+          event_summary?: string | null
+          event_title?: string | null
+          event_type: string
+          id?: string
+          related_decision_id?: string | null
+          related_trade_id?: string | null
+          strategy_mode?: string | null
+          symbol?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          allocation_delta?: number | null
+          confidence_delta?: number | null
+          cooldown_until?: string | null
+          created_at?: string
+          event_summary?: string | null
+          event_title?: string | null
+          event_type?: string
+          id?: string
+          related_decision_id?: string | null
+          related_trade_id?: string | null
+          strategy_mode?: string | null
+          symbol?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       market_data_quality_snapshots: {
         Row: {
           created_at: string
@@ -2418,6 +2835,51 @@ export type Database = {
           source_count?: number
           source_primary?: string | null
           source_status?: string
+        }
+        Relationships: []
+      }
+      market_regime_performance_memory: {
+        Row: {
+          allocation_multiplier: number
+          avg_return_pct: number | null
+          confidence_adjustment: number
+          expectancy_pct: number | null
+          id: string
+          market_regime: string
+          profit_factor: number | null
+          sample_count: number
+          strategy_mode: string
+          updated_at: string
+          user_id: string
+          win_rate: number | null
+        }
+        Insert: {
+          allocation_multiplier?: number
+          avg_return_pct?: number | null
+          confidence_adjustment?: number
+          expectancy_pct?: number | null
+          id?: string
+          market_regime: string
+          profit_factor?: number | null
+          sample_count?: number
+          strategy_mode: string
+          updated_at?: string
+          user_id: string
+          win_rate?: number | null
+        }
+        Update: {
+          allocation_multiplier?: number
+          avg_return_pct?: number | null
+          confidence_adjustment?: number
+          expectancy_pct?: number | null
+          id?: string
+          market_regime?: string
+          profit_factor?: number | null
+          sample_count?: number
+          strategy_mode?: string
+          updated_at?: string
+          user_id?: string
+          win_rate?: number | null
         }
         Relationships: []
       }
@@ -3168,7 +3630,11 @@ export type Database = {
         Row: {
           account_id: string
           agent_id: string | null
+          agent_mode: string | null
+          ai_decision_id: string | null
           created_at: string
+          decision_score: number | null
+          entry_engine: string | null
           fee: number | null
           filled_at: string | null
           filled_price: number | null
@@ -3177,12 +3643,15 @@ export type Database = {
           price: number | null
           qty: number
           realized_pnl: number
+          risk_reward_ratio: number | null
           side: string
           slippage_pct: number | null
           source: string | null
+          source_confidence: Json | null
           status: string
           stop_loss: number | null
           stop_price: number | null
+          strategy_mode: string | null
           symbol: string
           take_profit: number | null
           trail_anchor: number | null
@@ -3193,7 +3662,11 @@ export type Database = {
         Insert: {
           account_id: string
           agent_id?: string | null
+          agent_mode?: string | null
+          ai_decision_id?: string | null
           created_at?: string
+          decision_score?: number | null
+          entry_engine?: string | null
           fee?: number | null
           filled_at?: string | null
           filled_price?: number | null
@@ -3202,12 +3675,15 @@ export type Database = {
           price?: number | null
           qty: number
           realized_pnl?: number
+          risk_reward_ratio?: number | null
           side: string
           slippage_pct?: number | null
           source?: string | null
+          source_confidence?: Json | null
           status?: string
           stop_loss?: number | null
           stop_price?: number | null
+          strategy_mode?: string | null
           symbol: string
           take_profit?: number | null
           trail_anchor?: number | null
@@ -3218,7 +3694,11 @@ export type Database = {
         Update: {
           account_id?: string
           agent_id?: string | null
+          agent_mode?: string | null
+          ai_decision_id?: string | null
           created_at?: string
+          decision_score?: number | null
+          entry_engine?: string | null
           fee?: number | null
           filled_at?: string | null
           filled_price?: number | null
@@ -3227,12 +3707,15 @@ export type Database = {
           price?: number | null
           qty?: number
           realized_pnl?: number
+          risk_reward_ratio?: number | null
           side?: string
           slippage_pct?: number | null
           source?: string | null
+          source_confidence?: Json | null
           status?: string
           stop_loss?: number | null
           stop_price?: number | null
+          strategy_mode?: string | null
           symbol?: string
           take_profit?: number | null
           trail_anchor?: number | null
@@ -3253,34 +3736,70 @@ export type Database = {
       paper_positions: {
         Row: {
           account_id: string
+          agent_mode: string | null
+          ai_decision_id: string | null
           avg_price: number
+          current_trade_state: string | null
+          entry_decision_id: string | null
+          entry_engine: string | null
+          exit_engine: string | null
           id: string
           opened_at: string
           opened_by_agent_id: string | null
+          planned_max_holding_days: number | null
+          planned_stop_loss: number | null
+          planned_take_profit_1: number | null
+          planned_take_profit_2: number | null
+          planned_time_stop_at: string | null
           qty: number
           source: string | null
+          strategy_mode: string | null
           symbol: string
           user_id: string
         }
         Insert: {
           account_id: string
+          agent_mode?: string | null
+          ai_decision_id?: string | null
           avg_price: number
+          current_trade_state?: string | null
+          entry_decision_id?: string | null
+          entry_engine?: string | null
+          exit_engine?: string | null
           id?: string
           opened_at?: string
           opened_by_agent_id?: string | null
+          planned_max_holding_days?: number | null
+          planned_stop_loss?: number | null
+          planned_take_profit_1?: number | null
+          planned_take_profit_2?: number | null
+          planned_time_stop_at?: string | null
           qty: number
           source?: string | null
+          strategy_mode?: string | null
           symbol: string
           user_id: string
         }
         Update: {
           account_id?: string
+          agent_mode?: string | null
+          ai_decision_id?: string | null
           avg_price?: number
+          current_trade_state?: string | null
+          entry_decision_id?: string | null
+          entry_engine?: string | null
+          exit_engine?: string | null
           id?: string
           opened_at?: string
           opened_by_agent_id?: string | null
+          planned_max_holding_days?: number | null
+          planned_stop_loss?: number | null
+          planned_take_profit_1?: number | null
+          planned_take_profit_2?: number | null
+          planned_time_stop_at?: string | null
           qty?: number
           source?: string | null
+          strategy_mode?: string | null
           symbol?: string
           user_id?: string
         }
@@ -4014,6 +4533,57 @@ export type Database = {
         }
         Relationships: []
       }
+      sector_performance_memory: {
+        Row: {
+          avg_return_pct: number | null
+          best_strategy_mode: string | null
+          expectancy_pct: number | null
+          id: string
+          last_trade_at: string | null
+          profit_factor: number | null
+          sample_count: number
+          sector: string
+          sector_allocation_adjustment: number
+          sector_confidence_adjustment: number
+          updated_at: string
+          user_id: string
+          win_rate: number | null
+          worst_strategy_mode: string | null
+        }
+        Insert: {
+          avg_return_pct?: number | null
+          best_strategy_mode?: string | null
+          expectancy_pct?: number | null
+          id?: string
+          last_trade_at?: string | null
+          profit_factor?: number | null
+          sample_count?: number
+          sector: string
+          sector_allocation_adjustment?: number
+          sector_confidence_adjustment?: number
+          updated_at?: string
+          user_id: string
+          win_rate?: number | null
+          worst_strategy_mode?: string | null
+        }
+        Update: {
+          avg_return_pct?: number | null
+          best_strategy_mode?: string | null
+          expectancy_pct?: number | null
+          id?: string
+          last_trade_at?: string | null
+          profit_factor?: number | null
+          sample_count?: number
+          sector?: string
+          sector_allocation_adjustment?: number
+          sector_confidence_adjustment?: number
+          updated_at?: string
+          user_id?: string
+          win_rate?: number | null
+          worst_strategy_mode?: string | null
+        }
+        Relationships: []
+      }
       sector_strength_snapshots: {
         Row: {
           breadth_score: number
@@ -4581,6 +5151,84 @@ export type Database = {
         }
         Relationships: []
       }
+      strategy_performance_memory: {
+        Row: {
+          agent_mode: string | null
+          allocation_multiplier: number
+          avg_holding_days: number | null
+          avg_loss_pct: number | null
+          avg_return_pct: number | null
+          avg_win_pct: number | null
+          confidence_adjustment: number
+          cooldown_until: string | null
+          expectancy_pct: number | null
+          id: string
+          is_paused: boolean
+          last_10_return_pct: number | null
+          last_10_win_rate: number | null
+          loss_count: number
+          max_drawdown_pct: number | null
+          pause_reason: string | null
+          profit_factor: number | null
+          sample_count: number
+          strategy_mode: string
+          updated_at: string
+          user_id: string
+          win_count: number
+          win_rate: number | null
+        }
+        Insert: {
+          agent_mode?: string | null
+          allocation_multiplier?: number
+          avg_holding_days?: number | null
+          avg_loss_pct?: number | null
+          avg_return_pct?: number | null
+          avg_win_pct?: number | null
+          confidence_adjustment?: number
+          cooldown_until?: string | null
+          expectancy_pct?: number | null
+          id?: string
+          is_paused?: boolean
+          last_10_return_pct?: number | null
+          last_10_win_rate?: number | null
+          loss_count?: number
+          max_drawdown_pct?: number | null
+          pause_reason?: string | null
+          profit_factor?: number | null
+          sample_count?: number
+          strategy_mode: string
+          updated_at?: string
+          user_id: string
+          win_count?: number
+          win_rate?: number | null
+        }
+        Update: {
+          agent_mode?: string | null
+          allocation_multiplier?: number
+          avg_holding_days?: number | null
+          avg_loss_pct?: number | null
+          avg_return_pct?: number | null
+          avg_win_pct?: number | null
+          confidence_adjustment?: number
+          cooldown_until?: string | null
+          expectancy_pct?: number | null
+          id?: string
+          is_paused?: boolean
+          last_10_return_pct?: number | null
+          last_10_win_rate?: number | null
+          loss_count?: number
+          max_drawdown_pct?: number | null
+          pause_reason?: string | null
+          profit_factor?: number | null
+          sample_count?: number
+          strategy_mode?: string
+          updated_at?: string
+          user_id?: string
+          win_count?: number
+          win_rate?: number | null
+        }
+        Relationships: []
+      }
       swing_trade_plans: {
         Row: {
           agent_id: string
@@ -4963,6 +5611,87 @@ export type Database = {
           },
         ]
       }
+      trade_memory_by_symbol: {
+        Row: {
+          allocation_adjustment: number
+          avg_holding_days: number | null
+          avg_loss_pct: number | null
+          avg_return_pct: number | null
+          avg_win_pct: number | null
+          best_strategy_mode: string | null
+          breakeven_count: number
+          confidence_adjustment: number
+          cooldown_until: string | null
+          expectancy_pct: number | null
+          id: string
+          last_outcome_label: string | null
+          last_trade_at: string | null
+          loss_count: number
+          notes: string[] | null
+          profit_factor: number | null
+          sample_count: number
+          symbol: string
+          symbol_risk_score: number | null
+          updated_at: string
+          user_id: string
+          win_count: number
+          win_rate: number | null
+          worst_strategy_mode: string | null
+        }
+        Insert: {
+          allocation_adjustment?: number
+          avg_holding_days?: number | null
+          avg_loss_pct?: number | null
+          avg_return_pct?: number | null
+          avg_win_pct?: number | null
+          best_strategy_mode?: string | null
+          breakeven_count?: number
+          confidence_adjustment?: number
+          cooldown_until?: string | null
+          expectancy_pct?: number | null
+          id?: string
+          last_outcome_label?: string | null
+          last_trade_at?: string | null
+          loss_count?: number
+          notes?: string[] | null
+          profit_factor?: number | null
+          sample_count?: number
+          symbol: string
+          symbol_risk_score?: number | null
+          updated_at?: string
+          user_id: string
+          win_count?: number
+          win_rate?: number | null
+          worst_strategy_mode?: string | null
+        }
+        Update: {
+          allocation_adjustment?: number
+          avg_holding_days?: number | null
+          avg_loss_pct?: number | null
+          avg_return_pct?: number | null
+          avg_win_pct?: number | null
+          best_strategy_mode?: string | null
+          breakeven_count?: number
+          confidence_adjustment?: number
+          cooldown_until?: string | null
+          expectancy_pct?: number | null
+          id?: string
+          last_outcome_label?: string | null
+          last_trade_at?: string | null
+          loss_count?: number
+          notes?: string[] | null
+          profit_factor?: number | null
+          sample_count?: number
+          symbol?: string
+          symbol_risk_score?: number | null
+          updated_at?: string
+          user_id?: string
+          win_count?: number
+          win_rate?: number | null
+          worst_strategy_mode?: string | null
+        }
+        Relationships: []
+      }
       user_ai_settings: {
         Row: {
           agent_mode: string
@@ -5277,6 +6006,57 @@ export type Database = {
           source_url?: string | null
           symbol?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      watch_research_outcomes: {
+        Row: {
+          decision_id: string | null
+          decision_type: string | null
+          evaluated_at: string | null
+          id: string
+          max_drawdown_pct: number | null
+          max_upside_pct: number | null
+          notes: string[] | null
+          price_after_1d: number | null
+          price_after_3d: number | null
+          price_after_5d: number | null
+          reference_price: number | null
+          should_have_been_starter: boolean | null
+          symbol: string
+          user_id: string
+        }
+        Insert: {
+          decision_id?: string | null
+          decision_type?: string | null
+          evaluated_at?: string | null
+          id?: string
+          max_drawdown_pct?: number | null
+          max_upside_pct?: number | null
+          notes?: string[] | null
+          price_after_1d?: number | null
+          price_after_3d?: number | null
+          price_after_5d?: number | null
+          reference_price?: number | null
+          should_have_been_starter?: boolean | null
+          symbol: string
+          user_id: string
+        }
+        Update: {
+          decision_id?: string | null
+          decision_type?: string | null
+          evaluated_at?: string | null
+          id?: string
+          max_drawdown_pct?: number | null
+          max_upside_pct?: number | null
+          notes?: string[] | null
+          price_after_1d?: number | null
+          price_after_3d?: number | null
+          price_after_5d?: number | null
+          reference_price?: number | null
+          should_have_been_starter?: boolean | null
+          symbol?: string
+          user_id?: string
         }
         Relationships: []
       }
