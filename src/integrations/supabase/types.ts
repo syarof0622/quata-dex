@@ -719,6 +719,57 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_tool_runs: {
+        Row: {
+          confidence_score: number | null
+          conversation_id: string | null
+          created_at: string
+          data_state: string | null
+          duration_ms: number | null
+          error_message: string | null
+          id: string
+          intent: string | null
+          question: string | null
+          status: string | null
+          tool_input: Json | null
+          tool_name: string
+          tool_output_summary: string | null
+          user_id: string | null
+        }
+        Insert: {
+          confidence_score?: number | null
+          conversation_id?: string | null
+          created_at?: string
+          data_state?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          intent?: string | null
+          question?: string | null
+          status?: string | null
+          tool_input?: Json | null
+          tool_name: string
+          tool_output_summary?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          confidence_score?: number | null
+          conversation_id?: string | null
+          created_at?: string
+          data_state?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          intent?: string | null
+          question?: string | null
+          status?: string | null
+          tool_input?: Json | null
+          tool_name?: string
+          tool_output_summary?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       ai_trade_agents: {
         Row: {
           aggression_mode: string
