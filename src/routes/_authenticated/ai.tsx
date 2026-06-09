@@ -1,18 +1,26 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { useState } from "react";
+import { z } from "zod";
 import { ChatPanel } from "@/components/ChatPanel";
+import { ChatThreadsSidebar } from "@/components/ChatThreadsSidebar";
 import { RiskEnginePanel } from "@/components/RiskEnginePanel";
 import { DecisionReplayPanel } from "@/components/DecisionReplay";
 import { AutonomousAgentPanel } from "@/components/AutonomousAgentPanel";
 import { getAIContextSummaryServer } from "@/lib/ai-context-summary.functions";
-import { Activity, Database, Newspaper, BarChart3, ShieldCheck, Clock } from "lucide-react";
+import { Activity, Database, Newspaper, BarChart3, ShieldCheck, Clock, MessagesSquare } from "lucide-react";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useLang } from "@/hooks/use-language";
 
 import { seoHead } from "@/lib/seo-head";
 
+const aiSearchSchema = z.object({ t: z.string().uuid().optional() });
+
 export const Route = createFileRoute("/_authenticated/ai")({
+  validateSearch: aiSearchSchema,
   head: () => ({
     ...seoHead({
       path: "/ai",
