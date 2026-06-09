@@ -1,53 +1,58 @@
-## Tujuan
+# Fix AI Agent Over-Blocking — Controlled Paper Execution Patch
 
-Mengganti string Bahasa Indonesia hard-coded di seluruh halaman dengan `useLang().L.*` sehingga toggle **System Language** di Settings benar-benar mengubah seluruh UI.
+## Goal
+Stop the calibration deadlock where the AI needs completed paper trades to calibrate, but calibration blocks new trades. Keep all safety guards. Stay paper-trading only.
 
-## Strategi
+## Approach
+Introduce a tiered decision pipeline (`BLOCKED / WATCH / RESEARCH / STARTER_BUY / SWING_BUY / HOLD / EXIT`) and a calibration bootstrap that falls back from ticker → sector → strategy → global, allowing small starter paper orders when ticker sample is low but setup is valid.
 
-Migrasi per-batch, satu turn per batch. Setiap batch: (1) tambah key yang diperlukan ke `id.ts` + `en.ts`, (2) ubah komponen untuk membaca dari `useLang()`, (3) verifikasi tidak ada regresi.
+## Files to touch
 
-Setelah setiap batch saya berhenti dan minta konfirmasi sebelum lanjut — jadi Anda bisa cek hasilnya halaman demi halaman.
+### Decision engine (core logic)
+- `src/lib/ai-agent-decision-engine.ts`
+  - Add `DecisionOutcome` enum and `decideOutcome()` returning one of the tiers
+  - Add `calibrationState()` resolver: `no_sample | low_sample | calibrating | calibrated | degraded`
+  - Replace single confidence gate with composite: `scanner / trade_quality / data_confidence / calibration_confidence / execution_confidence → final_decision_score`
+  - Encode dynamic thresholds per `agent_mode` (conservative / balanced / progressive / expert / swing_max / recovery_swing_max)
+  - Emit structured `blockingFactors[]`, `allowingFactors[]`, `requiredAction`
+- `src/lib/agent-aggression-modes.ts` — add per-mode thresholds and starter size caps
+- `src/lib/lot-sizing.ts` — return `{ lot, reason }`; downgrade STARTER_BUY → WATCH when lot=0
+- `src/lib/loss-protection.server.ts` — segment perf by `strategy_mode`, do not let legacy losses freeze swing_max
+- `src/lib/data-quality.ts` — treat disclosure `no_event` as valid; news stale only lowers confidence
 
-## Urutan Batch
+### Execution path
+- `src/lib/ai-trade-agent.functions.ts` and `src/lib/ai-autonomous-scanner.server.ts`
+  - Persist all tiers (not just BLOCKED/BUY) into `ai_agent_decisions` with `decision_status`, scores, factors
+  - For STARTER_BUY / SWING_BUY: create paper order via existing `paper.functions.ts` with strategy_mode tag
+  - For WATCH / RESEARCH / BLOCKED: do not place order; still log reason
+  - Enforce hard safety re-check before order: SL, TP, RR, exposure, cooldown, AI enabled, critical staleness, negative disclosure
 
-**Batch 1 — Shell & navigasi global** (paling visible, ROI tertinggi)
-- `_authenticated.tsx` — header "Markets · live", tooltip "Sign out", label "Memuat sesi…"
-- `MobileBottomNav.tsx` — "More", "Sign out", `SheetTitle`
-- `OnboardingDialog.tsx`
-- `FloatingAIChat.tsx` — placeholder, header, tombol
-- `PageHero` consumers (eyebrow/title/subtitle) untuk semua halaman utama
+### Database
+- Migration adds nullable columns to `ai_agent_decisions`:
+  `outcome` (text), `calibration_state` (text), `scanner_score`, `trade_quality_score`, `data_confidence_score`, `calibration_confidence_score`, `execution_confidence_score`, `final_decision_score`, `blocking_factors` (jsonb), `allowing_factors` (jsonb), `required_action` (text), `strategy_mode` (text)
+  Existing rows keep working; new rows populate the fields.
 
-**Batch 2 — Halaman utama (read-heavy)**
-- `dashboard.tsx`
-- `market.tsx`
-- `watchlist.tsx`
-- `portfolio.tsx`
-- `news.tsx` (juga sinkron filter bahasa)
+### UI (Bahasa Indonesia)
+- `src/components/AutonomousAgentPanel.tsx` and decision list in `src/routes/_authenticated/ai.tsx`
+  - Replace single "BLOCKED" badge with tier badge: Diblokir / Pantau / Riset / Beli Starter / Beli Swing / Menahan / Keluar
+  - Add "Mengapa diblokir / Mengapa diizinkan" panel showing all 6 scores, calibration state, blocking factors, allowing factors, required action
+  - Surface starter explanation: "Kalibrasi ticker belum cukup. Menggunakan kalibrasi sektor/strategi dan ukuran starter."
+- Locale strings in `src/lib/i18n/id.ts` (and `en.ts` parity)
 
-**Batch 3 — Halaman tools**
-- `screener.tsx`
-- `ai.tsx`
-- `lab.tsx`
-- `expert.tsx`
-- `alerts.tsx`
+## Safety guards kept
+- Paper only — no broker code touched
+- BUY still requires SL, TP, valid RR, lot > 0, exposure cap, no cooldown, AI enabled, no critical staleness, no strong negative disclosure
+- 3-loss-in-a-row pause/size-down per strategy_mode
+- Starter sizing capped: exploration 0.5–1.5%, starter 2–4%, swing 5–10%, never above user max exposure
 
-**Batch 4 — Settings, Health, Admin, Auth**
-- `settings.tsx` (sisa tab: Profile, Trading, Notifications, Data)
-- `health.tsx`
-- `admin.tsx`
-- `auth.tsx`, `forgot-password.tsx`, `reset-password.tsx`, `change-password.tsx`
+## Out of scope
+- No new scanners, no new data sources, no real-money path
+- No removal of existing risk modules
+- No fabricated trade history
 
-**Batch 5 — Komponen panel besar**
-- `AiSettingsCard`, `PaperBalanceCard`, `AutonomousAgentPanel`, `AiInsightsPanel`, `JournalPanel`, `RiskEnginePanel`, `FundamentalPanel`, `PortfolioIntelligencePanel`, `PortfolioAttributionPanel`, `ChatPanel`, `DecisionReplay`, badges
-
-## Aturan migrasi
-
-1. Tambahkan key ke kedua kamus (`id.ts` & `en.ts`) dengan struktur identik. Jika perlu kategori baru, tambah di kedua file pada urutan yang sama.
-2. Ganti string literal → `L.<kategori>.<key>`. Untuk teks dinamis pakai template literal atau helper `format(L.x, { name })` (akan ditambah jika perlu).
-3. JANGAN ubah nama variabel internal, API key, enum DB, atau label `lucide-react` icon — hanya teks user-facing.
-4. Toast & error messages dari server tetap dalam bahasa aslinya (tidak diterjemah) — sebutkan ini sebagai limitation.
-5. Setelah tiap batch: smoke check via preview — toggle ID↔EN, klik halaman yang baru dimigrasi, pastikan tidak ada `undefined` di UI.
-
-## Mulai sekarang
-
-Saya kerjakan **Batch 1** dulu (shell + navigasi + PageHero), lalu berhenti untuk Anda cek hasilnya di preview. Lanjut?
+## Acceptance
+- AI emits non-BLOCKED tiers when setup partially valid
+- STARTER_BUY creates a paper order with lot > 0 and full plan
+- Calibration low_sample → starter with reduced size, not permanent block
+- UI shows score breakdown + blocking/allowing factors in Bahasa Indonesia
+- Build passes; existing decision rows still render
