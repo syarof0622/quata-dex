@@ -639,7 +639,15 @@ export async function evaluateSymbol(
     const effectiveMinConfidence = autoGate
       ? Math.min(agent.minConfidenceToTrade, autoGate.minConfidence)
       : agent.minConfidenceToTrade;
-    if (confidence < effectiveMinConfidence) {
+    // STARTER tier: when calibration is bootstrapping OR confidence sits in the
+    // 60–100% band of the normal threshold, allow a reduced-size paper trade so
+    // the agent generates learning data instead of freezing. Safety guards
+    // (SL/TP/RR, exposure cap, swing gate, lot sizing, cooldown, disclosure)
+    // continue to apply downstream — they will still convert this into HOLD if
+    // the setup is actually unsafe.
+    const starterFloor = effectiveMinConfidence * 0.6;
+    const isStarter = confidence < effectiveMinConfidence && (calib.bootstrap || confidence >= starterFloor);
+    if (confidence < effectiveMinConfidence && !isStarter) {
       return emptySnap(sym, `Confidence ${(confidence * 100).toFixed(0)}% < threshold ${(effectiveMinConfidence*100).toFixed(0)}%. ${calib.reason}`, {
         confidence, rawConfidence, calibrationReason: calib.reason,
         realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
@@ -648,6 +656,15 @@ export async function evaluateSymbol(
         blockedReason: "confidence_below_threshold",
       });
     }
+    // Tag starter trades so the executor can apply a 40% size reduction and the
+    // UI can show "Beli Starter" instead of "Beli Swing".
+    const starterSizeMultiplier = isStarter ? 0.4 : 1;
+    const starterReason = isStarter
+      ? (calib.bootstrap
+          ? "Kalibrasi ticker belum cukup — masuk mode STARTER paper trade dengan ukuran posisi diturunkan ke 40% untuk membangun sample kalibrasi."
+          : `Confidence ${(confidence*100).toFixed(0)}% di zona starter (${(starterFloor*100).toFixed(0)}–${(effectiveMinConfidence*100).toFixed(0)}%) — ukuran posisi diturunkan ke 40%.`)
+      : null;
+
     if (symbolExposure >= agent.maxPositionPerSymbol) {
       return emptySnap(sym, `Eksposur ${(symbolExposure*100).toFixed(1)}% melebihi limit per simbol.`, {
         riskSnapshot: { exposure: symbolExposure, cap: agent.maxPositionPerSymbol },
