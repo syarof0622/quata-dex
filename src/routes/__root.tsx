@@ -14,6 +14,7 @@ import { AuthProvider } from "@/hooks/use-auth";
 import { LanguageProvider } from "@/hooks/use-language";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { installBrowserErrorLogger, reportError } from "@/lib/error-logger.client";
 
 function NotFoundComponent() {
   return (
@@ -35,6 +36,9 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
+  useEffect(() => {
+    reportError(error, { module: "router", action: "route_error_boundary", handled: true });
+  }, [error]);
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="max-w-md text-center panel p-8">
@@ -124,6 +128,9 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  useEffect(() => {
+    installBrowserErrorLogger();
+  }, []);
   useEffect(() => {
     try {
       const raw = localStorage.getItem("quanta:prefs");
