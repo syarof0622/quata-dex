@@ -35,6 +35,11 @@ export const Route = createFileRoute("/_authenticated/ai")({
 function AIAnalystPage() {
   const { L } = useLang();
   const T = L.tools.ai;
+  const navigate = useNavigate({ from: "/ai" });
+  const search = useSearch({ from: "/_authenticated/ai" });
+  const activeThreadId = search.t ?? null;
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const qc = useQueryClient();
   const fetchSummary = useServerFn(getAIContextSummaryServer);
   const { data: ctx } = useQuery({
     queryKey: ["ai-context-summary"],
@@ -42,6 +47,12 @@ function AIAnalystPage() {
     refetchInterval: 60_000,
     staleTime: 30_000,
   });
+
+  const setThread = (id: string | null) => {
+    navigate({ search: id ? { t: id } : {}, replace: false });
+    setMobileOpen(false);
+  };
+  const touchThread = () => qc.invalidateQueries({ queryKey: ["chat-threads"] });
 
   return (
     <div className="p-3 sm:p-5 space-y-3">
