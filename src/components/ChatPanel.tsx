@@ -8,7 +8,7 @@ import { useLang } from "@/hooks/use-language";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { getChatMessages, saveChatMessage } from "@/lib/chat-threads.functions";
-import { reportError } from "@/lib/error-logger.client";
+import { reportError } from "@/lib/error-logger.browser";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 

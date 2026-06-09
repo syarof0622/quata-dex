@@ -260,20 +260,31 @@ async function calibrateConfidence(agentId: string, symbol: string, raw: number,
     if (dirN >= 1) directionAccuracy = (past!.filter(p => p.was_correct === true).length) / dirN;
   }
 
-  // Case A: no completed trades yet — surface direction accuracy explicitly,
-  // but do NOT use it as trade win rate.
+  // Case A: no completed trades yet — bootstrap calibration so the agent is not
+  // locked in a deadlock (no completed trades → no calibration → no new trades).
+  // We blend the raw signal with direction accuracy (when available) and a
+  // conservative prior (0.5). The result is tagged `bootstrap_calibration` so
+  // downstream gating can size starter trades smaller instead of hard-blocking.
   if (tradeN < 5) {
-    if (dirN >= 5) {
-      return {
-        value: raw,
-        reason: `Direction accuracy tersedia (${(directionAccuracy*100).toFixed(0)}%, n=${dirN}), tetapi trade win rate belum cukup (n=${tradeN}). Confidence menggunakan raw signal.`,
-      };
-    }
-    return {
-      value: raw,
-      reason: `Calibration belum aktif: belum cukup completed trade untuk ticker ini (trade n=${tradeN}, direction n=${dirN}). Confidence menggunakan raw signal.`,
-    };
+    const prior = 0.5;
+    // Direction accuracy weight grows with sample size, capped at 0.4.
+    const dirWeight = dirN >= 5 ? Math.min(0.4, dirN / 50) : 0;
+    const rawWeight = 0.6 - dirWeight * 0.5; // keep raw signal dominant
+    const priorWeight = 1 - rawWeight - dirWeight;
+    const bootstrap = raw * rawWeight + directionAccuracy * dirWeight + prior * priorWeight;
+    // Never let bootstrap drop the raw signal by more than 25% — we want to
+    // allow STARTER_BUY when the technical setup is genuinely strong.
+    const floor = raw * 0.75;
+    const value = Math.max(floor, Math.min(0.95, bootstrap));
+    const reasonParts = [
+      `Kalibrasi ticker belum cukup (trade n=${tradeN})`,
+      dirN >= 5 ? `direction accuracy ${(directionAccuracy*100).toFixed(0)}% (n=${dirN})` : `direction sample minim (n=${dirN})`,
+      `mode bootstrap aktif — confidence menggunakan sinyal mentah + prior sektor/strategi`,
+    ];
+    return { value, reason: reasonParts.join("; ") + ".", bootstrap: true };
   }
+
+
 
   // Case B: use trade win rate as primary calibration source.
   let mult = 0.6 + tradeWinRate * 0.55;
@@ -289,7 +300,8 @@ async function calibrateConfidence(agentId: string, symbol: string, raw: number,
 
   const calibrated = Math.max(0, Math.min(0.99, raw * mult));
   const dir = calibrated >= raw ? "dinaikkan" : "diturunkan";
-  return { value: calibrated, reason: `${notes.join("; ")} → confidence ${dir}.` };
+  return { value: calibrated, reason: `${notes.join("; ")} → confidence ${dir}.`, bootstrap: false };
+
 }
 
 export async function evaluateSymbol(
@@ -627,7 +639,15 @@ export async function evaluateSymbol(
     const effectiveMinConfidence = autoGate
       ? Math.min(agent.minConfidenceToTrade, autoGate.minConfidence)
       : agent.minConfidenceToTrade;
-    if (confidence < effectiveMinConfidence) {
+    // STARTER tier: when calibration is bootstrapping OR confidence sits in the
+    // 60–100% band of the normal threshold, allow a reduced-size paper trade so
+    // the agent generates learning data instead of freezing. Safety guards
+    // (SL/TP/RR, exposure cap, swing gate, lot sizing, cooldown, disclosure)
+    // continue to apply downstream — they will still convert this into HOLD if
+    // the setup is actually unsafe.
+    const starterFloor = effectiveMinConfidence * 0.6;
+    const isStarter = confidence < effectiveMinConfidence && (calib.bootstrap || confidence >= starterFloor);
+    if (confidence < effectiveMinConfidence && !isStarter) {
       return emptySnap(sym, `Confidence ${(confidence * 100).toFixed(0)}% < threshold ${(effectiveMinConfidence*100).toFixed(0)}%. ${calib.reason}`, {
         confidence, rawConfidence, calibrationReason: calib.reason,
         realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
@@ -636,6 +656,15 @@ export async function evaluateSymbol(
         blockedReason: "confidence_below_threshold",
       });
     }
+    // Tag starter trades so the executor can apply a 40% size reduction and the
+    // UI can show "Beli Starter" instead of "Beli Swing".
+    const starterSizeMultiplier = isStarter ? 0.4 : 1;
+    const starterReason = isStarter
+      ? (calib.bootstrap
+          ? "Kalibrasi ticker belum cukup — masuk mode STARTER paper trade dengan ukuran posisi diturunkan ke 40% untuk membangun sample kalibrasi."
+          : `Confidence ${(confidence*100).toFixed(0)}% di zona starter (${(starterFloor*100).toFixed(0)}–${(effectiveMinConfidence*100).toFixed(0)}%) — ukuran posisi diturunkan ke 40%.`)
+      : null;
+
     if (symbolExposure >= agent.maxPositionPerSymbol) {
       return emptySnap(sym, `Eksposur ${(symbolExposure*100).toFixed(1)}% melebihi limit per simbol.`, {
         riskSnapshot: { exposure: symbolExposure, cap: agent.maxPositionPerSymbol },
@@ -880,19 +909,26 @@ export async function evaluateSymbol(
     const finalStopLoss = swingPlan ? swingPlan.stopLoss : stopLoss;
     const finalTakeProfit = swingPlan ? swingPlan.takeProfit2 : takeProfit;
     const finalRR = swingPlan ? swingPlan.riskRewardRatio : rr;
-    const finalAllocation = swingPlan ? swingPlan.positionSizeIDR : guard.positionSize;
-    const finalShares = swingPlan && swingPlan.shares ? swingPlan.shares
+    const baseAllocation = swingPlan ? swingPlan.positionSizeIDR : guard.positionSize;
+    const baseShares = swingPlan && swingPlan.shares ? swingPlan.shares
       : swingPlan && price > 0
         ? Math.max(100, Math.floor(swingPlan.positionSizeIDR / price / 100) * 100)
         : guard.shares;
-    const finalLot = swingPlan ? Math.max(1, Math.round(finalShares / 100)) : guard.lot;
+    // Apply starter multiplier (40% of normal) when this is a STARTER tier
+    // entry. Round shares down to the IDX lot of 100 so we never break lot rules.
+    const finalAllocation = Math.round(baseAllocation * starterSizeMultiplier);
+    const finalShares = Math.max(100, Math.floor((baseShares * starterSizeMultiplier) / 100) * 100);
+    const finalLot = Math.max(1, Math.round(finalShares / 100));
     const swingTag = swingPlan
       ? ` [SwingMax:${swingPlan.entryType} score=${swingPlan.swingQualityScore} RR=${swingPlan.riskRewardRatio} tier=${swingPlan.allocationTier ?? "n/a"}(${swingPlan.allocationTierLabel ?? "—"}) alloc=${((swingPlan.allocationPct ?? 0) * 100).toFixed(1)}% cap=${swingPlan.allocationCapWinner ?? "n/a"} hold=${swingPlan.targetHoldingDays}-${swingPlan.maxHoldingDays}d]`
       : "";
+    const starterTag = isStarter ? " [STARTER paper trade — ukuran 40%]" : "";
     return {
       symbol: sym, action: "BUY", confidence, rawConfidence,
       calibrationReason: calib.reason,
-      strategy: swingPlan
+      strategy: isStarter
+        ? (swingPlan ? "swing_max_starter" : "controlled_paper_exploration")
+        : swingPlan
         ? "swing_max"
         : autoGate
         ? (agent.autonomousRiskMode === "expert_research" ? "expert_research_micro_entry"
@@ -902,20 +938,21 @@ export async function evaluateSymbol(
       allocationAmount: finalAllocation,
       suggestedLot: finalLot, suggestedShares: finalShares,
       entryPrice: price, stopLoss: finalStopLoss, takeProfit: finalTakeProfit, riskRewardRatio: finalRR,
-      reasoning: `Teknikal ${techLabel} (${techScore.toFixed(0)}), sentimen ${sentScore.toFixed(2)}, news +${realNewsData.positiveNewsCount}/-${realNewsData.negativeNewsCount} (high ${realNewsData.highImpactNewsCount}), IHSG ${realMarketContext.ihsgBias}, sektor ${sectorRotationLabel}, fundamental ${fundamentalContext.classification}, strategi ${strategyName} (regime ${marketRegimeLabel}). Risk engine: stop ${guard.stopMode} ${guard.stopDistancePct}%, RR ${rr}, size ${guard.lot} lot (risk ${guard.riskAmount.toLocaleString()} IDR). ${calib.reason}${autoReasonTag}${swingTag}`,
+      reasoning: `Teknikal ${techLabel} (${techScore.toFixed(0)}), sentimen ${sentScore.toFixed(2)}, news +${realNewsData.positiveNewsCount}/-${realNewsData.negativeNewsCount} (high ${realNewsData.highImpactNewsCount}), IHSG ${realMarketContext.ihsgBias}, sektor ${sectorRotationLabel}, fundamental ${fundamentalContext.classification}, strategi ${strategyName} (regime ${marketRegimeLabel}). Risk engine: stop ${guard.stopMode} ${guard.stopDistancePct}%, RR ${rr}, size ${finalLot} lot (risk ${guard.riskAmount.toLocaleString()} IDR).${starterTag}${starterReason ? " " + starterReason : ""} ${calib.reason}${autoReasonTag}${swingTag}`,
       dataFreshnessSeconds: freshness, dataSource: "Yahoo Finance + Google News RSS + IDX disclosure",
       executionAllowed: true, analysisOnly: false,
       realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
       portfolioSnapshot,
-      riskSnapshot: { riskGuard: guard, fundamentalContext, strategyContext, swingPlan, swingQuality } as any,
-      dataQuality, warnings: [...warnings, ...guard.warnings],
-      strategyName: swingPlan ? "swing_max" : strategyName,
+      riskSnapshot: { riskGuard: guard, fundamentalContext, strategyContext, swingPlan, swingQuality, starter: isStarter, starterReason, starterSizeMultiplier } as any,
+      dataQuality, warnings: [...warnings, ...guard.warnings, ...(isStarter ? ["starter_paper_trade"] : [])],
+      strategyName: isStarter ? (swingPlan ? "swing_max_starter" : "controlled_paper_exploration") : (swingPlan ? "swing_max" : strategyName),
       setupType: swingPlan ? swingPlan.entryType : strategyName,
       marketRegime: marketRegimeLabel,
       signalSource: swingPlan ? "swing_max_engine" : (autoGate ? "autonomous_scanner" : "manual_strategy_mode"),
       strategyContext,
     };
   }
+
 
   return emptySnap(sym, `Tidak ada setup yang memenuhi syarat (composite ${(composite*100).toFixed(0)}%). ${calib.reason}`, {
     confidence, rawConfidence, calibrationReason: calib.reason,

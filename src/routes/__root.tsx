@@ -14,7 +14,7 @@ import { AuthProvider } from "@/hooks/use-auth";
 import { LanguageProvider } from "@/hooks/use-language";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { installBrowserErrorLogger, reportError } from "@/lib/error-logger.client";
+import { installBrowserErrorLogger, reportError } from "@/lib/error-logger.browser";
 
 function NotFoundComponent() {
   return (
