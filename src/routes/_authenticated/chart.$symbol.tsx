@@ -338,7 +338,7 @@ function ChartPage() {
               {isIDX && !realtime && <span className="text-[10px] text-amber-400">~15m delay</span>}
               {isIDX && realtime && <span className="text-[10px] text-bull">~realtime</span>}
             </div>
-            <div className="text-2xl font-semibold">{displaySymbol(symbol)}</div>
+            <h1 className="text-2xl font-semibold">{displaySymbol(symbol)}</h1>
             <div className="text-xs text-muted-foreground">{quote.data?.shortName ?? ""}</div>
           </div>
           <div className="ml-auto flex items-end gap-6">
@@ -359,6 +359,7 @@ function ChartPage() {
             <Button
               variant="outline"
               size="sm"
+              aria-label={`Tambahkan ${displaySymbol(symbol)} ke watchlist`}
               onClick={async () => {
                 await addToWatchlist({ data: { symbol } });
                 qc.invalidateQueries({ queryKey: ["watchlist"] });
@@ -371,7 +372,7 @@ function ChartPage() {
             {isMobile ? (
               <Sheet open={mobilePanelOpen} onOpenChange={setMobilePanelOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="outline" size="sm" title="Buka panel AI">
+                  <Button variant="outline" size="sm" title="Buka panel AI" aria-label="Buka panel AI">
                     <PanelRightOpen className="size-4" />
                   </Button>
                 </SheetTrigger>
@@ -388,6 +389,7 @@ function ChartPage() {
                 size="sm"
                 onClick={() => setPanelOpen(o => !o)}
                 title={panelOpen ? "Tutup panel" : "Buka panel"}
+                aria-label={panelOpen ? "Tutup panel samping" : "Buka panel samping"}
                 className="hidden xl:inline-flex"
               >
                 {panelOpen ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />}
