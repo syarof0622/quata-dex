@@ -52,7 +52,8 @@ export function FloatingAIChat() {
         body: JSON.stringify({ messages: next }),
       });
       if (!resp.ok || !resp.body) {
-        toast.error(L.chat.failed);
+        const j = await resp.json().catch(() => ({} as any));
+        toast.error(j.error ?? L.chat.failed);
         setBusy(false);
         return;
       }
