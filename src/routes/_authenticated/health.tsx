@@ -20,7 +20,7 @@ export const Route = createFileRoute("/_authenticated/health")({
   head: () => ({
     ...seoHead({
       path: "/health",
-      title: "System Health · Quanta Terminal",
+      title: "Kesehatan Sistem · Quanta Terminal",
       description: "Operational health checks for Quanta Terminal: data feeds, AI workers, and background jobs.",
       noindex: true,
     }),
@@ -40,17 +40,17 @@ const WORKERS: { key: WorkerKey; label: string; hint: string }[] = [
 ];
 
 const STATUS_STYLES: Record<HealthStatus, { label: string; cls: string }> = {
-  healthy: { label: "Healthy", cls: "bg-emerald-500/15 text-emerald-300 border-emerald-500/40" },
-  partial: { label: "Partial", cls: "bg-amber-500/15 text-amber-300 border-amber-500/40" },
-  stale: { label: "Stale", cls: "bg-amber-500/15 text-amber-300 border-amber-500/40" },
-  degraded: { label: "Degraded", cls: "bg-orange-500/15 text-orange-300 border-orange-500/40" },
-  failed: { label: "Failed", cls: "bg-rose-500/15 text-rose-300 border-rose-500/40" },
-  unauthorized: { label: "Unauthorized", cls: "bg-rose-500/15 text-rose-300 border-rose-500/40" },
-  not_configured: { label: "Not Configured", cls: "bg-sky-500/15 text-sky-300 border-sky-500/40" },
-  not_run_yet: { label: "Not Run Yet", cls: "bg-sky-500/15 text-sky-300 border-sky-500/40" },
-  no_recent_event: { label: "No Recent Event", cls: "bg-muted text-muted-foreground border-border" },
-  no_new_data: { label: "No New Data", cls: "bg-muted text-muted-foreground border-border" },
-  unknown: { label: "Unknown", cls: "bg-muted text-muted-foreground border-border" },
+  healthy: { label: "Sehat", cls: "bg-emerald-500/15 text-emerald-300 border-emerald-500/40" },
+  partial: { label: "Sebagian", cls: "bg-amber-500/15 text-amber-300 border-amber-500/40" },
+  stale: { label: "Kedaluwarsa", cls: "bg-amber-500/15 text-amber-300 border-amber-500/40" },
+  degraded: { label: "Menurun", cls: "bg-orange-500/15 text-orange-300 border-orange-500/40" },
+  failed: { label: "Gagal", cls: "bg-rose-500/15 text-rose-300 border-rose-500/40" },
+  unauthorized: { label: "Tidak Diizinkan", cls: "bg-rose-500/15 text-rose-300 border-rose-500/40" },
+  not_configured: { label: "Belum Dikonfigurasi", cls: "bg-sky-500/15 text-sky-300 border-sky-500/40" },
+  not_run_yet: { label: "Belum Dijalankan", cls: "bg-sky-500/15 text-sky-300 border-sky-500/40" },
+  no_recent_event: { label: "Tidak Ada Event Terbaru", cls: "bg-muted text-muted-foreground border-border" },
+  no_new_data: { label: "Tidak Ada Data Baru", cls: "bg-muted text-muted-foreground border-border" },
+  unknown: { label: "Tidak Diketahui", cls: "bg-muted text-muted-foreground border-border" },
 };
 
 function fmtWIB(iso: string | null | undefined): string {
@@ -191,7 +191,7 @@ function HealthPage() {
                               ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/40"
                               : "bg-rose-500/15 text-rose-300 border-rose-500/40"}
                           >
-                            {r.ok ? "OK" : "Failed"} · {r.status || "—"}
+                            {r.ok ? "OK" : "Gagal"} · {r.status || "—"}
                           </Badge>
                           {typeof r.durationMs === "number" && (
                             <span className="text-muted-foreground">{r.durationMs}ms</span>
