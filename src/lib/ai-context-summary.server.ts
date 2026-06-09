@@ -64,7 +64,6 @@ export type AIContextSummaryWithMeta = AIContextSummary & {
 };
 
 export async function getAIContextSummaryServerImpl(): Promise<AIContextSummaryWithMeta> {
-  .handler(async (): Promise<AIContextSummaryWithMeta> => {
     const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
     const [{ data: account }, agent] = await Promise.all([
@@ -172,4 +171,4 @@ export async function getAIContextSummaryServerImpl(): Promise<AIContextSummaryW
       lastUpdateLabel,
       recentAgentDecisionCount: recentDecisionCount,
     };
-  });
+}
