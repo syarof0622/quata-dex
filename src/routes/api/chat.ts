@@ -570,11 +570,11 @@ OUTPUT FORMAT — strict GitHub-Flavored Markdown (renderer supports tables, lis
           }
 
           // Final streaming pass (no tools — force a direct answer)
-          const upstream = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          const upstream = await fetch(`${aiProvider.baseUrl}/chat/completions`, {
             method: "POST",
-            headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+            headers: aiAuthHeaders(aiProvider),
             body: JSON.stringify({
-              model: MODEL_ID,
+              model: aiProvider.model,
               messages: convo,
               stream: true,
             }),
