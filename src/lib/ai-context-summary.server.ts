@@ -2,7 +2,7 @@
 // permission issues never make the AI Analyst header drift from reality.
 // Shares the same `computeContextSummary` helper as the client header used
 // before, but now feeds it data through the service role.
-import { createServerFn } from "@tanstack/react-start";
+// (no createServerFn here — the wrapper lives in ai-context-summary.functions.ts)
 import { currentUserId } from "@/lib/current-user.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { computeContextSummary, type AIContextSummary } from "./ai-context-summary";
@@ -63,11 +63,7 @@ export type AIContextSummaryWithMeta = AIContextSummary & {
   recentAgentDecisionCount: number;
 };
 
-export const getAIContextSummaryServerImpl = (() => null as any) as never;
-// Real implementation (kept inline below as a plain async fn so the
-// createServerFn wrapper in ai-context-summary.functions.ts can call it):
-export async function _getAIContextSummaryServerImpl(): Promise<AIContextSummaryWithMeta> {
-  return await (async () => {
+export async function getAIContextSummaryServerImpl(): Promise<AIContextSummaryWithMeta> {
   .handler(async (): Promise<AIContextSummaryWithMeta> => {
     const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
