@@ -527,7 +527,7 @@ OUTPUT FORMAT — strict GitHub-Flavored Markdown (renderer supports tables, lis
           console.log(`[chat] provider=${aiProvider.provider} model=${aiProvider.model}`);
           const convo: any[] = [{ role: "system", content: sys }, ...messages];
 
-          for (let iter = 0; iter < 2; iter++) {
+          for (let iter = 0; iter < 5; iter++) {
             const pre = await fetch(`${aiProvider.baseUrl}/chat/completions`, {
               method: "POST",
               headers: aiAuthHeaders(aiProvider),
