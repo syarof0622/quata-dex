@@ -62,7 +62,7 @@ function AIAnalystPage() {
             <span className="text-primary text-[11px]">{T.tapToExpand}</span>
           </summary>
           <div className="mt-2 flex flex-wrap gap-1.5">
-            {(ctx?.badges ?? []).map(b => {
+            {(ctx?.badges ?? []).map((b: any) => {
               const cls = TONE_BADGE[b.tone] ?? TONE_BADGE.slate;
               const dot = TONE_DOT[b.tone] ?? TONE_DOT.slate;
               return (
@@ -113,7 +113,7 @@ function AIAnalystPage() {
       <div className="hidden md:block rounded-xl border border-border/60 bg-card/40 px-3 py-2">
         <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">{T.appContextRO}</div>
         <div className="flex flex-wrap gap-1.5">
-          {(ctx?.badges ?? []).map(b => {
+          {(ctx?.badges ?? []).map((b: any) => {
             const cls = TONE_BADGE[b.tone] ?? TONE_BADGE.slate;
             const dot = TONE_DOT[b.tone] ?? TONE_DOT.slate;
             return (
