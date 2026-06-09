@@ -6,6 +6,7 @@ import { AIReportRenderer } from "@/components/AIReportRenderer";
 import { cn } from "@/lib/utils";
 import { useLang } from "@/hooks/use-language";
 import { supabase } from "@/integrations/supabase/client";
+import { reportError } from "@/lib/error-logger.client";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -53,6 +54,14 @@ export function FloatingAIChat() {
       });
       if (!resp.ok || !resp.body) {
         const j = await resp.json().catch(() => ({} as any));
+        reportError({
+          source: "api",
+          module: "floating_ai_chat",
+          action: "chat_response_error",
+          message: j.error ?? `Chat request failed with status ${resp.status}`,
+          metadata: { status: resp.status },
+          handled: true,
+        });
         toast.error(j.error ?? L.chat.failed);
         setBusy(false);
         return;
@@ -84,6 +93,7 @@ export function FloatingAIChat() {
         }
       }
     } catch (e) {
+      reportError(e, { source: "api", module: "floating_ai_chat", action: "chat_network_error", handled: true });
       toast.error(e instanceof Error ? e.message : L.chat.networkError);
     } finally {
       setBusy(false);
