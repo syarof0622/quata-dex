@@ -40,6 +40,22 @@ export function ChatPanel({ system, threadId, onThreadTouched }: { system?: stri
   const endRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const loadMsgs = useServerFn(getChatMessages);
+  const saveMsg = useServerFn(saveChatMessage);
+
+  // Load thread messages whenever threadId changes
+  useEffect(() => {
+    if (!threadId) { setMessages([]); return; }
+    let cancelled = false;
+    loadMsgs({ data: { threadId } })
+      .then((r: any) => {
+        if (cancelled) return;
+        const rows = (r?.messages ?? []) as Array<{ role: string; content: string }>;
+        setMessages(rows.filter(m => m.role === "user" || m.role === "assistant").map(m => ({ role: m.role as "user" | "assistant", content: m.content })));
+      })
+      .catch(() => { /* keep empty on error */ });
+    return () => { cancelled = true; };
+  }, [threadId, loadMsgs]);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
