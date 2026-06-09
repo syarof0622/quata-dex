@@ -86,8 +86,9 @@ function LearningPage() {
       <PageHero
         icon={Brain}
         title="Pusat Pembelajaran AI"
-        description="AI Quanta Terminal belajar dari riwayat keputusan dan trade paper Anda. Halaman ini menampilkan memori per emiten, strategi, sektor, dan kondisi pasar."
+        subtitle="AI Quanta Terminal belajar dari riwayat keputusan dan trade paper Anda. Halaman ini menampilkan memori per emiten, strategi, sektor, dan kondisi pasar."
       />
+
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
