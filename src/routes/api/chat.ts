@@ -541,13 +541,14 @@ OUTPUT FORMAT — strict GitHub-Flavored Markdown (renderer supports tables, lis
           // Let the model call server-side tools before we stream the final
           // answer. Budget varies by intent (3–8 iterations).
           const { CHAT_TOOLS, executeChatTool, logToolRun } = await import("@/lib/chat-tools.server");
-          const { pickAIProvider, aiAuthHeaders } = await import("@/lib/ai-provider.server");
+          const { getAIProviderChain, aiChatFetch } = await import("@/lib/ai-provider.server");
           const { classifyIntent, toolBudgetFor, intentHintBlock } = await import("@/lib/chat-intent.server");
-          const aiProvider = pickAIProvider({ lastUserText: lastUser });
+          const aiChain = getAIProviderChain({ lastUserText: lastUser });
+          const aiProvider = aiChain[0]; // primary (for logging)
           const { intent, tickers } = classifyIntent(lastUser);
           const toolBudget = toolBudgetFor(intent);
           const conversationId = `conv_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-          console.log(`[chat] provider=${aiProvider.provider} model=${aiProvider.model} intent=${intent} budget=${toolBudget}`);
+          console.log(`[chat] chain=${aiChain.map(p => p.provider).join("→")} primary=${aiProvider.provider}/${aiProvider.model} intent=${intent} budget=${toolBudget}`);
 
           // Append intent hint + upgraded discipline rules to the system prompt.
           const intentHint = intentHintBlock(intent, tickers, toolBudget);
@@ -604,23 +605,19 @@ BUDGET TOOL:
           const convo: any[] = [{ role: "system", content: sysWithIntent }, ...messages];
 
           for (let iter = 0; iter < toolBudget; iter++) {
-            const pre = await fetch(`${aiProvider.baseUrl}/chat/completions`, {
-              method: "POST",
-              headers: aiAuthHeaders(aiProvider),
-              body: JSON.stringify({
-                model: aiProvider.model,
-                messages: convo,
-                tools: CHAT_TOOLS,
-                tool_choice: "auto",
-                stream: false,
-              }),
-            });
+            const { response: pre, provider: usedProv } = await aiChatFetch(aiChain, (p) => ({
+              model: p.model,
+              messages: convo,
+              tools: CHAT_TOOLS,
+              tool_choice: "auto",
+              stream: false,
+            }));
             if (!pre.ok) {
               if (pre.status === 429) return new Response(JSON.stringify({ error: "Rate limited. Try again shortly." }), { status: 429 });
               if (pre.status === 402) return new Response(JSON.stringify({ error: "Out of AI credits. Add more in Settings → Workspace → Usage." }), { status: 402 });
               const t = await pre.text();
-              console.error("AI tool pre-pass error", pre.status, t);
-              break; // fall through to final streaming pass
+              console.error(`AI tool pre-pass error provider=${usedProv.provider}`, pre.status, t);
+              break;
             }
             const j: any = await pre.json();
             const msg = j?.choices?.[0]?.message;
@@ -677,26 +674,22 @@ BUDGET TOOL:
           }
 
 
-          // Final streaming pass (no tools — force a direct answer)
-          const upstream = await fetch(`${aiProvider.baseUrl}/chat/completions`, {
-            method: "POST",
-            headers: aiAuthHeaders(aiProvider),
-            body: JSON.stringify({
-              model: aiProvider.model,
-              messages: convo,
-              stream: true,
-            }),
-          });
+          // Final streaming pass (no tools — force a direct answer) with provider fallback
+          const { response: upstream, provider: streamProv } = await aiChatFetch(aiChain, (p) => ({
+            model: p.model,
+            messages: convo,
+            stream: true,
+          }));
 
           if (!upstream.ok) {
             if (upstream.status === 429) return new Response(JSON.stringify({ error: "Rate limited. Try again shortly." }), { status: 429 });
             if (upstream.status === 402) return new Response(JSON.stringify({ error: "Out of AI credits. Add more in Settings → Workspace → Usage." }), { status: 402 });
             const t = await upstream.text();
-            console.error("AI gateway error", upstream.status, t);
+            console.error(`AI gateway error provider=${streamProv.provider}`, upstream.status, t);
             return new Response(JSON.stringify({ error: "AI gateway error" }), { status: 500 });
           }
 
-          return new Response(upstream.body, { headers: { "Content-Type": "text/event-stream" } });
+          return new Response(upstream.body, { headers: { "Content-Type": "text/event-stream", "X-AI-Provider": streamProv.provider } });
         } catch (e) {
           console.error("chat route error", e);
           return new Response(JSON.stringify({ error: "Unknown error" }), { status: 500 });
