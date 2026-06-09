@@ -494,6 +494,161 @@ async function execScrapeFundamentalNow(args: any) {
   }
 }
 
+async function execGetMarketRegime() {
+  const { data, error } = await supabaseAdmin
+    .from("market_regime_snapshots")
+    .select("regime_trend, regime_volatility, regime_breadth, regime_classification, idx_level, idx_change_pct, breadth_pct, advancers, decliners, reasoning, created_at")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) return { ok: false, error: error.message };
+  if (!data) return { ok: true, data_state: "QUERY_EMPTY", message: "Belum ada snapshot rezim pasar." };
+  return { ok: true, data_state: "VALID_DATA", regime: data };
+}
+
+async function execGetSectorRotation(args: any) {
+  const limit = Math.max(1, Math.min(20, Number(args?.limit) || 11));
+  // Take latest distinct sector by created_at
+  const { data, error } = await supabaseAdmin
+    .from("sector_strength_snapshots")
+    .select("sector, relative_strength, momentum_score, breadth_score, classification, top_symbols, reasoning, created_at")
+    .order("created_at", { ascending: false })
+    .limit(limit * 4);
+  if (error) return { ok: false, error: error.message };
+  const seen = new Set<string>();
+  const latest = [] as any[];
+  for (const r of data ?? []) {
+    if (seen.has((r as any).sector)) continue;
+    seen.add((r as any).sector);
+    latest.push(r);
+    if (latest.length >= limit) break;
+  }
+  if (latest.length === 0) return { ok: true, data_state: "QUERY_EMPTY", sectors: [] };
+  return { ok: true, data_state: "VALID_DATA", count: latest.length, sectors: latest };
+}
+
+async function execGetPortfolioRisk(_args: any, userId: string | null) {
+  if (!userId) return { ok: false, error: "user context required" };
+  const { data: acct } = await supabaseAdmin
+    .from("paper_accounts").select("id").eq("user_id", userId).limit(1).maybeSingle();
+  if (!acct) return { ok: true, data_state: "QUERY_EMPTY", message: "No paper account" };
+  const { data, error } = await supabaseAdmin
+    .from("portfolio_risk_snapshots")
+    .select("gross_exposure, net_exposure, cash_pct, concentration_hhi, max_position_weight, sector_concentration, current_drawdown, daily_pnl, daily_pnl_pct, trades_today, risk_level, warnings, equity_snapshot, cash_snapshot, holdings_value_snapshot, realized_pnl_snapshot, unrealized_pnl_snapshot, created_at")
+    .eq("paper_account_id", (acct as any).id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) return { ok: false, error: error.message };
+  if (!data) return { ok: true, data_state: "QUERY_EMPTY", message: "Belum ada snapshot risiko." };
+  return { ok: true, data_state: "VALID_DATA", risk: data };
+}
+
+async function execGetOpenPositions(_args: any, userId: string | null) {
+  if (!userId) return { ok: false, error: "user context required" };
+  const { data, error } = await supabaseAdmin
+    .from("paper_positions")
+    .select("symbol, qty, avg_price, source, opened_at, opened_by_agent_id, account_id")
+    .eq("user_id", userId)
+    .order("opened_at", { ascending: false });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, data_state: data?.length ? "VALID_DATA" : "QUERY_EMPTY", count: data?.length ?? 0, positions: data ?? [] };
+}
+
+async function execGetTradePlan(args: any, userId: string | null) {
+  if (!userId) return { ok: false, error: "user context required" };
+  const sym = typeof args?.symbol === "string" ? args.symbol.toUpperCase() : null;
+  const limit = Math.max(1, Math.min(20, Number(args?.limit) || 5));
+  const { data: agents } = await supabaseAdmin
+    .from("ai_trade_agents").select("id").eq("user_id", userId);
+  const agentIds = (agents ?? []).map((a: any) => a.id);
+  if (agentIds.length === 0) return { ok: true, data_state: "QUERY_EMPTY", plans: [] };
+  let q: any = supabaseAdmin
+    .from("swing_trade_plans")
+    .select("symbol, entry_type, entry_price, entry_zone_low, entry_zone_high, stop_loss, take_profit_1, take_profit_2, trailing_stop, invalidation_level, risk_reward_ratio, swing_quality_score, target_holding_days, max_holding_days, status, reasons, warnings, blocked_reason, market_regime, strategy, realized_pnl, exit_reason, created_at, updated_at")
+    .in("agent_id", agentIds)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (sym) q = q.eq("symbol", sym);
+  const { data, error } = await q;
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, data_state: data?.length ? "VALID_DATA" : "QUERY_EMPTY", count: data?.length ?? 0, plans: data ?? [] };
+}
+
+async function execGetSourceHealth() {
+  const { data, error } = await supabaseAdmin
+    .from("news_source_health")
+    .select("source_key, source_name, source_type, status, last_success_at, last_failed_at, last_message, http_status, fetched_count_24h, inserted_count_24h, fallback_active, quota_protected, disabled, consecutive_failures, updated_at")
+    .order("updated_at", { ascending: false });
+  if (error) return { ok: false, error: error.message };
+  const sources = data ?? [];
+  const healthy = sources.filter((s: any) => s.status === "healthy" || s.status === "ok").length;
+  const stale = sources.filter((s: any) => s.status === "stale").length;
+  const failed = sources.filter((s: any) => s.status === "failed" || s.status === "error").length;
+  const quotaProtected = sources.filter((s: any) => s.quota_protected).length;
+  return {
+    ok: true,
+    data_state: sources.length ? "VALID_DATA" : "QUERY_EMPTY",
+    summary: { total: sources.length, healthy, stale, failed, quota_protected: quotaProtected },
+    sources,
+  };
+}
+
+async function execGetStrategyPerformance(_args: any, userId: string | null) {
+  if (!userId) return { ok: false, error: "user context required" };
+  const { data, error } = await supabaseAdmin
+    .from("strategy_health")
+    .select("strategy, trades, wins, losses, consec_losses, gross_profit, gross_loss, avg_return, profit_factor, status, paused_reason, paused_at, last_trade_at, updated_at")
+    .eq("user_id", userId)
+    .order("trades", { ascending: false });
+  if (error) return { ok: false, error: error.message };
+  const rows = data ?? [];
+  return {
+    ok: true,
+    data_state: rows.length ? "VALID_DATA" : "QUERY_EMPTY",
+    count: rows.length,
+    strategies: rows.map((r: any) => ({
+      ...r,
+      win_rate: r.trades > 0 ? Math.round((r.wins / r.trades) * 1000) / 10 : null,
+      sample_quality: r.trades >= 20 ? "valid" : r.trades >= 5 ? "small" : "insufficient_sample",
+    })),
+  };
+}
+
+async function execGetMarketCalendar() {
+  // Compute current IDX session from WIB clock (no holiday calendar).
+  const now = new Date();
+  const wib = new Date(now.getTime() + 7 * 3600_000);
+  const dow = wib.getUTCDay(); // 0=Sun..6=Sat
+  const h = wib.getUTCHours();
+  const m = wib.getUTCMinutes();
+  const mins = h * 60 + m;
+  let session: "weekend" | "closed" | "open" | "lunch_break" | "closing_auction";
+  if (dow === 0 || dow === 6) session = "weekend";
+  else if (mins < 9 * 60) session = "closed";
+  else if (mins < 11 * 60 + 30) session = "open";
+  else if (mins < 13 * 60 + 30) session = "lunch_break";
+  else if (mins < 15 * 60) session = "open";
+  else if (mins < 15 * 60 + 15) session = "closing_auction";
+  else session = "closed";
+  return {
+    ok: true,
+    data_state: "VALID_DATA",
+    session,
+    wib_time: `${String(wib.getUTCHours()).padStart(2,"0")}:${String(wib.getUTCMinutes()).padStart(2,"0")} WIB`,
+    note: "Hari libur khusus IDX tidak diperhitungkan; status sesi bisa salah saat libur nasional.",
+  };
+}
+
+async function execGetMacroContext() {
+  return {
+    ok: true,
+    data_state: "NOT_CONFIGURED",
+    reason: "Sumber makro (BI rate, inflasi, rupiah, yield, indeks global) belum dihubungkan ke database.",
+    required_sources: ["BI rate feed", "BPS CPI feed", "FX rate (USD/IDR)", "INDOGB 10Y yield", "Global indices (S&P, Nikkei, Hang Seng)"],
+  };
+}
+
 export async function executeChatTool(
   name: string,
   rawArgs: string,
@@ -513,6 +668,66 @@ export async function executeChatTool(
     case "get_ai_decision_history": return execAIDecisionHistory(args, ctx.userId);
     case "scrape_news_now": return execScrapeNewsNow();
     case "scrape_fundamental_now": return execScrapeFundamentalNow(args);
+    case "get_market_regime": return execGetMarketRegime();
+    case "get_sector_rotation": return execGetSectorRotation(args);
+    case "get_portfolio_risk": return execGetPortfolioRisk(args, ctx.userId);
+    case "get_open_positions": return execGetOpenPositions(args, ctx.userId);
+    case "get_trade_plan": return execGetTradePlan(args, ctx.userId);
+    case "get_source_health": return execGetSourceHealth();
+    case "get_strategy_performance": return execGetStrategyPerformance(args, ctx.userId);
+    case "get_market_calendar": return execGetMarketCalendar();
+    case "get_macro_context": return execGetMacroContext();
     default: return { ok: false, error: `unknown tool: ${name}` };
   }
 }
+
+// ---------------- Audit logging ----------------
+
+export async function logToolRun(row: {
+  userId: string | null;
+  conversationId: string | null;
+  question: string | null;
+  intent: string | null;
+  toolName: string;
+  toolInput: unknown;
+  toolOutput: unknown;
+  status: string;
+  dataState: string | null;
+  durationMs: number;
+  errorMessage: string | null;
+}): Promise<void> {
+  try {
+    const summary = summarizeToolOutput(row.toolOutput);
+    await supabaseAdmin.from("ai_tool_runs").insert({
+      user_id: row.userId,
+      conversation_id: row.conversationId,
+      question: row.question ? String(row.question).slice(0, 2000) : null,
+      intent: row.intent,
+      tool_name: row.toolName,
+      tool_input: typeof row.toolInput === "object" ? row.toolInput as any : { raw: String(row.toolInput ?? "") },
+      tool_output_summary: summary,
+      status: row.status,
+      data_state: row.dataState,
+      duration_ms: row.durationMs,
+      error_message: row.errorMessage,
+    });
+  } catch (e) {
+    console.error("[ai_tool_runs] insert failed", e);
+  }
+}
+
+function summarizeToolOutput(out: unknown): string {
+  if (!out || typeof out !== "object") return String(out ?? "").slice(0, 800);
+  const o = out as Record<string, any>;
+  const parts: string[] = [];
+  if ("ok" in o) parts.push(`ok=${o.ok}`);
+  if ("data_state" in o) parts.push(`state=${o.data_state}`);
+  if ("count" in o) parts.push(`count=${o.count}`);
+  if ("symbol" in o) parts.push(`symbol=${o.symbol}`);
+  if ("found" in o) parts.push(`found=${o.found}`);
+  if ("error" in o && o.error) parts.push(`error=${String(o.error).slice(0, 120)}`);
+  if ("session" in o) parts.push(`session=${o.session}`);
+  if ("status" in o && typeof o.status === "string") parts.push(`status=${o.status}`);
+  return (parts.join(" ") || JSON.stringify(o).slice(0, 400)).slice(0, 800);
+}
+
