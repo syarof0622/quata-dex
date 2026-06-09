@@ -227,6 +227,24 @@ async function requireChatUser(request: Request): Promise<{ userId?: string; res
   return { userId: data.user.id };
 }
 
+async function logChatRouteError(error: unknown, request: Request, userId: string | null, action: string, metadata?: Record<string, unknown>) {
+  try {
+    const { errorToLogInput, logError } = await import("@/lib/error-logger.server");
+    const url = new URL(request.url);
+    await logError(errorToLogInput(error, {
+      userId,
+      source: action.includes("gateway") || action.includes("ai") ? "ai_gateway" : "api",
+      module: "api_chat",
+      action,
+      path: `${url.pathname}${url.search}`,
+      userAgent: request.headers.get("user-agent"),
+      metadata,
+    }));
+  } catch {
+    // Logging must not break chat responses.
+  }
+}
+
 export const Route = createFileRoute("/api/chat")({
   server: {
     handlers: {
