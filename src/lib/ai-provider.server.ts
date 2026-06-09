@@ -50,9 +50,9 @@ function modelFor(provider: AIProviderName, complexity: AIComplexity, hint?: str
       : "google/gemini-2.0-flash-exp:free";
   }
   // lovable
-  return complexity === "deep" ? "google/gemini-2.5-pro"
+  return complexity === "deep" ? "google/gemini-3-flash-preview"
     : complexity === "light" ? "google/gemini-2.5-flash-lite"
-    : "google/gemini-2.5-flash";
+    : "google/gemini-3-flash-preview";
 }
 
 /**
@@ -109,6 +109,13 @@ export function pickAIProvider(opts: { lastUserText: string; modelHint?: string 
 }
 
 export function aiAuthHeaders(p: AIProviderInfo): Record<string, string> {
+  if (p.provider === "lovable") {
+    return {
+      "Lovable-API-Key": p.apiKey,
+      "Content-Type": "application/json",
+      ...(p.extraHeaders ?? {}),
+    };
+  }
   return {
     Authorization: `Bearer ${p.apiKey}`,
     "Content-Type": "application/json",
