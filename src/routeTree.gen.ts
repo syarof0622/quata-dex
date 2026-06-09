@@ -23,6 +23,7 @@ import { Route as AuthenticatedScreenerRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedPortfolioRouteImport } from './routes/_authenticated/portfolio'
 import { Route as AuthenticatedNewsRouteImport } from './routes/_authenticated/news'
 import { Route as AuthenticatedMarketRouteImport } from './routes/_authenticated/market'
+import { Route as AuthenticatedLearningRouteImport } from './routes/_authenticated/learning'
 import { Route as AuthenticatedLabRouteImport } from './routes/_authenticated/lab'
 import { Route as AuthenticatedHealthRouteImport } from './routes/_authenticated/health'
 import { Route as AuthenticatedExpertRouteImport } from './routes/_authenticated/expert'
@@ -115,6 +116,11 @@ const AuthenticatedNewsRoute = AuthenticatedNewsRouteImport.update({
 const AuthenticatedMarketRoute = AuthenticatedMarketRouteImport.update({
   id: '/market',
   path: '/market',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedLearningRoute = AuthenticatedLearningRouteImport.update({
+  id: '/learning',
+  path: '/learning',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedLabRoute = AuthenticatedLabRouteImport.update({
@@ -263,6 +269,7 @@ export interface FileRoutesByFullPath {
   '/expert': typeof AuthenticatedExpertRoute
   '/health': typeof AuthenticatedHealthRoute
   '/lab': typeof AuthenticatedLabRoute
+  '/learning': typeof AuthenticatedLearningRoute
   '/market': typeof AuthenticatedMarketRoute
   '/news': typeof AuthenticatedNewsRoute
   '/portfolio': typeof AuthenticatedPortfolioRoute
@@ -302,6 +309,7 @@ export interface FileRoutesByTo {
   '/expert': typeof AuthenticatedExpertRoute
   '/health': typeof AuthenticatedHealthRoute
   '/lab': typeof AuthenticatedLabRoute
+  '/learning': typeof AuthenticatedLearningRoute
   '/market': typeof AuthenticatedMarketRoute
   '/news': typeof AuthenticatedNewsRoute
   '/portfolio': typeof AuthenticatedPortfolioRoute
@@ -343,6 +351,7 @@ export interface FileRoutesById {
   '/_authenticated/expert': typeof AuthenticatedExpertRoute
   '/_authenticated/health': typeof AuthenticatedHealthRoute
   '/_authenticated/lab': typeof AuthenticatedLabRoute
+  '/_authenticated/learning': typeof AuthenticatedLearningRoute
   '/_authenticated/market': typeof AuthenticatedMarketRoute
   '/_authenticated/news': typeof AuthenticatedNewsRoute
   '/_authenticated/portfolio': typeof AuthenticatedPortfolioRoute
@@ -384,6 +393,7 @@ export interface FileRouteTypes {
     | '/expert'
     | '/health'
     | '/lab'
+    | '/learning'
     | '/market'
     | '/news'
     | '/portfolio'
@@ -423,6 +433,7 @@ export interface FileRouteTypes {
     | '/expert'
     | '/health'
     | '/lab'
+    | '/learning'
     | '/market'
     | '/news'
     | '/portfolio'
@@ -463,6 +474,7 @@ export interface FileRouteTypes {
     | '/_authenticated/expert'
     | '/_authenticated/health'
     | '/_authenticated/lab'
+    | '/_authenticated/learning'
     | '/_authenticated/market'
     | '/_authenticated/news'
     | '/_authenticated/portfolio'
@@ -614,6 +626,13 @@ declare module '@tanstack/react-router' {
       path: '/market'
       fullPath: '/market'
       preLoaderRoute: typeof AuthenticatedMarketRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/learning': {
+      id: '/_authenticated/learning'
+      path: '/learning'
+      fullPath: '/learning'
+      preLoaderRoute: typeof AuthenticatedLearningRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/lab': {
@@ -795,6 +814,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedExpertRoute: typeof AuthenticatedExpertRoute
   AuthenticatedHealthRoute: typeof AuthenticatedHealthRoute
   AuthenticatedLabRoute: typeof AuthenticatedLabRoute
+  AuthenticatedLearningRoute: typeof AuthenticatedLearningRoute
   AuthenticatedMarketRoute: typeof AuthenticatedMarketRoute
   AuthenticatedNewsRoute: typeof AuthenticatedNewsRoute
   AuthenticatedPortfolioRoute: typeof AuthenticatedPortfolioRoute
@@ -812,6 +832,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedExpertRoute: AuthenticatedExpertRoute,
   AuthenticatedHealthRoute: AuthenticatedHealthRoute,
   AuthenticatedLabRoute: AuthenticatedLabRoute,
+  AuthenticatedLearningRoute: AuthenticatedLearningRoute,
   AuthenticatedMarketRoute: AuthenticatedMarketRoute,
   AuthenticatedNewsRoute: AuthenticatedNewsRoute,
   AuthenticatedPortfolioRoute: AuthenticatedPortfolioRoute,
@@ -854,3 +875,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
