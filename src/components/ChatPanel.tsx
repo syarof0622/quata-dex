@@ -77,6 +77,14 @@ export function ChatPanel({ system, threadId, onThreadTouched }: { system?: stri
     setMessages(next);
     setInput("");
     setBusy(true);
+    // Persist user message (fire-and-forget; also set thread title from first user message)
+    if (threadId) {
+      const isFirst = history.length === 0;
+      saveMsg({ data: { threadId, role: "user", content: trimmed, ...(isFirst ? { updateTitle: trimmed } : {}) } })
+        .then(() => onThreadTouched?.())
+        .catch(() => { /* non-fatal */ });
+    }
+    let acc = "";
     try {
       const { data } = await supabase.auth.getSession();
       const token = data.session?.access_token;
@@ -97,7 +105,6 @@ export function ChatPanel({ system, threadId, onThreadTouched }: { system?: stri
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
       let buf = "";
-      let acc = "";
       setMessages(m => [...m, { role: "assistant", content: "" }]);
       while (true) {
         const { done, value } = await reader.read();
@@ -124,6 +131,12 @@ export function ChatPanel({ system, threadId, onThreadTouched }: { system?: stri
       toast.error(e instanceof Error ? e.message : T.networkError);
     } finally {
       setBusy(false);
+      // Persist assistant final text
+      if (threadId && acc) {
+        saveMsg({ data: { threadId, role: "assistant", content: acc } })
+          .then(() => onThreadTouched?.())
+          .catch(() => { /* non-fatal */ });
+      }
     }
   };
 
