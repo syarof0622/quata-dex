@@ -539,6 +539,7 @@ OUTPUT FORMAT — strict GitHub-Flavored Markdown (renderer supports tables, lis
             appContextBlock = `APP CONTEXT (internal app state for this user — JSON):\n${JSON.stringify(appCtx)}`;
           } catch (e) {
             console.error("getAIAppContext failed", e);
+            await logChatRouteError(e, request, auth.userId ?? null, "get_ai_app_context_failed", { lastUser: lastUser.slice(0, 500) });
             appContextBlock = `APP CONTEXT: unavailable (internal error). Tell the user app data could not be loaded right now.`;
           }
 
@@ -551,6 +552,7 @@ OUTPUT FORMAT — strict GitHub-Flavored Markdown (renderer supports tables, lis
             ragBlock = formatRagContext(hits);
           } catch (e) {
             console.error("rag search failed", e);
+            await logChatRouteError(e, request, auth.userId ?? null, "rag_search_failed", { lastUser: lastUser.slice(0, 500) });
           }
 
           const sys = [GLOBAL_FUNDAMENTAL_GUARD, baseSystem, marketContextBlock, appContextBlock, ragBlock].filter(Boolean).join("\n\n");
@@ -635,6 +637,7 @@ BUDGET TOOL:
               if (pre.status === 402) return new Response(JSON.stringify({ error: "Out of AI credits. Add more in Settings → Workspace → Usage." }), { status: 402 });
               const t = await pre.text();
               console.error(`AI tool pre-pass error provider=${usedProv.provider}`, pre.status, t);
+              await logChatRouteError(new Error(`AI tool pre-pass error ${pre.status}: ${t.slice(0, 1000)}`), request, auth.userId ?? null, "ai_tool_prepass_gateway_error", { provider: usedProv.provider, model: usedProv.model, status: pre.status });
               break;
             }
             const j: any = await pre.json();
@@ -704,12 +707,14 @@ BUDGET TOOL:
             if (upstream.status === 402) return new Response(JSON.stringify({ error: "Out of AI credits. Add more in Settings → Workspace → Usage." }), { status: 402 });
             const t = await upstream.text();
             console.error(`AI gateway error provider=${streamProv.provider}`, upstream.status, t);
+            await logChatRouteError(new Error(`AI gateway error ${upstream.status}: ${t.slice(0, 1000)}`), request, auth.userId ?? null, "ai_stream_gateway_error", { provider: streamProv.provider, model: streamProv.model, status: upstream.status });
             return new Response(JSON.stringify({ error: "AI gateway error" }), { status: 500 });
           }
 
           return new Response(upstream.body, { headers: { "Content-Type": "text/event-stream", "X-AI-Provider": streamProv.provider } });
         } catch (e) {
           console.error("chat route error", e);
+          await logChatRouteError(e, request, null, "chat_route_unhandled_error");
           return new Response(JSON.stringify({ error: "Unknown error" }), { status: 500 });
         }
       },
