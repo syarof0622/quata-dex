@@ -541,13 +541,14 @@ OUTPUT FORMAT — strict GitHub-Flavored Markdown (renderer supports tables, lis
           // Let the model call server-side tools before we stream the final
           // answer. Budget varies by intent (3–8 iterations).
           const { CHAT_TOOLS, executeChatTool, logToolRun } = await import("@/lib/chat-tools.server");
-          const { pickAIProvider, aiAuthHeaders } = await import("@/lib/ai-provider.server");
+          const { getAIProviderChain, aiChatFetch } = await import("@/lib/ai-provider.server");
           const { classifyIntent, toolBudgetFor, intentHintBlock } = await import("@/lib/chat-intent.server");
-          const aiProvider = pickAIProvider({ lastUserText: lastUser });
+          const aiChain = getAIProviderChain({ lastUserText: lastUser });
+          const aiProvider = aiChain[0]; // primary (for logging)
           const { intent, tickers } = classifyIntent(lastUser);
           const toolBudget = toolBudgetFor(intent);
           const conversationId = `conv_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-          console.log(`[chat] provider=${aiProvider.provider} model=${aiProvider.model} intent=${intent} budget=${toolBudget}`);
+          console.log(`[chat] chain=${aiChain.map(p => p.provider).join("→")} primary=${aiProvider.provider}/${aiProvider.model} intent=${intent} budget=${toolBudget}`);
 
           // Append intent hint + upgraded discipline rules to the system prompt.
           const intentHint = intentHintBlock(intent, tickers, toolBudget);
