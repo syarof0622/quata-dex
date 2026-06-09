@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { getRequestHeader } from "@tanstack/react-start/server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { logError, type ErrorLogLevel, type ErrorLogSource } from "@/lib/error-logger.server";
@@ -43,6 +42,7 @@ export const reportClientError = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data) => ClientErrorSchema.parse(data))
   .handler(async ({ data, context }) => {
+    const { getRequestHeader } = await import("@tanstack/react-start/server");
     await logError({
       userId: context.userId,
       level: data.level,
