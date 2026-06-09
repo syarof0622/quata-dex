@@ -253,6 +253,8 @@ function HealthPage() {
             </CardContent>
           </Card>
 
+          <ErrorLogsPanel logs={errorLogs} />
+
           <Card>
             <CardHeader>
               <CardTitle className="text-sm">Audit Trail (40 terakhir)</CardTitle>
@@ -283,5 +285,61 @@ function HealthPage() {
         </>
       )}
     </div>
+  );
+}
+
+function ErrorLogsPanel({ logs }: { logs: ErrorLogRow[] }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Bug className="size-4 text-rose-300" /> Log Error Sistem ({logs.length} terakhir)
+        </CardTitle>
+        <p className="text-[11px] text-muted-foreground">
+          Mencatat error browser, server, API, dan AI gateway secara otomatis saat proses berjalan.
+        </p>
+      </CardHeader>
+      <CardContent className="p-0">
+        {logs.length === 0 ? (
+          <div className="p-4 text-sm text-muted-foreground flex items-center gap-2">
+            <CheckCircle2 className="size-4 text-emerald-400" /> Belum ada error tercatat.
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {logs.map((row) => (
+              <details key={row.id} className="group px-4 py-3 text-xs">
+                <summary className="cursor-pointer list-none space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-muted-foreground tabular-nums">{fmtWIB(row.created_at)}</span>
+                    <Badge variant="outline" className={ERROR_LEVEL_STYLES[row.level] ?? ERROR_LEVEL_STYLES.error}>{row.level}</Badge>
+                    <Badge variant="outline" className="text-[10px]">{row.source}</Badge>
+                    {row.module && <Badge variant="outline" className="text-[10px]">{row.module}</Badge>}
+                    {row.action && <span className="font-medium">{row.action}</span>}
+                  </div>
+                  <p className="text-foreground line-clamp-2">{row.message}</p>
+                  {row.path && <p className="text-[11px] text-muted-foreground truncate">Path: {row.path}</p>}
+                </summary>
+                <div className="mt-3 space-y-2 rounded-md border border-border bg-background/60 p-3">
+                  <div className="grid gap-1 text-[11px] text-muted-foreground sm:grid-cols-2">
+                    <span>Fingerprint: {row.fingerprint ?? "—"}</span>
+                    <span>Handled: {row.handled ? "yes" : "no"}</span>
+                  </div>
+                  {row.stack && (
+                    <pre className="max-h-56 overflow-auto whitespace-pre-wrap rounded border border-border bg-muted/30 p-2 text-[11px] text-muted-foreground">
+                      {row.stack}
+                    </pre>
+                  )}
+                  {row.metadata && Object.keys(row.metadata).length > 0 && (
+                    <pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded border border-border bg-muted/30 p-2 text-[11px] text-muted-foreground">
+                      {JSON.stringify(row.metadata, null, 2)}
+                    </pre>
+                  )}
+                </div>
+              </details>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
