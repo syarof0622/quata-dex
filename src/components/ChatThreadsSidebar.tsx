@@ -34,10 +34,8 @@ export function ChatThreadsSidebar({
   });
   const threads: Thread[] = (data as any)?.threads ?? [];
 
-  // Auto-select most recent thread on first load when nothing active
-  useEffect(() => {
-    if (!activeId && threads.length > 0) onSelect(threads[0].id);
-  }, [activeId, threads, onSelect]);
+  // No auto-select: landing on /ai without ?t= means user wants a fresh session.
+  // They can explicitly pick a thread from the sidebar to resume.
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["chat-threads"] });
 

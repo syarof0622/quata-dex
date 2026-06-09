@@ -87,10 +87,11 @@ export const saveChatMessage = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     const patch: { updated_at: string; title?: string } = { updated_at: new Date().toISOString() };
     if (data.updateTitle) patch.title = data.updateTitle.slice(0, 80);
-    await context.supabase
+    const { error: threadErr } = await context.supabase
       .from("chat_threads")
       .update(patch)
       .eq("id", data.threadId)
       .eq("user_id", context.userId);
+    if (threadErr) console.warn("[chat-threads] failed to update thread metadata:", threadErr.message);
     return { ok: true };
   });
