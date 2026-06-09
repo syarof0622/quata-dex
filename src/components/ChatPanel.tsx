@@ -6,10 +6,12 @@ import { Send, Loader2, Copy, RotateCcw, Sparkles, TrendingUp, ShieldAlert, Sear
 import { cn } from "@/lib/utils";
 import { useLang } from "@/hooks/use-language";
 import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import { getChatMessages, saveChatMessage } from "@/lib/chat-threads.functions";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
-export function ChatPanel({ system }: { system?: string }) {
+export function ChatPanel({ system, threadId, onThreadTouched }: { system?: string; threadId?: string | null; onThreadTouched?: () => void }) {
   const { L } = useLang();
   const T = L.body.chat;
   const promptChips = useMemo(() => ([
