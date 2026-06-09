@@ -674,26 +674,22 @@ BUDGET TOOL:
           }
 
 
-          // Final streaming pass (no tools — force a direct answer)
-          const upstream = await fetch(`${aiProvider.baseUrl}/chat/completions`, {
-            method: "POST",
-            headers: aiAuthHeaders(aiProvider),
-            body: JSON.stringify({
-              model: aiProvider.model,
-              messages: convo,
-              stream: true,
-            }),
-          });
+          // Final streaming pass (no tools — force a direct answer) with provider fallback
+          const { response: upstream, provider: streamProv } = await aiChatFetch(aiChain, (p) => ({
+            model: p.model,
+            messages: convo,
+            stream: true,
+          }));
 
           if (!upstream.ok) {
             if (upstream.status === 429) return new Response(JSON.stringify({ error: "Rate limited. Try again shortly." }), { status: 429 });
             if (upstream.status === 402) return new Response(JSON.stringify({ error: "Out of AI credits. Add more in Settings → Workspace → Usage." }), { status: 402 });
             const t = await upstream.text();
-            console.error("AI gateway error", upstream.status, t);
+            console.error(`AI gateway error provider=${streamProv.provider}`, upstream.status, t);
             return new Response(JSON.stringify({ error: "AI gateway error" }), { status: 500 });
           }
 
-          return new Response(upstream.body, { headers: { "Content-Type": "text/event-stream" } });
+          return new Response(upstream.body, { headers: { "Content-Type": "text/event-stream", "X-AI-Provider": streamProv.provider } });
         } catch (e) {
           console.error("chat route error", e);
           return new Response(JSON.stringify({ error: "Unknown error" }), { status: 500 });
