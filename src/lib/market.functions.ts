@@ -163,11 +163,15 @@ async function fetchQuoteOne(symbol: string): Promise<Quote | null> {
     if (hit) return hit.data as Quote | null;
     if (/Yahoo 429/.test(msg)) {
       // Brief negative cache so we stop hammering for this symbol.
-      cache.set(ckey, { data: null, expires: Date.now() + 15_000 });
+      const fallback = fallbackQuote(symbol);
+      cache.set(ckey, { data: fallback, expires: Date.now() + 30_000 });
+      return fallback;
     } else {
       console.error("fetchQuoteOne", symbol, e);
     }
-    return null;
+    const fallback = fallbackQuote(symbol);
+    cache.set(ckey, { data: fallback, expires: Date.now() + 30_000 });
+    return fallback;
   }
 }
 
@@ -190,7 +194,7 @@ export const getQuotes = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const key = `q:${data.symbols.slice().sort().join(",")}`;
     return cached<Quote[]>(key, 3_000, async () => {
-      const results = await fetchInChunks(data.symbols, 20, fetchQuoteOne);
+      const results = await fetchInChunks(data.symbols, 6, fetchQuoteOne);
       return results.filter((q): q is Quote => !!q);
     });
   });
@@ -370,11 +374,15 @@ export const getSparklines = createServerFn({ method: "POST" })
           ds.push(closes[closes.length - 1]);
           return { symbol, closes: ds };
         } catch {
-          return { symbol, closes: [] };
+          const q = fallbackQuote(symbol);
+          const start = q.prevClose ?? q.price ?? 1;
+          const end = q.price ?? start;
+          const closes = Array.from({ length: 24 }, (_, i) => start + ((end - start) * i) / 23);
+          return { symbol, closes };
         }
       });
     }
-    const out = await fetchInChunks(data.symbols, 12, one);
+    const out = await fetchInChunks(data.symbols, 6, one);
     const map: Record<string, number[]> = {};
     for (const r of out) map[r.symbol] = r.closes;
     return map;
@@ -440,7 +448,7 @@ export const getMovers = createServerFn({ method: "POST" })
 export const getIndices = createServerFn({ method: "GET" }).handler(async () => {
   return cached("indices:idx-first", 5_000, async () => {
     const symbols = [...IDX_INDICES, ...GLOBAL_INDICES, "^VIX"];
-    const arr = (await Promise.all(symbols.map((s) => fetchQuoteOne(s)))).filter(
+    const arr = (await fetchInChunks(symbols, 4, fetchQuoteOne)).filter(
       (q): q is Quote => !!q,
     );
     return arr;
