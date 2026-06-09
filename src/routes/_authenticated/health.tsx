@@ -70,12 +70,18 @@ function fmtWIB(iso: string | null | undefined): string {
 function HealthPage() {
   const { L } = useLang();
   const fetchHealth = useServerFn(getSystemHealth);
+  const fetchErrorLogs = useServerFn(getErrorLogs);
   const runWorker = useServerFn(triggerWorker);
   const [running, setRunning] = useState<WorkerKey | null>(null);
   const [results, setResults] = useState<Partial<Record<WorkerKey, RunResult>>>({});
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ["system-health"],
     queryFn: () => fetchHealth(),
+    refetchInterval: 30_000,
+  });
+  const { data: errorLogs = [], refetch: refetchErrorLogs } = useQuery({
+    queryKey: ["system-error-logs"],
+    queryFn: () => fetchErrorLogs(),
     refetchInterval: 30_000,
   });
 
@@ -108,7 +114,7 @@ function HealthPage() {
         subtitle={`${L.hero.health.subtitle}${data ? ` · ${L.hero.health.updatedSuffix}: ${fmtWIB(data.generatedAt)}` : ""}`}
         actions={
           <button
-            onClick={() => refetch()}
+            onClick={() => { refetch(); refetchErrorLogs(); }}
             className="text-xs px-3 py-1.5 rounded-md border border-border hover:bg-muted"
             disabled={isFetching}
           >
