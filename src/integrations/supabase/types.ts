@@ -1737,6 +1737,60 @@ export type Database = {
         }
         Relationships: []
       }
+      error_logs: {
+        Row: {
+          action: string | null
+          created_at: string
+          fingerprint: string | null
+          handled: boolean
+          id: string
+          level: string
+          message: string
+          metadata: Json
+          module: string | null
+          occurred_at: string
+          path: string | null
+          source: string
+          stack: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action?: string | null
+          created_at?: string
+          fingerprint?: string | null
+          handled?: boolean
+          id?: string
+          level?: string
+          message: string
+          metadata?: Json
+          module?: string | null
+          occurred_at?: string
+          path?: string | null
+          source: string
+          stack?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string | null
+          created_at?: string
+          fingerprint?: string | null
+          handled?: boolean
+          id?: string
+          level?: string
+          message?: string
+          metadata?: Json
+          module?: string | null
+          occurred_at?: string
+          path?: string | null
+          source?: string
+          stack?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       fundamental_news_links: {
         Row: {
           created_at: string
