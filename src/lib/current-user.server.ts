@@ -62,7 +62,7 @@ export async function runAsUser<T>(userId: string, fn: () => Promise<T> | T): Pr
 /** Internal: resolve bearer -> user id and stash in ALS for the handler. */
 export async function runWithCurrentUser<T>(next: () => Promise<T>): Promise<T> {
   await ensureAls();
-  const { getRequest } = await import("@tanstack/react-start/server");
+  const { getRequest } = await import(/* @vite-ignore */ "@tanstack/react-start/server");
   let userId: string | null = null;
   try {
     const request = getRequest();
