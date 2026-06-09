@@ -151,7 +151,25 @@ function AIAnalystPage() {
 
       {/* Chat is the primary surface — render before audit / risk panels so the
           composer is visible without scrolling past Decision Replay. */}
-      <ChatPanel />
+      {/* Mobile: drawer trigger for thread list */}
+      <div className="md:hidden flex items-center justify-between px-1">
+        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+          <SheetTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-1.5 h-8">
+              <MessagesSquare className="h-3.5 w-3.5" /> Riwayat
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-[85vw] sm:w-[360px] p-3">
+            <ChatThreadsSidebar activeId={activeThreadId} onSelect={setThread} />
+          </SheetContent>
+        </Sheet>
+      </div>
+      <div className="grid md:grid-cols-[260px_minmax(0,1fr)] gap-3">
+        <div className="hidden md:block">
+          <ChatThreadsSidebar activeId={activeThreadId} onSelect={setThread} />
+        </div>
+        <ChatPanel threadId={activeThreadId} onThreadTouched={touchThread} />
+      </div>
       {/* Risk + replay collapsed on mobile to keep AI chat as the focus. */}
       <details className="md:hidden rounded-xl border border-border/60 bg-card/40">
         <summary className="cursor-pointer list-none px-3 py-2 text-[12px] font-medium text-muted-foreground">{T.replayAndRisk}</summary>
