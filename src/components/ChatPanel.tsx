@@ -8,6 +8,7 @@ import { useLang } from "@/hooks/use-language";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { getChatMessages, saveChatMessage } from "@/lib/chat-threads.functions";
+import { reportError } from "@/lib/error-logger.client";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -98,6 +99,14 @@ export function ChatPanel({ system, threadId, onThreadTouched }: { system?: stri
       });
       if (!resp.ok || !resp.body) {
         const j = await resp.json().catch(() => ({} as any));
+        reportError({
+          source: "api",
+          module: "chat_panel",
+          action: "chat_response_error",
+          message: j.error ?? `Chat request failed with status ${resp.status}`,
+          metadata: { status: resp.status, threadId: threadId ?? null },
+          handled: true,
+        });
         toast.error(j.error ?? T.chatFailed);
         setBusy(false);
         return;
@@ -128,6 +137,7 @@ export function ChatPanel({ system, threadId, onThreadTouched }: { system?: stri
         }
       }
     } catch (e) {
+      reportError(e, { source: "api", module: "chat_panel", action: "chat_network_error", handled: true });
       toast.error(e instanceof Error ? e.message : T.networkError);
     } finally {
       setBusy(false);
