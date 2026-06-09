@@ -177,6 +177,87 @@ export const CHAT_TOOLS: ChatTool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "get_market_regime",
+      description: "Snapshot rezim pasar IHSG terbaru: trend, volatility, breadth, klasifikasi risk-on/risk-off, advancers/decliners. Sumber: market_regime_snapshots.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_sector_rotation",
+      description: "Sector strength terbaru: sektor terkuat/terlemah, momentum, breadth, top symbols. Sumber: sector_strength_snapshots.",
+      parameters: {
+        type: "object",
+        properties: { limit: { type: "number", description: "Default 11, max 20." } },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_portfolio_risk",
+      description: "Snapshot risiko portofolio user terbaru: exposure, drawdown, cash%, konsentrasi HHI, max position weight, daily P/L, warnings. Sumber: portfolio_risk_snapshots.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_open_positions",
+      description: "Posisi terbuka user (paper_positions) dengan qty, avg_price, source, opened_at, agent_id. Untuk pertanyaan portofolio/open positions.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_trade_plan",
+      description: "Trade plan AI untuk simbol (swing_trade_plans): entry zone, SL/TP, trailing, invalidation, R/R, status. Untuk pertanyaan 'plan AI untuk X'.",
+      parameters: {
+        type: "object",
+        properties: {
+          symbol: { type: "string" },
+          limit: { type: "number", description: "Default 5, max 20." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_source_health",
+      description: "Status sumber data berita (news_source_health): segar/stale/failed/quota_protected/fallback. Untuk pertanyaan kesehatan data/sumber.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_strategy_performance",
+      description: "Performance per strategi agent user (strategy_health): trades, win/loss, profit_factor, status, consec_losses. Untuk pertanyaan strategi/Swing Max/Recovery/Expert Mode.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_market_calendar",
+      description: "Status sesi IDX saat ini: open / lunch_break / closing_auction / closed / weekend. Dihitung dari waktu WIB sekarang.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_macro_context",
+      description: "Konteks makro Indonesia (BI rate, inflasi, rupiah, yield, indeks global). STUB — belum dikonfigurasi.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
 ];
 
 // ---------------- Helpers ----------------
