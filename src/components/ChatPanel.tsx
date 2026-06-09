@@ -259,11 +259,11 @@ function MessageRow({ message, onCopy, onRegenerate, streaming }: { message: Cha
         {!isUser && message.content && !streaming && (
           <div className="mt-1.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <button onClick={onCopy} className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-muted/50">
-              <Copy className="h-3 w-3" /> Copy
+              <Copy className="h-3 w-3" /> Salin
             </button>
             {onRegenerate && (
               <button onClick={onRegenerate} className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-muted/50">
-                <RotateCcw className="h-3 w-3" /> Regenerate
+                <RotateCcw className="h-3 w-3" /> Buat Ulang
               </button>
             )}
           </div>
