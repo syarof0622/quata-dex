@@ -50,9 +50,9 @@ function modelFor(provider: AIProviderName, complexity: AIComplexity, hint?: str
       : "google/gemini-2.0-flash-exp:free";
   }
   // lovable
-  return complexity === "deep" ? "google/gemini-3.1-pro-preview"
+  return complexity === "deep" ? "google/gemini-2.5-pro"
     : complexity === "light" ? "google/gemini-2.5-flash-lite"
-    : "google/gemini-3-flash-preview";
+    : "google/gemini-2.5-flash";
 }
 
 /**
