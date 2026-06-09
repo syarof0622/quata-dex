@@ -25,6 +25,22 @@ function brandedErrorResponse(): Response {
   });
 }
 
+async function persistServerError(error: unknown, request: Request | null, context: { module: string; action: string }) {
+  try {
+    const { errorToLogInput, logError } = await import("./lib/error-logger.server");
+    const url = request ? new URL(request.url) : null;
+    await logError(errorToLogInput(error, {
+      source: "server",
+      module: context.module,
+      action: context.action,
+      path: url ? `${url.pathname}${url.search}` : null,
+      userAgent: request?.headers.get("user-agent"),
+    }));
+  } catch {
+    // Never let logging mask the original server failure.
+  }
+}
+
 function isCatastrophicSsrErrorBody(body: string, responseStatus: number): boolean {
   let payload: unknown;
   try {
@@ -52,7 +68,7 @@ function isCatastrophicSsrErrorBody(body: string, responseStatus: number): boole
 
 // h3 swallows in-handler throws into a normal 500 Response with body
 // {"unhandled":true,"message":"HTTPError"} — try/catch alone never fires for those.
-async function normalizeCatastrophicSsrResponse(response: Response): Promise<Response> {
+async function normalizeCatastrophicSsrResponse(response: Response, request: Request): Promise<Response> {
   if (response.status < 500) return response;
   const contentType = response.headers.get("content-type") ?? "";
   if (!contentType.includes("application/json")) return response;
@@ -62,7 +78,9 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
     return response;
   }
 
-  console.error(consumeLastCapturedError() ?? new Error(`h3 swallowed SSR error: ${body}`));
+  const captured = consumeLastCapturedError() ?? new Error(`h3 swallowed SSR error: ${body}`);
+  console.error(captured);
+  await persistServerError(captured, request, { module: "ssr", action: "catastrophic_response" });
   return brandedErrorResponse();
 }
 
@@ -71,9 +89,10 @@ export default {
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      return await normalizeCatastrophicSsrResponse(response, request);
     } catch (error) {
       console.error(error);
+      await persistServerError(error, request, { module: "ssr", action: "fetch_exception" });
       return brandedErrorResponse();
     }
   },

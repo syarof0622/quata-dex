@@ -12,6 +12,17 @@ const errorMiddleware = createMiddleware().server(async ({ next }) => {
       throw error;
     }
     console.error(error);
+    const [{ errorToLogInput, logError }, { getRequestHeader, getRequestUrl }] = await Promise.all([
+      import("@/lib/error-logger.server"),
+      import("@tanstack/react-start/server"),
+    ]);
+    await logError(errorToLogInput(error, {
+      source: "server",
+      module: "request_middleware",
+      action: "unhandled_request_error",
+      path: getRequestUrl()?.pathname,
+      userAgent: getRequestHeader("user-agent"),
+    }));
     return new Response(renderErrorPage(), {
       status: 500,
       headers: { "content-type": "text/html; charset=utf-8" },
