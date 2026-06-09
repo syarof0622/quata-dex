@@ -6,7 +6,8 @@ import { createMiddleware } from "@tanstack/react-start";
 
 export const withCurrentUser = createMiddleware({ type: "function" }).server(
   async ({ next }) => {
+    const { getRequestHeader } = await import("@tanstack/react-start/server");
     const mod = await import("./current-user.server");
-    return mod.runWithCurrentUser(next);
+    return mod.runWithCurrentUser(next, getRequestHeader("authorization") ?? getRequestHeader("Authorization"));
   },
 );
