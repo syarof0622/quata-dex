@@ -4,7 +4,7 @@ import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu,
   SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger, SidebarHeader, SidebarFooter,
 } from "@/components/ui/sidebar";
-import { Activity, Bell, Bot, FlaskConical, LayoutDashboard, Newspaper, PieChart, Settings, SlidersHorizontal, Star, TrendingUp, LogOut, Sparkles, HeartPulse, Shield } from "lucide-react";
+import { Activity, Bell, Bot, FlaskConical, LayoutDashboard, Newspaper, PieChart, Settings, SlidersHorizontal, Star, TrendingUp, LogOut, Sparkles, HeartPulse, Shield, Brain } from "lucide-react";
 import { useRouterState } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { TickerSearch } from "@/components/TickerSearch";
@@ -53,14 +53,16 @@ function AuthedLayout() {
     { to: "/news", icon: Newspaper, label: L.news },
     { to: "/alerts", icon: Bell, label: L.alerts },
     { to: "/health", icon: HeartPulse, label: L.systemHealth },
+    { to: "/learning", icon: Brain, label: "Pusat Pembelajaran AI" },
     { to: "/settings", icon: Settings, label: L.settings },
   ] as const;
   const PAGE_TITLES: Record<string, string> = {
     "/dashboard": L.dashboard, "/market": L.market, "/screener": L.screener,
     "/watchlist": L.watchlist, "/portfolio": L.portfolio, "/ai": L.aiAnalyst,
     "/lab": L.simulationLab, "/expert": L.expertTools, "/news": L.news,
-    "/alerts": L.alerts, "/health": L.systemHealth, "/settings": L.settings,
+    "/alerts": L.alerts, "/health": L.systemHealth, "/learning": "Pusat Pembelajaran AI", "/settings": L.settings,
   };
+
   const nav = useNavigate();
   const path = useRouterState({ select: s => s.location.pathname });
   const pageTitle = Object.entries(PAGE_TITLES).find(([p]) => path.startsWith(p))?.[1] ?? "Quanta.Terminal";
