@@ -300,7 +300,8 @@ async function calibrateConfidence(agentId: string, symbol: string, raw: number,
 
   const calibrated = Math.max(0, Math.min(0.99, raw * mult));
   const dir = calibrated >= raw ? "dinaikkan" : "diturunkan";
-  return { value: calibrated, reason: `${notes.join("; ")} → confidence ${dir}.` };
+  return { value: calibrated, reason: `${notes.join("; ")} → confidence ${dir}.`, bootstrap: false };
+
 }
 
 export async function evaluateSymbol(
