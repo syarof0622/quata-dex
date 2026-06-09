@@ -6,7 +6,7 @@ import { AIReportRenderer } from "@/components/AIReportRenderer";
 import { cn } from "@/lib/utils";
 import { useLang } from "@/hooks/use-language";
 import { supabase } from "@/integrations/supabase/client";
-import { reportError } from "@/lib/error-logger.client";
+import { reportError } from "@/lib/error-logger.browser";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
