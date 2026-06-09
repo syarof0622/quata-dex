@@ -1,18 +1,26 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { useState } from "react";
+import { z } from "zod";
 import { ChatPanel } from "@/components/ChatPanel";
+import { ChatThreadsSidebar } from "@/components/ChatThreadsSidebar";
 import { RiskEnginePanel } from "@/components/RiskEnginePanel";
 import { DecisionReplayPanel } from "@/components/DecisionReplay";
 import { AutonomousAgentPanel } from "@/components/AutonomousAgentPanel";
 import { getAIContextSummaryServer } from "@/lib/ai-context-summary.functions";
-import { Activity, Database, Newspaper, BarChart3, ShieldCheck, Clock } from "lucide-react";
+import { Activity, Database, Newspaper, BarChart3, ShieldCheck, Clock, MessagesSquare } from "lucide-react";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useLang } from "@/hooks/use-language";
 
 import { seoHead } from "@/lib/seo-head";
 
+const aiSearchSchema = z.object({ t: z.string().uuid().optional() });
+
 export const Route = createFileRoute("/_authenticated/ai")({
+  validateSearch: aiSearchSchema,
   head: () => ({
     ...seoHead({
       path: "/ai",
@@ -27,6 +35,11 @@ export const Route = createFileRoute("/_authenticated/ai")({
 function AIAnalystPage() {
   const { L } = useLang();
   const T = L.tools.ai;
+  const navigate = useNavigate({ from: "/ai" });
+  const search = useSearch({ from: "/_authenticated/ai" });
+  const activeThreadId = search.t ?? null;
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const qc = useQueryClient();
   const fetchSummary = useServerFn(getAIContextSummaryServer);
   const { data: ctx } = useQuery({
     queryKey: ["ai-context-summary"],
@@ -34,6 +47,12 @@ function AIAnalystPage() {
     refetchInterval: 60_000,
     staleTime: 30_000,
   });
+
+  const setThread = (id: string | null) => {
+    navigate({ search: id ? { t: id } : {}, replace: false });
+    setMobileOpen(false);
+  };
+  const touchThread = () => qc.invalidateQueries({ queryKey: ["chat-threads"] });
 
   return (
     <div className="p-3 sm:p-5 space-y-3">
@@ -132,7 +151,25 @@ function AIAnalystPage() {
 
       {/* Chat is the primary surface — render before audit / risk panels so the
           composer is visible without scrolling past Decision Replay. */}
-      <ChatPanel />
+      {/* Mobile: drawer trigger for thread list */}
+      <div className="md:hidden flex items-center justify-between px-1">
+        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+          <SheetTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-1.5 h-8">
+              <MessagesSquare className="h-3.5 w-3.5" /> Riwayat
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-[85vw] sm:w-[360px] p-3">
+            <ChatThreadsSidebar activeId={activeThreadId} onSelect={setThread} />
+          </SheetContent>
+        </Sheet>
+      </div>
+      <div className="grid md:grid-cols-[260px_minmax(0,1fr)] gap-3">
+        <div className="hidden md:block">
+          <ChatThreadsSidebar activeId={activeThreadId} onSelect={setThread} />
+        </div>
+        <ChatPanel threadId={activeThreadId} onThreadTouched={touchThread} />
+      </div>
       {/* Risk + replay collapsed on mobile to keep AI chat as the focus. */}
       <details className="md:hidden rounded-xl border border-border/60 bg-card/40">
         <summary className="cursor-pointer list-none px-3 py-2 text-[12px] font-medium text-muted-foreground">{T.replayAndRisk}</summary>

@@ -6,10 +6,12 @@ import { Send, Loader2, Copy, RotateCcw, Sparkles, TrendingUp, ShieldAlert, Sear
 import { cn } from "@/lib/utils";
 import { useLang } from "@/hooks/use-language";
 import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import { getChatMessages, saveChatMessage } from "@/lib/chat-threads.functions";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
-export function ChatPanel({ system }: { system?: string }) {
+export function ChatPanel({ system, threadId, onThreadTouched }: { system?: string; threadId?: string | null; onThreadTouched?: () => void }) {
   const { L } = useLang();
   const T = L.body.chat;
   const promptChips = useMemo(() => ([
@@ -38,6 +40,22 @@ export function ChatPanel({ system }: { system?: string }) {
   const endRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const loadMsgs = useServerFn(getChatMessages);
+  const saveMsg = useServerFn(saveChatMessage);
+
+  // Load thread messages whenever threadId changes
+  useEffect(() => {
+    if (!threadId) { setMessages([]); return; }
+    let cancelled = false;
+    loadMsgs({ data: { threadId } })
+      .then((r: any) => {
+        if (cancelled) return;
+        const rows = (r?.messages ?? []) as Array<{ role: string; content: string }>;
+        setMessages(rows.filter(m => m.role === "user" || m.role === "assistant").map(m => ({ role: m.role as "user" | "assistant", content: m.content })));
+      })
+      .catch(() => { /* keep empty on error */ });
+    return () => { cancelled = true; };
+  }, [threadId, loadMsgs]);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
@@ -59,6 +77,14 @@ export function ChatPanel({ system }: { system?: string }) {
     setMessages(next);
     setInput("");
     setBusy(true);
+    // Persist user message (fire-and-forget; also set thread title from first user message)
+    if (threadId) {
+      const isFirst = history.length === 0;
+      saveMsg({ data: { threadId, role: "user", content: trimmed, ...(isFirst ? { updateTitle: trimmed } : {}) } })
+        .then(() => onThreadTouched?.())
+        .catch(() => { /* non-fatal */ });
+    }
+    let acc = "";
     try {
       const { data } = await supabase.auth.getSession();
       const token = data.session?.access_token;
@@ -79,7 +105,6 @@ export function ChatPanel({ system }: { system?: string }) {
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
       let buf = "";
-      let acc = "";
       setMessages(m => [...m, { role: "assistant", content: "" }]);
       while (true) {
         const { done, value } = await reader.read();
@@ -106,6 +131,12 @@ export function ChatPanel({ system }: { system?: string }) {
       toast.error(e instanceof Error ? e.message : T.networkError);
     } finally {
       setBusy(false);
+      // Persist assistant final text
+      if (threadId && acc) {
+        saveMsg({ data: { threadId, role: "assistant", content: acc } })
+          .then(() => onThreadTouched?.())
+          .catch(() => { /* non-fatal */ });
+      }
     }
   };
 
