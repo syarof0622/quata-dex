@@ -538,16 +538,72 @@ OUTPUT FORMAT — strict GitHub-Flavored Markdown (renderer supports tables, lis
           const sys = [GLOBAL_FUNDAMENTAL_GUARD, baseSystem, marketContextBlock, appContextBlock, ragBlock].filter(Boolean).join("\n\n");
 
           // ---- Tool calling pre-pass ----
-          // Let the model call server-side tools (news, fundamentals, live
-          // price, disclosures, explicit RAG) before we stream the final
-          // answer. Bounded to 2 iterations to cap cost.
-          const { CHAT_TOOLS, executeChatTool } = await import("@/lib/chat-tools.server");
+          // Let the model call server-side tools before we stream the final
+          // answer. Budget varies by intent (3–8 iterations).
+          const { CHAT_TOOLS, executeChatTool, logToolRun } = await import("@/lib/chat-tools.server");
           const { pickAIProvider, aiAuthHeaders } = await import("@/lib/ai-provider.server");
+          const { classifyIntent, toolBudgetFor, intentHintBlock } = await import("@/lib/chat-intent.server");
           const aiProvider = pickAIProvider({ lastUserText: lastUser });
-          console.log(`[chat] provider=${aiProvider.provider} model=${aiProvider.model}`);
-          const convo: any[] = [{ role: "system", content: sys }, ...messages];
+          const { intent, tickers } = classifyIntent(lastUser);
+          const toolBudget = toolBudgetFor(intent);
+          const conversationId = `conv_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+          console.log(`[chat] provider=${aiProvider.provider} model=${aiProvider.model} intent=${intent} budget=${toolBudget}`);
 
-          for (let iter = 0; iter < 5; iter++) {
+          // Append intent hint + upgraded discipline rules to the system prompt.
+          const intentHint = intentHintBlock(intent, tickers, toolBudget);
+          const disciplineBlock = `
+
+==================================================
+DATA STATE MACHINE (HARD RULE):
+Setiap tool mengembalikan data_state ∈ {NOT_QUERIED, QUERY_EMPTY, STALE_DATA, PARTIAL_DATA, VALID_DATA, SCRAPE_TRIGGERED, SCRAPE_SUCCESS, SCRAPE_FAILED, QUOTA_PROTECTED, NOT_CONFIGURED}.
+- DILARANG mengatakan "data tidak ada" jika state NOT_QUERIED — wajib panggil tool dulu.
+- QUERY_EMPTY + topik aktual + ada tool scrape relevan → wajib trigger scrape SEKALI lalu re-check.
+- Setelah re-check tetap kosong: "Data belum tersedia setelah pengecekan dan pembaruan sumber."
+- NOT_CONFIGURED → katakan sumber belum dikonfigurasi; jangan klaim data tidak ada.
+- QUOTA_PROTECTED → sebut quota protection aktif; jangan klaim source failure.
+- "No event" pada disclosure adalah valid (bukan error).
+
+FRESHNESS THRESHOLDS:
+- Harga: <5 mnt = Segar (saat market open); >30 mnt = Usang. Saat market closed, cached wajar.
+- Berita: <6 jam = Segar; 6–24 jam = Parsial; >24 jam = Usang.
+- Fundamental: <90 hari = Segar; 90–120 hari = Parsial; >120 hari = Usang.
+- Stale + user minta "terbaru" → trigger scrape relevan SEKALI.
+
+ANTI-HALLUCINATION (HARD RULE):
+- DILARANG mengarang PER, PBV, ROE, DER, EPS, growth, market cap.
+- DILARANG menyebut "undervalue" jika data fundamental belum cukup atau confidence < 70.
+- DILARANG menyimpulkan tanpa memanggil tool yang relevan.
+- Market closed BUKAN error. Quota protected BUKAN source failure. No disclosure event BUKAN error.
+- Semua trading = PAPER TRADING SAJA — jangan rekomendasi eksekusi uang asli.
+- Bila data parsial → katakan parsial. Bila stale → katakan stale. Bila fallback → katakan fallback.
+
+STRUKTUR JAWABAN (untuk pertanyaan non-trivial):
+Akhiri jawaban dengan DUA blok wajib:
+
+## Kepercayaan Data
+Format: "Kepercayaan Data: <Tinggi|Cukup|Terbatas|Rendah> (skor/100)"
+Pecahan per dimensi (sebut hanya yang relevan):
+- Harga: Segar / Cached / Usang / Tidak Tersedia
+- Fundamental: Lengkap / Parsial / Tidak Tersedia
+- Berita: Segar / Parsial / Usang / Tidak Ada
+- Disclosure: Ada / Tidak Ada Event / Belum Dicek
+- Riwayat Trade: Ada / Tidak Ada
+- Keputusan AI: Ada / Tidak Ada
+
+## Data yang Digunakan
+Sebut ringkas tool/sumber data yang dipakai (mis. "harga live, riwayat harga 1y, fundamental terbaru, berita 30 hari, disclosure 1 tahun, keputusan AI 30 hari"). JANGAN dump JSON mentah.
+
+BUDGET TOOL:
+- Maksimum ${toolBudget} iterasi tool untuk pertanyaan ini.
+- Berhenti lebih awal jika data cukup.
+- Berhenti jika 2x berturut-turut tool kembali kosong setelah scrape/re-check.
+- Berhenti jika QUOTA_PROTECTED atau NOT_CONFIGURED.
+- JANGAN scrape jika data sudah segar. JANGAN scrape lebih dari 1x per chain per sumber.
+`;
+          const sysWithIntent = `${sys}\n\n${intentHint}${disciplineBlock}`;
+          const convo: any[] = [{ role: "system", content: sysWithIntent }, ...messages];
+
+          for (let iter = 0; iter < toolBudget; iter++) {
             const pre = await fetch(`${aiProvider.baseUrl}/chat/completions`, {
               method: "POST",
               headers: aiAuthHeaders(aiProvider),
@@ -570,8 +626,6 @@ OUTPUT FORMAT — strict GitHub-Flavored Markdown (renderer supports tables, lis
             const msg = j?.choices?.[0]?.message;
             const calls = msg?.tool_calls;
             if (!Array.isArray(calls) || calls.length === 0) {
-              // Model produced a direct answer — emit as a single SSE chunk
-              // shaped like the streaming response the client already parses.
               const text = String(msg?.content ?? "");
               const sse =
                 `data: ${JSON.stringify({ choices: [{ delta: { content: text } }] })}\n\n` +
@@ -580,14 +634,48 @@ OUTPUT FORMAT — strict GitHub-Flavored Markdown (renderer supports tables, lis
             }
             convo.push({ role: "assistant", content: msg.content ?? "", tool_calls: calls });
             for (const c of calls) {
+              const started = Date.now();
+              const toolName = c.function?.name ?? "unknown";
+              const rawArgs = c.function?.arguments ?? "{}";
+              let parsedArgs: any = {};
+              try { parsedArgs = JSON.parse(rawArgs); } catch { /* keep empty */ }
               try {
-                const out = await executeChatTool(c.function?.name, c.function?.arguments ?? "{}", { userId: auth.userId ?? null });
+                const out = await executeChatTool(toolName, rawArgs, { userId: auth.userId ?? null });
                 convo.push({ role: "tool", tool_call_id: c.id, content: JSON.stringify(out).slice(0, 6000) });
+                const outObj: any = out && typeof out === "object" ? out : {};
+                logToolRun({
+                  userId: auth.userId ?? null,
+                  conversationId,
+                  question: lastUser,
+                  intent,
+                  toolName,
+                  toolInput: parsedArgs,
+                  toolOutput: out,
+                  status: outObj.ok === false ? "error" : "ok",
+                  dataState: typeof outObj.data_state === "string" ? outObj.data_state : (outObj.ok === false ? "QUERY_EMPTY" : "VALID_DATA"),
+                  durationMs: Date.now() - started,
+                  errorMessage: outObj.ok === false ? String(outObj.error ?? "") : null,
+                }).catch(() => {});
               } catch (e: any) {
-                convo.push({ role: "tool", tool_call_id: c.id, content: JSON.stringify({ ok: false, error: String(e?.message ?? e) }) });
+                const errMsg = String(e?.message ?? e);
+                convo.push({ role: "tool", tool_call_id: c.id, content: JSON.stringify({ ok: false, error: errMsg }) });
+                logToolRun({
+                  userId: auth.userId ?? null,
+                  conversationId,
+                  question: lastUser,
+                  intent,
+                  toolName,
+                  toolInput: parsedArgs,
+                  toolOutput: { ok: false, error: errMsg },
+                  status: "exception",
+                  dataState: "QUERY_EMPTY",
+                  durationMs: Date.now() - started,
+                  errorMessage: errMsg,
+                }).catch(() => {});
               }
             }
           }
+
 
           // Final streaming pass (no tools — force a direct answer)
           const upstream = await fetch(`${aiProvider.baseUrl}/chat/completions`, {
