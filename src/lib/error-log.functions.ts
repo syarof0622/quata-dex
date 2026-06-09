@@ -64,12 +64,19 @@ export const reportClientError = createServerFn({ method: "POST" })
 export const getErrorLogs = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<ErrorLogRow[]> => {
-    const { data, error } = await supabaseAdmin
+    const { data: roleRows } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId)
+      .in("role", ["admin", "super_admin"]);
+    const isAdmin = (roleRows ?? []).length > 0;
+    let query = supabaseAdmin
       .from("error_logs")
       .select("id, level, source, module, action, message, stack, path, user_agent, metadata, fingerprint, handled, occurred_at, created_at")
-      .or(`user_id.eq.${context.userId},user_id.is.null`)
       .order("created_at", { ascending: false })
-      .limit(80);
+      .limit(100);
+    if (!isAdmin) query = query.or(`user_id.eq.${context.userId},user_id.is.null`);
+    const { data, error } = await query;
     if (error) throw new Error(error.message);
     return (data ?? []) as ErrorLogRow[];
   });
