@@ -85,8 +85,7 @@ export const saveChatMessage = createServerFn({ method: "POST" })
       content: data.content,
     });
     if (error) throw new Error(error.message);
-    // Bump updated_at (and optionally set title from first user message)
-    const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    const patch: { updated_at: string; title?: string } = { updated_at: new Date().toISOString() };
     if (data.updateTitle) patch.title = data.updateTitle.slice(0, 80);
     await context.supabase
       .from("chat_threads")
