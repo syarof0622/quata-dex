@@ -14,12 +14,21 @@ const cache = new Map<string, CacheEntry<unknown>>();
 async function cached<T>(key: string, ttlMs: number, fn: () => Promise<T>): Promise<T> {
   const hit = cache.get(key);
   if (hit && hit.expires > Date.now()) return hit.data as T;
-  const data = await fn();
-  cache.set(key, { data, expires: Date.now() + ttlMs });
-  return data;
+  try {
+    const data = await fn();
+    cache.set(key, { data, expires: Date.now() + ttlMs });
+    return data;
+  } catch (e) {
+    // Serve stale data when the upstream fails (e.g. Yahoo 429) so the UI
+    // never goes blank just because a refetch was rate-limited.
+    if (hit) return hit.data as T;
+    throw e;
+  }
 }
 
-async function yfFetch(url: string): Promise<any> {
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function yfFetch(url: string, attempt = 0): Promise<any> {
   const res = await fetch(url, {
     headers: {
       "User-Agent": UA,
@@ -27,6 +36,11 @@ async function yfFetch(url: string): Promise<any> {
       "Accept-Language": "en-US,en;q=0.9",
     },
   });
+  if (res.status === 429 && attempt < 2) {
+    const wait = 400 * Math.pow(2, attempt) + Math.floor(Math.random() * 200);
+    await sleep(wait);
+    return yfFetch(url, attempt + 1);
+  }
   if (!res.ok) throw new Error(`Yahoo ${res.status}`);
   return res.json();
 }
@@ -72,18 +86,34 @@ function quoteFromChartMeta(meta: any): Quote {
 }
 
 async function fetchQuoteOne(symbol: string): Promise<Quote | null> {
+  // Per-symbol cache dedupes parallel callers (movers + indices + sparklines
+  // often hit the same ticker) and protects Yahoo from burst load.
+  const ckey = `qone:${symbol}`;
+  const hit = cache.get(ckey);
+  if (hit && hit.expires > Date.now()) return hit.data as Quote | null;
   try {
-    // Use 1m interval to get the freshest regularMarketPrice tick available from Yahoo.
     const r = await yfFetch(
       `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1m&range=1d&includePrePost=true`,
     );
     const meta = r?.chart?.result?.[0]?.meta;
-    if (!meta) return null;
+    if (!meta) {
+      cache.set(ckey, { data: null, expires: Date.now() + 30_000 });
+      return null;
+    }
     const q = quoteFromChartMeta(meta);
     q.marketState = meta?.marketState ?? null;
+    cache.set(ckey, { data: q, expires: Date.now() + 10_000 });
     return q;
   } catch (e) {
-    console.error("fetchQuoteOne", symbol, e);
+    const msg = String((e as any)?.message ?? e);
+    // Serve last known tick if we have one (even expired) so UI never blanks.
+    if (hit) return hit.data as Quote | null;
+    if (/Yahoo 429/.test(msg)) {
+      // Brief negative cache so we stop hammering for this symbol.
+      cache.set(ckey, { data: null, expires: Date.now() + 15_000 });
+    } else {
+      console.error("fetchQuoteOne", symbol, e);
+    }
     return null;
   }
 }
@@ -94,6 +124,8 @@ async function fetchInChunks<T>(items: string[], chunk: number, fn: (s: string) 
     const slice = items.slice(i, i + chunk);
     const r = await Promise.all(slice.map(fn));
     out.push(...r);
+    // Small gap between chunks to stay under Yahoo's per-IP burst limit.
+    if (i + chunk < items.length) await sleep(120);
   }
   return out;
 }
