@@ -163,7 +163,7 @@ export async function getAIContextSummaryServerImpl(): Promise<AIContextSummaryW
     try {
       const uid = currentUserId();
       const [{ data: lastRun }, { data: events }, { data: weakSyms }, { data: strats }, { data: cooldowns }] = await Promise.all([
-        supabaseAdmin.from("daily_learning_runs").select("*").eq("user_id", uid).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+        supabaseAdmin.from("daily_learning_runs").select("*").order("created_at", { ascending: false }).limit(1).maybeSingle(),
         supabaseAdmin.from("learning_events").select("event_type, symbol, message, created_at").eq("user_id", uid).order("created_at", { ascending: false }).limit(5),
         supabaseAdmin.from("trade_memory_by_symbol").select("symbol, win_rate, profit_factor, sample_count").eq("user_id", uid).gte("sample_count", 3).order("win_rate", { ascending: true }).limit(5),
         supabaseAdmin.from("strategy_performance_memory").select("strategy_mode, win_rate, profit_factor, sample_count, is_paused").eq("user_id", uid).gte("sample_count", 3).order("profit_factor", { ascending: false }).limit(5),
