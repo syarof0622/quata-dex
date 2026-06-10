@@ -310,7 +310,8 @@ async function executePaperFill(opts: {
       await supabaseAdmin.from("paper_positions").insert({
         account_id: paperAccountId, user_id: currentUserId(), symbol, qty: shares, avg_price: fillPrice,
         opened_by_agent_id: agentId, source: "ai_agent",
-      });
+        ai_decision_id: decisionId ?? null, entry_decision_id: decisionId ?? null,
+      } as any);
     }
     cashAfter = cashBefore - notional - fee;
     await supabaseAdmin.from("paper_accounts").update({ cash: cashAfter }).eq("id", paperAccountId);
@@ -330,7 +331,8 @@ async function executePaperFill(opts: {
     symbol, side, type: "market", qty: shares,
     price, filled_price: fillPrice, status: "filled", filled_at: new Date().toISOString(),
     realized_pnl: realizedPnl, slippage_pct: slipPct, fee,
-  }).select("*").single();
+    ai_decision_id: decisionId ?? null,
+  } as any).select("*").single();
 
   // Backlink decision → order so AI-owned trades can be unambiguously aggregated.
   if (order?.id && decisionId) {
