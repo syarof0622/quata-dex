@@ -952,14 +952,19 @@ export async function evaluateSymbol(
         ? Math.max(100, Math.floor(swingPlan.positionSizeIDR / price / 100) * 100)
         : guard.shares;
     // Apply starter multiplier (40% of normal) when this is a STARTER tier
-    // entry. Round shares down to the IDX lot of 100 so we never break lot rules.
-    const finalAllocation = Math.round(baseAllocation * starterSizeMultiplier);
-    const finalShares = Math.max(100, Math.floor((baseShares * starterSizeMultiplier) / 100) * 100);
+    // entry, plus learning-derived allocation multiplier. Round shares down to
+    // the IDX lot of 100 so we never break lot rules.
+    const combinedMultiplier = starterSizeMultiplier * learningAllocMultiplier;
+    const finalAllocation = Math.round(baseAllocation * combinedMultiplier);
+    const finalShares = Math.max(100, Math.floor((baseShares * combinedMultiplier) / 100) * 100);
     const finalLot = Math.max(1, Math.round(finalShares / 100));
     const swingTag = swingPlan
       ? ` [SwingMax:${swingPlan.entryType} score=${swingPlan.swingQualityScore} RR=${swingPlan.riskRewardRatio} tier=${swingPlan.allocationTier ?? "n/a"}(${swingPlan.allocationTierLabel ?? "—"}) alloc=${((swingPlan.allocationPct ?? 0) * 100).toFixed(1)}% cap=${swingPlan.allocationCapWinner ?? "n/a"} hold=${swingPlan.targetHoldingDays}-${swingPlan.maxHoldingDays}d]`
       : "";
     const starterTag = isStarter ? " [STARTER paper trade — ukuran 40%]" : "";
+    const learningTag = learningAdj && (learningAdj.finalConfidenceAdj !== 0 || learningAllocMultiplier !== 1)
+      ? ` [Learning: conf ${learningAdj.finalConfidenceAdj >= 0 ? "+" : ""}${learningAdj.finalConfidenceAdj}%, alloc ×${learningAllocMultiplier.toFixed(2)}${learningAdj.cautionFlags?.length ? ` flags=${learningAdj.cautionFlags.join("/")}` : ""}]`
+      : "";
     return {
       symbol: sym, action: "BUY", confidence, rawConfidence,
       calibrationReason: calib.reason,
@@ -975,13 +980,13 @@ export async function evaluateSymbol(
       allocationAmount: finalAllocation,
       suggestedLot: finalLot, suggestedShares: finalShares,
       entryPrice: price, stopLoss: finalStopLoss, takeProfit: finalTakeProfit, riskRewardRatio: finalRR,
-      reasoning: `Teknikal ${techLabel} (${techScore.toFixed(0)}), sentimen ${sentScore.toFixed(2)}, news +${realNewsData.positiveNewsCount}/-${realNewsData.negativeNewsCount} (high ${realNewsData.highImpactNewsCount}), IHSG ${realMarketContext.ihsgBias}, sektor ${sectorRotationLabel}, fundamental ${fundamentalContext.classification}, strategi ${strategyName} (regime ${marketRegimeLabel}). Risk engine: stop ${guard.stopMode} ${guard.stopDistancePct}%, RR ${rr}, size ${finalLot} lot (risk ${guard.riskAmount.toLocaleString()} IDR).${starterTag}${starterReason ? " " + starterReason : ""} ${calib.reason}${autoReasonTag}${swingTag}`,
+      reasoning: `Teknikal ${techLabel} (${techScore.toFixed(0)}), sentimen ${sentScore.toFixed(2)}, news +${realNewsData.positiveNewsCount}/-${realNewsData.negativeNewsCount} (high ${realNewsData.highImpactNewsCount}), IHSG ${realMarketContext.ihsgBias}, sektor ${sectorRotationLabel}, fundamental ${fundamentalContext.classification}, strategi ${strategyName} (regime ${marketRegimeLabel}). Risk engine: stop ${guard.stopMode} ${guard.stopDistancePct}%, RR ${rr}, size ${finalLot} lot (risk ${guard.riskAmount.toLocaleString()} IDR).${starterTag}${starterReason ? " " + starterReason : ""}${learningTag} ${calib.reason}${autoReasonTag}${swingTag}`,
       dataFreshnessSeconds: freshness, dataSource: "Yahoo Finance + Google News RSS + IDX disclosure",
       executionAllowed: true, analysisOnly: false,
       realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
       portfolioSnapshot,
-      riskSnapshot: { riskGuard: guard, fundamentalContext, strategyContext, swingPlan, swingQuality, starter: isStarter, starterReason, starterSizeMultiplier } as any,
-      dataQuality, warnings: [...warnings, ...guard.warnings, ...(isStarter ? ["starter_paper_trade"] : [])],
+      riskSnapshot: { riskGuard: guard, fundamentalContext, strategyContext, swingPlan, swingQuality, starter: isStarter, starterReason, starterSizeMultiplier, learning: learningAdj, learningAllocMultiplier } as any,
+      dataQuality, warnings: [...warnings, ...guard.warnings, ...(isStarter ? ["starter_paper_trade"] : []), ...((learningAdj?.cautionFlags as string[]) ?? [])],
       strategyName: isStarter ? (swingPlan ? "swing_max_starter" : "controlled_paper_exploration") : (swingPlan ? "swing_max" : strategyName),
       setupType: swingPlan ? swingPlan.entryType : strategyName,
       marketRegime: marketRegimeLabel,
