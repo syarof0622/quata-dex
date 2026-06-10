@@ -554,7 +554,44 @@ export async function evaluateSymbol(
 
   // 9. Calibrate using historic outcomes
   const calib = await calibrateConfidence(agent.id, sym, rawConfidence, agent.strategyMode);
-  const confidence = calib.value;
+  let confidence = calib.value;
+
+  // 9b. Learning-engine adjustments (symbol/strategy/sector/regime memory).
+  // Nudges confidence + allocation. Hard guards below still apply.
+  let learningAdj: any = null;
+  let learningAllocMultiplier = 1;
+  try {
+    const { calculateLearningAdjustments } = await import("./learning-calibration.server");
+    learningAdj = await calculateLearningAdjustments({
+      userId: (agent.agentRow as any)?.user_id ?? "",
+      symbol: sym,
+      strategyMode: agent.strategyMode,
+      agentMode: agent.autonomousRiskMode ?? null,
+      sector: sectorOf(sym) ?? null,
+      marketRegime: marketRegimeLabel,
+    });
+    if (learningAdj) {
+      confidence = Math.max(0, Math.min(0.99, confidence + (learningAdj.finalConfidenceAdj ?? 0) / 100));
+      learningAllocMultiplier = Math.max(0.1, Math.min(1.5, Number(learningAdj.allocationMultiplier ?? 1)));
+      if (learningAdj.cooldownActive) {
+        return emptySnap(sym, `Learning cooldown aktif untuk ${sym} sampai ${learningAdj.cooldownUntil}. ${learningAdj.notes.join("; ")}`, {
+          confidence, rawConfidence, calibrationReason: calib.reason,
+          realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
+          dataQuality, blockedReason: "learning_cooldown",
+          warnings: [...(learningAdj.cautionFlags ?? [])],
+          riskSnapshot: { learning: learningAdj } as any,
+        });
+      }
+      if (learningAdj.strategyPaused) {
+        return emptySnap(sym, `Strategi ${agent.strategyMode} dijeda oleh learning engine (performa lemah). ${learningAdj.notes.join("; ")}`, {
+          confidence, rawConfidence, calibrationReason: calib.reason,
+          realMarketData, realTechnicalData, realNewsData, realDisclosureData, realMarketContext,
+          dataQuality, blockedReason: "strategy_paused_by_learning",
+          riskSnapshot: { learning: learningAdj } as any,
+        });
+      }
+    }
+  } catch { /* tolerate — learning is advisory */ }
 
   const warnings: string[] = [];
   const portfolioSnapshot = { hasPosition: !!pos, exposure: symbolExposure, cash: account.cash };
